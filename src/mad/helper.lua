@@ -1,34 +1,64 @@
-local M  = { help = {}, _id = "mad", _author = "Laurent Deniau", _year = 2013 }
+local M = { help={}, test={}, _id="helper", _author="LD", _year=2013 }
 
--- MAD -------------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad -- Methodical Accelerator Design package
+  helper -- display modules and services help on the console
 
 SYNOPSIS
-  local mad = require "mad"
+  local help = require "mad.helper"
+  help(mad.module)
+  help(mad.module.function)
 
 DESCRIPTION
-  The MAD package provides all the modules and services required to run MAD.
+  The helper module displays the help of modules and services on the console.
 
 RETURN VALUES
-  The table of modules and services.
+  The module.
 
 SEE ALSO
   None
 ]]
 
--- modules ---------------------------------------------------------------------
+-- require ---------------------------------------------------------------------
 
-M.env      = require "mad.env"
-M.helper   = require "mad.helper"
-M.tester   = require "mad.tester"
+local module = require "mad.module"
 
-M.beam     = require "mad.beam"
-M.element  = require "mad.element"
-M.sequence = require "mad.sequence"
+-- local -----------------------------------------------------------------------
+
+local mt = {}; setmetatable(M, mt)
+
+-- metamethods -----------------------------------------------------------------
+
+mt.__call = function (_, a)
+  -- print("helper called with ", a, a and a._id or "unknown")
+
+  if type(a) == "table" and a.help and a.help.self then
+    print(a.help.self)
+    return
+  end
+
+  if type(a) == "function" then
+    local fn = module.registered_function[a]
+    if fn then
+      print(fn.mod.help[fn.str])
+      return
+    end
+  end
+
+  print("No help found")
+end
+
+-- tests -----------------------------------------------------------------------
+
+M.test.self = function (...)
+  local help = require "mad.helper"
+  local module = M
+  help(module)
+  help(module.foo)
+  return 2, 2
+end
 
 -- end -------------------------------------------------------------------------
-
-return M
+return module(M)

@@ -1,34 +1,62 @@
-local M  = { help = {}, _id = "mad", _author = "Laurent Deniau", _year = 2013 }
+local M = { help={}, test={}, _id="tester", _author="LD", _year=2013 }
 
--- MAD -------------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad -- Methodical Accelerator Design package
+  tester -- run modules and services tests
 
 SYNOPSIS
-  local mad = require "mad"
+  local test = require "mad.tester"
+  test(mad.module)
+  test(mad.module.submodule)
 
 DESCRIPTION
-  The MAD package provides all the modules and services required to run MAD.
+  The tester module tests the modules and services and return statistics.
 
 RETURN VALUES
-  The table of modules and services.
+  The module.
 
 SEE ALSO
   None
 ]]
 
--- modules ---------------------------------------------------------------------
+-- require ---------------------------------------------------------------------
 
-M.env      = require "mad.env"
-M.helper   = require "mad.helper"
-M.tester   = require "mad.tester"
+local module = require "mad.module"
 
-M.beam     = require "mad.beam"
-M.element  = require "mad.element"
-M.sequence = require "mad.sequence"
+-- local -----------------------------------------------------------------------
+
+local mt = {}; setmetatable(M, mt)
+
+-- metamethods -----------------------------------------------------------------
+
+mt.__call = function (_, a)
+  -- print("tester called with ", a, a and a._id or "unknown")
+
+  if type(a) == "table" and a.test and a.test.self then
+    return a.test.self()
+  end
+
+  if type(a) == "function" then
+    local fn = module.registered_function[a]
+    if fn then
+      return fn.mod.test[fn.str]()
+    end
+  end
+
+  return 0, 0
+end
+
+-- tests -----------------------------------------------------------------------
+
+M.test.self = function (...)
+  local help = require "mad.helper"
+  local module = M
+  help(module)
+  help(module.foo)
+  return 2, 2
+end
 
 -- end -------------------------------------------------------------------------
-
-return M
+return module(M)

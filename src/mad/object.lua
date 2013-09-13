@@ -1,6 +1,6 @@
-local M  = { help = {}, test = {}, _id = "object", _author = "Laurent Deniau" }
+local M = { help={}, test={}, _id="object", _author="LD", _year=2013 }
 
--- Object ----------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
@@ -37,13 +37,9 @@ SEE ALSO
   None
 ]]
 
--- require ---------------------------------------------------------------------
-
 -- local -----------------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
-
--- methods ---------------------------------------------------------------------
 
 -- metamethods -----------------------------------------------------------------
 
@@ -64,8 +60,6 @@ mt.__call = function (t, o)
 
     error ("invalid constructor argument, should be: ctor [id] table") 
   end
-
--- services --------------------------------------------------------------------
 
 -- tests -----------------------------------------------------------------------
 
@@ -105,8 +99,9 @@ M.test.self = function (...)
   -- check lookup chain
   print("name = ", mb._id, "at = ", mb.at, "len = ", mb.len)
   print("name = ", mq._id, "at = ", mq.at, "len = ", mq.len)
+
+  return 9, 9
 end
 
 -- end -------------------------------------------------------------------------
-
-return M
+return (require "mad.module")(M)

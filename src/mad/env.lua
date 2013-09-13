@@ -1,34 +1,24 @@
-local M  = { help = {}, _id = "mad", _author = "Laurent Deniau", _year = 2013 }
+local M = { help={}, test={}, _id="env", _author="LD", _year=2013 }
 
--- MAD -------------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad -- Methodical Accelerator Design package
+  env -- database for MAD environment
 
 SYNOPSIS
-  local mad = require "mad"
+  local env = require "mad.env"
+  local log_level = env.option.log_level
 
 DESCRIPTION
-  The MAD package provides all the modules and services required to run MAD.
+  The env module manages the database of the MAD environment.
 
 RETURN VALUES
-  The table of modules and services.
+  The module.
 
 SEE ALSO
   None
 ]]
 
--- modules ---------------------------------------------------------------------
-
-M.env      = require "mad.env"
-M.helper   = require "mad.helper"
-M.tester   = require "mad.tester"
-
-M.beam     = require "mad.beam"
-M.element  = require "mad.element"
-M.sequence = require "mad.sequence"
-
 -- end -------------------------------------------------------------------------
-
-return M
+return (require "mad.module")(M)
