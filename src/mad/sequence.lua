@@ -1,7 +1,7 @@
-local M  = { help = {}, test = {}, _id = "object", _author = "Laurent Deniau" }
+local M  = { help = {}, test = {}, _id = "object" }
+local mt = {}; setmetatable(M, mt)
 
--- Object ----------------------------------------------------------------------
-
+-- module ---------------------------------------------------------------------
 M.help.self = [[
 NAME
   mad.object -- transform tables into general purpose objects
@@ -33,16 +33,15 @@ EXAMPLES
   local myobj = object "myobj" { myflag = true }
   local myfoo = object { myflag = false } -- no id -> "none"
 
+AUTHOR
+  Laurent Deniau -- 2013.09+
+
 SEE ALSO
   None
 ]]
 
 -- require ---------------------------------------------------------------------
-
 -- local -----------------------------------------------------------------------
-
-local mt = {}; setmetatable(M, mt)
-
 -- methods ---------------------------------------------------------------------
 
 -- metamethods -----------------------------------------------------------------
@@ -107,6 +106,5 @@ M.test.self = function (...)
   print("name = ", mq._id, "at = ", mq.at, "len = ", mq.len)
 end
 
--- end -------------------------------------------------------------------------
-
+-- module ----------------------------------------------------------------------
 return M
