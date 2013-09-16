@@ -25,34 +25,31 @@ SEE ALSO
 
 local module = require "mad.module"
 
--- local -----------------------------------------------------------------------
+-- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
-
--- metamethods -----------------------------------------------------------------
 
 mt.__call = function (_, a)
   -- print("helper called with ", a, a and a._id or "unknown")
 
-  if type(a) == "table" and a.help and a.help.self then
-    print(a.help.self)
+  if type(a) == "table" then
+    local mod_name, mod = module.get_module_name(a)
+    if mod_name then print(mod.help.self) end
     return
   end
 
   if type(a) == "function" then
-    local fn = module.registered_function[a]
-    if fn then
-      print(fn.mod.help[fn.str])
-      return
-    end
+    local fun_name, mod = module.get_function_name(a)
+    if fun_name then print(mod.help[fun_name]) end
+    return
   end
 
-  print("No help found")
+  print("No help found for ", a)
 end
 
 -- tests -----------------------------------------------------------------------
 
-M.test.self = function (...)
+M.test.self = function ()
   local help = require "mad.helper"
   local module = M
   help(module)
@@ -61,4 +58,4 @@ M.test.self = function (...)
 end
 
 -- end -------------------------------------------------------------------------
-return module(M)
+return M

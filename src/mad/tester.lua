@@ -1,4 +1,4 @@
-local M = { _id="tester", _author="LD", _year=2013, help={}, test={} }
+local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
 
@@ -12,10 +12,10 @@ SYNOPSIS
   test(mad.module.submodule)
 
 DESCRIPTION
-  The tester module tests the modules and services and return statistics.
+  The tester runs the test of modules and services and return statistics.
 
 RETURN VALUES
-  The module.
+  The test failed and passed
 
 SEE ALSO
   None
@@ -25,24 +25,21 @@ SEE ALSO
 
 local module = require "mad.module"
 
--- local -----------------------------------------------------------------------
+-- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
-
--- metamethods -----------------------------------------------------------------
 
 mt.__call = function (_, a)
   -- print("tester called with ", a, a and a._id or "unknown")
 
-  if type(a) == "table" and a.test and a.test.self then
+  if module.get_module_name(a) and a.test and a.test.self then
     return a.test.self()
   end
 
-  if type(a) == "function" then
-    local fn = module.registered_function[a]
-    if fn then
-      return fn.mod.test[fn.str]()
-    end
+  local fun_name, mod = module.get_function_name(a)
+
+  if fun_name then
+    return mod.test[fun_name]()
   end
 
   return 0, 0
@@ -50,7 +47,7 @@ end
 
 -- tests -----------------------------------------------------------------------
 
-M.test.self = function (...)
+M.test.self = function ()
   local help = require "mad.helper"
   local module = M
   help(module)
@@ -59,4 +56,4 @@ M.test.self = function (...)
 end
 
 -- end -------------------------------------------------------------------------
-return module(M)
+return M

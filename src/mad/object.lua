@@ -1,10 +1,10 @@
-local M = { _id="object", _author="LD", _year=2013, help={}, test={} }
+local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad.object -- transform tables into general purpose objects
+  object -- transform tables into general purpose objects
 
 SYNOPSIS
   local object = require "mad.object"
@@ -37,11 +37,9 @@ SEE ALSO
   None
 ]]
 
--- local -----------------------------------------------------------------------
+-- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
-
--- metamethods -----------------------------------------------------------------
 
 mt.__call = function (t, o)
     if type(o) == "table" then
@@ -63,7 +61,7 @@ mt.__call = function (t, o)
 
 -- tests -----------------------------------------------------------------------
 
-M.test.self = function (...)
+M.test.self = function ()
 
   -- helper
   local print_obj = function (o)
@@ -104,4 +102,4 @@ M.test.self = function (...)
 end
 
 -- end -------------------------------------------------------------------------
-return (require "mad.module")(M)
+return M

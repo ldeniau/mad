@@ -1,4 +1,4 @@
-local M = { _id="mad", _author="LD", _year=2013, help={}, test={} }
+local M = { help={}, test={}, _author="LD", _year=2013 }
 
 -- module ---------------------------------------------------------------------
 
@@ -42,4 +42,4 @@ M.object   = require "mad.object"
 -- M.survey   = require "mad.survey"
 
 -- end -------------------------------------------------------------------------
-return M.module(M)
+return M
