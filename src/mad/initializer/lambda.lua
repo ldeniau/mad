@@ -43,7 +43,7 @@ M.help.new = [[
 		Returns a lambda function.
 ]]
 
-function M.new(o, noArgs)
+M.new = function (o, noArgs)
   if type(o) == "function" then
 		local table = {}
 		table._lambda = true
