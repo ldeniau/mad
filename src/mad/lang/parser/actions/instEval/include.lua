@@ -56,7 +56,7 @@ function defs.instEval.include(istream, pos)
 	local parser = env.parser()
 	local ret = parser:parse(newIStream, fileName)
 	ret.type = "BlockStatement"
-	return pos+endpos,ret
+	return pos+endpos-1,ret
 end
 
 M.actions = defs
