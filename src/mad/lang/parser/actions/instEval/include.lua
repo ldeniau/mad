@@ -23,6 +23,7 @@ SEE ALSO
 -- require --------------------------------------------------------------------
 local env = require"mad.lang.environment"
 local re = require"re"
+local util = require"mad.lang.util"
 
 -- module ---------------------------------------------------------------------
 local defs = {}
@@ -53,7 +54,7 @@ function defs.instEval.include(istream, pos)
 	local newIStream = file:read('*a')
 	file:close()
 	local parser = env.parser()
-	local ret = parser.parse(newIStream, fileName)
+	local ret = parser:parse(newIStream, fileName)
 	ret.type = "BlockStatement"
 	return pos+endpos,ret
 end

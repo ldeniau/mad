@@ -35,10 +35,16 @@ end
 
 local parse = function (self, inputStream, fileName, pos)
 	local position = pos or 1
-	env.pushParser(self)
+	local push = false
+	if self ~= env.parser() then
+		env.pushParser(self)
+		push = true
+	end
 	local ast = self.grammar:match(inputStream, position)
 	ast.file = { name = fileName, inputStream = inputStream }
-	env.popParser()
+	if push then
+		env.popParser()
+	end
 	return ast
 end
 
@@ -46,7 +52,7 @@ M.help.new = [[
 	Creates a parser to parse the language specified by the input ext.
 	Returns the parser with the function parse(inputStream, fileName, [pos].
 ]]
-new = function (modSelf, ext, interactive)
+new = function (_, ext, interactive)
 	local self = {}
 	self.interactive = interactive or false
 	self.parse = parse

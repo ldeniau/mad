@@ -33,7 +33,9 @@ function M.actions.instantEvalStmt(istream, pos, name)
 end
 
 -- fill instEval ----------
-M.defs = util.tableMerge(M.actions, require"mad.lang.parser.actions.instEval.include".actions)
+M.actions = util.tableMerge(M.actions, 
+	require"mad.lang.parser.actions.instEval.include".actions,
+	require"mad.lang.parser.actions.instEval.interactive".actions)
 
 
 

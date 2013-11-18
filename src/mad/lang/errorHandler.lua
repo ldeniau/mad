@@ -96,7 +96,7 @@ local function translateLuaErrToMadErr(self, err)
 	return errmess
 end
 	
-M.handleError = function(self, err)
+function M:handleError (err)
 	local mad = string.find(err,"(%.mad)")
 	local lua = string.find(err,"(%.lua)")
 	if mad and ( not lua or mad < lua ) then

@@ -23,21 +23,21 @@ SEE ALSO
 local util = require"mad.lang.util"
 
 -- modules ---------------------------------------------------------------------
-local parser = {}
+local parserStack = {}
 
 M.help.parser = [[Returns the current parser.]]
 M.parser = function ()
-	return parser[#parser]
+	return parserStack[#parserStack]
 end
 
 M.help.pushParser = [[Sets the current parser.]]
 M.pushParser = function (parser)
-	parser[#parser+1] = parser
+	parserStack[#parserStack+1] = parser
 end
 
 M.help.popParser = [[Pops the current parser.]]
 M.popParser = function ()
-	parser[#parser] = nil
+	parserStack[#parserStack] = nil
 end
 
 
