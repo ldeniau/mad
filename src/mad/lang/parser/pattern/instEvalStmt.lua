@@ -7,7 +7,7 @@ NAME
   instEvalStmt (Instant Evaluation Statement)
 
 SYNOPSIS
-  local instEvalStmt = require"mad.compiler.parser.pattern.instEvalStmt"
+  local instEvalStmt = require"mad.lang.parser.pattern.instEvalStmt"
 
 DESCRIPTION
   Returns a grammar 

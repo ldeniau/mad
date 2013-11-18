@@ -104,4 +104,22 @@ function exports.printTable(t,num)
 	end
 end
 
+local extGramm = require"re".compile([[
+filename <- ( { (!("." %alpha) .)*} ( "." {(!"." .)*} ) ) -> fileName
+]], { fileName = function(n,e)
+		return n,e
+	end
+})
+
+function exports.getNamepathAndExtension(fileName)
+	return extGramm:match(fileName)
+end
+
+function exports.openFile(fileName)
+	local file = assert(io.open(fileName, 'r'))
+	local istream = file:read('*a')
+	file:close()
+	return istream
+end
+
 return exports

@@ -7,7 +7,7 @@ NAME
   luaBase
 
 SYNOPSIS
-  local lexer = require"mad.compiler.parser.pattern.lexer"
+  local lexer = require"mad.lang.parser.pattern.lexer"
 
 DESCRIPTION
   Returns a regex-based grammar. More spesific the grammar of the base of lua

@@ -7,7 +7,7 @@ NAME
   luaMadKernel
 
 SYNOPSIS
-  local LuaMadKernel = require"mad.compiler.parser.pattern.luaMadKernel"
+  local LuaMadKernel = require"mad.lang.parser.pattern.luaMadKernel"
 
 DESCRIPTION
   Returns a regex-based grammar. More spesific the grammar of the LuaMad kernel
@@ -24,17 +24,17 @@ SEE ALSO
 M.pattern = [[
 
 chunk <- {|
-		s ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? <sep>? )? s (!. / '' => error)
+		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? ) s (!. / '' => error)
 	|} -> chunk
 
 	block <- {|
-		s ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? <sep>? )?
+		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? )
 	|} -> blockStmt
 
 	stat <- (
 		<stmt> / <instant_eval_stmt>
 	)
-
+	
 	stmt <- ({} (
 			<varlist_assign>
 		/	<op_assign>
@@ -50,7 +50,7 @@ chunk <- {|
 		/	<locnamelist>
 	)) -> stmt
 
-varlist_assign <- ({| <varlist> |} s "=" s {| <exp_list> |}) -> varlistAssign
+	varlist_assign <- ({| <varlist> |} s "=" s {| <exp_list> |}) -> varlistAssign
 
 	op_assign <- (
 			<var> s <assign_op> s <exp>
@@ -97,7 +97,7 @@ varlist_assign <- ({| <varlist> |} s "=" s {| <exp_list> |}) -> varlistAssign
 		"local" <idsafe> s {| <name_list> |} ( s "=" s {| <exp_list> |} )?
 	) -> locNameList
 
-	laststat <- <return_stmt> / <break_stmt>
+	laststat <- ({} ( <return_stmt> / <break_stmt> ) ) -> stmt
 
 	return_stmt <- "return" <idsafe> s {| <exp_list>? |} -> returnStmt
 

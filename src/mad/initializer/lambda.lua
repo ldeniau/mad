@@ -67,7 +67,7 @@ function M.__eval(obj)
 		if obj._noArgs then
 			return obj._func()
 		else
-			error("A lambda with arguments can't be called without parentheses.")
+			error("A lambda with arguments can't be called without parentheses.",2)
 		end
 	else
 		return obj

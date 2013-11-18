@@ -7,7 +7,7 @@ NAME
   luaMadKernel
 
 SYNOPSIS
-  local defsLuaMadKernel = require"mad.compiler.parser.defs.luaMadKernel".defs
+  local defsLuaMadKernel = require"mad.lang.parser.actions.luaMadKernel".actions
 
 DESCRIPTION
   Returns the actions used by patternLuaMadKernel
@@ -20,9 +20,11 @@ SEE ALSO
 ]]
 
 -- require ------------------------------------------------------------------
-local util = require('mad.compiler.util')
+local util = require('mad.lang.util')
 
 -- utilities ----------------------------------------------------------------
+
+local defs = { }
 
 local function unpackVOE(list)
 	if list == nil then return list end
@@ -79,8 +81,6 @@ local function unpackITA(callee,list)
 end
 
 -- defs -----------------------------------------------------------------------
-
-local defs = { }
 
 function defs.chunk(body)
 	return { type = "Chunk", body = body }
@@ -167,8 +167,7 @@ end
 function defs.lambdaDecl(head, expr)
 	local body = defs.blockStmt({defs.returnStmt(expr)})
 	local decl = defs.funcExpr(head,body)
-	decl.lambda = true
-	if #head == 0 then decl.lambdaNoArgs = true end
+	decl.lambda = #head
 	return decl
 end
 function defs.blockStmt(body)
@@ -327,9 +326,43 @@ function defs.infixExpr(exp)
 	return fold_infix(exp, shift(exp, 1), 0)
 end
 
-defs._setCurrentFileName = setCurrentFileName
-defs._getCurrentFileName = getCurrentFileName
+defs.tonumber = function(s)
+	local n = string.gsub(s, '_', '')
+	return tonumber(n)
+end
+defs.tostring = tostring
+function defs.quote(s)
+	return string.format("%q", s)
+end
+function defs.bcomm(pos,comm)
+	return { type = "MultiLineComment", pos = pos, comment = comm}
+end
+function defs.lcomm(pos,comm)
+	return { type = "SingleLineComment", pos = pos, comment = comm}
+end
 
-M.defs = defs
+local strEscape = {
+	["\\r"] = "\r",
+	["\\n"] = "\n",
+	["\\t"] = "\t",
+	["\\\\"] = "\\",
+}
+function defs.string(str)
+	return string.gsub(str, "(\\[rnt\\])", strEscape)
+end
+function defs.literal(val)
+	return { type = "Literal", value = val }
+end
+function defs.boolean(val)
+	return val == 'true'
+end
+function defs.nilExpr()
+	return { type = "Literal", value = nil }
+end
+function defs.identifier(name)
+	return { type = "Identifier", name = name }
+end
+
+M.actions = defs
 
 return M

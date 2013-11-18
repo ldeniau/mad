@@ -20,14 +20,18 @@ SEE ALSO
   None
 ]]
 
--- require ---------------------------------------------------------------------
+-- require --------------------------------------------------------------------
+-- initialization
+M.initializer = require "mad.initializer"
+M.lambda = M.initializer.lambda
+
 
 -- core
-M.env      = require "mad.env"
-M.helper   = require "mad.helper"
-M.tester   = require "mad.tester"
-M.module   = require "mad.module"
-M.object   = require "mad.object"
+--M.env					= require "mad.env"
+--M.helper			= require "mad.helper"
+--M.tester			= require "mad.tester"
+--M.module			= require "mad.module"
+--M.object   		= require "mad.object"
 
 -- layout
 -- M.beam     = require "mad.beam"
