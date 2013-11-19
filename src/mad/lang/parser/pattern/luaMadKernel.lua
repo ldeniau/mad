@@ -150,7 +150,7 @@ chunk <- {|
 	)
 
 	args <-	(
-			"(" s {| <exp_list>? |} s ")" / <tableconstructor> / (<string> -> literal) 
+			"(" s {| <exp_list>? |} s ")" / {|<tableconstructor>|} / ({|<string> -> literal|}) 
 	)
 
 	function <- (
