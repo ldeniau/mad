@@ -20,18 +20,19 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
-local run = require"mad.lang.run"
+local run = require"run"
 -- module ---------------------------------------------------------------------
 
 local codes = {}
+local runner = {}
 
 local function callRun(name)
-	return run.runLuaCode(codes[name])
+	return runner[name]:runLuaCode(codes[name])
 end
 
 local function loader(name)
 	local namelist = string.gsub(package.mpath, "%?", name)
-	local file, fileName
+	local file, fileName, istream
 	do
 		for filename in string.gmatch(namelist, ";+([^;]+)") do
 			file = io.open(filename,'r')
@@ -40,10 +41,11 @@ local function loader(name)
 				break
 			end
 		end
-		local istream = file:read('*a')
+		istream = file:read('*a')
 		file:close()
 	end
-	codes[name] = run.compile(require"mad.lang.preParserGenerator"("mad"), istream, fileName)
+	runner[name] = run()
+	codes[name] = runner[name]:compile(require"mad.lang.preParserGenerator"("mad"), istream, fileName)
 	return callRun
 end
 

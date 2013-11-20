@@ -20,7 +20,7 @@ SEE ALSO
 ]]
 
 -- require ---------------------------------------------------------------------
---M.require				= require "mad.initializer.require"
+M.require				= require "mad.initializer.require"
 M.lambda   			= require "mad.initializer.lambda"
 
 -- end -------------------------------------------------------------------------
