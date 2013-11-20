@@ -4,19 +4,6 @@ package.path  = ';;./lib/?.lua;'..package.path
 package.mpath = ';./lib/?.mad'..';./?.mad'
 package.cpath = ';;./lib/?.so;'..package.cpath
 
-do
-   local paths = {
-      ".",
-      "./lib",
-      os.getenv('HOME').."/.mad",
-      "/usr/local/lib/mad",
-      "/usr/lib/mad",
-   }
-   MAD_PATH = table.concat(paths, ';')..';'
-end
+require"run"():run(arg[1])
 
-require"run".run(arg)
-
-
---require"mad.compiler.interactive".interactive()
 

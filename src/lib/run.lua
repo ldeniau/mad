@@ -1,4 +1,4 @@
-local M = { help={}, test={}, _author="MV", _year=2013 }
+local M = { help={}, test={}, _author="Martin Valen", _year=2013 }
 
 -- module ---------------------------------------------------------------------
 
@@ -25,43 +25,103 @@ local source = require"mad.lang.source"
 local preParser = require"mad.lang.preParserGenerator"
 local postParser = require"mad.lang.parser.luaAst.postParser"
 
---  ----------------------------------------------------------------------
+-- metamethods ----------------------------------------------------------------
+local mt = {}; setmetatable(M, mt)
+local new
+mt.__call = function (...)
+	return new(...)
+end
+
+-- module ---------------------------------------------------------------------
 
 GLOBAL = setmetatable({
 	assert  = function(...) return assert(...) end;
 	print	= function(...) print(...) end;
 }, { __index = _G })
 
-function M.run(arg)
-	local fullName = arg[1]
-	if type(arg) == "table" then
-		fileName, ext = util.getNamepathAndExtension(arg[1])
-	end
+
+M.help.run = [[
+NAME
+	run:run(fileName)
+ARGUMENTS
+	Filename to be run
+SYNOPSIS
+	Compiles and runs a file.
+RETURN VALUES
+	The return values of the code that's been run
+]]
+local function run(self, fullName)
+	--if type(arg) == "table" then
+		fileName, ext = util.getNamepathAndExtension(fullName)
+	--end
 	local istream = util.openFile(fullName)
 	local newParser = preParser(ext)
-	local code = M.compile(newParser, istream, fullName)
-	return M.runLuaCode(code)
+	local code = self:compile(newParser, istream, fullName)
+	return self:runLuaCode(code)
 end
 
-function M.createSource(preParser, inputStream, fileName)
-	local start = os.clock()
-	local ret = source.generate(postParser.transform(preParser:parse(inputStream, fileName)))
-	local finish = os.clock()
-	print("Elapsed Time:",finish-start)
+M.help.createSource = [[
+NAME
+	run:createSource(preParser, inputStream, fileName)
+ARGUMENTS
+	preParser: The parser used to parse the inputStream
+	inputStream: The code to be parsed
+	fileName: Name of the file
+SYNOPSIS
+	Compiles the inputstream and creates lua source-code.
+RETURN VALUES
+	Translated Lua source code
+]]
+local function createSource(self, preParser, inputStream, fileName)
+	local ret = source.generate(postParser.transform(preParser:parse(inputStream, fileName)), self.errorHandler)
 	return ret
 end
 
-function M.compile(preParser, inputStream, fileName)
-	return assert(loadstring(M.createSource(preParser, inputStream, fileName)))
+M.help.compile = [[
+NAME
+	run:compile(preParser, inputStream, fileName)
+ARGUMENTS
+	preParser: The parser used to parse the inputStream
+	inputStream: The code to be parsed
+	fileName: Name of the file
+SYNOPSIS
+	Compiles the inputstream, creates lua source-code and loads said code.
+RETURN VALUES
+	Loaded lua source code, ready to be run.
+]]
+local function compile(self, preParser, inputStream, fileName)
+	return assert(loadstring(self:createSource(preParser, inputStream, fileName), fileName))
 end
 
-function M.runLuaCode(code)
+M.help.runLuaCode = [[
+NAME
+	run:run(code)
+ARGUMENTS
+	code: Loaded lua code
+SYNOPSIS
+	Runs lua code and gives 
+RETURN VALUES
+	The return values of the code that's been run
+]]
+local function runLuaCode(self, code)
 	local status, arguments = xpcall(code, debug.traceback)
 	if status then
 		return arguments
 	else
-		require"mad.lang.errorHandler":handleError(arguments)
+		self.errorHandler:handleError(arguments)
 	end
+end
+
+new = function (_, ...)
+	local self = {
+		run = run,
+		createSource = createSource,
+		compile = compile,
+		runLuaCode = runLuaCode,
+		errorHandler = require"mad.lang.errorHandler"()
+	}
+	
+	return self
 end
 
 
