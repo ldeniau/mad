@@ -1,0 +1,2 @@
+a = "This should be printed"
+local a = "This shouldn't be printed"
