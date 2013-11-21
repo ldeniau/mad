@@ -21,9 +21,9 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 local util	  = require('mad.lang.util')
-local source = require"mad.lang.source"
+local source = require"mad.lang.source"()
 local preParser = require"mad.lang.preParserGenerator"
-local postParser = require"mad.lang.parser.luaAst.postParser"
+local postParser = require"mad.lang.parser.luaAst.postParser"()
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
@@ -71,7 +71,7 @@ RETURN VALUES
 	Translated Lua source code
 ]]
 local function createSource(self, preParser, inputStream, fileName)
-	local ret = source.generate(postParser.transform(preParser:parse(inputStream, fileName)), self.errorHandler)
+	local ret = source:generate(postParser:transform(preParser:parse(inputStream, fileName)), self.errorHandler)
 	return ret
 end
 

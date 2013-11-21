@@ -1,7 +1,35 @@
+local M = { _author = "Martin Valen, Richard Hundt", test = {}, help = {}, _year = 2013}
+
+M.help.self = [[
+NAME
+  postParser
+
+SYNOPSIS
+  local postParser = require "mad.lang.parser.luaAst.postParser"()
+
+DESCRIPTION
+  Contains functions to read a mad ast and transform it into a lua ast.
+
+RETURN VALUES
+	
+
+SEE ALSO
+  None
+]]
+
+-- require --------------------------------------------------------------------
 local B = require('mad.lang.parser.luaAst.builder')
 local util = require('mad.lang.util')
 local Context = require"mad.lang.parser.luaAst.context"
 
+-- metamethods ----------------------------------------------------------------
+local mt = {}; setmetatable(M, mt)
+local new
+mt.__call = function (...)
+	return new(...)
+end
+
+-- module ---------------------------------------------------------------------
 local notLambda = 0
 local isLambda = 1
 
@@ -377,71 +405,77 @@ local function countln(istream, pos, idx)
 	return line 
 end
 
-local function transform(tree)
-	local self = { }
+local function updateForNewFile(self, inputStream)
+	self.positions[#self.positions+1] = 0
+	self.inputStreams[#self.inputStreams+1] = inputStream
+	self.lines[#self.lines+1] = 1
+end
+	
+local function updateToOldFile(self)
+	self.positions[#self.positions] = nil
+	self.inputStreams[#self.inputStreams] = nil
+	self.lines[#self.lines] = nil
+end
 
-	self.ctx = Context.new()
-	
-	local positions = {}
-	local lines = {}
-	local inputStreams = {}
-	
-	local function updateForNewFile(inputStream)
-		positions[#positions+1] = 0
-		inputStreams[#inputStreams+1] = inputStream
-		lines[#lines+1] = 0
+local function sync(self, node)
+	local pos = node.pos
+	if pos ~= nil and pos > self.positions[#self.positions] then
+		local prev = self.positions[#self.positions]
+		local line = countln(self.inputStreams[#self.inputStreams], pos, prev + 1) + self.lines[#self.lines]
+		self.lines[#self.lines] = line
+		self.positions[#self.positions] = pos
 	end
-	
-	local function updateToOldFile()
-		positions[#positions] = nil
-		inputStreams[#inputStreams] = nil
-		lines[#lines] = nil
-	end
-	
+end
 
-	function self:sync(node)
-		local pos = node.pos
-		if pos ~= nil and pos > positions[#positions] then
-			local prev = positions[#positions]
-			local line = countln(inputStreams[#inputStreams], pos, prev + 1) + lines[#lines]
-			lines[#lines] = line
-			positions[#positions] = pos
+local function get(self, node, lookup, ...)
+	if not match[node.type] then
+		error("no handler for "..tostring(node.type))
+	end
+	if node.file then
+		self:updateForNewFile(node.file.inputStream)
+	end
+	self:sync(node)
+	local out = match[node.type](self, node, ...)
+	if lookup then
+		if node.type == "Identifier" and self.ctx:lookup(node.name) ~= notLambda then
+			out = makeEval(out)
 		end
 	end
+	out.line = self.lines[#self.lines]
+	if node.file then
+		out.fileName = node.file.name
+		self:updateToOldFile()
+	end
+	return out
+end
 
-	function self:get(node, lookup, ...)
-		if not match[node.type] then
-			error("no handler for "..tostring(node.type))
-		end
-		if node.file then
-			updateForNewFile(node.file.inputStream)
-		end
-		self:sync(node)
-		local out = match[node.type](self, node, ...)
-		if lookup then
-			if node.type == "Identifier" and self.ctx:lookup(node.name) ~= notLambda then
-				out = makeEval(out)
-			end
-		end
-		out.line = lines[#lines]
-		if node.file then
-			out.fileName = node.file.name
-			updateToOldFile()
-		end
-		return out
+local function list(self, nodes, lookup, ...)
+	local list = { }
+	for i=1, #nodes do
+		list[#list + 1] = self:get(nodes[i], lookup, ...)
 	end
+	return list
+end
 
-	function self:list(nodes, lookup, ...)
-		local list = { }
-		for i=1, #nodes do
-			list[#list + 1] = self:get(nodes[i], lookup, ...)
-		end
-		return list
-	end
-	
+local function transform(self, tree)
+	self.ctx = Context.new()	
 	return self:get(tree)
 end
 
-return {
-	transform = transform
-}
+new = function (_, ...)
+	local self = {
+		transform = transform,
+		list = list,
+		get = get,
+		sync = sync,
+		updateForNewFile = updateForNewFile,
+		updateToOldFile = updateToOldFile,
+		lines = {},
+		positions = {},
+		inputStreams = {}
+	}
+	
+	return self
+end
+
+return M 

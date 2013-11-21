@@ -17,9 +17,17 @@ SEE ALSO
   None
 ]]
 
+-- require --------------------------------------------------------------------
 local util = require('mad.lang.util')
-local errorHandler = require"mad.lang.errorHandler"
 
+-- metamethods ----------------------------------------------------------------
+local mt = {}; setmetatable(M, mt)
+local new
+mt.__call = function (...)
+	return new(...)
+end
+
+-- module ---------------------------------------------------------------------
 local Writer = { }
 Writer.__index = Writer
 
@@ -258,7 +266,7 @@ function match:BreakStatement(node)
 	self:write("end")
 end
 function match:ReturnStatement(node)
-	self:write("do return ")
+	self:write("return ")
 	for i=1, #node.arguments do
 		self:render(node.arguments[i])
 		if i ~= #node.arguments then
@@ -267,7 +275,6 @@ function match:ReturnStatement(node)
 			self:write(" ")
 		end
 	end
-	self:write('end')
 end
 function match:WhileStatement(node)
 	self:write("while ")
@@ -366,37 +373,47 @@ function match:FunctionExpression(node)
 	self:write("end")
 end
 
-function M.generate(tree)
-	local self = { }
-	local writer = Writer:new()
-	self.writer = writer
-	local fileName = {}
-	function self:render(node, ...)
-		if type(node) ~= "table" then
-			error("not a table: "..tostring(node))
-		end
-		if not node.kind then
-			error("don't know what to do with: "..util.dump(node))
-		end
-		if not match[node.kind] then
-			error("no handler for "..node.kind)
-		end
-		if node.fileName then
-			fileName[#fileName+1] = node.fileName
-		end
-		errorHandler:addToLineMap(node.line, self.writer.line, fileName[#fileName])
-		local ret = match[node.kind](self, node, ...)
-		if node.fileName then
-			fileName[#fileName] = nil
-		end
-		return ret
+local function render(self, node, ...)
+	if type(node) ~= "table" then
+		error("not a table: "..tostring(node))
 	end
-	function self:write(frag)
-		writer:write(frag)
+	if not node.kind then
+		error("don't know what to do with: "..util.dump(node))
 	end
+	if not match[node.kind] then
+		error("no handler for "..node.kind)
+	end
+	if node.fileName then
+		self.fileName[#self.fileName+1] = node.fileName
+	end
+	self.errorHandler:addToLineMap(node.line, self.writer.line, self.fileName[#self.fileName])
+	local ret = match[node.kind](self, node, ...)
+	if node.fileName then
+		self.fileName[#self.fileName] = nil
+	end
+	return ret
+end
+local function write(self, frag)
+	self.writer:write(frag)
+end
+
+local function generate(self, tree, errorHandler)
+	self.errorHandler = errorHandler
+	self.writer = Writer:new()
+	
 	self:render(tree)
-	--print(tostring(writer))
-	return tostring(writer)
+	print(tostring(self.writer))
+	return tostring(self.writer)
+end
+
+new = function (_, ...)
+	local self = {
+		fileName = {},
+		render = render,
+		write = write,
+		generate = generate
+	}
+	return self
 end
 
 return M
