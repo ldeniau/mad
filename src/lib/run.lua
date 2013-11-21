@@ -51,9 +51,7 @@ RETURN VALUES
 	The return values of the code that's been run
 ]]
 local function run(self, fullName)
-	--if type(arg) == "table" then
-		fileName, ext = util.getNamepathAndExtension(fullName)
-	--end
+	local fileName, ext = util.getNamepathAndExtension(fullName)
 	local istream = util.openFile(fullName)
 	local newParser = preParser(ext)
 	local code = self:compile(newParser, istream, fullName)
@@ -120,7 +118,6 @@ new = function (_, ...)
 		runLuaCode = runLuaCode,
 		errorHandler = require"mad.lang.errorHandler"()
 	}
-	
 	return self
 end
 
