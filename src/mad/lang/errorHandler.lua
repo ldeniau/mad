@@ -1,4 +1,4 @@
-local M  = { help = {}, test = {}, _author = "MV", _year = 2013 }
+local M  = { help = {}, test = {}, _author = "Martin Valen", _year = 2013 }
 
 -- MAD -------------------------------------------------------------------------
 
@@ -22,11 +22,16 @@ SEE ALSO
 -- require ---------------------------------------------------------------------
 local util = require"mad.lang.util"
 
+-- metamethods ----------------------------------------------------------------
+local mt = {}; setmetatable(M, mt)
+local new
+mt.__call = function (...)
+	return new(...)
+end
+
 -- modules ---------------------------------------------------------------------
 
-M._lineMap = {}
-
-M.addToLineMap = function(self, lineIn, lineOut, fileName)
+local addToLineMap = function(self, lineIn, lineOut, fileName)
 	if not self._lineMap[lineOut] then
 		self._lineMap[lineOut] = {}
 	end
@@ -36,7 +41,7 @@ M.addToLineMap = function(self, lineIn, lineOut, fileName)
 	end
 end
 
-local function searchForLineMatch(self,line)
+local function searchForLineMatch(self, line)
 	if self._lineMap[line+1] then
 		line = line+1
 	else
@@ -50,7 +55,7 @@ end
 local function getNameAndLine(self, err)
 	local line = tonumber(string.match(err, ":(%d+):"))
 	if not self._lineMap[line] then
-		line = searchForLineMatch(self,line)
+		line = searchForLineMatch(self, line)
 	end
 	local name = self._lineMap[line].fileName
 	local realLine = self._lineMap[line].start
@@ -70,7 +75,7 @@ local function createStackTable(self, stack)
 	for s in string.gmatch(stack,"(.-)\n%s*") do
 		if string.find(s, "%.mad") then
 			local name, line = getNameAndLine(self, s)
-			stacktable[#stacktable+1] = "\t"..name..".mad:"..line..":"..string.match(s,":%d+:(.*)")
+			stacktable[#stacktable+1] = "\t"..name..":"..line..":"..string.match(s,":%d+:(.*)")
 		elseif string.find(s, "%.lua") then
 			stacktable[#stacktable+1] = "\t"..s
 		end
@@ -96,7 +101,7 @@ local function translateLuaErrToMadErr(self, err)
 	return errmess
 end
 	
-function M:handleError (err)
+local function handleError (self, err)
 	local mad = string.find(err,"(%.mad)")
 	local lua = string.find(err,"(%.lua)")
 	if mad and ( not lua or mad < lua ) then
@@ -105,6 +110,19 @@ function M:handleError (err)
 	else
 		return error(err,0)
 	end
+end
+
+new = function (_, ...)
+	local self = {
+		_lineMap = {},
+		addToLineMap = addToLineMap,
+		searchForLineMatch = searchForLineMatch,
+		getNameAndLine = getNameAndLine,
+		createStackTable = createStackTable,
+		translateLuaErrToMadErr = translateLuaErrToMadErr,
+		handleError = handleError
+	}
+	return self
 end
 
 -- end ------------------------------------------------------------------------
