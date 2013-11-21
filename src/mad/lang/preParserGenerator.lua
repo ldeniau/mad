@@ -48,12 +48,31 @@ local parse = function (self, inputStream, fileName, pos)
 	return ast
 end
 
+local getInteractive = function (self)
+	if not self.interactive then
+		return M(self.ext, true)
+	else
+		return self
+	end
+end
+
+local getBatch = function (self)
+	if self.interactive then
+		return M(self.ext, false)
+	else
+		return self
+	end
+end
+
 M.help.new = [[
 	Creates a parser to parse the language specified by the input ext.
 	Returns the parser with the function parse(inputStream, fileName, [pos].
 ]]
 new = function (_, ext, interactive)
 	local self = {}
+	self.ext = ext
+	self.getInteractive = getInteractive
+	self.getBatch = getBatch
 	self.interactive = interactive or false
 	self.parse = parse
 	self.grammar = grammar(ext, interactive)
