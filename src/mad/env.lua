@@ -4,7 +4,7 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  env -- database for MAD environment
+  mad.env -- database for MAD environment
 
 SYNOPSIS
   local env = require "mad.env"
@@ -14,7 +14,7 @@ DESCRIPTION
   The env module manages the database of the MAD environment.
 
 RETURN VALUES
-  The module.
+  The MAD environment database.
 
 SEE ALSO
   None

@@ -20,7 +20,11 @@ SEE ALSO
   None
 ]]
 
--- require ---------------------------------------------------------------------
+-- require --------------------------------------------------------------------
+-- initialization
+M.initializer = require "mad.initializer"
+M.lambda = M.initializer.lambda
+
 
 -- core
 M.env    = require "mad.env"

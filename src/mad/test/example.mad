@@ -1,0 +1,10 @@
+local mad = require"mad"
+local requiredFile = require"requiredFile"
+requiredFile.printOne()
+a = 1
+local lambdaFunction = \ a
+print(lambdaFunction)
+a = "hello"
+print(lambdaFunction)
+@include"includedFile"
+print(lambdaFunction)

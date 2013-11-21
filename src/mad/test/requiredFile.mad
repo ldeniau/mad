@@ -1,0 +1,4 @@
+local function printOne()
+	print("one")
+end
+return { printOne = printOne }
