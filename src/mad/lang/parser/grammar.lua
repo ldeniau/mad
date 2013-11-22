@@ -1,4 +1,4 @@
-local M = { help={}, test={}, _author="MV", _year=2013 }
+local M = { help={}, test={}, _author="Martin Valen", _year=2013 }
 
 -- module ---------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ local util = require('mad.lang.util')
 local mt = {}; setmetatable(M, mt)
 local new
 mt.__call = function (...)
-	return new(...)
+	return call(...)
 end
 
 -- grammar ---------------------------------------------------------------------
@@ -47,9 +47,32 @@ local function addGrammar(ext, interactive)
 	return grammar[interactive][ext]
 end
 
-new = function (modSelf, ext, interactive)
+M.help.call = [[
+PARAMETERS
+	ext: The extension of the language to be parsed.
+	interactive: Whether one wants an interactive parser or not (batch mode). Defaults to batch mode.
+RETURN VALUES
+	The lpeg-compiled grammar.
+]]
+call = function (_, ext, interactive)
 	local interactive = interactive or false
 	return grammar[interactive][ext] or addGrammar(ext, interactive)
+end
+
+-- test -----------------------------------------------------------------------
+M.test.self = function (...)
+	--Create a batch grammar of mad
+	local batchGramm = M("mad")
+	
+	--Create an interactive grammar of mad
+	local intGramm = M("mad")
+	
+	--Matching mad-code
+	local code = [[local a = 5]]
+	local ast = batchGramm:match(code)
+	
+	--All tests passed
+	return true
 end
 
 

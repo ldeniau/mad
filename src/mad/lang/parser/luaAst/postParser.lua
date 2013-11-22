@@ -26,7 +26,7 @@ local Context = require"mad.lang.parser.luaAst.context"
 local mt = {}; setmetatable(M, mt)
 local new
 mt.__call = function (...)
-	return new(...)
+	return call(...)
 end
 
 -- module ---------------------------------------------------------------------
@@ -103,21 +103,6 @@ function match:AssignmentExpression(node)
 	return B.assignmentExpression(
 		self:list(node.left), self:list(node.right, "lookup")
 	)
-end
-function match:OperatorAssignmentExpression(node)
-	local n = node.left
-	if n.type == 'Identifier' and not self.ctx:lookup(n.name) then
-		self.ctx:globalDefine(n.name)
-	end
-	local op = node.operator
-	if op == "+=" then op = "+"
-	elseif op == "-=" then op = "-"
-	elseif op == "/=" then op = "/"
-	elseif op == "*=" then op = "*"
-	else error("Operator "..op.." not defined.") end
-	local left,right = self:get(node.left),self:get(node.right, "lookup")
-	local binexp = B.binaryExpression(op,left,right)
-	return B.assignmentExpression({left},{binexp})
 end
 function match:LocalDeclaration(node)
 	local body, decl, expr = nil,{},{}
@@ -405,25 +390,13 @@ local function countln(istream, pos, idx)
 	return line 
 end
 
-local function updateForNewFile(self, inputStream)
-	self.positions[#self.positions+1] = 0
-	self.inputStreams[#self.inputStreams+1] = inputStream
-	self.lines[#self.lines+1] = 1
-end
-	
-local function updateToOldFile(self)
-	self.positions[#self.positions] = nil
-	self.inputStreams[#self.inputStreams] = nil
-	self.lines[#self.lines] = nil
-end
-
 local function sync(self, node)
 	local pos = node.pos
-	if pos ~= nil and pos > self.positions[#self.positions] then
-		local prev = self.positions[#self.positions]
-		local line = countln(self.inputStreams[#self.inputStreams], pos, prev + 1) + self.lines[#self.lines]
-		self.lines[#self.lines] = line
-		self.positions[#self.positions] = pos
+	if pos ~= nil and pos > self.positions then
+		local prev = self.positions
+		local line = countln(self.inputStreams, pos, prev + 1) + self.lines
+		self.lines = line
+		self.positions = pos
 	end
 end
 
@@ -431,21 +404,9 @@ local function get(self, node, lookup, ...)
 	if not match[node.type] then
 		error("no handler for "..tostring(node.type))
 	end
-	if node.file then
-		self:updateForNewFile(node.file.inputStream)
-	end
 	self:sync(node)
 	local out = match[node.type](self, node, ...)
-	if lookup then
-		if node.type == "Identifier" and self.ctx:lookup(node.name) ~= notLambda then
-			out = makeEval(out)
-		end
-	end
-	out.line = self.lines[#self.lines]
-	if node.file then
-		out.fileName = node.file.name
-		self:updateToOldFile()
-	end
+	out.line = self.lines
 	return out
 end
 
@@ -458,21 +419,20 @@ local function list(self, nodes, lookup, ...)
 end
 
 local function transform(self, tree)
-	self.ctx = Context.new()	
+	self.ctx = Context.new()
+	self.inputStreams = tree.file.inputStream
 	return self:get(tree)
 end
 
-new = function (_, ...)
+call = function (_, ...)
 	local self = {
 		transform = transform,
 		list = list,
 		get = get,
 		sync = sync,
-		updateForNewFile = updateForNewFile,
-		updateToOldFile = updateToOldFile,
-		lines = {},
-		positions = {},
-		inputStreams = {}
+		lines = 1,
+		positions = 0,
+		inputStreams = nil
 	}
 	
 	return self

@@ -1,9 +1,14 @@
 #!/usr/bin/env luajit
 
-package.path  = ';;./lib/?.lua;'..package.path
-package.mpath = ';./lib/?.mad'..';./?.mad'
-package.cpath = ';;./lib/?.so;'..package.cpath
 
-require"run"():run(arg[1])
+-- Init
+require"mad.application.init"
 
+-- Handle args
+local handledArgs = require"mad.application.handleArguments"(arg)
 
+-- Exec
+require"mad.application.exec"(handledArgs)
+
+-- Fini
+require"mad.application.fini"
