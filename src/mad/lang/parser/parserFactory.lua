@@ -1,0 +1,37 @@
+local M = { help={}, test={}, _author="Martin Valen", _year=2013 }
+
+-- module ---------------------------------------------------------------------
+
+M.help.self = [[
+NAME
+  parserFactory
+
+SYNOPSIS
+  
+
+DESCRIPTION
+  
+
+RETURN VALUES
+  The table of modules and services.
+
+SEE ALSO
+  None
+]]
+
+-- require --------------------------------------------------------------------
+
+-- module ---------------------------------------------------------------------
+local parsers = {}
+
+M.addParser = function (ext, parser)
+	parsers[ext] = parser
+end
+
+M.getParser = function (ext)
+	return parsers[ext]
+end
+
+
+-- end ------------------------------------------------------------------------
+return M
