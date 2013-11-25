@@ -15,25 +15,22 @@ local re = require"./lib/lpeg/re"
 -- module ---------------------------------------------------------------------
 
 local grammarToSplitFileName = re.compile([[
-filename <- ( ({( ( ! ("/" / "\") .)* ("/" / "\") )* }) { (!("." %alpha) .)*} ( "." {(!"." .)*} ) ) -> fileName
+filename <- ( <path>? <name> <extension>? ) -> fileName
+extension <- ( "." {(!"." .)*} )
+path <- ({( ( ! ("/" / "\") .)* ("/" / "\") )* })
+name <- { (!("." %alpha) .)*}
 ]], { fileName = function(p,n,e)
 		return p,n,e
 	end
 })
 
-M.help.getPathNameExtension = [[
-NAME
-	getPathNameExtension
+M.help.splitFileName = [[
 SYNOPSIS
-	local path, name, extension = getPathNameExtension(string)
-DESCRIPTION
-	splits a file name into path, filename and extension.
-INPUT VALUES
-	fileName: A filename containing a [path]..filename.."."..ext
+	local path, name, extension = splitFileName(string)
 RETURN VALUES
 	path, filename, extension
 ]]
-M.getPathNameExtension = function (fileName)
+M.splitFileName = function (fileName)
 	return grammarToSplitFileName:match(fileName)
 end
 

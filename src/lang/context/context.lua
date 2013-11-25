@@ -1,4 +1,4 @@
-local M = { help={}, test={}, _author="Martin Valen and Richard Hundt", _year=2013 }
+local M = { help={}, test={} }
 
 -- module ---------------------------------------------------------------------
 
@@ -7,7 +7,7 @@ NAME
   context
 
 SYNOPSIS
-  local context = require"mad.lang.parser.luaAst.context".new()
+  local context = require"mad.lang.context".new()
 
 DESCRIPTION
   
@@ -21,30 +21,9 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 local util = require('mad.lang.util')
+local Scope = require"mad.lang.context.scope"
 
 -- module ---------------------------------------------------------------------
-
-local Scope = { }
-Scope.__index = Scope
-function Scope.new(outer)
-	local self = {
-		outer = outer;
-		entries = { };
-	}
-	return setmetatable(self, Scope)
-end
-function Scope:define(name, info)
-	self.entries[name] = info
-end
-function Scope:lookup(name)
-	if self.entries[name] then
-		return self.entries[name]
-	elseif self.outer then
-		return self.outer:lookup(name)
-	else
-		return nil
-	end
-end
 
 M.__index = M
 function M.new()

@@ -24,12 +24,12 @@ SEE ALSO
 -- module ---------------------------------------------------------------------
 local parsers = {}
 
-M.addParser = function (ext, parser)
-	parsers[ext] = parser
+M.registerParser = function (ext, parserCstr)
+	parsers[ext] = parserCstr
 end
 
 M.getParser = function (ext)
-	return parsers[ext]
+	return parsers[ext]()
 end
 
 
