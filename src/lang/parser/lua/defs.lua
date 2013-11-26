@@ -20,7 +20,7 @@ SEE ALSO
 ]]
 
 -- require ------------------------------------------------------------------
-local util = require('mad.lang.util')
+local util = require('lang.util')
 
 -- utilities ----------------------------------------------------------------
 
@@ -35,12 +35,12 @@ local function unpackVOE(list)
 		if val == "." then
 			dot = true
 		elseif dot then
-			endNode[nodeNo] = defs.memberExpr(endNode[nodeNo],val,false)
+			endNode[nodeNo] = defs.tableAccess(endNode[nodeNo],val,".")
 			dot = false
 		elseif val == "[" then
 			sqrbrc = true
 		elseif sqrbrc then
-			endNode[nodeNo] = defs.memberExpr(endNode[nodeNo],val,true)
+			endNode[nodeNo] = defs.tableAccess(endNode[nodeNo],val,"[")
 			sqrbrc = false
 		elseif val == ":" then
 			col = true
@@ -49,10 +49,10 @@ local function unpackVOE(list)
 			col = false
 		elseif callee ~= nil then
 			local a = table.insert(val,1,defs.identifier("self"))
-			endNode[nodeNo] = { type="CallExpression", callee = defs.memberExpr(endNode[nodeNo],callee), arguments = a}
+			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, "["), arguments = a, line = defs._line }
 			callee = nil
 		elseif not val.type then
-			endNode[nodeNo] = { type="CallExpression", callee = endNode[nodeNo], arguments = val }
+			endNode[nodeNo] = { type="FunctionCall", callee = endNode[nodeNo], arguments = val, line = defs._line }
 		else
 			nodeNo = nodeNo + 1
 			endNode[nodeNo] = val
@@ -71,10 +71,10 @@ local function unpackITA(callee,list)
 			col = false
 		elseif callee ~= nil then
 			args = table.insert(val,1,defs.identifier("self"))
-			endNode = { type="CallExpression", callee = defs.memberExpr(endNode,callee), arguments = args}
+			endNode = { type="FunctionCall", callee = defs.tableAccess(endNode,callee, "["), arguments = args, line = defs._line }
 			callee = nil
 		else
-			endNode = { type="CallExpression", callee = endNode, arguments = val }
+			endNode = { type="FunctionCall", callee = endNode, arguments = val, line = defs._line }
 		end
 	end
 	return endNode
@@ -82,8 +82,27 @@ end
 
 -- defs -----------------------------------------------------------------------
 
+defs._line = 1
 
+function defs.setup(istream, pos)
+	local line = 0
+	local ofs  = 0
+	while ofs < pos do
+		local a, b = string.find(istream, "\n", ofs)
+		if a then
+			ofs = a + 1
+			line = line + 1
+		else
+			break
+		end
+	end
+	defs._line = line
+	return true
+end
 
+function defs.newLine()
+	defs._line = defs._line + 1
+end
 
 function defs.error(istream, pos)
 	local loc = string.sub(istream, pos, pos)
@@ -106,6 +125,13 @@ function defs.error(istream, pos)
 	end
 end
 
+defs.lcomm = function(comm)
+
+end
+defs.bcomm = function(comm)
+
+end
+
 defs.tonumber = function(s)
 	local n = string.gsub(s, '_', '')
 	return tonumber(n)
@@ -125,20 +151,20 @@ function defs.string(str)
 	return string.gsub(str, "(\\[rnt\\])", strEscape)
 end
 function defs.literal(val)
-	return { type = "Literal", value = val }
+	return { type = "Literal", value = val, line = defs._line }
 end
 function defs.boolean(val)
 	return val == 'true'
 end
 function defs.nilExpr()
-	return { type = "Literal", value = nil }
+	return { type = "Literal", value = nil, line = defs._line }
 end
 function defs.identifier(name)
-	return { type = "Variable", name = name }
+	return { type = "Variable", name = name, line = defs._line }
 end
 
 function defs.chunk(body)
-	return { type = "Chunk", body = body }
+	return { type = "Chunk", body = body, line = defs._line }
 end
 function defs.stmt(pos, node)
 	node.pos = pos
@@ -146,19 +172,19 @@ function defs.stmt(pos, node)
 end
 
 function defs.ifStmt(test, cons, altn)
-	if cons.type then
-		cons = { cons }
+	if cons.type ~= "Block" then
+		cons = defs.blockStmt{ cons }
 	end
 	if altn and altn.type then
 		altn = { altn }
 	end
-	return { type = "If", test = test, consequent = cons, alternate = altn }
+	return { type = "If", test = test, consequent = cons, alternate = altn, line = defs._line }
 end
 function defs.whileStmt(test, body)
-	return { type = "Loop", kind = "While", test = test, body = body }
+	return { type = "Loop", kind = "While", test = test, body = body, line = defs._line }
 end
 function defs.repeatStmt(body, test)
-	return { type = "Loop", kind = "Repeat", test = test, body = body }
+	return { type = "Loop", kind = "Repeat", test = test, body = body, line = defs._line }
 end
 function defs.forStmt(name, init, last, step, body)
 	if not body then
@@ -169,16 +195,17 @@ function defs.forStmt(name, init, last, step, body)
 		type = "Loop",
 		kind = "For",
 		name = name, init = init, last = last, step = step,
-		body = body
+		body = body,
+		line = defs._line
 	}
 end
 function defs.forInStmt(left, right, body)
-	return { type = "GenericFor", left = left, right = right, body = body }
+	return { type = "GenericFor", left = left, right = right, body = body, line = defs._line }
 end
 function defs.funcDecl(name, args, funcBody)
 	local par, body = args, funcBody
-	if body.type then
-		body = { body }
+	if body.type ~= "Block" then
+		body = defs.blockStmt{ body }
 	end
 	local id,dot,col = {}, false, false
 	if type(name) == "table" then
@@ -186,12 +213,12 @@ function defs.funcDecl(name, args, funcBody)
 			if val == "." then
 				dot = true
 			elseif dot then
-				id = defs.TableAccess(id,val,false)
+				id = defs.tableAccess(id, val, ".")
 				dot = false
 			elseif val == ":" then
 				col = true
 			elseif col then
-				id = defs.TableAccess(id,val)
+				id = defs.tableAccess(id, val, ".")
 				col = false
 				table.insert(par,1,defs.identifier("self"))
 			else
@@ -201,7 +228,7 @@ function defs.funcDecl(name, args, funcBody)
 	else
 		id = name
 	end
-	local decl = { type = "FunctionDefinition", id = id, body = body }
+	local decl = { type = "FunctionDefinition", id = id, body = body, line = defs._line }
 	local params, rest = { }, false
 	for i=1, #par do
 		local p = par[i]
@@ -221,20 +248,20 @@ function defs.funcExpr(head, body)
 	return decl
 end
 function defs.blockStmt(body)
-	return body
+	return { type = "Block", body = body }
 end
 function defs.returnStmt(args)
-	return { type = "Return", arguments = args }
+	return { type = "Return", arguments = args, line = defs._line }
 end
 function defs.breakStmt()
-	return { type = "Break" }
+	return { type = "Break", line = defs._line }
 end
 function defs.exprStmt(pos, expr)
 	expr.pos = pos
 	return expr
 end
 function defs.unaryExp(o, a)
-	return { type = "UnaryExpression", operator = o, argument = a }
+	return { type = "UnaryExpression", operator = o, argument = a, line = defs._line }
 end
 function defs.funcCall(varorexp, identthenargs)
 	local callee = unpackVOE(varorexp)
@@ -242,23 +269,23 @@ function defs.funcCall(varorexp, identthenargs)
 	return endNode 
 end
 function defs.binaryExpr(op, lhs, rhs)
-	return { type = "BinaryExpression", operator = op, left = lhs, right = rhs }
+	return { type = "BinaryExpression", operator = op, left = lhs, right = rhs, line = defs._line }
 end
 function defs.varlistAssign(lhs, rhs)
 	lhs = unpackVOE(lhs)
 	if lhs.type then lhs = { lhs } end
 	rhs = unpackVOE(rhs)
 	if rhs.type then rhs = { rhs } end
-	return { type = "Assignment", lhs = lhs, rhs = rhs }
+	return { type = "Assignment", lhs = lhs, rhs = rhs, line = defs._line }
 end
 function defs.locFuncDecl(name, head, body)
-	return { type = "Assignment", lhs = { name }, rhs = { defs.funcExpr(head, body) }, localDeclaration = true  }
+	return { type = "Assignment", lhs = { name }, rhs = { defs.funcExpr(head, body) }, localDeclaration = true, localFunctionSugar = true, line = defs._line  }
 end
 function defs.locNameList(nlst, explst)
-	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true }
+	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true, line = defs._line }
 end
 function defs.tableConstr(flst)
-	local tbl, i = { type = "Table", explicitExpr = {}, implicitExpr = {} }, 1
+	local tbl, i = { type = "Table", explicitExpr = {}, implicitExpr = {}, line = defs._line }, 1
 	while i <= #flst do
 		if flst[i] == "[" then
 			local k = flst[i+1]
@@ -286,7 +313,7 @@ function defs.tableConstr(flst)
 	return tbl
 end
 function defs.vararg()
-	return { type = "Vararg" }
+	return { type = "Vararg", line = defs._line }
 end
 
 function defs.prefixExp(varorexp,identthenargs)
@@ -295,15 +322,15 @@ function defs.prefixExp(varorexp,identthenargs)
 	return var
 end
 
-function defs.memberExpr(b, e, c)
-	return { type = "MemberExpression", object = b, property = e, computed = c }
+function defs.tableAccess(b, e, o)
+	return { type = "BinaryExpression", lhs = b, rhs = e, operator = o, line = defs._line }
 end
 function defs.expression(exp)
 	return exp
 end
 
 function defs.doStmt(block)
-	return { type = "Do", body = block }
+	return { type = "Do", body = block, line = defs._line }
 end
 
 
@@ -330,38 +357,43 @@ local op_info = {
 	["/"] = { 8, 'L' },
 	["%"] = { 8, 'L' },
 
-	["^"] = { 9, 'R' },
+	["-_"] = { 9, 'R' },
+	["not_"] = { 9, 'R' },
+	
+	["^"] = { 10, 'R' },
+	["#_"] = { 11, 'R' },
 
 }
 
 local shift = table.remove
 
-local function fold_infix(exp, lhs, min)
+local function fold_expr(exp, min)
+	local lhs = shift(exp, 1)
+	if type(lhs) == 'table' and lhs.type == 'UnaryExpression' then
+		local op = lhs.operator..'_'
+		local info = op_info[op]
+		table.insert(exp, 1, lhs.argument)
+		lhs.argument = fold_expr(exp, info[1])
+	end
 	while op_info[exp[1]] ~= nil and op_info[exp[1]][1] >= min do
-		local op  = shift(exp, 1)
-		local rhs = shift(exp, 1)
-		while op_info[exp[1]] ~= nil do
-			local info = op_info[exp[1]]
-			local prec, assoc = info[1], info[2]
-			if prec > op_info[op][1] or (assoc == 'R' and prec == op_info[op][1]) then
-				rhs = fold_infix(exp, rhs, prec)
-			else
-				break
-			end
+		local op = shift(exp, 1)
+		local info = op_info[op]
+		local prec, assoc = info[1], info[2]
+		if assoc == 'L' then
+			prec = prec + 1
 		end
-		if op == "or" or op == "and" then
-			lhs = defs.logicalExpr(op, lhs, rhs)
-		else
-			lhs = defs.binaryExpr(op, lhs, rhs)
+		local rhs = fold_expr(exp, prec)
+		lhs = defs.binaryExpr(op, lhs, rhs)
 		end
 	end
 	return lhs
 end
-
-function defs.infixExpr(exp)
-	return fold_infix(exp, shift(exp, 1), 0)
 end
 
-M.actions = defs
+function defs.infixExpr(exp)
+	return fold_expr(exp, 0)
+end
+
+M.defs = defs
 
 return M

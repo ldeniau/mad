@@ -23,7 +23,7 @@ SEE ALSO
 
 M.grammar = [[
 
-chunk <- {|
+chunk <- "" => setup {| 
 		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? ) s (!. / '' => error)
 	|} -> chunk
 

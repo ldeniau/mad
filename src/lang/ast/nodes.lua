@@ -26,10 +26,12 @@ local util = require('mad.lang.util')
 local nodes = [[
 Chunk:
 	body = list of Statement
+Block:
+	body = list of Statement
 Assignment:
 	lhs = list of Variable or Table Access
 	rhs = list of Expression
-Function Call:
+FunctionCall:
 	name = Variable or Table Access
 	arguments = list of Expression
 Label:
@@ -38,25 +40,21 @@ Break:
 Goto:
 	name = Label
 Do:
-	body = list of Statement
+	body = Block
 Loop:
-	body = list of Statement
+	body = Block
 	kind = while/for/repeat
 GenericFor:
-	body = list of Statement
+	body = Block
 	names = list of Variable
 	expressions = list of Expression
 FunctionDefinition:
-	body = list of Statement
+	body = Block
 	parameters = (list of Variable)
 	rest = Boolean
 Return:
 	values = list of Expression
 Vararg:
-TableAccess:
-	parent = Variable
-	child = Variable
-	computed = Boolean
 BinaryExpression:
 	lhs = Expression
 	operator = "+", "-", "*", "/", "^", "%", "..", "==", "~=", ">=", ">", "<=", "<",
@@ -78,8 +76,8 @@ Table:
 		}
 If:
 	test = Expression
-	consequent = list of Statement
-	alternate = list of Statement
+	consequent = Block
+	alternate = Block
 ]]
 
 
