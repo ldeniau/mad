@@ -31,16 +31,17 @@ chunk <- "" => setup {|
 		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? )
 	|} -> blockStmt
 	
-	close		<- (']' =eq ']') / {(!']' .)*}
+	close		<- (']' =eq ']') / {(!']' <any>)*}
 
 	newline <- %nl -> newLine
+	any <- !<newline> . / <newline>
 
 	lcomment	<- ({} (!<newline> %s)* "--" {(!<newline> .)*} <newline>) -> lcomm
 	bcomment	<- ({} ('--[' {:eq: '='* :} '[' <close>)) -> bcomm
 	comment		<- <bcomment> / <lcomment>
 	idsafe		<- !(%alnum / "_")
-	s					<- (<comment> / %s)*
-	S					<- (<comment> / %s)+
+	s					<- (<comment> / ( !<newline> %s / <newline> ))*
+	S					<- (<comment> / ( !<newline> %s / <newline> ))+
 	hs				<- (!<newline> %s)*
 	HS				<- (!<newline> %s)+
 	digits		<- %digit (%digit / (&('_' %digit) '_') %digit)*
@@ -57,8 +58,8 @@ chunk <- "" => setup {|
 
 	sep <- <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / %s <sep>?
 
-	astring <- "'" { (!"'" .)* } "'"
-	qstring <- '"' { (!'"' .)* } '"'
+	astring <- "'" { (!"'" <any>)* } "'"
+	qstring <- '"' { (!'"' <any>)* } '"'
 	lstring <- ('[' {:eq: '='* :} '[' <close>)
 
 	string	<- (

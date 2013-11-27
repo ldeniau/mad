@@ -384,10 +384,8 @@ local function fold_expr(exp, min)
 		end
 		local rhs = fold_expr(exp, prec)
 		lhs = defs.binaryExpr(op, lhs, rhs)
-		end
 	end
 	return lhs
-end
 end
 
 function defs.infixExpr(exp)
