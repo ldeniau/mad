@@ -1,4 +1,4 @@
-local M = { help = {}, test = {}, _author = "Martin Valen", _year = 2013 }
+local M = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
@@ -8,10 +8,9 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local fileHandler = require"mad.application.util.fileHandler"
-local parserFactory = require"mad.lang.parser.parserFactory"
-local postParser = require"mad.lang.parser.luaAst.postParser"
-local source = require"mad.lang.generator.source"
+local fileHandler = require"core.fileHandler"
+local parserFactory = require"lang.parser.parserFactory"
+local util = require"lang.util"
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
@@ -25,13 +24,15 @@ end
 
 
 
-call = function (_, fileName)
-	local path, name, ext = fileHandler.getPathNameExtension(fileName)
-	local inputStream = fileHandler.getInputStream(fileName)
-	local preParser = parserFactory.getParser(ext)
-	local postParser = postParser()
-	local source = source()
-	assert(loadstring(source:generate(postParser:transform(preParser:parse(inputStream, fileName))) ,name))()
+call = function (_, options)
+	for _, fileName in ipairs(options.files) do
+		local path, name, ext = fileHandler.splitFileName(fileName)
+		require("lang.parser."..ext..".init")
+		local inputStream = fileHandler.getInputStream(fileName)
+		local parser = parserFactory.getParser(ext)
+		local ast = parser:parse(inputStream, fileName)
+		options.dumpAst and	util.printTable(ast)
+	end
 end
 
 -- end ------------------------------------------------------------------------
