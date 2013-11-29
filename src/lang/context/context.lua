@@ -20,8 +20,8 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
-local util = require('mad.lang.util')
-local Scope = require"mad.lang.context.scope"
+local util = require('lang.util')
+local Scope = require"lang.context.scope"
 
 -- module ---------------------------------------------------------------------
 
