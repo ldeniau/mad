@@ -1,4 +1,4 @@
-local M = { help={}, test={}, _author="Martin Valen", _year=2013 }
+local M = { help={}, test={} }
 
 -- module ---------------------------------------------------------------------
 

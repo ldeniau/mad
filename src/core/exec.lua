@@ -8,7 +8,7 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local fileHandler = require"core.fileHandler"
+local fileHandler = require"core.splitFileName"
 local parserFactory = require"lang.parser.parserFactory"
 local util = require"lang.util"
 
@@ -28,10 +28,14 @@ call = function (_, options)
 	for _, fileName in ipairs(options.files) do
 		local path, name, ext = fileHandler.splitFileName(fileName)
 		require("lang.parser."..ext..".init")
-		local inputStream = fileHandler.getInputStream(fileName)
+		local file = assert(io.open(fileName, 'r'))
+		local inputStream = file:read('*a')
+		file:close()
 		local parser = parserFactory.getParser(ext)
 		local ast = parser:parse(inputStream, fileName)
-		options.dumpAst and	util.printTable(ast)
+		if options.dumpAst then
+			util.printTable(ast)
+		end
 	end
 end
 
