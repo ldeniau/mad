@@ -24,8 +24,8 @@ SEE ALSO
 -- module ---------------------------------------------------------------------
 local parsers = {}
 
-M.registerParser = function (ext, parserCstr)
-	parsers[ext] = parserCstr
+M.registerParser = function (ext, parserCtr)
+	parsers[ext] = parserCtr
 end
 
 M.getParser = function (ext)

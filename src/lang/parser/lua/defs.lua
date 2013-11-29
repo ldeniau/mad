@@ -21,6 +21,8 @@ SEE ALSO
 
 -- require ------------------------------------------------------------------
 local util = require('lang.util')
+local context = require"lang.context.context"
+--local test = require"core.unitTest"
 
 -- utilities ----------------------------------------------------------------
 
@@ -393,5 +395,49 @@ function defs.infixExpr(exp)
 end
 
 M.defs = defs
+
+-- test -----------------------------------------------------------------------
+--[===[function M.test:setUp()
+	local variable = defs.identifier("dummy")
+	local expression = variable
+	local statement = defs.stmt(variable)
+end
+
+
+function M.test:error()
+	test.api.fails(defs.error([[a = 1]], 0))
+end
+
+function M.test:chunk()
+	local result = defs.chunk(statement)
+	test.api.equals(result.type, "Chunk")
+	test.api.equals(result.body[1], statement)
+end
+function M.test:literal()
+	local result = defs.literal(1)
+	test.api.equals(result.type, "Literal")
+end
+function M.test:nilExpr()
+	local result = defs.nilExpr(1)
+	test.api.equals(result.type, "Literal")
+end
+function M.test:identifier()
+	local result = defs.identifier(1)
+	test.api.equals(result.type, "Variable")
+end
+function M.test:stmt()
+	local result = defs.stmt(13, defs.identifier("hello"))
+	test.api.equals(result.type, "Variable")
+	test.api.equals(result.pos, 13)
+end
+function M.test:ifStmt()
+	local result = defs.ifStmt()
+	test.api.equals(result.type, "Chunk")
+end
+]===]
+
+
+
+-- end ------------------------------------------------------------------------
 
 return M
