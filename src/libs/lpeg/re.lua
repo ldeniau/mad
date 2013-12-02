@@ -4,7 +4,7 @@
 local tonumber, type, print, error = tonumber, type, print, error
 local setmetatable = setmetatable
 local pcp = package.cpath
-package.cpath = ";;./lib/lpeg/?.so;"
+package.cpath = ";;./libs/lpeg/?.so;"
 local m = require"lpeg"
 package.cpath = pcp
 

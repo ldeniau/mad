@@ -1,10 +1,13 @@
+-- Should return the factory and keep track of all the different parsers.
+
+
 local M = { help={}, test={} }
 
 -- module ---------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  parserFactory
+  lang
 
 SYNOPSIS
   
@@ -22,14 +25,13 @@ SEE ALSO
 -- require --------------------------------------------------------------------
 
 -- module ---------------------------------------------------------------------
-local parsers = {}
+local parsers = {
+	lua = require"mad.lang.lua.parser",
+	--mad = require"mad.lang.mad.parser",
+}
 
-M.registerParser = function (ext, parserCtr)
-	parsers[ext] = parserCtr
-end
-
-M.getParser = function (ext)
-	return parsers[ext]()
+M.getParser = function (key)
+	return parsers[key]()
 end
 
 

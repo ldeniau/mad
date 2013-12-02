@@ -1,19 +1,19 @@
 #!/usr/bin/env lua
 
 -- Init
-require"core.init"
+require"mad.core.init"
 
 -- Handle args
-local options = require"core.options"
-options.processOptions(arg)
+local options = require"mad.core.options"
+options.process(arg)
 
 -- Do tests if applicable
 if options.utest then
-	require"core.unitTest"()
+	require"mad.core.unitTest"()
 end
 
 -- Exec
-require"core.exec"(options)
+require"mad.core.exec"(options)
 
 -- Fini
-require"core.fini"
+require"mad.core.fini"

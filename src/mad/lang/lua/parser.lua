@@ -8,9 +8,9 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local re			=	require"lib.lpeg.re"
-local grammar	=	require"lang.parser.lua.grammar".grammar
-local actions	=	require"lang.parser.lua.defs".defs
+local re			=	require"libs.lpeg.re"
+local grammar	=	require"mad.lang.lua.grammar".grammar
+local actions	=	require"mad.lang.lua.defs".defs
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
 local call
@@ -26,13 +26,10 @@ local parse = function (self, inputStream, fileName, pos)
 	return ast
 end
 
-
-local compiledGrammar = re.compile(grammar, actions)
-
 call = function (_, ...)
 	local self = {}
 	self.parse = parse
-	self.grammar = compiledGrammar
+	self.grammar = re.compile(grammar, actions)
 	return self
 end
 

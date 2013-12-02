@@ -20,8 +20,8 @@ SEE ALSO
 ]]
 
 -- require ------------------------------------------------------------------
-local util = require('lang.util')
-local context = require"lang.context.context"
+local tableUtil = require('lua.tableUtil')
+local context = require"mad.lang.context.context"
 --local test = require"core.unitTest"
 
 -- utilities ----------------------------------------------------------------
