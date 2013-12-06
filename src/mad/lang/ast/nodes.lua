@@ -54,11 +54,10 @@ FunctionDefinition:
 	rest = Boolean
 Return:
 	values = list of Expression
-Vararg:
 BinaryExpression:
-	lhs = Expression
+	left = Expression
 	operator = "+", "-", "*", "/", "^", "%", "..", "==", "~=", ">=", ">", "<=", "<",
-	rhs = Expression
+	right = Expression
 UnaryExpression:
 	operator = "not", "-", "#"
 	argument = Expression

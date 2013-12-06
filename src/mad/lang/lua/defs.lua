@@ -22,7 +22,7 @@ SEE ALSO
 -- require ------------------------------------------------------------------
 local tableUtil = require('lua.tableUtil')
 local context = require"mad.lang.context.context"
---local test = require"core.unitTest"
+local testApi = require"mad.test.api"
 
 -- utilities ----------------------------------------------------------------
 
@@ -50,8 +50,9 @@ local function unpackVOE(list)
 			callee = val
 			col = false
 		elseif callee ~= nil then
-			local a = table.insert(val,1,defs.identifier("self"))
-			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, "["), arguments = a, line = defs._line }
+			local args = val
+			table.insert(args,1,defs.identifier("self"))
+			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, "["), arguments = args, line = defs._line }
 			callee = nil
 		elseif not val.type then
 			endNode[nodeNo] = { type="FunctionCall", callee = endNode[nodeNo], arguments = val, line = defs._line }
@@ -63,16 +64,18 @@ local function unpackVOE(list)
 	if #endNode == 1 then endNode = endNode[1] end
 	return endNode
 end
+
 local function unpackITA(callee,list)
 	local endNode,col,callee = callee, false,nil
-	for i, val in pairs(list) do
+	for i, val in ipairs(list) do
 		if val == ":" then
 			col = true
 		elseif col then
 			callee = val
 			col = false
 		elseif callee ~= nil then
-			args = table.insert(val,1,defs.identifier("self"))
+			local args = val
+			table.insert(args,1,defs.identifier("self"))
 			endNode = { type="FunctionCall", callee = defs.tableAccess(endNode,callee, "["), arguments = args, line = defs._line }
 			callee = nil
 		else
@@ -245,7 +248,7 @@ function defs.funcDecl(name, args, funcBody)
 	return decl
 end
 function defs.funcExpr(head, body)
-	local decl = defs.funcDef(nil, head, body)
+	local decl = defs.funcDecl(nil, head, body)
 	decl.expression = true
 	return decl
 end
@@ -253,7 +256,7 @@ function defs.blockStmt(body)
 	return { type = "Block", body = body }
 end
 function defs.returnStmt(args)
-	return { type = "Return", arguments = args, line = defs._line }
+	return { type = "Return", values = args, line = defs._line }
 end
 function defs.breakStmt()
 	return { type = "Break", line = defs._line }
@@ -314,9 +317,6 @@ function defs.tableConstr(flst)
 	end
 	return tbl
 end
-function defs.vararg()
-	return { type = "Vararg", line = defs._line }
-end
 
 function defs.prefixExp(varorexp,identthenargs)
 	local var = unpackVOE(varorexp)
@@ -324,11 +324,8 @@ function defs.prefixExp(varorexp,identthenargs)
 	return var
 end
 
-function defs.tableAccess(b, e, o)
-	return { type = "BinaryExpression", lhs = b, rhs = e, operator = o, line = defs._line }
-end
-function defs.expression(exp)
-	return exp
+function defs.tableAccess(lhs, rhs, operator)
+	return { type = "BinaryExpression", lhs = lhs, rhs = rhs, operator = operator, line = defs._line }
 end
 
 function defs.doStmt(block)
@@ -397,44 +394,190 @@ end
 M.defs = defs
 
 -- test -----------------------------------------------------------------------
---[===[function M.test:setUp()
-	local variable = defs.identifier("dummy")
-	local expression = variable
-	local statement = defs.stmt(variable)
+function M.test:setUp()
+	self.variable = defs.identifier("dummy")
+	self.backUpVariable = defs.identifier("Another")
+	self.expression = self.variable
+	self.backUpExpression = self.backUpVariable
+	self.statement = defs.stmt(1,self.variable)
 end
 
 
 function M.test:error()
-	test.api.fails(defs.error([[a = 1]], 0))
+	testApi.fails(defs.error,[[a = 1]], 0)
 end
-
 function M.test:chunk()
-	local result = defs.chunk(statement)
-	test.api.equals(result.type, "Chunk")
-	test.api.equals(result.body[1], statement)
+	local result = defs.chunk({ self.statement })
+	testApi.equals(result.type, "Chunk")
+	testApi.equals(result.body[1], self.statement)
 end
 function M.test:literal()
 	local result = defs.literal(1)
-	test.api.equals(result.type, "Literal")
+	testApi.equals(result.type, "Literal")
 end
 function M.test:nilExpr()
 	local result = defs.nilExpr(1)
-	test.api.equals(result.type, "Literal")
+	testApi.equals(result.type, "Literal")
 end
 function M.test:identifier()
 	local result = defs.identifier(1)
-	test.api.equals(result.type, "Variable")
+	testApi.equals(result.type, "Variable")
 end
 function M.test:stmt()
 	local result = defs.stmt(13, defs.identifier("hello"))
-	test.api.equals(result.type, "Variable")
-	test.api.equals(result.pos, 13)
+	testApi.equals(result.type, "Variable")
+	testApi.equals(result.pos, 13)
 end
 function M.test:ifStmt()
-	local result = defs.ifStmt()
-	test.api.equals(result.type, "Chunk")
+	local result = defs.ifStmt(self.expression, self.statement)
+	testApi.equals(result.type, "If")
+	testApi.equals(result.test, self.expression)
+	testApi.differs(result.consequent.type, self.statement.type)
 end
-]===]
+function M.test:whileStmt()
+	local result = defs.whileStmt(self.expression, defs.blockStmt{self.statement})
+	testApi.equals(result.type, "Loop")
+	testApi.equals(result.kind, "While")
+	testApi.equals(result.test, self.expression)
+	testApi.equals(result.step, nil)
+	testApi.equals(result.body.body[1], self.statement)
+end
+function M.test:repeatStmt()
+	local result = defs.repeatStmt(defs.blockStmt{self.statement}, self.expression)
+	testApi.equals(result.type, "Loop")
+	testApi.equals(result.kind, "Repeat")
+	testApi.equals(result.test, self.expression)
+	testApi.equals(result.step, nil)
+	testApi.equals(result.body.body[1], self.statement)
+end
+function M.test:forStmt()
+	local result = defs.forStmt("forstmt", self.expression, self.expression, defs.literal(1), defs.blockStmt{self.statement})
+	testApi.equals(result.type, "Loop")
+	testApi.equals(result.kind, "For")
+	testApi.equals(result.last, self.expression)
+	testApi.equals(result.init, self.expression)
+	testApi.equals(result.name, "forstmt")
+	testApi.equals(result.step.value, 1)
+	testApi.equals(result.body.body[1], self.statement)
+end
+function M.test:forInStmt()
+	local result = defs.forInStmt(self.expression, self.expression, defs.blockStmt{self.statement})
+	testApi.equals(result.type, "GenericFor")
+	testApi.equals(result.left, self.expression)
+	testApi.equals(result.right, self.expression)
+	testApi.equals(result.step, nil)
+	testApi.equals(result.body.body[1], self.statement)
+end
+function M.test:funcDecl()
+	local result = defs.funcDecl("funcname", {self.variable}, defs.blockStmt{self.statement})
+	testApi.equals(result.type, "FunctionDefinition")
+	testApi.equals(result.id, "funcname")
+	testApi.equals(result.params[1], self.variable)
+	testApi.equals(result.body.body[1], self.statement)
+	testApi.differs(result.expression, true)
+end
+function M.test:funcExpr()
+	local result = defs.funcExpr({self.variable}, defs.blockStmt{self.statement})
+	testApi.equals(result.type, "FunctionDefinition")
+	testApi.equals(result.id, nil)
+	testApi.equals(result.params[1], self.variable)
+	testApi.equals(result.body.body[1], self.statement)
+	testApi.equals(result.expression, true)
+end
+function M.test:blockStmt()
+	local result = defs.blockStmt{self.statement}
+	testApi.equals(result.type, "Block")
+	testApi.equals(result.body[1], self.statement)
+end
+function M.test:returnStmt()
+	local result = defs.returnStmt{self.expression}
+	testApi.equals(result.type, "Return")
+	testApi.equals(result.values[1], self.expression)
+end
+function M.test:breakStmt()
+	local result = defs.breakStmt()
+	testApi.equals(result.type, "Break")
+end
+function M.test:exprStmt()
+	local result = defs.exprStmt(1, self.expression)
+	testApi.equals(result.type, self.expression.type)
+end
+function M.test:unaryExp()
+	local result = defs.unaryExp("-", self.variable)
+	testApi.equals(result.type, "UnaryExpression")
+	testApi.equals(result.argument.type, self.variable.type)
+	testApi.equals(result.operator, "-")
+end
+function M.test:funcCall()
+	local result = defs.funcCall({defs.identifier("table")},{":", defs.identifier("func"), {self.expression}})
+	testApi.equals(result.type, "FunctionCall")
+	testApi.equals(result.callee.type, "BinaryExpression")
+	testApi.equals(result.callee.lhs.name, "table")
+	testApi.equals(result.callee.rhs.name, "func")
+	testApi.equals(#result.arguments, 2)
+	testApi.equals(result.arguments[2], self.expression)
+	testApi.equals(result.callee.operator, "[")
+end
+function M.test:binaryExpr()
+	local result = defs.binaryExpr("+",self.expression,self.backUpExpression)
+	testApi.equals(result.operator, "+")
+	testApi.equals(result.left, self.expression)
+	testApi.equals(result.right, self.backUpExpression)
+end
+function M.test:varlistAssign()
+	local result = defs.varlistAssign({self.variable, self.backUpVariable},{self.expression, self.backUpExpression})
+	testApi.equals(#result.lhs,2)
+	testApi.equals(#result.rhs,2)
+	testApi.equals(result.rhs[2], self.backUpExpression)
+	testApi.equals(result.lhs[1], self.variable)
+end
+function M.test:locFuncDecl()
+	local result = defs.locFuncDecl(defs.identifier("name"), {self.expression}, defs.blockStmt{self.statement})
+	testApi.equals(result.type, "Assignment")
+	testApi.equals(result.localFunctionSugar, true)
+	testApi.equals(result.rhs[1].type, "FunctionDefinition")
+end
+function M.test:locNameList()
+	local test1 = defs.locNameList({self.variable})
+	local test2 = defs.locNameList({self.variable, self.backUpVariable}, {self.expression, self.backUpExpression})
+	testApi.equals(test1.rhs, nil)
+	testApi.equals(test1.lhs[1], self.variable)
+	testApi.equals(test1.localDeclaration, true)
+	testApi.equals(test2.rhs[2], self.backUpExpression)
+	testApi.equals(test2.lhs[1], self.variable)
+	testApi.equals(test2.localDeclaration, true)
+end
+function M.test:tableConstr()
+	local result = defs.tableConstr({ self.expression, "[", self.expression, "=", self.backUpExpression, self.variable, "=", self.expression })
+	testApi.equals(result.explicitExpr[1].computed, true)
+	testApi.equals(result.explicitExpr[1].key, self.expression)
+	testApi.equals(result.explicitExpr[1].value, self.backUpExpression)
+	testApi.equals(result.explicitExpr[2].computed, false)
+	testApi.equals(result.explicitExpr[2].key, self.variable)
+	testApi.equals(result.explicitExpr[2].value, self.expression)
+	testApi.equals(result.implicitExpr[1].value, self.expression)
+end
+function M.test:prefixExp()
+	local result = defs.prefixExp({self.variable, ".", self.backUpVariable}, {})
+	testApi.equals(result.type, "BinaryExpression")
+	testApi.equals(result.operator, ".")
+	testApi.equals(result.lhs, self.variable)
+	testApi.equals(result.rhs, self.backUpVariable)
+end
+
+function M.test:tableAccess()
+	local result = defs.tableAccess(self.variable, self.backUpVariable, ".")
+	testApi.equals(result.type, "BinaryExpression")
+	testApi.equals(result.operator, ".")
+	testApi.equals(result.lhs, self.variable)
+	testApi.equals(result.rhs, self.backUpVariable)
+end
+
+function M.test:doStmt()
+	local result = defs.doStmt(defs.blockStmt{self.statement})
+	testApi.equals(result.type, "Do")
+	testApi.equals(result.body.body[1], self.statement)	
+end
 
 
 
