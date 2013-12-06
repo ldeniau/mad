@@ -23,6 +23,7 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
+local testApi = require"mad.test.api"
 
 -- module ---------------------------------------------------------------------
 local parsers = {
@@ -31,9 +32,15 @@ local parsers = {
 }
 
 M.getParser = function (key)
+	if not parsers[key] then error("There's no parser mapped to key: "..key) end
 	return parsers[key]()
 end
 
+-- test -----------------------------------------------------------------------
+function M.test:getParser()
+	testApi.succeeds(M.getParser, "lua")
+	testApi.fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
+end
 
 -- end ------------------------------------------------------------------------
 return M
