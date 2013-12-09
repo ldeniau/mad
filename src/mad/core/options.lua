@@ -49,6 +49,8 @@ local function processArgs(arg)
 			print("WARNING: Interactive mode isn't implemented yet.")
 		elseif opt == "-dumpAst" then
 			M.dumpAst = true
+		elseif opt == "-dumpSource" then
+			M.dumpSource = true
 		else
 			error("Unhandled argument "..opt)
 		end

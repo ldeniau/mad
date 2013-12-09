@@ -80,13 +80,13 @@ chunk <- "" => setup {|
 
 	nil_exp <- "nil" <idsafe> -> nilExpr
 
-	bool_exp <- ( {"true" / "false"} ) <idsafe> -> boolean
+	bool_exp <- (( {"true" / "false"} ) <idsafe>) -> boolean
 
 	 in		<- "in"	<idsafe>
 	 end	<- "end" <idsafe>
 	 do		<- "do"	<idsafe>
 
-	literal <- ( <number> / <string> / <bool_exp> ) -> literal
+	literal <- ( <number> / <bool_exp> / <string> ) -> literal
 
 	ident <- (
 		!<keyword> { <word> }

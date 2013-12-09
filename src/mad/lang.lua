@@ -24,6 +24,8 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 local testApi = require"mad.test.api"
+local options = require"mad.core.options"
+local tableUtil = require"lua.tableUtil"
 
 -- module ---------------------------------------------------------------------
 local parsers = {
@@ -33,7 +35,16 @@ local parsers = {
 
 M.getParser = function (key)
 	if not parsers[key] then error("There's no parser mapped to key: "..key) end
-	return parsers[key]()
+	local p = parsers[key]()
+	local modifiedParser = function(...)
+		local ast = p.parser(...)
+		if options.dumpAst then
+			tableUtil.printTable(ast)
+		end
+		return ast
+	end
+	p.parser = modifiedParser
+	return p
 end
 
 -- test -----------------------------------------------------------------------

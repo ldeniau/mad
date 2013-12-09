@@ -274,7 +274,7 @@ function defs.funcCall(varorexp, identthenargs)
 	return endNode 
 end
 function defs.binaryExpr(op, lhs, rhs)
-	return { type = "BinaryExpression", operator = op, left = lhs, right = rhs, line = defs._line }
+	return { type = "BinaryExpression", operator = op, lhs = lhs, rhs = rhs, line = defs._line }
 end
 function defs.varlistAssign(lhs, rhs)
 	lhs = unpackVOE(lhs)
@@ -284,7 +284,7 @@ function defs.varlistAssign(lhs, rhs)
 	return { type = "Assignment", lhs = lhs, rhs = rhs, line = defs._line }
 end
 function defs.locFuncDecl(name, head, body)
-	return { type = "Assignment", lhs = { name }, rhs = { defs.funcExpr(head, body) }, localDeclaration = true, localFunctionSugar = true, line = defs._line  }
+	return { type = "FunctionDefinition", id = name, arguments = head, body = body, localDeclaration = true, line = defs._line  }
 end
 function defs.locNameList(nlst, explst)
 	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true, line = defs._line }
@@ -521,8 +521,8 @@ end
 function M.test:binaryExpr()
 	local result = defs.binaryExpr("+",self.expression,self.backUpExpression)
 	testApi.equals(result.operator, "+")
-	testApi.equals(result.left, self.expression)
-	testApi.equals(result.right, self.backUpExpression)
+	testApi.equals(result.lhs, self.expression)
+	testApi.equals(result.rhs, self.backUpExpression)
 end
 function M.test:varlistAssign()
 	local result = defs.varlistAssign({self.variable, self.backUpVariable},{self.expression, self.backUpExpression})
@@ -533,9 +533,8 @@ function M.test:varlistAssign()
 end
 function M.test:locFuncDecl()
 	local result = defs.locFuncDecl(defs.identifier("name"), {self.expression}, defs.blockStmt{self.statement})
-	testApi.equals(result.type, "Assignment")
-	testApi.equals(result.localFunctionSugar, true)
-	testApi.equals(result.rhs[1].type, "FunctionDefinition")
+	testApi.equals(result.type, "FunctionDefinition")
+	testApi.equals(result.localDeclaration, true)
 end
 function M.test:locNameList()
 	local test1 = defs.locNameList({self.variable})
