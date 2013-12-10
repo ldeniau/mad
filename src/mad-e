@@ -1,9 +1,0 @@
-#!/usr/bin/env luajit
-
-package.path  = ';;./lib/?.lua;'..package.path
-package.mpath = ';./lib/?.mad'..';./?.mad'
-package.cpath = ';;./lib/?.so;'..package.cpath
-
-require"run"():run(arg[1])
-
-
