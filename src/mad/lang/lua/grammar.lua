@@ -23,29 +23,31 @@ SEE ALSO
 
 M.grammar = [[
 
-chunk <- "" => setup {| 
+chunk <- ("" => setup {| 
 		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? ) s (!. / '' => error)
-	|} -> chunk
+	|}) -> chunk
 
-	block <- {|
+	block <- ({|
 		s ( ( <stat> ( <sep> s <stat> )* (<sep> s <laststat>)? s <sep>? ) / ( <laststat> s <sep>? )? )
-	|} -> blockStmt
+	|}) -> blockStmt
 	
-	close		<- (']' =eq ']') / {(!']' <any>)*}
+	close		<- (']' {=eq} ']')
 
-	newline <- %nl -> newLine
-	any <- !<newline> . / <newline>
+	stringFromDoubleBracket <- ( {(!<close> <any>)*} )
 
-	lcomment	<- ({} (!<newline> %s)* "--" {(!<newline> .)*} <newline>) -> lcomm
-	bcomment	<- ({} ('--[' {:eq: '='* :} '[' <close>)) -> bcomm
-	comment		<- <bcomment> / <lcomment>
-	idsafe		<- !(%alnum / "_")
-	s					<- (<comment> / ( !<newline> %s / <newline> ))*
-	S					<- (<comment> / ( !<newline> %s / <newline> ))+
-	hs				<- (!<newline> %s)*
-	HS				<- (!<newline> %s)+
-	digits		<- %digit (%digit / (&('_' %digit) '_') %digit)*
-	word			<- (%alpha / "_") (%alnum / "_")*
+	newline <- (%nl) -> newLine
+	any <- ( (!<newline> .) / <newline>)
+
+	lcomment	<- ( {} "--" {(!<newline> .)*} <newline>) -> lcomm
+	bcomment	<- ( {} ('--[' {:eq: '='* :} '[' <stringFromDoubleBracket> <close>)) -> bcomm
+	comment		<- ( <bcomment> / <lcomment> )
+	idsafe		<- ( !(%alnum / "_") )
+	s					<- ( (<comment> / ( !<newline> %s / <newline> ))* )
+	S					<- ( (<comment> / ( !<newline> %s / <newline> ))+ )
+	hs				<- ( (!<newline> %s)* )
+	HS				<- ( (!<newline> %s)+ )
+	digits		<- ( %digit (%digit / (&('_' %digit) '_') %digit)* )
+	word			<- ( (%alpha / "_") (%alnum / "_")* )
 
 	keyword	<- (
 		"local" / "function" / 
@@ -56,35 +58,37 @@ chunk <- "" => setup {|
 		/ "repeat" / "until"
 	) <idsafe>
 
-	sep <- <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / %s <sep>?
+	sep <- ( <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / ( !<newline> %s / <newline> ) <sep>? )
 
-	astring <- "'" { (!"'" <any>)* } "'"
-	qstring <- '"' { (!'"' <any>)* } '"'
-	lstring <- ('[' {:eq: '='* :} '[' <close>)
+	captureEquals <- ({ '='* })
+
+	astring <- ( {"'"} { (!"'" !<newline> .)* } "'" )
+	qstring <- ( {'"'} { (!'"' !<newline> .)* } '"' )
+	lstring <- ( {'['} ( {:eq: '='* :}) '[' <stringFromDoubleBracket> <close>)
 
 	string	<- (
 		 <qstring> / <astring> / <lstring>
 	) -> string
 
-	hexnum <- "-"? "0x" %xdigit+
+	hexnum <- ( "-"? "0x" %xdigit+ )
 
-	decexp <- ("e"/"E") "-"? <digits>
+	decexp <- ( ("e"/"E") "-"? <digits> )
 
-	decimal <- "-"? <digits> ("." <digits> <decexp>? / <decexp>)
+	decimal <- ( "-"? <digits> ("." <digits> <decexp>? / <decexp>) )
 
-	integer <- "-"? <digits>
+	integer <- ( "-"? <digits> )
 
-	number	<- {~
+	number	<- ({~
 		 <hexnum> / <decimal> / <integer>
-	~} -> tonumber
+	~}) -> tonumber
 
-	nil_exp <- "nil" <idsafe> -> nilExpr
+	nil_exp <- ( "nil" <idsafe> ) -> nilExpr
 
 	bool_exp <- (( {"true" / "false"} ) <idsafe>) -> boolean
 
-	 in		<- "in"	<idsafe>
-	 end	<- "end" <idsafe>
-	 do		<- "do"	<idsafe>
+	 in		<- ( "in"	<idsafe> )
+	 end	<- ( "end" <idsafe> )
+	 do		<- ( "do"	<idsafe> )
 
 	literal <- ( <number> / <bool_exp> / <string> ) -> literal
 
@@ -110,9 +114,9 @@ chunk <- "" => setup {|
 		/	<locnamelist>
 	)) -> stmt
 
-	varlist_assign <- ({| <varlist> |} s "=" s {| <exp_list> |}) -> varlistAssign
+	varlist_assign <- ( {| <varlist> |} s "=" s {| <exp_list> |} ) -> varlistAssign
 
-	loop_body <- <do> s <block> s <end>
+	loop_body <- ( <do> s <block> ) s <end>
 
 	do_stmt <- <loop_body> -> doStmt
 
@@ -151,19 +155,19 @@ chunk <- "" => setup {|
 		"local" <idsafe> s {| <name_list> |} ( s "=" s {| <exp_list> |} )?
 	) -> locNameList
 
-	laststat <- ({} ( <return_stmt> / <break_stmt> ) ) -> stmt
+	laststat <- ( {} ( <return_stmt> / <break_stmt> ) ) -> stmt
 
-	return_stmt <- "return" <idsafe> s {| <exp_list>? |} -> returnStmt
+	return_stmt <- ( "return" <idsafe> s {| <exp_list>? |} ) -> returnStmt
 
-	break_stmt <- "break" <idsafe> -> breakStmt
+	break_stmt <- ( "break" <idsafe> ) -> breakStmt
 
-	func_name <- <ident> ( {"."} <ident> )* ( {":"} <ident> )?
+	func_name <- ( <ident> ( {"."} <ident> )* ( {":"} <ident> )? )
 
-	varlist <- <var> ( s "," s <var> )*
+	varlist <- ( <var> ( s "," s <var> )* )
 
-	name_list <- <ident> ( s "," s <ident> )*
+	name_list <- ( <ident> ( s "," s <ident> )* )
 
-	exp_list <- <exp> ( s "," s <exp> )*
+	exp_list <- ( <exp> ( s "," s <exp> )* )
 
 	expr_stmt <- ({} (<func_call>)) -> exprStmt
 
@@ -227,13 +231,13 @@ chunk <- "" => setup {|
 			( {"["} s <exp> s "]" s {"="} s <exp> ) / ( <ident> s {"="} s <exp> ) / <exp>
 	)
 
-	fieldsep <- "," / ";"
+	fieldsep <- ( "," / ";" )
 
 	binop <- ({ "+" / "-" / "*" / "/" / "^" / "%" / ".." / 
-		 "<" / "<=" / ">" / ">=" / "==" / "~=" / 
+		 "<=" / "<" / ">=" / ">" / "==" / "~=" / 
 		 (( "and" / "or" ) <idsafe>) })
 
-	unop <- { "-" / ("not" <idsafe>) / "#" }
+	unop <- ({ "-" / ("not" <idsafe>) / "#" })
 ]]
 
 return M

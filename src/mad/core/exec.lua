@@ -25,6 +25,7 @@ end
 
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
+		local startTime = os.clock()
 		local errorMap = errorMap()
 		local gen = sourceCodeGenerator()
 		local path, name, ext = fn.split(fileName)
@@ -33,10 +34,17 @@ call = function (_, options)
 		file:close()
 		local parser = lang.getParser(ext)
 		local source = gen:generate(parser:parse(inputStream, fileName))
-		local status, err = xpcall(loadstring(source,'@'..fileName),debug.traceback)
-		if not status then
-			print(err)
+		local loadedCode, err = loadstring(source,'@'..fileName)
+		if loadedCode then
+			local status, err = xpcall(loadedCode,debug.traceback)
+			if not status then
+				print("Error in xpcall:",err)
+			end
+		else
+			print("Error in loadstring:",err)
 		end
+		local totalTime = os.clock() - startTime
+		print(string.format("elapsed time: %.2fs", totalTime))
 	end
 end
 

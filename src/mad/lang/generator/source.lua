@@ -53,7 +53,7 @@ function match:Block(node)
 end
 
 function match:Assignment(node)
-	if node.localAssignment then
+	if node.localDeclaration then
 		self:write("local ")
 	end
 	for i = 1, #node.lhs do
@@ -65,10 +65,12 @@ function match:Assignment(node)
 	if node.rhs then
 		self:write(" = ")
 	end
-	for i = 1, #node.rhs do
-		self:render(node.rhs[i])
-		if i < #node.rhs then
-			self:write(", ")
+	if node.rhs then
+		for i = 1, #node.rhs do
+			self:render(node.rhs[i])
+			if i < #node.rhs then
+				self:write(", ")
+			end
 		end
 	end
 end
@@ -76,10 +78,12 @@ end
 function match:FunctionCall(node)
 	self:render(node.callee)
 	self:write("( ")
-	for i,v in ipairs(node.arguments) do
-		self:render(v)
-		if i ~= #node.arguments then
-			self:write(", ")
+	if node.arguments then
+		for i,v in ipairs(node.arguments) do
+			self:render(v)
+			if i ~= #node.arguments then
+				self:write(", ")
+			end
 		end
 	end
 	self:write(" )")
@@ -117,7 +121,7 @@ function match:Loop(node)
 			self:write(", ")
 			self:render(node.step)
 		end
-		self:write("do")
+		self:write(" do")
 		self:render(node.body)
 		self.writer:writeln()
 		self:write("end")
@@ -140,15 +144,19 @@ function match:Loop(node)
 end
 
 function match:GenericFor(node)
-	self:write("for" )
-	for _,v in ipairs(node.names) do
+	self:write("for ")
+	for i,v in ipairs(node.names) do
 		self:render(v)
-		self:write", "
+		if i < #node.names then
+			self:write", "
+		end
 	end
 	self:write(" in ")
-	for _,v in ipairs(node.expressions) do
+	for i,v in ipairs(node.expressions) do
 		self:render(v)
-		self:write", "
+		if i < #node.expressions then
+			self:write", "
+		end
 	end
 	self:write(" do")
 	self:render(node.body)
@@ -165,11 +173,16 @@ function match:FunctionDefinition(node)
 		self:render(node.id)
 	end
 	self:write("( ")
-	for i,v in ipairs(node.arguments) do
-		self:render(v)
-		if i ~= #node.arguments then
-			self:write(", ")
+	if node.parameters then
+		for i,v in ipairs(node.parameters) do
+			self:render(v)
+			if i ~= #node.parameters or node.rest then
+				self:write(", ")
+			end
 		end
+	end
+	if node.rest then
+		self:write("...")
 	end
 	self:write(" )")
 	self:render(node.body)
@@ -187,14 +200,15 @@ function match:Return(node)
 	end
 end
 
-function match:Vararg(node)
-	self:write("...")
-end
-
 function match:BinaryExpression(node)
 	self:render(node.lhs)
+	if node.operator == "or" or node.operator == "and" then self:write(" ") end
 	self:write(node.operator)
+	if node.operator == "or" or node.operator == "and" then self:write(" ") end
 	self:render(node.rhs)
+	if node.operator == "[" then
+		self:write("]")
+	end
 end
 
 function match:UnaryExpression(node)
@@ -207,11 +221,26 @@ function match:Variable(node)
 end
 
 function match:Literal(node)
-print(type(node.value))
 	if type(node.value) == "string" then
-		self:write'"'
-		self:write(tostring(node.value))
-		self:write'"'
+		self:write("(")
+		if node.stringOperator == '"' then
+			self:write'"'
+			self:write(node.value)
+			self:write'"'
+		elseif node.stringOperator == "'" then
+			self:write"'"
+			self:write(node.value)
+			self:write"'"
+		elseif node.stringOperator then
+			self:write('['..node.stringOperator..'[')
+			self:write(node.value)
+			self:write(']'..node.stringOperator..']')
+		else
+			self:write'[['
+			self:write(node.value)
+			self:write']]'
+		end
+		self:write(")")
 	elseif type(node.value) == "boolean" then
 		if node.value then
 			self:write("true")
@@ -220,21 +249,36 @@ print(type(node.value))
 		end
 	elseif type(node.value) == "number" then
 		self:write(tostring(node.value))
+	elseif not node.value then
+		self:write("nil")
 	end
 end
 
 function match:Table(node)
 	self:write("{ ")
-	for i,v in ipairs(node.implicitExpression) do
-		self:render(v)
-		if #node.explicitExpression > 0 or i ~= #node.implicitExpression then
-			self:write(", ")
+	if node.implicitExpression then
+		for i,v in ipairs(node.implicitExpression) do
+			self:render(v.value)
+			if #node.explicitExpression > 0 or i ~= #node.implicitExpression then
+				self:write(", ")
+			end
 		end
 	end
-	for i,v in ipairs(node.explicitExpression) do
-		self:render(v)
-		if i ~= #node.explicitExpression then
-			self:write(", ")
+	if node.explicitExpression then
+		for i,v in ipairs(node.explicitExpression) do
+			if v.computed then
+				self:write("[")
+				self:render(v.key)
+				self:write("] = ")
+				self:render(v.value)
+			else
+				self:render(v.key)
+				self:write(" = ")
+				self:render(v.value)
+			end
+			if i ~= #node.explicitExpression then
+				self:write(", ")
+			end
 		end
 	end
 	self:write(" }")
@@ -244,24 +288,27 @@ function match:If(node)
 	self:write("if ")
 	self:render(node.test)
 	self:write(" then")
-	self.writer:writeln()
-	self.writer:indent()
 	self:render(node.consequent)
-	self.writer:undent()
-	self:write("else")
 	self.writer:writeln()
-	self.writer:indent()
-	self:render(node.alternate)
-	self.writer:undent()
+	if node.alternate then
+		self:write("else")
+		self:render(node.alternate)
+		self.writer:writeln()
+	end
 	self:write("end")
 end
 
+local lastline = 0
 local function render(self, node, ...)
+	--require"lua.tableUtil".printTable(node)
+	if node and node.line then
+		lastline = node.line
+	end
 	if type(node) ~= "table" then
-		error("not a table: "..tostring(node))
+		error("not a table: "..tostring(node).." on line "..lastline)
 	end
 	if not node.type then
-		error("don't know what to do with: "..util.dump(node))
+		error("don't know what to do with: "..require"lua.tableUtil".stringTable(node).." on line "..lastline)
 	end
 	if not match[node.type] then
 		error("no handler for "..node.type)

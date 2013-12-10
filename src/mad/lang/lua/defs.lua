@@ -51,8 +51,7 @@ local function unpackVOE(list)
 			col = false
 		elseif callee ~= nil then
 			local args = val
-			table.insert(args,1,defs.identifier("self"))
-			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, "["), arguments = args, line = defs._line }
+			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, ":"), arguments = args, line = defs._line }
 			callee = nil
 		elseif not val.type then
 			endNode[nodeNo] = { type="FunctionCall", callee = endNode[nodeNo], arguments = val, line = defs._line }
@@ -75,8 +74,7 @@ local function unpackITA(callee,list)
 			col = false
 		elseif callee ~= nil then
 			local args = val
-			table.insert(args,1,defs.identifier("self"))
-			endNode = { type="FunctionCall", callee = defs.tableAccess(endNode,callee, "["), arguments = args, line = defs._line }
+			endNode = { type="FunctionCall", callee = defs.tableAccess(endNode,callee, ":"), arguments = args, line = defs._line }
 			callee = nil
 		else
 			endNode = { type="FunctionCall", callee = endNode, arguments = val, line = defs._line }
@@ -152,11 +150,11 @@ local strEscape = {
 	["\\t"] = "\t",
 	["\\\\"] = "\\",
 }
-function defs.string(str)
-	return string.gsub(str, "(\\[rnt\\])", strEscape)
+function defs.string( op, str, eq )
+	return str, (eq or op)
 end
-function defs.literal(val)
-	return { type = "Literal", value = val, line = defs._line }
+function defs.literal(val, op)
+	return { type = "Literal", value = val, stringOperator = op, line = defs._line }
 end
 function defs.boolean(val)
 	return val == 'true'
@@ -180,8 +178,8 @@ function defs.ifStmt(test, cons, altn)
 	if cons.type ~= "Block" then
 		cons = defs.blockStmt{ cons }
 	end
-	if altn and altn.type then
-		altn = { altn }
+	if altn and altn.type and altn.type ~= "Block" then
+		altn = defs.blockStmt{ altn }
 	end
 	return { type = "If", test = test, consequent = cons, alternate = altn, line = defs._line }
 end
@@ -205,7 +203,7 @@ function defs.forStmt(name, init, last, step, body)
 	}
 end
 function defs.forInStmt(left, right, body)
-	return { type = "GenericFor", left = left, right = right, body = body, line = defs._line }
+	return { type = "GenericFor", names = left, expressions = right, body = body, line = defs._line }
 end
 function defs.funcDecl(name, args, funcBody)
 	local par, body = args, funcBody
@@ -213,7 +211,7 @@ function defs.funcDecl(name, args, funcBody)
 		body = defs.blockStmt{ body }
 	end
 	local id,dot,col = {}, false, false
-	if type(name) == "table" then
+	if type(name) == "table" and #name > 0 then
 		for i, val in ipairs(name) do
 			if val == "." then
 				dot = true
@@ -243,7 +241,7 @@ function defs.funcDecl(name, args, funcBody)
 			params[#params + 1] = p
 		end 
 	end
-	decl.params	= params
+	decl.parameters	= params
 	decl.rest	  = rest
 	return decl
 end
@@ -284,18 +282,21 @@ function defs.varlistAssign(lhs, rhs)
 	return { type = "Assignment", lhs = lhs, rhs = rhs, line = defs._line }
 end
 function defs.locFuncDecl(name, head, body)
-	return { type = "FunctionDefinition", id = name, arguments = head, body = body, localDeclaration = true, line = defs._line  }
+	local funcDef = defs.funcDecl(name, head, body)
+	funcDef.localDeclaration = true
+	funcDef.line = defs._line
+	return funcDef
 end
 function defs.locNameList(nlst, explst)
 	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true, line = defs._line }
 end
 function defs.tableConstr(flst)
-	local tbl, i = { type = "Table", explicitExpr = {}, implicitExpr = {}, line = defs._line }, 1
+	local tbl, i = { type = "Table", explicitExpression = {}, implicitExpression = {}, line = defs._line }, 1
 	while i <= #flst do
 		if flst[i] == "[" then
 			local k = flst[i+1]
 			if flst[i+2] and flst[i+2] == "=" and flst[i+3] then
-				tbl.explicitExpr[#tbl.explicitExpr+1] = { key = k, value = flst[i+3], computed = true }
+				tbl.explicitExpression[#tbl.explicitExpression+1] = { key = k, value = flst[i+3], computed = true }
 				i = i+4
 			else
 				error("Error with table constructor")
@@ -304,13 +305,13 @@ function defs.tableConstr(flst)
 			local val = flst[i]
 			if flst[i+1] and flst[i+1] == "=" then
 				if flst[i+2] and val and val.type and val.type == "Variable" then
-					tbl.explicitExpr[#tbl.explicitExpr+1] = { key = val, value = flst[i+2], computed = false }
+					tbl.explicitExpression[#tbl.explicitExpression+1] = { key = val, value = flst[i+2], computed = false }
 					i = i+3
 				else
 					error("Error with table constructor.")
 				end
 			else
-				tbl.implicitExpr[#tbl.implicitExpr+1] = { value = val }
+				tbl.implicitExpression[#tbl.implicitExpression+1] = { value = val }
 				i = i+1
 			end
 		end
