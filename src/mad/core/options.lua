@@ -8,21 +8,10 @@ SYNOPSIS
 ]]
 
 -- require --------------------------------------------------------------------
-
 -- metamethods ----------------------------------------------------------------
-local mt = {}; setmetatable(M, mt)
-local call
-mt.__call = function (...)
-	return call(...)
-end
-
 -- module ---------------------------------------------------------------------
 
 M.files = {}
-
-call = function (modSelf, arg)
-	return M
-end
 
 local function processUTest(arg)
 	M.utest = {}
