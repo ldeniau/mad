@@ -24,8 +24,8 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 local testApi = require"mad.test.api"
-local options = require"mad.core.options"
 local tableUtil = require"lua.tableUtil"
+local options = require"mad.core.options"
 
 -- module ---------------------------------------------------------------------
 local parsers = {
@@ -34,16 +34,19 @@ local parsers = {
 }
 
 M.getParser = function (key)
+	if not options then error("Options haven't been set for lang.lua") end
 	if not parsers[key] then error("There's no parser mapped to key: "..key) end
 	local p = parsers[key]()
-	local modifiedParser = function(...)
-		local ast = p.parser(...)
+	local parse = p.parse
+	local modifiedParse = function(self, inputStream, fileName, pos)
+		local ast = parse(self, inputStream, fileName, pos)
 		if options.dumpAst then
 			tableUtil.printTable(ast)
 		end
+		ast.fileName = fileName
 		return ast
 	end
-	p.parser = modifiedParser
+	p.parse = modifiedParse
 	return p
 end
 

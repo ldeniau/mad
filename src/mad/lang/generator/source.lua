@@ -300,7 +300,6 @@ end
 
 local lastline = 0
 local function render(self, node, ...)
-	--require"lua.tableUtil".printTable(node)
 	if node and node.line then
 		lastline = node.line
 	end
@@ -313,8 +312,17 @@ local function render(self, node, ...)
 	if not match[node.type] then
 		error("no handler for "..node.type)
 	end
+	if node.fileName then
+		self.lastFileName = self.currentFileName
+		self.currentFileName = node.fileName
+	end
+	if node.line then
+		self.errors:addToLineMap(node.line, self.writer.line, self.currentFileName)
+	end
 	local ret = match[node.type](self, node, ...)
-	
+	if node.fileName then
+		self.currentFileName = self.lastFileName
+	end
 	return ret
 end
 
@@ -330,8 +338,9 @@ local function generate (self, tree)
 	return tostring(self.writer)
 end
 
-call = function (_, ...)
+call = function (_, errors, ...)
 	local self = {
+		errors = errors,
 		writer = writer:new(),
 		render = render,
 		write = write,

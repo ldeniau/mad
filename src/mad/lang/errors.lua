@@ -4,7 +4,6 @@ local M  = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-  mad.compiler.errorHandler -- Methodical Accelerator Design package
 
 SYNOPSIS
   local errorHandler = require "mad.lang.errorHandler"
@@ -34,6 +33,13 @@ end
 
 -- modules ---------------------------------------------------------------------
 
+local setCurrentChunkName = function(self, name)
+	self.currentChunkName = name
+	if not self._lineMap[self.currentChunkName] then
+		self._lineMap[self.currentChunkName] = {}
+	end
+end
+
 M.help.addToLineMap = [[
 NAME
 	addToLineMap
@@ -45,71 +51,72 @@ RETURN VALUES
 	none
 ]]
 local addToLineMap = function(self, lineIn, lineOut, fileName)
-	if not self._lineMap[lineOut] then
-		self._lineMap[lineOut] = {}
+	if not self._lineMap[self.currentChunkName][lineOut] then
+		self._lineMap[self.currentChunkName][lineOut] = {}
 	end
-	self._lineMap[lineOut].fileName = fileName
-	if not self._lineMap[lineOut].start or lineIn and self._lineMap[lineOut].start > lineIn then
-		self._lineMap[lineOut].start = lineIn
+	self._lineMap[self.currentChunkName][lineOut].fileName = fileName
+	if not self._lineMap[self.currentChunkName][lineOut].start or lineIn and self._lineMap[self.currentChunkName][lineOut].start > lineIn then
+		self._lineMap[self.currentChunkName][lineOut].start = lineIn
 	end
 end
 
-local function searchForLineMatch(self, line)
-	if self._lineMap[line+1] then
+local function searchForLineMatch(self, line, chunkName)
+	if self._lineMap[chunkName][line+1] then
 		line = line+1
 	else
-		while line > 1 and not self._lineMap[line] do
+		while line > 1 and not self._lineMap[chunkName][line] do
 			line = line - 1
 		end
 	end
 	return line
 end
 
-local function getNameAndLine(self, err)
+local function getNameAndLine(self, err, chunkName)
 	local line = tonumber(string.match(err, ":(%d+):"))
-	if not self._lineMap[line] then
-		line = searchForLineMatch(self, line)
+	if not self._lineMap[chunkName][line] then
+		line = searchForLineMatch(self, line, chunkName)
 	end
-	local name = self._lineMap[line].fileName
-	local realLine = self._lineMap[line].start
+	local name = self._lineMap[chunkName][line].fileName
+	local realLine = self._lineMap[chunkName][line].start
 	return name, realLine
 end
 
 local function getErrorMessage(err)
-	return string.match(err,":%d+:%s*(.+)\n%s*stack traceback")
+	return string.match(err,":%d+:%s*(.+)")
 end
 
 local function getStackTraceBack(err)
 	return string.match(err, ".*stack traceback:%s*(.*)%s%[C%]: in function 'xpcall'")
 end
 
-local function createStackTable(self, stack)
+local function createStackTable(self, stack, chunkName)
 	local stacktable = {}
 	for s in string.gmatch(stack,"(.-)\n%s*") do
-		if string.find(s, "%.mad") then
-			local name, line = getNameAndLine(self, s)
-			stacktable[#stacktable+1] = "\t"..name..":"..line..":"..string.match(s,":%d+:(.*)")
-		elseif string.find(s, "%.lua") then
-			stacktable[#stacktable+1] = "\t"..s
-		end
+		local name, line = getNameAndLine(self, s, chunkName)
+		stacktable[#stacktable+1] = "\t"..name..":"..line..":"..string.match(s,":%d+:(.*)")
 	end
 	return stacktable
 end
 
 local function createStackErrorMessage(stacktable)
-	local errmess = ""
+	local errmess = "\nstack traceback:"
 	for i,v in pairs(stacktable) do
 		errmess = errmess.."\n"..v
 	end
 	return errmess
 end
 
-local function translateLuaErrToMadErr(self, err)
-	local name, realLine = getNameAndLine(self, err)
+local function getChunkName(err)
+	return string.match(err, "(.*):%d+:")
+end
+
+local function translateLuaErrToMadErr(self, err, trace)
+	local chunkName = getChunkName(err)
+	local name, realLine = getNameAndLine(self, err, chunkName)
 	local errmess = getErrorMessage(err)
 	errmess = name..":"..realLine..": "..errmess
-	local stack = getStackTraceBack(err)
-	local stacktable = createStackTable(self, stack)
+	local stack = getStackTraceBack(trace)
+	local stacktable = createStackTable(self, stack, chunkName)
 	errmess = errmess..createStackErrorMessage(stacktable)
 	return errmess
 end
@@ -122,7 +129,7 @@ SYNOPSIS
 DESCRIPTION
 	takes an errormessage and changes it so that 
 ]]
-local function handleError (self, thread, message, level)
+--[[local function handleError (self, thread, message, level)
 	if type(thread) ~= "thread" then
     -- shift parameters left
     thread, message, level = nil, thread, message
@@ -137,7 +144,7 @@ local function handleError (self, thread, message, level)
 	util.printTable(stb)
 	print",,,,,,"
 	return "YODAGGIDAGG!\n"..stb, "This is the original error."
-	end--[[
+	end]]--[[
 	local mad = string.find(err,"(%.mad)")
 	local lua = string.find(err,"(%.lua)")
 	if mad and ( not lua or mad < lua ) then
@@ -148,16 +155,16 @@ local function handleError (self, thread, message, level)
 	end
 end]]
 
---[[local function handleError (self, err)
-	local mad = string.find(err,"(%.mad)")
-	local lua = string.find(err,"(%.lua)")
-	if mad and ( not lua or mad < lua ) then
-		local errmess = translateLuaErrToMadErr(self, err)
-		error(errmess,0)
-	else
-		return error(err,0)
-	end
-end]]
+local function handleError (self, err, trace)
+	--local mad = string.find(err,"(%.mad)")
+	--local lua = string.find(err,"(%.lua)")
+	--if mad and ( not lua or mad < lua ) then
+		local errmess = translateLuaErrToMadErr(self, err, trace)
+		return errmess
+	--else
+	--	return err
+	--end
+end
 
 M.help.new = [[
 DESCRIPTION
@@ -166,6 +173,8 @@ DESCRIPTION
 new = function (_, ...)
 	local self = {
 		_lineMap = {},
+		currentChunkName,
+		setCurrentChunkName = setCurrentChunkName,
 		addToLineMap = addToLineMap,
 		searchForLineMatch = searchForLineMatch,
 		getNameAndLine = getNameAndLine,

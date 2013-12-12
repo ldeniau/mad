@@ -12,7 +12,7 @@ local fn = require"mad.core.fileName"
 local lang = require"mad.lang"
 local tableUtil = require"lua.tableUtil"
 local sourceCodeGenerator = require"mad.lang.generator.source"
-local errorMap = require"mad.lang.errorMap"
+local errors = require"mad.lang.errors"()
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
@@ -25,9 +25,9 @@ end
 
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
+		errors:setCurrentChunkName(fileName)
 		local startTime = os.clock()
-		local errorMap = errorMap()
-		local gen = sourceCodeGenerator()
+		local gen = sourceCodeGenerator(errors)
 		local path, name, ext = fn.split(fileName)
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')
@@ -36,12 +36,15 @@ call = function (_, options)
 		local source = gen:generate(parser:parse(inputStream, fileName))
 		local loadedCode, err = loadstring(source,'@'..fileName)
 		if loadedCode then
-			local status, err = xpcall(loadedCode,debug.traceback)
+			local status = xpcall(loadedCode, function(_err)
+				err = _err
+				trace = debug.traceback("",2)
+      end)
 			if not status then
-				print("Error in xpcall:",err)
+				error(errors:handleError(err,trace),0)
 			end
 		else
-			print("Error in loadstring:",err)
+			error(err)
 		end
 		local totalTime = os.clock() - startTime
 		print(string.format("elapsed time: %.2fs", totalTime))
