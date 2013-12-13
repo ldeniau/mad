@@ -9,7 +9,6 @@ DESCRIPTION
 
 -- require --------------------------------------------------------------------
 local re = require"libs.lpeg.re"
-local testApi = require"mad.test.api"
 
 -- metamethods ----------------------------------------------------------------
 
@@ -36,24 +35,24 @@ M.split = function (fileName)
 end
 
 -- test -----------------------------------------------------------------------
-function M.test.split()
+function M.test:split(ut)
 	local name, ext, path = "name", "ext", "path/to/"
 	local p,n,e = M.split(name)
-	testApi.equals(p, "")
-	testApi.equals(n, name)
-	testApi.equals(e, nil)
+	ut:equals(p, "")
+	ut:equals(n, name)
+	ut:equals(e, nil)
 	local p,n,e = M.split(name.."."..ext)
-	testApi.equals(p, "")
-	testApi.equals(n, name)
-	testApi.equals(e, ext)
+	ut:equals(p, "")
+	ut:equals(n, name)
+	ut:equals(e, ext)
 	local p,n,e = M.split(path..name)
-	testApi.equals(p, path)
-	testApi.equals(n, name)
-	testApi.equals(e, nil)
+	ut:equals(p, path)
+	ut:equals(n, name)
+	ut:equals(e, nil)
 	local p,n,e = M.split(path..name.."."..ext)
-	testApi.equals(p, path)
-	testApi.equals(n, name)
-	testApi.equals(e, ext)
+	ut:equals(p, path)
+	ut:equals(n, name)
+	ut:equals(e, ext)
 end
 
 -- end ------------------------------------------------------------------------

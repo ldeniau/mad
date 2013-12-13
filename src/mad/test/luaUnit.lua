@@ -15,6 +15,7 @@ License: X11 License, see LICENSE.txt
 
 -------------------------------------------------------------------------------
 local UnitResult = require"mad.test.UnitResult"
+local testObject = require"mad.test.testObject"
 
 LuaUnit = {
 	result = UnitResult
@@ -68,23 +69,29 @@ function LuaUnit.strip_luaunit_stack(stack_trace)
 	return stack_trace
 end
 
-function LuaUnit:runTestMethod(aName, aClassInstance, aMethod)
+function LuaUnit:runTestMethod(aName, aClassInstance, aMethod, testObjectForClass)
 	local ok, errorMsg
-	LuaUnit.result:startTest(aName)
+	LuaUnit.result:startTest(aName, testObjectForClass)
 	local function err_handler(e)
 		return e..'\n'..debug.traceback()
 	end
-	ok, errorMsg = xpcall( function() return aMethod(aClassInstance) end, err_handler )
+	ok, errorMsg = xpcall( function() return aMethod(aClassInstance, testObjectForClass) end, err_handler )
 	if not ok then
-		errorMsg = self.strip_luaunit_stack(errorMsg)
+		errorMsg = string.match(errorMsg, "(.-)\n")
 		LuaUnit.result:addFailure( errorMsg )
 	end
-	self.result:endTest()
+	self.result:endTest(testObjectForClass)
 end
 
-function LuaUnit:runTestMethodName( methodName, classInstance )
-	local methodInstance = classInstance[methodName]
-	LuaUnit:runTestMethod(methodName, classInstance, methodInstance)
+function LuaUnit:runTestMethodName( methodName, testInstance, testObjectForClass )
+	local methodInstance = testInstance[methodName]
+	if self.isFunction( testInstance.setUp) then
+		testInstance:setUp()
+	end
+	LuaUnit:runTestMethod(methodName, testInstance, methodInstance, testObjectForClass )
+	if self.isFunction(testInstance.tearDown) then
+		testInstance:tearDown()
+	end
 end
 
 function LuaUnit:runTestClassByName( aClassName )
@@ -95,19 +102,13 @@ function LuaUnit:runTestClassByName( aClassName )
 		print( "Class: "..aClassName.." does not have a test-member." )
 		return
 	end
-	LuaUnit.result:startClass( aClassName )
-	if self.isFunction( classInstance.test.setUp) then
-		classInstance.test:setUp()
-	end
+	local testObjectForClass = testObject()
+	LuaUnit.result:startClass( aClassName, testObjectForClass )
 	for methodName, method in pairs(classInstance.test) do
 		if LuaUnit.isFunction(method) and LuaUnit.isTestFunction(methodName) then
-			LuaUnit:runTestMethodName( methodName, classInstance.test )
+			LuaUnit:runTestMethodName( methodName, classInstance.test, testObjectForClass )
 		end
 	end
-	if self.isFunction(classInstance.test.tearDown) then
-		 classInstance.test:tearDown()
-	end
-	if self.result.verbosity == 0 then io.stdout:write("\n") end
 end
 
 function LuaUnit:run(...)

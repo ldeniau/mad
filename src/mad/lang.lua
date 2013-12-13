@@ -23,7 +23,6 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
-local testApi = require"mad.test.api"
 local tableUtil = require"lua.tableUtil"
 local options = require"mad.core.options"
 
@@ -51,9 +50,9 @@ M.getParser = function (key)
 end
 
 -- test -----------------------------------------------------------------------
-function M.test:getParser()
-	testApi.succeeds(M.getParser, "lua")
-	testApi.fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
+function M.test:getParser(ut)
+	ut:succeeds(M.getParser, "lua")
+	ut:fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
 end
 
 -- end ------------------------------------------------------------------------

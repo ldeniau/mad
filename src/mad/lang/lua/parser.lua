@@ -11,7 +11,6 @@ DESCRIPTION
 local re			=	require"libs.lpeg.re"
 local grammar	=	require"mad.lang.lua.grammar".grammar
 local actions	=	require"mad.lang.lua.defs".defs
-local testApi = require"mad.test.api"
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
 local call
@@ -39,11 +38,11 @@ function M.test:setUp()
 	self.parser = M()
 end
 
-function M.test:parse()
+function M.test:parse(ut)
 	local ast = self.parser:parse([[a = 1]])
-	testApi.equals(ast.type, "Chunk")
-	testApi.equals(#ast.body, 1)
-	testApi.equals(ast.body[1].type, "Assignment")
+	ut:equals(ast.type, "Chunk")
+	ut:equals(#ast.body, 1)
+	ut:equals(ast.body[1].type, "Assignment")
 end
 
 -- end ------------------------------------------------------------------------

@@ -20,7 +20,6 @@ SEE ALSO
 -- require --------------------------------------------------------------------
 local writer = require"mad.lang.generator.writer"
 local options = require"mad.core.options"
-local testApi = require"mad.test.api"
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)

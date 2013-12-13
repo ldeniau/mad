@@ -1,5 +1,6 @@
 local M = { help = {}, test = {} }
 local MT = {__index = M,__metatable = {}}
+setmetatable(M,MT)
 
 -----------------------------------------------------------------------------
 -- Assert that calling f with the arguments will raise an error
@@ -7,8 +8,9 @@ local MT = {__index = M,__metatable = {}}
 -- @param   ...     parameters to function onder test
 -- @usage           fails(f,1,2) => f(1,2) should generate an error
 -----------------------------------------------------------------------------
-local function fails(f,...)
-  if not pcall(f,...) then return end
+local function fails(ut, f,...)
+	ut.startedCounter = ut.startedCounter+1
+  if not pcall(f,...) then ut.succeedCounter = ut.succeedCounter+1 return end
   error("No error generated",2)
 end
 
@@ -18,8 +20,9 @@ end
 -- @param   ...     parameters to function onder test
 -- @usage           succeeds(f,1,2) => f(1,2) should not generate an error
 -----------------------------------------------------------------------------
-local function succeeds(f,...)
-  if pcall(f,...) then return end
+local function succeeds(ut, f,...)
+	ut.startedCounter = ut.startedCounter+1
+  if pcall(f,...) then ut.succeedCounter = ut.succeedCounter+1 return end
   error("Error generated",2)
 end
 
@@ -29,7 +32,8 @@ end
 -- @param   expected    expected result of test
 -- @usage               equals(1 + 1,2) => 1 + 1 = 2 ?
 -----------------------------------------------------------------------------
-local function equals(actual,expected)
+local function equals(ut, actual,expected)
+	ut.startedCounter = ut.startedCounter+1
   local nesting = ''
   local function equalsRec(actual,expected,key)
     local errorMsg = ''
@@ -57,7 +61,7 @@ local function equals(actual,expected)
     return errorMsg
   end
   local errorMsg = equalsRec(actual,expected)
-  if #errorMsg == 0 then return end
+  if #errorMsg == 0 then ut.succeedCounter = ut.succeedCounter+1 return end
   error(errorMsg,2)
 end
 
@@ -67,7 +71,8 @@ end
 -- @param   expected    expected result of test
 -- @usage               differs(1 / 0,1) => 1 / 0 ~= 1 ?
 -----------------------------------------------------------------------------
-local function differs(actual,expected)
+local function differs(ut, actual,expected)
+	ut.startedCounter = ut.startedCounter+1
   local function differsRec(actual,expected,key)
     if type(actual) == 'table' and type(expected) == 'table' then
       for k,v in pairs(expected) do
@@ -81,36 +86,24 @@ local function differs(actual,expected)
     end
     return false
   end
-  if differsRec(actual,expected) then return end
+  if differsRec(actual,expected) then ut.succeedCounter = ut.succeedCounter+1 return end
   error('expected == actual',2)
 end
 
------------------------------------------------------------------------------
--- Wrap a set of functions into a Runnable test class:
--- @param   ...     names of functions to be processed
--- @return          list of test methods
--- @usage           TestFunctions = wrapFunctions(f1,f2,f3,f3,f5)
---                  Now,TestFunctions will be picked up by LuaUnit:run()
------------------------------------------------------------------------------
-local function wrap(...)
-  local testClass = {}
-  for _,testMethod in ipairs{...} do testClass[testMethod] = _G[testMethod] end
-  return testClass
+MT.__call = function ()
+	return {
+		succeedCounter = 0,
+		startedCounter = 0,
+		differs = differs,
+		equals = equals,
+		fails = fails,
+		succeeds = succeeds,
+		trace = trace
+	}
 end
-
------------------------------------------------------------------------------
--- Get path to test class.
--- Only works/makes sense when called as 'require' from a test class.
------------------------------------------------------------------------------
-local trace = string.match(debug.traceback(),"'require'.-(%w.-):%d-:")..':1:'
 
 -----------------------------------------------------------------------------
 -- Exported functions.
 -----------------------------------------------------------------------------
-M.differs = differs
-M.equals = equals
-M.fails = fails
-M.succeeds = succeeds
-M.trace = trace
-M.wrap = wrap
+
 return M

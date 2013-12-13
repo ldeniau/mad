@@ -8,29 +8,26 @@ UnitResult = { -- class
 	verbosity = 0
 }
 function UnitResult:displayClassName()
-	print( self.currentClassName )
+	io.stdout:write( "["..self.currentClassName.."]\n" )
 end
 
 function UnitResult:displayTestName()
-	if self.verbosity > 0 then
-		print( "\t".. self.currentTestName )
-	end
+	io.stdout:write( "\t+".. self.currentTestName.."\t" )
 end
 
-function UnitResult:displayFailure( errorMsg )
-	if self.verbosity == 0 then
-		io.stdout:write("F")
-	else
-		print( errorMsg )
-		print( 'Failed' )
-	end
+function UnitResult:displayTimeSpent()
+	io.stdout:write("( "..string.format("%.2f",self.timeSpent).."s ) ")
 end
 
-function UnitResult:displaySuccess()
-	if self.verbosity > 0 then
-		--print ("\tOk" )
+function UnitResult:displayNumberOfSuccesses()
+	io.stdout:write(self.testsSucceeded.."/"..self.testsStarted)
+end
+
+function UnitResult:displayPassOrFail()
+	if self.testsSucceeded == self.testsStarted then
+		io.stdout:write(": PASS\n")
 	else
-		io.stdout:write(".")
+		io.stdout:write(": FAILED\n")
 	end
 end
 
@@ -67,24 +64,27 @@ function UnitResult:startClass(className)
 	self:displayClassName()
 end
 
-function UnitResult:startTest(testName)
+function UnitResult:startTest(testName, testObjectForClass)
 	self.currentTestName = testName
-	self:displayTestName()
-self.testCount = self.testCount + 1
-	self.testHasFailure = false
+	self.testCount = self.testCount + 1
+	self.startClock = os.clock()
+	self.startStartedCounter = testObjectForClass.startedCounter
+	self.startSucceedCounter = testObjectForClass.succeedCounter
 end
 
 function UnitResult:addFailure( errorMsg )
 	self.failureCount = self.failureCount + 1
-	self.testHasFailure = true
 	table.insert( self.errorList, { self.currentTestName, errorMsg } )
-	self:displayFailure( errorMsg )
 end
 
-function UnitResult:endTest()
-	if not self.testHasFailure then
-		self:displaySuccess()
-	end
+function UnitResult:endTest(testObjectForClass)
+	self.timeSpent = os.clock() - self.startClock
+	self.testsStarted = testObjectForClass.startedCounter - self.startStartedCounter
+	self.testsSucceeded = testObjectForClass.succeedCounter - self.startSucceedCounter
+	self:displayTestName()
+	self:displayTimeSpent()
+	self:displayNumberOfSuccesses()
+	self:displayPassOrFail()
 end
 
 return UnitResult
