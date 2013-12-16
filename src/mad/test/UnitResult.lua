@@ -31,10 +31,18 @@ function UnitResult:displayPassOrFail()
 	end
 end
 
+function UnitResult:displayErrors()
+	if #self.errorList == 0 then return end	
+	for i = self.noFailed+1, #self.errorList do
+		io.stdout:write("\t"..self.errorList[i][2].."\n")
+	end
+end
+
+
 function UnitResult:displayOneFailedTest( failure )
 	testName, errorMsg = unpack( failure )
 	print("\t"..testName.." failed")
-	print( errorMsg )
+	io.stdout:write("\t"..errorMsg.."\n")
 end
 
 function UnitResult:displayFailedTests()
@@ -70,6 +78,7 @@ function UnitResult:startTest(testName, testObjectForClass)
 	self.startClock = os.clock()
 	self.startStartedCounter = testObjectForClass.startedCounter
 	self.startSucceedCounter = testObjectForClass.succeedCounter
+	self.noFailed = #self.errorList
 end
 
 function UnitResult:addFailure( errorMsg )
@@ -85,6 +94,7 @@ function UnitResult:endTest(testObjectForClass)
 	self:displayTimeSpent()
 	self:displayNumberOfSuccesses()
 	self:displayPassOrFail()
+	self:displayErrors()
 end
 
 return UnitResult
