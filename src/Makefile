@@ -1,5 +1,5 @@
 
-LIBDIR=./lib
+LIBDIR=./libs
 
 OS_NAME=$(shell uname -s)
 MH_NAME=$(shell uname -m)

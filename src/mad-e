@@ -1,9 +1,19 @@
 #!/usr/bin/env luajit
 
-package.path  = ';;./lib/?.lua;'..package.path
-package.mpath = ';./lib/?.mad'..';./?.mad'
-package.cpath = ';;./lib/?.so;'..package.cpath
+-- Init
+require"mad.core.init"
 
-require"run"():run(arg[1])
+-- Handle args
+local options = require"mad.core.options"
+options.process(arg)
 
+-- Do tests if applicable
+if options.utest then
+	require"mad.core.unitTest"(options.utest)
+end
 
+-- Exec
+require"mad.core.exec"(options)
+
+-- Fini
+require"mad.core.fini"
