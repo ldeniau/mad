@@ -36,12 +36,13 @@ call = function (_, options)
 		local source = gen:generate(parser:parse(inputStream, fileName))
 		local loadedCode, err = loadstring(source,'@'..fileName)
 		if loadedCode then
-			local status = xpcall(loadedCode, function(_err)
+			local status, result = xpcall(loadedCode, function(_err)
 				err = _err
 				trace = debug.traceback("",2)
       end)
 			if not status then
-				error(errors:handleError(err,trace),0)
+				io.stderr:write(errors:handleError(err,trace).."\n")
+				os.exit(-1)
 			end
 		else
 			error(err)

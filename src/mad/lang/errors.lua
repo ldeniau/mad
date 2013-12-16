@@ -20,10 +20,6 @@ SEE ALSO
 
 -- require ---------------------------------------------------------------------
 
-
-
-local dtb = debug.traceback
-
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
 local new
@@ -129,41 +125,9 @@ SYNOPSIS
 DESCRIPTION
 	takes an errormessage and changes it so that 
 ]]
---[[local function handleError (self, thread, message, level)
-	if type(thread) ~= "thread" then
-    -- shift parameters left
-    thread, message, level = nil, thread, message
-  end
-  thread = thread or coroutine.running()
-  level = level or 1
-  
-	print",,,,,,"
-	util.printTable(message)
-	print",,,,,,"
-	local stb = dtb()
-	util.printTable(stb)
-	print",,,,,,"
-	return "YODAGGIDAGG!\n"..stb, "This is the original error."
-	end]]--[[
-	local mad = string.find(err,"(%.mad)")
-	local lua = string.find(err,"(%.lua)")
-	if mad and ( not lua or mad < lua ) then
-		local errmess = translateLuaErrToMadErr(self, err)
-		error(errmess,0)
-	else
-		return error(err,0)
-	end
-end]]
-
 local function handleError (self, err, trace)
-	--local mad = string.find(err,"(%.mad)")
-	--local lua = string.find(err,"(%.lua)")
-	--if mad and ( not lua or mad < lua ) then
-		local errmess = translateLuaErrToMadErr(self, err, trace)
-		return errmess
-	--else
-	--	return err
-	--end
+	local errmess = translateLuaErrToMadErr(self, err, trace)
+	return errmess
 end
 
 M.help.new = [[
