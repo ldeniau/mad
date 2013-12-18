@@ -38,12 +38,18 @@ function M.test:setUp()
 	self.parser = M()
 end
 
+function M.test:tearDown()
+	self.parser = nil
+end
+
 function M.test:parse(ut)
 	local ast = self.parser:parse([[a = 1]])
 	ut:equals(ast.type, "Chunk")
 	ut:equals(#ast.body, 1)
 	ut:equals(ast.body[1].type, "Assignment")
 end
+
+
 
 -- end ------------------------------------------------------------------------
 return M
