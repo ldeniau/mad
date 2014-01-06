@@ -123,7 +123,7 @@ function defs.error(istream, pos)
 				break
 			end
 		end
-		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file "..pos)
+		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file")
 	end
 end
 
@@ -140,27 +140,6 @@ defs.tonumber = function(s)
 end
 defs.tostring = tostring
 
-local escape_lookup = {
-   ["a"] = "\a",
-   ["b"] = "\b",
-   ["f"] = "\f",
-   ["n"] = "\n",
-   ["r"] = "\r",
-   ["t"] = "\t",
-   ["v"] = "\v",
-   ["0"] = "\0",
-   ['"'] = '"',
-   ["'"] = "'",
-   ["\\"]= "\\",
-   ["z"] = "\z"
-}
-function defs.escape(s)
-   local t = string.sub(s, 2)
-   local n = tonumber(t)
-   if n then return string.char(n) end
-   if escape_lookup[t] then return escape_lookup[t] end
-   error("invalid escape sequence")
-end
 function defs.string( op, str, eq )
 	return str, (eq or op)
 end

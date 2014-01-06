@@ -24,11 +24,12 @@ SEE ALSO
 M.grammar = [[
 
 	chunk <- ("" => setup {| 
-		( ( <stat> ( <sep> <stat> )* (<sep> <laststat>)? <sep>? ) / ( <laststat> <sep>? )? ) s (!. / '' => error)
+		--( ( <stat> ( <sep> <stat> )* (<sep> <laststat>)? <sep>? ) / ( <laststat> <sep>? )? ) s (!. / '' => error)
+		( ( <stat> <sep>? )* (<laststat>)? <sep>? ) s (!. / '' => error)
 	|}) -> chunk
 
 	block <- ({|
-		( ( <stat> ( <sep> <stat> )* (<sep> <laststat>)? <sep>? ) / ( <laststat> <sep>? )? )
+		( ( <stat> <sep>? )* (<laststat>)? <sep>? )
 	|}) -> blockStmt
 	
 	stat <- ({} (
@@ -162,7 +163,7 @@ M.grammar = [[
 	)
 
 	tableconstructor <- (
-			"{"s {| <fieldlist>? |} s"}"
+			"{" s {| <fieldlist>? |} s "}"
 	) -> tableConstr
 
 	fieldlist <- (<field> ( <fieldsep> <field> )* <fieldsep>?)
@@ -223,12 +224,12 @@ M.grammar = [[
 	repeat		<- s "repeat" <idsafe> s
 	until			<- s "until" <idsafe> s
 	
-	sep <- (s( <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / ( !<newline> %s / <newline> ) <sep>? )s)
+	sep <- (( <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / ( !<newline> %s / <newline> ) <sep>? ))
 
-	escape <- {~ ('\' (%digit^3 / .)) -> escape ~}
+	escape <- ('\' (%digit^3 / .))
 
-	astring <- ( {"'"} {~ (<escape> / { (!"'" !<newline> .)* } ) ~} "'" )
-	qstring <- ( {'"'} {~ (<escape> / { (!'"' !<newline> .)* } ) ~} '"' )
+	astring <- ( {"'"}  { (<escape> / (!"'" !<newline> .))* } "'" )
+	qstring <- ( {'"'}  { (<escape> / !'"' !<newline> .)* } '"' )
 	lstring <- ( {'['} ( {:eq: '='* :}) '[' <stringFromDoubleBracket> <close>)
 
 	hexnum <- ( "-"? "0x" %xdigit+ (("p"/"P") <integer>)? )
@@ -422,59 +423,59 @@ function M.test:longStringEscape(ut)
 end
 function M.test:shortStringEscapeA(ut)
 	local str = self.parser:match([[local a = "\a"]])
-	ut:equals(str.body[1].rhs[1].value, "\a")
+	ut:equals(str.body[1].rhs[1].value, "\\a")
 end
 function M.test:shortStringEscapeB(ut)
 	local str = self.parser:match([[local a = "\b"]])
-	ut:equals(str.body[1].rhs[1].value, "\b")
+	ut:equals(str.body[1].rhs[1].value, "\\b")
 end
 function M.test:shortStringEscapeF(ut)
 	local str = self.parser:match([[local a = "\f"]])
-	ut:equals(str.body[1].rhs[1].value, "\f")
+	ut:equals(str.body[1].rhs[1].value, "\\f")
 end
 function M.test:shortStringEscapeN(ut)
 	local str = self.parser:match([[local a = "\n"]])
-	ut:equals(str.body[1].rhs[1].value, "\n")
+	ut:equals(str.body[1].rhs[1].value, "\\n")
 end
 function M.test:shortStringEscapeR(ut)
 	local str = self.parser:match([[local a = "\r"]])
-	ut:equals(str.body[1].rhs[1].value, "\r")
+	ut:equals(str.body[1].rhs[1].value, "\\r")
 end
 function M.test:shortStringEscapeT(ut)
 	local str = self.parser:match([[local a = "\t"]])
-	ut:equals(str.body[1].rhs[1].value, "\t")
+	ut:equals(str.body[1].rhs[1].value, "\\t")
 end
 function M.test:shortStringEscapeV(ut)
 	local str = self.parser:match([[local a = "\v"]])
-	ut:equals(str.body[1].rhs[1].value, "\v")
+	ut:equals(str.body[1].rhs[1].value, "\\v")
 end
 function M.test:shortStringEscapeSlash(ut)
 	local str = self.parser:match([[local a = "\\"]])
-	ut:equals(str.body[1].rhs[1].value, "\\")
+	ut:equals(str.body[1].rhs[1].value, "\\\\")
 end
 function M.test:shortStringEscapeHyphen(ut)
 	local str = self.parser:match([[local a = "\""]])
-	ut:equals(str.body[1].rhs[1].value, "\"")
+	ut:equals(str.body[1].rhs[1].value, '\\"')
 end
 function M.test:shortStringEscapeSingleHypen(ut)
 	local str = self.parser:match([[local a = "\'"]])
-	ut:equals(str.body[1].rhs[1].value, "\'")
+	ut:equals(str.body[1].rhs[1].value, "\\'")
 end
 function M.test:shortStringEscapeZ(ut)
 	local str = self.parser:match([[local a = "\z"]])
-	ut:equals(str.body[1].rhs[1].value, "\z")
+	ut:equals(str.body[1].rhs[1].value, "\\z")
 end
 function M.test:shortStringEscape0(ut)
 	local str = self.parser:match([[local a = "\0"]])
-	ut:equals(str.body[1].rhs[1].value, "\0")
+	ut:equals(str.body[1].rhs[1].value, "\\0")
 end
 function M.test:shortStringEscapexXX(ut)
 	local str = self.parser:match([[local a = "\xd2"]])
-	ut:equals(str.body[1].rhs[1].value, "\xd2")
+	ut:equals(str.body[1].rhs[1].value, "\\xd2")
 end
 function M.test:shortStringEscapeDDD(ut)
 	local str = self.parser:match([[ local a = "\123" ]])
-	ut:equals(str.body[1].rhs[1].value, "\123")
+	ut:equals(str.body[1].rhs[1].value, "\\123")
 end
 
 function M.test:boolTrue(ut)
