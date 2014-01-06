@@ -7,15 +7,21 @@ UnitResult = { -- class
 	testHasFailure = false,
 	verbosity = 0
 }
+
+local maxLength = 50
+
 function UnitResult:displayClassName()
 	io.stdout:write( "["..self.currentClassName.."]\n" )
 end
 
 function UnitResult:displayTestName()
-	io.stdout:write( "\t+".. self.currentTestName.."\t" )
+	io.stdout:write( "  "..self.currentTestName )
 end
 
 function UnitResult:displayTimeSpent()
+	for i = string.len(self.currentTestName) + 2, maxLength - 20 do
+		io.stdout:write(" ")
+	end
 	io.stdout:write("( "..string.format("%.2f",self.timeSpent).."s ) ")
 end
 
@@ -24,7 +30,7 @@ function UnitResult:displayNumberOfSuccesses()
 end
 
 function UnitResult:displayPassOrFail()
-	if self.testsSucceeded == self.testsStarted then
+	if self.testsSucceeded == self.testsStarted and self.testsSucceeded > 0 then
 		io.stdout:write(": PASS\n")
 	else
 		io.stdout:write(": FAILED\n")
