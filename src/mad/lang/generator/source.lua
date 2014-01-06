@@ -200,6 +200,7 @@ function match:Return(node)
 end
 
 function match:BinaryExpression(node)
+	self:write("(")
 	self:render(node.lhs)
 	if node.operator == "or" or node.operator == "and" then self:write(" ") end
 	self:write(node.operator)
@@ -208,10 +209,12 @@ function match:BinaryExpression(node)
 	if node.operator == "[" then
 		self:write("]")
 	end
+	self:write(")")
 end
 
 function match:UnaryExpression(node)
 	self:write(node.operator)
+	if node.operator == "not" then self:write(" ") end
 	self:render(node.argument)
 end
 
