@@ -48,7 +48,7 @@ M.grammar = [[
 	
 	varlist_assign <- ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign
 
-	loop_body <- ( <do> <block> ) <end>
+	loop_body <-  <do> <block> <end>
 
 	do_stmt <- <loop_body> -> doStmt
 

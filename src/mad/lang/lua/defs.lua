@@ -128,10 +128,10 @@ function defs.error(istream, pos)
 end
 
 defs.lcomm = function(comm)
-	return " "
+	--return " "
 end
 defs.bcomm = function(comm)
-	return " "
+	--return " "
 end
 
 defs.tonumber = function(s)
