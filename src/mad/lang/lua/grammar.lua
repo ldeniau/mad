@@ -24,7 +24,6 @@ SEE ALSO
 M.grammar = [[
 
 	chunk <- ("" => setup {| 
-		--( ( <stat> ( <sep> <stat> )* (<sep> <laststat>)? <sep>? ) / ( <laststat> <sep>? )? ) s (!. / '' => error)
 		( ( <stat> <sep>? )* (<laststat>)? <sep>? ) s (!. / '' => error)
 	|}) -> chunk
 
@@ -33,64 +32,19 @@ M.grammar = [[
 	|}) -> blockStmt
 	
 	stat <- ({} (
-			<varlist_assign>
-		/	<expr_stmt>
-		/	<do_stmt>
-		/	<while_stmt>
-		/	<repeat_stmt>
-		/	<if_stmt>
-		/	<for_stmt>
-		/	<forin_stmt>
-		/	<func_decl>
-		/	<locfunc_decl>
-		/	<locnamelist>
+			( ( ";" ) )
+		/	( ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign )
+		/	( ( {} <func_call> ) -> exprStmt	)
+		/	( ( <loop_body> ) -> doStmt )
+		/	( (	<while> <exp> <loop_body>	) -> whileStmt)
+		/	( (	<repeat> <block> <until> <exp> ) -> repeatStmt )
+		/ ( ( <if> <rest_of_if> ) )
+		/	( (	<for> <ident> "=" <exp> "," <exp> ( "," <exp> )? <loop_body> ) -> forStmt )
+		/	( (	<for> {|<name_list>|} <in> {|<exp_list>|} <loop_body>	) -> forInStmt )
+		/	( (	<function> {| <func_name> |} <func_body> ) -> funcDecl )
+		/	( (	<local> <function> <ident> <func_body> ) -> locFuncDecl )
+		/	( (	<local> {| <name_list> |} ( "=" {| <exp_list> |} )?	) -> locNameList )
 	)) -> stmt
-	
-	
-	varlist_assign <- ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign
-
-	loop_body <-  <do> <block> <end>
-
-	do_stmt <- <loop_body> -> doStmt
-
-	while_stmt <- (
-		<while> <exp> <loop_body>
-		) -> whileStmt
-
-	repeat_stmt <- (
-		<repeat> <block> <until> <exp>
-		) -> repeatStmt
-
-	if_stmt <- (
-		<if> <rest_of_if>
-		)
-		
-	rest_of_if <- (
-		<exp> <then> <block>
-		((<elseif> <rest_of_if> )
-		 /(<else> <block> <end>)
-		 /<end>)
-	) -> ifStmt
-
-	for_stmt <- (
-		<for> <ident> "=" <exp> "," <exp> ( "," <exp> )? <loop_body>
-		) -> forStmt
-
-	forin_stmt <- (
-		<for> {|<name_list>|} <in> {|<exp_list>|} <loop_body>
-		) -> forInStmt
-
-	func_decl <- (
-		<function> {| <func_name> |} <func_body>
-		) -> funcDecl
-
-	locfunc_decl <- (
-		<local> <function> <ident> <func_body>
-		) -> locFuncDecl
-
-	locnamelist <- (
-		<local> {| <name_list> |} ( "=" {| <exp_list> |} )?
-		) -> locNameList
 
 	laststat <- ( {} ( 
 		<return_stmt> / <break_stmt> 
@@ -99,18 +53,29 @@ M.grammar = [[
 	return_stmt <- ( <return> {| <exp_list>? |} ) -> returnStmt
 
 	break_stmt <- ( <break> ) -> breakStmt
-
-	func_name <- ( <ident> ( {"."} <ident> )* ( {":"} <ident> )? )
-
+	
 	varlist <- ( <var> ( "," <var> )* )
 
 	name_list <- ( <ident> ( "," <ident> )* )
 
 	exp_list <- ( <exp> ( "," <exp> )* )
-
-	expr_stmt <- ({} (<func_call>)) -> exprStmt
+	
+	func_call <- ( 
+			{|<varorexp>|}  {|<identthenargs>+|}
+	) -> funcCall
 
 	exp <- (s <infix_exp> s)
+	
+	loop_body <-  <do> <block> <end>
+		
+	rest_of_if <- (
+		<exp> <then> <block>
+		((<elseif> <rest_of_if> )
+		 /(<else> <block> <end>)
+		 /<end>)
+	) -> ifStmt
+
+	func_name <- ( <ident> ( {"."} <ident> )* ( {":"} <ident> )? )
 
 	infix_exp  <- (
 		{| <unar_exp> ( <binop> <unar_exp>)+ |}
@@ -122,18 +87,18 @@ M.grammar = [[
 
 	postfix_exp <- ( <nil_expr> / <literal> / ("..." -> identifier) / <funcexpr> / <prefix_exp> / <tableconstructor> )
 
-	var <- (s
-			( <ident> / "(" <exp> ")"  <varsuffix> ) (<varsuffix>)*
-	s)
-
 	prefix_exp <- ( 
 			{|<varorexp>|}  {|<identthenargs>*|}
 	) -> prefixExp
-
-	func_call <- ( 
-			{|<varorexp>|}  {|<identthenargs>+|} 
-	) -> funcCall
-
+	
+	funcexpr <- (
+			<function> <func_body>
+	) -> funcExpr
+	
+	tableconstructor <- (
+			"{" s {| <fieldlist>? |} s "}"
+	) -> tableConstr
+	
 	varorexp <- (s(
 			<var> / ( "(" <exp> ")" )
 	)s)
@@ -141,6 +106,9 @@ M.grammar = [[
 	identthenargs <- (
 			( {":"} <ident> )? <args>
 	)
+	var <- (s
+			( <ident> / "(" <exp> ")"  <varsuffix> ) (<varsuffix>)*
+	s)
 
 	varsuffix <- (s(
 			(<identthenargs>)*  ( {"["} <exp> "]" / {"."}  <ident> )
@@ -150,10 +118,6 @@ M.grammar = [[
 			"(" {| <exp_list>? |} ")" / {|<tableconstructor>|} / ({|<string> -> literal|}) 
 	)
 
-	funcexpr <- (
-			<function> <func_body>
-	) -> funcExpr
-
 	func_body <- (
 			"(" {| <parlist>? |} ")" <block> <end>
 	)
@@ -161,10 +125,6 @@ M.grammar = [[
 	parlist <- (
 		<name_list> ("," s {"..."})? / {"..."}
 	)
-
-	tableconstructor <- (
-			"{" s {| <fieldlist>? |} s "}"
-	) -> tableConstr
 
 	fieldlist <- (<field> ( <fieldsep> <field> )* <fieldsep>?)
 
@@ -174,13 +134,13 @@ M.grammar = [[
 
 	fieldsep <- (s( "," / ";" )s)
 
-	binop <- (s{ "+" / "-" / "*" / "/" / "^" / "%" / ".." / 
+	binop <- ( s { "+" / "-" / "*" / "/" / "^" / "%" / ".." / 
 		 "<=" / "<" / ">=" / ">" / "==" / "~=" / 
-		 <and> / <or> }s)
+		 <and> / <or> } s )
 
-	unop <- (s{ "-" / <not> / "#" }s)
+	unop <- ( s { "-" / <not> / "#" } s )
 
-	bool_exp <- ( s {<true> / <false> } s) -> boolean
+	bool_exp <- ( s {<true> / <false> } s ) -> boolean
 	
 	nil_expr <- <nil> -> nilExpr
 
@@ -375,6 +335,13 @@ function M.test:ifStmt(ut)
 	ut:equals(res.body[1].alternate.body[1].consequent.body[1].lhs[1].name, "b")
 	ut:equals(res.body[1].alternate.body[1].test.name, "b")
 	ut:equals(res.body[1].alternate.body[1].alternate.body[1].lhs[1].name, "c")
+end
+function M.test:ifExpressionWithParanthesis(ut)
+	local res = self.parser:match([[
+	if (not true or true) and true then
+  	a =  1
+	end]])
+	ut:equals(res.body[1].consequent.body[1].lhs[1].name, "a")
 end
 
 function M.test:doStmt(ut)
