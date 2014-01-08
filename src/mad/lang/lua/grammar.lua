@@ -42,8 +42,8 @@ M.grammar = [[
 		/	( (	<local> <function> <ident> <func_body> ) -> locFuncDecl )
 		/	( (	<local> {| <name_list> |} ( "=" {| <exp_list> |} )?	) -> locNameList )
 		/	( (	<function> {| <func_name> |} <func_body> ) -> funcDecl )
-		/	( ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign )
-		/	( ( !(<elseif>/<return>) <func_call> ) -> exprStmt	)
+		/	( ( !(<end>/<else>/<then>) {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign )
+		/	( ( !(<elseif>/<return>/<until>) <func_call> ) -> exprStmt	)
 	)) -> stmt
 
 	laststat <- ( {} ( 
@@ -274,6 +274,17 @@ function M.test:returnStmt(ut)
 	ut:equals(res.body[1].type, "Return")
 	ut:equals(res.body[1].values[1].value, 1)
 end
+function M.test:returnMultiple(ut)
+	local res = self.parser:match([[ return 1, a ]])
+	ut:equals(res.body[1].type, "Return")
+	ut:equals(res.body[1].values[1].value, 1)
+	ut:equals(res.body[1].values[2].name, "a")
+end
+function M.test:returnParan(ut)
+	local res = self.parser:match([[ return (1+1), {} ]])
+	ut:equals(res.body[1].type, "Return")
+	ut:equals(res.body[1].values[1].lhs.value, 1)
+end
 
 function M.test:breakStmt(ut)
 	local res = self.parser:match([[ break ]])
@@ -306,8 +317,47 @@ function M.test:functionDefinition(ut)
 	ut:equals(res.body[1].body.body[1].lhs[1].name, "b")
 end
 
+function M.test:whileStmt(ut)
+	local res = self.parser:match([[ while true do local b end ]])
+	ut:equals(res.body[1].kind, "While")
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].body.body[1].lhs[1].name, "b")
+end
+function M.test:whileParanInExp(ut)
+	local res = self.parser:match([[ while (true) do local b end ]])
+	ut:equals(res.body[1].kind, "While")
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].body.body[1].lhs[1].name, "b")
+end
+function M.test:whileParanInBlock(ut)
+	local res = self.parser:match([[ while true do (b).b = 1 end ]])
+	ut:equals(res.body[1].kind, "While")
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].body.body[1].lhs[1].lhs.name, "b")
+end
+
+function M.test:repeatStmt(ut)
+	local res = self.parser:match([[ repeat local b until true ]])
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].kind, "Repeat")
+	ut:equals(res.body[1].body.body[1].lhs[1].name, "b")
+end
+function M.test:repeatParanInExp(ut)
+	local res = self.parser:match([[ repeat local b until (true) ]])
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].kind, "Repeat")
+	ut:equals(res.body[1].body.body[1].lhs[1].name, "b")
+end
+function M.test:repeatParanInBlock(ut)
+	local res = self.parser:match([[ repeat (b).b = 1 until true ]])
+	ut:equals(res.body[1].test.value, true)
+	ut:equals(res.body[1].kind, "Repeat")
+	ut:equals(res.body[1].body.body[1].lhs[1].lhs.name, "b")
+end
+
 function M.test:forStmt(ut)
 	local res = self.parser:match([[ for i = 1 , 2 , 3 do local b end ]])
+	ut:equals(res.body[1].kind, "For")
 	ut:equals(res.body[1].init.value, 1)
 	ut:equals(res.body[1].last.value, 2)
 	ut:equals(res.body[1].step.value, 3)
@@ -329,14 +379,14 @@ function M.test:ifStmt(ut)
 	ut:equals(res.body[1].elseifTest[1].name, "b")
 	ut:equals(res.body[1].elseBlock.body[1].lhs[1].name, "c")
 end
-function M.test:ifExpressionWithParanthesis(ut)
+function M.test:ifParanInExp(ut)
 	local res = self.parser:match([[
 	if (not true or true) and true then
   	a = 1
 	end]])
 	ut:equals(res.body[1].consequent.body[1].lhs[1].name, "a")
 end
-function M.test:elseifExpWithParan(ut)
+function M.test:elseifParanInExp(ut)
 	local res = self.parser:match([[
 	if false then
 		a = 2
@@ -345,32 +395,64 @@ function M.test:elseifExpWithParan(ut)
 	end]])
 	ut:equals(res.body[1].elseifBlock[1].body[1].lhs[1].name, "a")
 end
+function M.test:elseifParanInBlock(ut)
+	local res = self.parser:match([[
+	if false then
+		a = 2
+	elseif true then
+  	(a).a = 1
+	end]])
+	ut:equals(res.body[1].elseifBlock[1].body[1].lhs[1].lhs.name, "a")
+end
+function M.test:elseParanInBlock(ut)
+	local res = self.parser:match([[
+	if false then
+		a = 2
+	else
+  	(a).a = 1
+	end]])
+	ut:equals(res.body[1].elseBlock.body[1].lhs[1].lhs.name, "a")
+end
 
 function M.test:doStmt(ut)
 	local res = self.parser:match([[ do local a end ]])
 	ut:equals(res.body[1].body.body[1].lhs[1].name, "a")
 end
+function M.test:doParanInBlock(ut)
+	local res = self.parser:match([[ do (a).a = 1 end ]])
+	ut:equals(res.body[1].body.body[1].lhs[1].lhs.name, "a")
+end
+
+function M.test:paranAfterEnd(ut)
+	local res = self.parser:match([[ 
+	do 
+		a = 1 
+	end
+	(a).a = 1 ]])
+	ut:equals(res.body[1].body.body[1].lhs[1].name, "a")
+	ut:equals(res.body[2].lhs[1].lhs.name, "a")
+end
 
 -- tests of lexer
 function M.test:integer(ut)
 	local num = self.parser:match([[local a = 1]])
-	ut:equals(num.body[1].rhs[1].value,1)
+	ut:equals(num.body[1].rhs[1].value, 1)
 end
 function M.test:decimal(ut)
 	local num = self.parser:match([[local a = 1.1]])
-	ut:equals(num.body[1].rhs[1].value,1.1)
+	ut:equals(num.body[1].rhs[1].value, 1.1)
 end
 function M.test:hexadecimal(ut)
 	local num = self.parser:match([[local a = 0x1e]])
-	ut:equals(num.body[1].rhs[1].value,0x1e)
+	ut:equals(num.body[1].rhs[1].value, 0x1e)
 end
 function M.test:exponent(ut)
 	local num = self.parser:match([[local a =  1.1e-15 ]])
-	ut:equals(num.body[1].rhs[1].value,1.1e-15)
+	ut:equals(num.body[1].rhs[1].value, 1.1e-15)
 end
 function M.test:hexExponent(ut)
 	local num = self.parser:match([[local a =  0x4Ap-2 ]])
-	ut:equals(num.body[1].rhs[1].value,0x4Ap-2)
+	ut:equals(num.body[1].rhs[1].value, 0x4Ap-2)
 end
 
 function M.test:doubleDelimiterString(ut)
@@ -426,7 +508,7 @@ function M.test:shortStringEscapeHyphen(ut)
 	local str = self.parser:match([[local a = "\""]])
 	ut:equals(str.body[1].rhs[1].value, '\\"')
 end
-function M.test:shortStringEscapeSingleHypen(ut)
+function M.test:shortStringEscapeSingleHyphen(ut)
 	local str = self.parser:match([[local a = "\'"]])
 	ut:equals(str.body[1].rhs[1].value, "\\'")
 end
