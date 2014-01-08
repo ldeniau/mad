@@ -200,7 +200,7 @@ function match:Return(node)
 end
 
 function match:BinaryExpression(node)
-	self:write("(")
+	if node.operator ~= "." and node.operator ~= "[" and node.operator ~= ":" then self:write("(") end
 	self:render(node.lhs)
 	if node.operator == "or" or node.operator == "and" then self:write(" ") end
 	self:write(node.operator)
@@ -209,7 +209,7 @@ function match:BinaryExpression(node)
 	if node.operator == "[" then
 		self:write("]")
 	end
-	self:write(")")
+	if node.operator ~= "." and node.operator ~= "[" and node.operator ~= ":" then self:write(")") end
 end
 
 function match:UnaryExpression(node)
@@ -292,9 +292,18 @@ function match:If(node)
 	self:write(" then")
 	self:render(node.consequent)
 	self.writer:writeln()
-	if node.alternate then
+	if node.elseifTest and #node.elseifTest > 0 then
+		for i,v in ipairs(node.elseifTest) do
+			self:write("elseif ")
+			self:render(v)
+			self:write(" then")
+			self:render(node.elseifBlock[i])
+			self.writer:writeln()
+		end
+	end
+	if node.elseBlock then
 		self:write("else")
-		self:render(node.alternate)
+		self:render(node.elseBlock)
 		self.writer:writeln()
 	end
 	self:write("end")
