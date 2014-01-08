@@ -33,17 +33,17 @@ M.grammar = [[
 	
 	stat <- ({} (
 			( ( ";" ) )
-		/	( ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign )
-		/	( ( {} <func_call> ) -> exprStmt	)
 		/	( ( <loop_body> ) -> doStmt )
 		/	( (	<while> <exp> <loop_body>	) -> whileStmt)
 		/	( (	<repeat> <block> <until> <exp> ) -> repeatStmt )
-		/ ( ( <if> <rest_of_if> ) )
+		/ ( ( <if> <exp> <then> <block> {|(<elseif> <exp> <then> <block>)*|} (<else> <block>)? <end> ) -> ifStmt )
 		/	( (	<for> <ident> "=" <exp> "," <exp> ( "," <exp> )? <loop_body> ) -> forStmt )
 		/	( (	<for> {|<name_list>|} <in> {|<exp_list>|} <loop_body>	) -> forInStmt )
-		/	( (	<function> {| <func_name> |} <func_body> ) -> funcDecl )
 		/	( (	<local> <function> <ident> <func_body> ) -> locFuncDecl )
 		/	( (	<local> {| <name_list> |} ( "=" {| <exp_list> |} )?	) -> locNameList )
+		/	( (	<function> {| <func_name> |} <func_body> ) -> funcDecl )
+		/	( ( {| <varlist> |} "=" {| <exp_list> |} ) -> varlistAssign )
+		/	( ( !(<elseif>/<return>) <func_call> ) -> exprStmt	)
 	)) -> stmt
 
 	laststat <- ( {} ( 
@@ -64,16 +64,9 @@ M.grammar = [[
 			{|<varorexp>|}  {|<identthenargs>+|}
 	) -> funcCall
 
-	exp <- (s <infix_exp> s)
+	exp <- s <infix_exp> s
 	
 	loop_body <-  <do> <block> <end>
-		
-	rest_of_if <- (
-		<exp> <then> <block>
-		((<elseif> <rest_of_if> )
-		 /(<else> <block> <end>)
-		 /<end>)
-	) -> ifStmt
 
 	func_name <- ( <ident> ( {"."} <ident> )* ( {":"} <ident> )? )
 
@@ -100,7 +93,7 @@ M.grammar = [[
 	) -> tableConstr
 	
 	varorexp <- (s(
-			<var> / ( "(" <exp> ")" )
+			<var> /  "(" <exp> ")" 
 	)s)
 
 	identthenargs <- (
@@ -332,16 +325,25 @@ function M.test:ifStmt(ut)
 	local res = self.parser:match([[ if a then local a elseif b then local b else local c end ]])
 	ut:equals(res.body[1].consequent.body[1].lhs[1].name, "a")
 	ut:equals(res.body[1].test.name, "a")
-	ut:equals(res.body[1].alternate.body[1].consequent.body[1].lhs[1].name, "b")
-	ut:equals(res.body[1].alternate.body[1].test.name, "b")
-	ut:equals(res.body[1].alternate.body[1].alternate.body[1].lhs[1].name, "c")
+	ut:equals(res.body[1].elseifBlock[1].body[1].lhs[1].name, "b")
+	ut:equals(res.body[1].elseifTest[1].name, "b")
+	ut:equals(res.body[1].elseBlock.body[1].lhs[1].name, "c")
 end
 function M.test:ifExpressionWithParanthesis(ut)
 	local res = self.parser:match([[
 	if (not true or true) and true then
-  	a =  1
+  	a = 1
 	end]])
 	ut:equals(res.body[1].consequent.body[1].lhs[1].name, "a")
+end
+function M.test:elseifExpWithParan(ut)
+	local res = self.parser:match([[
+	if false then
+		a = 2
+	elseif (not true or true) and true then
+  	a = 1
+	end]])
+	ut:equals(res.body[1].elseifBlock[1].body[1].lhs[1].name, "a")
 end
 
 function M.test:doStmt(ut)
