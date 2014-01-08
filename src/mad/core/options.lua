@@ -35,7 +35,7 @@ local function processArgs(arg)
 		if opt == "-utest" then
 			processUTest(arg)
 		elseif opt == "-interactive" then
-			print("WARNING: Interactive mode isn't implemented yet.")
+			M.interactive = true
 		elseif opt == "-dumpAst" then
 			M.dumpAst = true
 		elseif opt == "-dumpSource" then

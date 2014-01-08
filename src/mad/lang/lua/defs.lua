@@ -123,15 +123,15 @@ function defs.error(istream, pos)
 				break
 			end
 		end
-		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file ")
+		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file")
 	end
 end
 
 defs.lcomm = function(comm)
-
+	--return " "
 end
 defs.bcomm = function(comm)
-
+	--return " "
 end
 
 defs.tonumber = function(s)
@@ -139,16 +139,7 @@ defs.tonumber = function(s)
 	return tonumber(n)
 end
 defs.tostring = tostring
-function defs.quote(s)
-	return string.format("%q", s)
-end
 
-local strEscape = {
-	["\\r"] = "\r",
-	["\\n"] = "\n",
-	["\\t"] = "\t",
-	["\\\\"] = "\\",
-}
 function defs.string( op, str, eq )
 	return str, (eq or op)
 end
@@ -173,14 +164,28 @@ function defs.stmt(pos, node)
 	return node
 end
 
-function defs.ifStmt(test, cons, altn)
+function defs.ifStmt(test, cons, elseifTable, elseBlock)
 	if cons.type ~= "Block" then
 		cons = defs.blockStmt{ cons }
 	end
-	if altn and altn.type and altn.type ~= "Block" then
-		altn = defs.blockStmt{ altn }
+	local eifBlock, eifTest = {}, {}
+	if elseifTable then
+		if not elseifTable.type then
+			for _,v in ipairs(elseifTable) do
+				if v.type == "Block" then
+					eifBlock[#eifBlock+1] = v
+				else
+					eifTest[#eifTest+1] = v
+				end
+			end
+		else
+			elseBlock = elseifTable
+		end
 	end
-	return { type = "If", test = test, consequent = cons, alternate = altn, line = defs._line }
+	if elseBlock and elseBlock.type and elseBlock.type ~= "Block" then
+		elseBlock = defs.blockStmt{ altn }
+	end
+	return { type = "If", test = test, consequent = cons, elseBlock = elseBlock, elseifTest = eifTest, elseifBlock = eifBlock, line = defs._line }
 end
 function defs.whileStmt(test, body)
 	return { type = "Loop", kind = "While", test = test, body = body, line = defs._line }
@@ -258,8 +263,7 @@ end
 function defs.breakStmt()
 	return { type = "Break", line = defs._line }
 end
-function defs.exprStmt(pos, expr)
-	expr.pos = pos
+function defs.exprStmt(expr)
 	return expr
 end
 function defs.unaryExp(o, a)
