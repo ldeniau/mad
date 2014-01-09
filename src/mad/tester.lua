@@ -4,7 +4,7 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  tester -- run modules and services tests
+  mad.tester -- run modules and services tests
 
 SYNOPSIS
   local test = require "mad.tester"
@@ -12,13 +12,13 @@ SYNOPSIS
   test(mad.module.submodule)
 
 DESCRIPTION
-  The tester runs the test of modules and services and return statistics.
+  The tester runs the test of MAD modules and services and return statistics.
 
 RETURN VALUES
-  The test failed and passed
+  The number of the tests failed and passed
 
 SEE ALSO
-  None
+  mad.helper
 ]]
 
 -- require ---------------------------------------------------------------------
@@ -30,15 +30,13 @@ local module = require "mad.module"
 local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (_, a)
-  -- print("tester called with ", a, a and a._id or "unknown")
-
-  if module.get_module_name(a) and a.test and a.test.self then
+  if module.get_module_name(a) and a.test.self then
     return a.test.self()
   end
 
   local fun_name, mod = module.get_function_name(a)
 
-  if fun_name then
+  if fun_name and mod.test[fun_name] then
     return mod.test[fun_name]()
   end
 

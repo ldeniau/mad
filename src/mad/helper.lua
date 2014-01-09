@@ -1,10 +1,10 @@
-local M = { _id="helper", _author="LD", _year=2013, help={}, test={} }
+local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  helper -- display modules and services help on the console
+  mad.helper -- display modules and services help on the console
 
 SYNOPSIS
   local help = require "mad.helper"
@@ -12,13 +12,14 @@ SYNOPSIS
   help(mad.module.function)
 
 DESCRIPTION
-  The helper module displays the help of modules and services on the console.
+  The helper module displays the help of MAD modules and services on the
+  terminal.
 
 RETURN VALUES
-  The module.
+  True if an help was found, false otherwise.
 
 SEE ALSO
-  None
+  mad.tester
 ]]
 
 -- require ---------------------------------------------------------------------
@@ -30,21 +31,24 @@ SEE ALSO
 local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (_, a)
-  -- print("helper called with ", a, a and a._id or "unknown")
-
   if type(a) == "table" then
     local mod_name, mod = module.get_module_name(a)
-    if mod_name then print(mod.help.self) end
-    return
-  end
+    if mod_name and mod.help.self then
+      print(mod.help.self)
+      return true
+    end
 
-  if type(a) == "function" then
+  elseif type(a) == "function" then
     local fun_name, mod = module.get_function_name(a)
-    if fun_name then print(mod.help[fun_name]) end
-    return
-  end
+    if fun_name and mod.help[fun_name] then
+      print(mod.help[fun_name])
+      return true
+    end
 
-  print("No help found for ", a)
+  else
+    print("No help found for ", a)
+    return false
+  end
 end
 
 -- tests -----------------------------------------------------------------------

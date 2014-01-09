@@ -156,11 +156,11 @@ M.grammar = [[
 	captureEquals <- ({ '='* })
 	
 	local			<- s "local" <idsafe> s
-	function	<- s "function" <idsafe> s
+	function		<- s "function" <idsafe> s
 	nil				<- s "nil" <idsafe> s
 	true			<-   "true" <idsafe> 
 	false			<-   "false" <idsafe> 
-	return		<- s "return" <idsafe> s
+	return			<- s "return" <idsafe> s
 	end				<- s "end" <idsafe> s
 	break			<- s "break" <idsafe> s
 	not				<-   "not" <idsafe> 
@@ -171,10 +171,10 @@ M.grammar = [[
 	and				<-   "and" <idsafe>
 	or				<-   "or" <idsafe>
 	if				<- s "if" <idsafe> s
-	elseif		<- s "elseif" <idsafe> s
+	elseif			<- s "elseif" <idsafe> s
 	else			<- s "else" <idsafe> s
 	then			<- s "then" <idsafe> s
-	repeat		<- s "repeat" <idsafe> s
+	repeat			<- s "repeat" <idsafe> s
 	until			<- s "until" <idsafe> s
 	
 	sep <- (( <bcomment>? (<newline> / ";" / &"}" / <lcomment>) / ( !<newline> %s / <newline> ) <sep>? ))
@@ -201,9 +201,10 @@ M.grammar = [[
 	bcomment	<- ( {} ('--[' {:eq: '='* :} '[' <stringFromDoubleBracket> <close>)) -> bcomm
 	comment		<- ( <bcomment> / <lcomment> )
 	idsafe		<- ( !(%alnum / "_") )
-	s					<- ( (<comment> / ( !<newline> %s / <newline> ))* )
+	s			<- ( (<comment> / ( !<newline> %s / <newline> ))* )
 	digits		<- ( %digit (%digit / (&('_' %digit) '_') %digit)* )
-	word			<- ( (%alpha / "_") (%alnum / "_")* )
+	
+	word		<- ( (%alpha / "_") (%alnum / "_")* )
 
 	newline <- (%nl) -> newLine
 ]]

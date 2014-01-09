@@ -4,7 +4,7 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  object -- transform tables into general purpose objects
+  mad.object -- transform tables into general purpose objects
 
 SYNOPSIS
   local object = require "mad.object"
@@ -14,6 +14,7 @@ DESCRIPTION
   The module mad.object transforms any table into an object with inheritance of
   properties and callable semantic. Hence an object is a table that can be used
   as a constructor (a function), an object (a table) or a class (a metatable).
+  This transformation can also be applied to modules.
   
   The returned object has its class (its constructor) set as metatable and
   inherits all properties of its class autmatically.
@@ -34,30 +35,54 @@ EXAMPLES
   local myfoo = object { myflag = false } -- no id -> "none"
 
 SEE ALSO
-  None
+  mad.module, mad.element, mad.sequence, mad.beam
 ]]
+
+-- locals ---------------------------------------------------------------------
+
+local getmetatable, setmetatable = getmetatable, setmetatable
+
+-- methods ---------------------------------------------------------------------
+
+function M:super()
+  return getmetatable(self)
+end
+
+function M:isa(ref)
+  local obj = self;
+  while obj do
+    if obj == ref then return true end
+    obj = obj:super()
+  end
+  return false
+end
+
+function M:get(key)
+  local val = self[key];
+  return val or error "key " .. key .. "not found"
+end
 
 -- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (t, o)
-    if type(o) == "table" then
-      o._id = o._id or "none"
-      t.__index = t
-      t.__call  = mt.__call
-      return setmetatable(o, t)
-    end
-
-    if type(o) == "string" then
-      return function (so)
-        so._id = o
-        return mt.__call(t, so)
-      end
-    end
-
-    error ("invalid constructor argument, should be: ctor [id] table") 
+  if type(o) == "table" then
+    o._id = o._id or "none"
+    t.__index = t
+    t.__call  = mt.__call
+    return setmetatable(o, t)
   end
+
+  if type(o) == "string" then
+    return function (so)
+      so._id = o
+      return mt.__call(t, so)
+    end
+  end
+
+  error ("invalid constructor argument, should be: ctor [id] table") 
+end
 
 -- tests -----------------------------------------------------------------------
 

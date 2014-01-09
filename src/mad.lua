@@ -1,6 +1,6 @@
 local M = { help={}, test={}, _author="LD", _year=2013 }
 
--- module ---------------------------------------------------------------------
+-- module -------------------------------
 
 M.help.self = [[
 NAME
@@ -14,24 +14,25 @@ DESCRIPTION
   required to run MAD.
 
 RETURN VALUES
-  The table of modules and services.
+  The table of MAD modules and services.
 
 SEE ALSO
   None
 ]]
 
 -- require --------------------------------------------------------------------
+
 -- initialization
 M.initializer = require "mad.initializer"
 M.lambda = M.initializer.lambda
 
-
 -- core
---M.env					= require "mad.env"
---M.helper			= require "mad.helper"
---M.tester			= require "mad.tester"
---M.module			= require "mad.module"
---M.object   		= require "mad.object"
+-- M.init   = require "mad.init"
+M.env    = require "mad.env"
+M.helper = require "mad.helper"
+M.tester = require "mad.tester"
+M.module = require "mad.module"
+M.object = require "mad.object"
 
 -- layout
 -- M.beam     = require "mad.beam"
