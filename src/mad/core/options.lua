@@ -30,7 +30,6 @@ end
 local function processProfiler(arg)
 	local profilerArgs, output
 	if arg[1] and (#arg > 1 or string.find(arg[1], "%s")) then
-		local index = string.find(arg[1], "%-")
 		if not index or index ~= 1 then
 			profilerArgs = table.remove(arg,1)
 			if arg[1] and (#arg > 1 or string.find(arg[1], "%s")) then
