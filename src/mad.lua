@@ -21,12 +21,13 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
+
 -- initialization
 M.initializer = require "mad.initializer"
 M.lambda = M.initializer.lambda
 
-
 -- core
+-- M.init   = require "mad.init"
 M.env    = require "mad.env"
 M.helper = require "mad.helper"
 M.tester = require "mad.tester"
