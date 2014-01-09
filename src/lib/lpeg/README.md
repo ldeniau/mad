@@ -1,9 +1,9 @@
 ###Installing:  
   Run the makefile contained in the lpeg-0.12 folder in this directory.  
   To make on macosx, run  
-       make macosx  
+       make macosx [ LUADIR=/path/to/luajit/include ]
   and to make on linux, run  
-       make linux  
+       make linux  [ LUADIR=/path/to/luajit/include ]
   
 ###Using re:  
   To use re, require it using the wrapper in this directory.
