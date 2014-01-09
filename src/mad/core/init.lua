@@ -7,7 +7,7 @@ DESCRIPTION
 	
 ]]
 -- setting up path ------------------------------------------------------------
-package.cpath = ";;./lib/?/?.so;"..package.cpath
+package.cpath = ";;./lib/?/?.so;.\\lib\\?\\?.dll;"..package.cpath
 
 -- require --------------------------------------------------------------------
 
