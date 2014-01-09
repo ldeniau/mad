@@ -8,7 +8,7 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local re			=	require"mad.lang.re"
+local re			=	require"lib.lpeg.re"
 local grammar	=	require"mad.lang.lua.grammar".grammar
 local actions	=	require"mad.lang.lua.defs".defs
 -- metamethods ----------------------------------------------------------------

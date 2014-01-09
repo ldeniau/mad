@@ -8,7 +8,7 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local re = require"mad.lang.re"
+local re = require"lib.lpeg.re"
 
 -- metamethods ----------------------------------------------------------------
 
