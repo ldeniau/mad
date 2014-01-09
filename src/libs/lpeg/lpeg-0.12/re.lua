@@ -3,10 +3,7 @@
 -- imported functions and modules
 local tonumber, type, print, error = tonumber, type, print, error
 local setmetatable = setmetatable
-local pcp = package.cpath
-package.cpath = ";;./libs/lpeg/?.so;"
 local m = require"lpeg"
-package.cpath = pcp
 
 -- 'm' will be used to parse expressions, and 'mm' will be used to
 -- create expressions; that is, 're' runs on 'm', creating patterns
@@ -214,7 +211,7 @@ local function compile (p, defs)
 end
 
 local function match (s, p, i)
-	local cp = mem[p]
+  local cp = mem[p]
   if not cp then
     cp = compile(p)
     mem[p] = cp

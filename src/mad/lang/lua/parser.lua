@@ -3,15 +3,15 @@ local M = { help = {}, test = {} }
 M.help.self = [[
 NAME
 	lang.parser.lua.parser
-DESCRIPTION
-	
+
+DESCRIPTION	
 ]]
 
 -- require --------------------------------------------------------------------
 
-local re		=	require"libs.lpeg.re"
-local grammar	=	require"mad.lang.lua.grammar".grammar
-local actions	=	require"mad.lang.lua.defs".defs
+local re      = require"mad.lang.re"
+local grammar = require"mad.lang.lua.grammar".grammar
+local actions = require"mad.lang.lua.defs".defs
 
 -- metamethods ----------------------------------------------------------------
 
