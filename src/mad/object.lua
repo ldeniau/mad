@@ -38,15 +38,28 @@ SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
 ]]
 
+-- locals ---------------------------------------------------------------------
+
+local getmetatable, setmetatable = getmetatable, setmetatable
+
 -- methods ---------------------------------------------------------------------
+
+function M:super()
+  return getmetatable(self)
+end
 
 function M:isa(ref)
   local obj = self;
   while obj do
     if obj == ref then return true end
-    obj = getmetatable(obj)
+    obj = obj:super()
   end
   return false
+end
+
+function M:get(key)
+  local val = self[key];
+  return val or error "key " .. key .. "not found"
 end
 
 -- metamethods -----------------------------------------------------------------

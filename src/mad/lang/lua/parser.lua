@@ -8,10 +8,13 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local re			=	require"libs.lpeg.re"
+
+local re		=	require"libs.lpeg.re"
 local grammar	=	require"mad.lang.lua.grammar".grammar
 local actions	=	require"mad.lang.lua.defs".defs
+
 -- metamethods ----------------------------------------------------------------
+
 local mt = {}; setmetatable(M, mt)
 local call
 mt.__call = function (...)
@@ -48,8 +51,6 @@ function M.test:parse(ut)
 	ut:equals(#ast.body, 1)
 	ut:equals(ast.body[1].type, "Assignment")
 end
-
-
 
 -- end ------------------------------------------------------------------------
 return M
