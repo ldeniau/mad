@@ -27,6 +27,20 @@ local function processUTest(arg)
 	return arg
 end
 
+local function processProfiler(arg)
+	local profilerArgs, output
+	if arg[1] and (#arg > 1 or string.find(arg[1], "%s")) then
+		local index = string.find(arg[1], "%-")
+		if not index or index ~= 1 then
+			profilerArgs = table.remove(arg,1)
+			if arg[1] and (#arg > 1 or string.find(arg[1], "%s")) then
+				output = table.remove(arg,1)
+			end
+		end
+	end
+	require"jit.p".start(profilerArgs, output)
+end
+
 local function processArgs(arg)
 	local handlingArgs = true
 	local index = string.find(arg[1], "%-")
@@ -40,6 +54,9 @@ local function processArgs(arg)
 			M.dumpAst = true
 		elseif opt == "-dumpSource" then
 			M.dumpSource = true
+		elseif opt == "-profile" then
+			M.profile = true
+			processProfiler(arg)
 		else
 			error("Unhandled argument "..opt)
 		end
