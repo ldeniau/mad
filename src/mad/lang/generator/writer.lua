@@ -1,32 +1,65 @@
-local Writer = { }
-Writer.__index = Writer
+local M = { help = {}, test = {} }
+M.__index = M
 
-function Writer:new()
-	return setmetatable({
-		line	= 1,
-		level  = 0,
-		dent	= '	',
-		margin = '',
-		buffer = { },
-	}, self)
+function M:new()
+    return setmetatable({
+        line    = 1,
+        level  = 0,
+        dent    = '    ',
+        margin = '',
+        buffer = { },
+    }, self)
 end
-function Writer:indent()
-	self.level  = self.level + 1
-	self.margin = string.rep(self.dent, self.level)
+function M:indent()
+    self.level  = self.level + 1
+    self.margin = string.rep(self.dent, self.level)
 end
-function Writer:undent()
-	self.level  = self.level - 1
-	self.margin = string.rep(self.dent, self.level)
+function M:undent()
+    self.level  = self.level - 1
+    self.margin = string.rep(self.dent, self.level)
 end
-function Writer:writeln()
-	self.buffer[#self.buffer + 1] = "\n"..self.margin
-	self.line = self.line + 1
+function M:writeln()
+    self.buffer[#self.buffer + 1] = "\n"..self.margin
+    self.line = self.line + 1
 end
-function Writer:write(str)
-	self.buffer[#self.buffer + 1] = str
+function M:write(str)
+    self.buffer[#self.buffer + 1] = str
 end
-function Writer:__tostring()
-	return table.concat(self.buffer)
+function M:__tostring()
+    return table.concat(self.buffer)
 end
 
-return Writer
+-- test -----------------------------------------------------------------------
+function M.test:setUp()
+    self.writer = M:new()
+end
+
+function M.test:tearDown()
+    self.writer = nil
+end
+
+function M.test:new(ut)
+    local new = M:new()
+    ut:equals(new.line, 1)
+    ut:equals(new.level, 0)
+    ut:equals(new.dent, " ")
+    ut:equals(new.margin, '')
+    ut:equals(new.buffer, {})
+end
+
+function M.test:indent(ut)
+end
+
+function M.test:undent(ut)
+end
+
+function M.test:writeln(ut)
+end
+
+function M.test:write(ut)
+end
+
+function M.test:__tostring(ut)
+end
+
+return M
