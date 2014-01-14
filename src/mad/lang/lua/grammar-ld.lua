@@ -24,59 +24,61 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- block
+    chunk       <- block s(!./''=>error)
     block       <- stmt* retstmt?
 
 -- statements
 
-    stmt        <- ';' / label / break / goto name / do_block / fundef / funcall
-                    / varlist '=' explist
-                    / local namelist ('=' explist)?
+    stmt        <- s(
+                      ';' / label / break / goto name / do_block / fundef / funcall
+                    / varlist s'=' explist
+                    / local namelist (s'=' explist)?
                     / while exp do_block
                     / repeat block until exp
                     / if exp then block (elseif exp then block)* (else block)? end
-                    / for name '=' exp ',' exp (',' exp)? do_block
+                    / for name s'=' exp s',' exp (s',' exp)? do_block
                     / for namelist in explist do_block
+                    )
 
     do_block    <- do block end
 
 -- extra stmts
 
-    label       <- '::' name '::'
-    retstmt     <- return explist? ';'?
+    label       <- s'::' name s'::'
+    retstmt     <- return explist? s';'?
 
 -- expressions
 
---*    exp         <- nil / false / true / number / string / '...' / 
+--*    exp         <- nil / false / true / number / string / s'...' / 
 --                   fundef_a / prefixexp / tablector /
 --                   exp binop exp / unop exp
 
     exp         <- expval exp_r / unop exp exp_r
-    exp_r       <- !. / binop exp exp_r
-    expval      <- nil / false / true / number / string / '...' / 
-                   fundef_a / prefixexp / tablector
+    exp_r       <- s( binop exp exp_r )?
+    expval      <- s( nil / false / true / number / string / '...' / 
+                   fundef_a / prefixexp / tablector )
 
---* prefixexp   <- var / funcall / '(' exp ')'
-    prefixexp   <- name prefixexp_r / '(' exp ')' prefixexp_r
+--* prefixexp   <- var / funcall / s'(' exp s')'
+    prefixexp   <- name prefixexp_r / s'(' exp s')' prefixexp_r
 
-    explist     <- exp (',' exp)*
+    explist     <- exp (s',' exp)*
 
-    index       <- '[' exp ']' / '.' name
-    call        <- args / ':' name args
+    index       <- s'[' exp s']' / s'.' name
+    call        <- args / s':' name args
     suffixexp   <- index / call
-    prefixexp_r <- !. / suffixexp prefixexp_r
+    prefixexp_r <- s( suffixexp prefixexp_r )?
 
 -- variables
 
---* var         <- name / prefixexp '[' exp ']' / prefixexp '.' name
+--* var         <- name / prefixexp s'[' exp s']' / prefixexp s'.' name
     var         <- name / prefixexp index
-    varlist     <- var (',' var)*
+    varlist     <- var (s',' var)*
 
 -- function invocations
 
---* funcall     <- prefixexp args / prefixexp ':' name args
+--* funcall     <- prefixexp args / prefixexp s':' name args
     funcall     <- prefixexp call
-    args        <- '(' explist? ')' / tablector / string
+    args        <- s'(' explist? s')' / tablector / string
 
 -- function definitions
 
@@ -85,28 +87,30 @@ M.grammar = [=[
     fundef_n    <- function funname funbody     -- named
     fundef_l    <- local function name funbody  -- local named
 
-    funname     <- name ('.' name)* (':' name)?
-    funbody     <- '(' parlist? ')' block end
-    parlist     <- namelist (',' '...')? / '...'
+    funname     <- name (s'.' name)* (s':' name)?
+    funbody     <- s'(' parlist? s')' block end
+    parlist     <- namelist (s',' s'...')? / s'...'
 
 -- table definitions
 
-    tablector   <- '{' fieldlist? '}'
+    tablector   <- s'{' fieldlist? s'}'
     fieldlist   <- field (fieldsep field)* fieldsep?
-    field       <- '[' exp ']' '=' exp / name '=' exp / exp
-    fieldsep    <- ',' / ';'
+    field       <- s'[' exp s']' s'=' exp / name s'=' exp / exp
+    fieldsep    <- s',' / s';'
 
 -- operators
 
-    binop       <- '+' / '-' / '*' / '/' / '^' / '%' / '..' / '<=' / '<' / '>=' / '>' / '==' / '~=' / and / or
-    unop        <- '-' / not / '#'
+    binop       <- s( '+' / '-' / '*' / '/' / '^' / '%' / '..' / '<=' / '<' / '>=' / '>' / '==' / '~=' / and / or )
+    unop        <- s( '-' / not / '#' )
+
+-- lexems
+
+    name        <- s !keyword ident
+    namelist    <- name (s',' name)*
+    string      <- s( sstring / lstring )
+    number      <- s( decnum / hexnum )
 
 -- basic lexems
-
-    name        <- !keyword ident
-    namelist    <- name (',' name)*
-
-    string      <- sstring / lstring
 
     sstring     <- {:qt: ['"] :} ssclose
     ssclose     <- =qt / '\' =qt ssclose / ch ssclose
@@ -114,10 +118,6 @@ M.grammar = [=[
     lstring     <- '[' {:eq: '='* :} '[' lsclose
     lsclose     <- ']' =eq ']' / any lsclose
 
-     comment    <- '--' ch* nl
-    lcomment    <- '--' lstring
-
-    number      <- decnum / hexnum
     decnum      <-      num ('.' num)? ([eE] sign? num)?
     hexnum      <- '0x' hex ('.' hex)? ([pP] sign? hex)?
 
@@ -127,35 +127,39 @@ M.grammar = [=[
     num         <- [0-9]+
     sign        <- [-+]
     any         <- ch / nl
-    s           <- (ws / nl)*
+    s           <- (ws / nl / cmt)*
 
 -- keywords
 
     keyword     <- and / break / do / else / elseif / end / false / for / function / goto / if / in / local / nil / not /
                    or / repeat / return / then / true / until / while
 
-    and         <- 'and'      e
-    break       <- 'break'    e
-    do          <- 'do'       e
-    else        <- 'else'     e
-    elseif      <- 'elseif'   e
-    end         <- 'end'      e
-    false       <- 'false'    e 
-    for         <- 'for'      e
-    function    <- 'function' e
-    goto        <- 'goto'     e
-    if          <- 'if'       e
-    in          <- 'in'       e
-    local       <- 'local'    e
-    nil         <- 'nil'      e
-    not         <- 'not'      e 
-    or          <- 'or'       e
-    repeat      <- 'repeat'   e
-    return      <- 'return'   e
-    then        <- 'then'     e
-    true        <- 'true'     e
-    until       <- 'until'    e
-    while       <- 'while'    e
+    and         <- s'and'      e
+    break       <- s'break'    e
+    do          <- s'do'       e
+    else        <- s'else'     e
+    elseif      <- s'elseif'   e
+    end         <- s'end'      e
+    false       <- s'false'    e 
+    for         <- s'for'      e
+    function    <- s'function' e
+    goto        <- s'goto'     e
+    if          <- s'if'       e
+    in          <- s'in'       e
+    local       <- s'local'    e
+    nil         <- s'nil'      e
+    not         <- s'not'      e 
+    or          <- s'or'       e
+    repeat      <- s'repeat'   e
+    return      <- s'return'   e
+    then        <- s'then'     e
+    true        <- s'true'     e
+    until       <- s'until'    e
+    while       <- s'while'    e
+    
+-- comments
+
+    cmt    <- '--' ( lstring / ch* nl )
 
 ]=]
 -- escape characters, must be outside long strings
