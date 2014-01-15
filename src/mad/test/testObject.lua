@@ -20,10 +20,11 @@ end
 -- @param     ...         parameters to function onder test
 -- @usage                     succeeds(f,1,2) => f(1,2) should not generate an error
 -----------------------------------------------------------------------------
-local function succeeds(ut, f,...)
+local function succeeds(ut, f, ...)
     ut.startedCounter = ut.startedCounter+1
-    if pcall(f,...) then ut.succeedCounter = ut.succeedCounter+1 return end
-    error("Error generated",2)
+    local status, ret = pcall(f,...)
+    if status then ut.succeedCounter = ut.succeedCounter+1 return ret end
+    error("Error generated "..ret,2)
 end
 
 -----------------------------------------------------------------------------
