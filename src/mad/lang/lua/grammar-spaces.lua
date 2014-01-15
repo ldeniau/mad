@@ -259,6 +259,24 @@ function M.test:var(ut)
     ut:fails(parser.match, parser, "(a)")
 end
 
+function M.test:paranexp(ut)
+    local grammar = "rule <- paranexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "(1)")
+    ut:succeeds(parser.match, parser, "(few)")
+    ut:fails(parser.match, parser, "h(a)")
+end
+
+function M.test:call(ut)
+    local grammar = "rule <- call? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, ":a()")
+    ut:succeeds(parser.match, parser, "()")
+    ut:succeeds(parser.match, parser, "(a,2,g)")
+    ut:succeeds(parser.match, parser, "''")
+    ut:fails(parser.match, parser, "h(a)")
+end
+
 function M.test:args(ut)
     local grammar = "rule <- args? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
