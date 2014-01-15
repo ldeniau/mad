@@ -58,13 +58,13 @@ M.grammar = [=[
     expval      <- nil / false / true / number / string / s'...' / 
                    fundef_a / prefixexp / tablector
 
-    prefixexp   <- s'(' exp s')' / name --TODO ONLY HERE TEMPORARILY
+    prefixexp   <- funcall / var / paranexp
 --* prefixexp   <- var / funcall / s'(' exp s')'
 --    prefixexp   <- name prefixexp_r / s'(' exp s')' prefixexp_r
 
     explist     <- exp (s',' exp)*
-
-    index       <- s'[' exp s']' / s'.' name
+    
+    paranexp    <- s'(' exp s')'
     
 --    suffixexp   <- index / call
 --    prefixexp_r <- s( suffixexp prefixexp_r )?
@@ -72,8 +72,9 @@ M.grammar = [=[
 -- variables
 
     var         <- varprefix varsuffix*
-    varprefix   <- name / s'(' exp s')' varsuffix
+    varprefix   <- name / paranexp varsuffix
     varsuffix   <- call* index
+    index       <- s'[' exp s']' / s'.' name
 
     varlist     <- var (s',' var)*
     
@@ -83,7 +84,7 @@ M.grammar = [=[
 -- function invocations
 
     funcall     <- callprefix call+
-    callprefix  <- var / s'(' exp s')'
+    callprefix  <- var / paranexp
     call        <- ( s':' name )? args
     args        <- s'(' explist? s')' / tablector / string
 
@@ -190,6 +191,34 @@ function M.test:tearDown()
     self.defs = nil
 end
 
+function M.test:prefixexp(ut)
+    local grammar = "rule <- prefixexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "a()")
+    ut:succeeds(parser.match, parser, "a[1]()")
+    ut:succeeds(parser.match, parser, "a[a]()")
+    ut:succeeds(parser.match, parser, "a.a()")
+    ut:succeeds(parser.match, parser, "a['a']()")
+    ut:succeeds(parser.match, parser, "a.a:a()")
+    ut:succeeds(parser.match, parser, "a[1][1]()")
+    ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
+    ut:succeeds(parser.match, parser, "a().a()")
+    ut:succeeds(parser.match, parser, "a(a)().a()")
+    ut:succeeds(parser.match, parser, "a()():a()()")
+    ut:succeeds(parser.match, parser, "(a).a()")
+    ut:succeeds(parser.match, parser, "(a)()")
+    ut:succeeds(parser.match, parser, "a")
+    ut:succeeds(parser.match, parser, "a[1]")
+    ut:succeeds(parser.match, parser, "a[a]")
+    ut:succeeds(parser.match, parser, "a.a")
+    ut:succeeds(parser.match, parser, "a['a']")
+    ut:succeeds(parser.match, parser, "a.a.a")
+    ut:succeeds(parser.match, parser, "a[1][1]")
+    ut:succeeds(parser.match, parser, "a.a[1].a[1]")
+    ut:succeeds(parser.match, parser, "a().a")
+    ut:succeeds(parser.match, parser, "a(a)().a")
+    ut:succeeds(parser.match, parser, "(a).a")
+end
 
 function M.test:funcall(ut)
     local grammar = "rule <- funcall? s (!./''=>error)\n" .. M.grammar
@@ -199,11 +228,11 @@ function M.test:funcall(ut)
     ut:succeeds(parser.match, parser, "a[a]()")
     ut:succeeds(parser.match, parser, "a.a()")
     ut:succeeds(parser.match, parser, "a['a']()")
-    ut:succeeds(parser.match, parser, "a.a.a()")
+    ut:succeeds(parser.match, parser, "a.a:a()")
     ut:succeeds(parser.match, parser, "a[1][1]()")
     ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
     ut:succeeds(parser.match, parser, "a().a()")
-    ut:succeeds(parser.match, parser, "a(a)().a()")
+    ut:succeeds(parser.match, parser, "a(a)():a()")
     ut:succeeds(parser.match, parser, "a()().a()()")
     ut:succeeds(parser.match, parser, "(a).a()")
     ut:succeeds(parser.match, parser, "(a)()")
