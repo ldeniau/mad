@@ -54,9 +54,9 @@ M.grammar = [=[
 --                   exp binop exp / unop exp
 
     exp         <- expval exp_r / unop exp exp_r
-    exp_r       <- s( binop exp exp_r )?
-    expval      <- s( nil / false / true / number / string / '...' / 
-                   fundef_a / prefixexp / tablector )
+    exp_r       <- ( binop exp exp_r )?
+    expval      <- nil / false / true / number / string / s'...' / 
+                   fundef_a / prefixexp / tablector
 
 --* prefixexp   <- var / funcall / s'(' exp s')'
     prefixexp   <- name prefixexp_r / s'(' exp s')' prefixexp_r
@@ -71,13 +71,13 @@ M.grammar = [=[
 -- variables
 
 --* var         <- name / prefixexp s'[' exp s']' / prefixexp s'.' name
-    var         <- name / prefixexp index
+    var         <- prefixexp index / name --TODO index will always be eaten by suffixexp in prefixexp. pref index/name
     varlist     <- var (s',' var)*
 
 -- function invocations
 
 --* funcall     <- prefixexp args / prefixexp s':' name args
-    funcall     <- prefixexp call
+    funcall     <- prefixexp call --TODO remove call? Won't it always be eaten by suffixexp? pref call
     args        <- s'(' explist? s')' / tablector / string
 
 -- function definitions
