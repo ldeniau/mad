@@ -33,7 +33,7 @@ function UnitResult:displayPassOrFail()
     if self.testsSucceeded == self.testsStarted and self.testsSucceeded > 0 then
         io.stdout:write(": PASS\n")
     else
-        io.stdout:write(": FAILED\n")
+        io.stdout:write(": FAIL\n")
     end
 end
 
