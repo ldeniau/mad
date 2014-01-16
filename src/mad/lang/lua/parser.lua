@@ -10,8 +10,6 @@ DESCRIPTION
 -- require --------------------------------------------------------------------
 
 local re      = require"lib.lpeg.re"
-local lpeg    = require"lib.lpeg"
-lpeg.setmaxstack(1024)
 local grammar = require"mad.lang.lua.grammar-spaces".grammar
 local actions = require"mad.lang.lua.defs".defs
 
