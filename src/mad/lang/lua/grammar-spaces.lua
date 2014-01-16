@@ -59,23 +59,26 @@ M.grammar = [=[
 --                   fundef_a / prefixexp / tablector
 
     exp         <- orexp
-    orexp       <- andexp ( or andexp )*
-    andexp      <- boolexp ( and boolexp )*
-    boolexp     <- concatexp ( boolop concatexp )*
-    concatexp   <- sumexp ( s'..' sumexp )*
-    sumexp      <- prodexp ( sumop prodexp )*
-    prodexp     <- unexp ( prodop unexp )*
-    unexp       <- unop unexp / expexp
-    expexp      <- valexp s'^' expexp / valexp
-    --orexp       <- orexp or andexp / andexp
-    --andexp      <- andexp and boolexp / boolexp
-    --boolexp     <- boolexp boolop concatexp / concatexp
-    --concatexp   <- sumexp s'..' concatexp / sumexp
-    --sumexp      <- sumexp sumop prodexp / prodexp
-    --prodexp     <- prodexp prodop unexp / unexp
-    --unexp       <- unop unexp / expexp
-    --expexp      <- valexp s'^' expexp / valexp
-    valexp      <- nil / false / true / number / string / s'...' / fundef_a / prefixexp / tablector
+    orexp       <- andexp    ( or      andexp    )*
+    andexp      <- boolexp   ( and     boolexp   )*
+    boolexp     <- concatexp ( boolop  concatexp )*
+    concatexp   <- sumexp    ( s'..'   sumexp    )*
+    sumexp      <- prodexp   ( sumop   prodexp   )*
+    prodexp     <- unexp     ( prodop  unexp     )*
+    unexp       <-             unop    unexp     / powexp
+    powexp      <- valexp      s'^'    powexp    / valexp
+    valexp      <- nil / false / true / number / string / 
+                   s'...' / fundef_a / prefixexp / tablector
+    
+    --orexp       <- orexp     or      andexp    / andexp
+    --andexp      <- andexp    and     boolexp   / boolexp
+    --boolexp     <- boolexp   boolop  concatexp / concatexp
+    --concatexp   <- sumexp    s'..'   concatexp / sumexp
+    --sumexp      <- sumexp    sumop   prodexp   / prodexp
+    --prodexp     <- prodexp   prodop  unexp     / unexp
+    --unexp       <-           unop    unexp     / powexp
+    --powexp      <- valexp    s'^'    powexp    / valexp
+    --valexp      <- nil / false / true / number / string / s'...' / fundef_a / prefixexp / tablector
 
 
     prefixexp   <- funcall / var / paranexp
