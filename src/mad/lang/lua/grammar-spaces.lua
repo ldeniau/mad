@@ -62,13 +62,13 @@ M.grammar = [=[
     orexp       <- andexp    ( or      andexp    )*
     andexp      <- boolexp   ( and     boolexp   )*
     boolexp     <- concatexp ( boolop  concatexp )*
-    concatexp   <- sumexp    ( s'..'   sumexp    )*
+    concatexp   <- sumexp    ( catop   sumexp    )*
     sumexp      <- prodexp   ( sumop   prodexp   )*
     prodexp     <- unexp     ( prodop  unexp     )*
     unexp       <-             unop    unexp     / powexp
-    powexp      <- valexp      s'^'    powexp    / valexp
+    powexp      <- valexp      powop   powexp    / valexp
     valexp      <- nil / false / true / number / string / 
-                   s'...' / fundef_a / prefixexp / tablector
+                   ellipsis / fundef_a / prefixexp / tablector
     
     --orexp       <- orexp     or      andexp    / andexp
     --andexp      <- andexp    and     boolexp   / boolexp
@@ -78,7 +78,7 @@ M.grammar = [=[
     --prodexp     <- prodexp   prodop  unexp     / unexp
     --unexp       <-           unop    unexp     / powexp
     --powexp      <- valexp    s'^'    powexp    / valexp
-    --valexp      <- nil / false / true / number / string / s'...' / fundef_a / prefixexp / tablector
+    --valexp      <- nil / false / true / number / string / ellipsis / tablector / fundef_a / prefixexp
 
 
     prefixexp   <- funcall / var / paranexp
@@ -123,7 +123,9 @@ M.grammar = [=[
 
     funname     <- name (s'.' name)* (s':' name)?
     funbody     <- s'(' parlist? s')' block end
-    parlist     <- namelist (s',' s'...')? / s'...'
+    parlist     <- namelist (s',' ellipsis)? / ellipsis
+
+------------------------------------------------------------------------------------------
 
 -- table definitions
 
@@ -132,23 +134,36 @@ M.grammar = [=[
     field       <- s'[' exp s']' s'=' exp / name s'=' exp / exp
     fieldsep    <- s',' / s';'
 
+-- expressions
+
+    exp         <- orexp 
+    orexp       <- andexp    ( or      andexp  )*
+    andexp      <- boolexp   ( and     boolexp )*
+    boolexp     <- catexp    ( boolop  catexp  )*
+    concatexp   <- sumexp    ( catop   sumexp  )*
+    sumexp      <- prodexp   ( sumop   prodexp )*
+    prodexp     <- powexp    ( prodop  powexp  )*
+    unexp       <-             unop    unexp   / powexp
+    powexp      <- valexp    ( powop   valexp  )*
+    valexp      <- nil / false / true / number / string / ellipsis / tablector / grpexp
+    grpexp      <- s'(' exp ')'
+
 -- operators
 
     boolop      <- s( '<=' / '<' / '>=' / '>' / '==' / '~=' )
+    catop       <- s  '..'
     sumop       <- s( '+' / '-' )
     prodop      <- s( '*' / '/' / '%' )
-    unop        <- ( not / s'#' / s'-' )
+    unop        <- s( not / '#' / '-' )
+    powop       <- s  '^'
     
-    binop <- s( "+" / "-" / "*" / "/" / "^" / "%" / ".." / 
-		 "<=" / "<" / ">=" / ">" / "==" / "~=" / 
-		 and / or )
-
 -- lexems
 
     name        <- s !keyword ident
     namelist    <- name (s',' name)*
     string      <- s( sstring / lstring )
     number      <- s( hexnum / decnum )
+    ellipsis    <- s'...'
 
 -- basic lexems
 
