@@ -10,8 +10,11 @@ DESCRIPTION
 -- require --------------------------------------------------------------------
 
 local re      = require"lib.lpeg.re"
-local grammar = require"mad.lang.lua.grammar".grammar
+local lpeg    = require"lib.lpeg"
+lpeg.setmaxstack(1024)
+local grammar = require"mad.lang.lua.grammar-spaces".grammar
 local actions = require"mad.lang.lua.defs".defs
+
 
 -- metamethods ----------------------------------------------------------------
 
@@ -26,6 +29,7 @@ end
 local parse = function (self, inputStream, fileName, pos)
 	local position = pos or 1
 	local ast = self.grammar:match(inputStream, position)
+	print"MATCHED"
 	return ast
 end
 
@@ -33,6 +37,7 @@ call = function (_, ...)
 	local self = {}
 	self.parse = parse
 	self.grammar = re.compile(grammar, actions)
+	print"COMPILED"
 	return self
 end
 
