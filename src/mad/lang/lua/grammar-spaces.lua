@@ -53,10 +53,30 @@ M.grammar = [=[
 --                   fundef_a / prefixexp / tablector /
 --                   exp binop exp / unop exp
 
-    exp         <- expval exp_r / unop exp exp_r
-    exp_r       <- ( binop exp exp_r )?
-    expval      <- nil / false / true / number / string / s'...' / 
-                   fundef_a / prefixexp / tablector
+--    exp         <- expval exp_r / unop exp exp_r
+--    exp_r       <- ( binop exp exp_r )?
+--    expval      <- nil / false / true / number / string / s'...' / 
+--                   fundef_a / prefixexp / tablector
+
+    exp         <- orexp
+    orexp       <- andexp ( or andexp )*
+    andexp      <- boolexp ( and boolexp )*
+    boolexp     <- concatexp ( boolop concatexp )*
+    concatexp   <- sumexp ( s'..' sumexp )*
+    sumexp      <- prodexp ( sumop prodexp )*
+    prodexp     <- unexp ( prodop unexp )*
+    unexp       <- unop unexp / expexp
+    expexp      <- valexp s'^' expexp / valexp
+    --orexp       <- orexp or andexp / andexp
+    --andexp      <- andexp and boolexp / boolexp
+    --boolexp     <- boolexp boolop concatexp / concatexp
+    --concatexp   <- sumexp s'..' concatexp / sumexp
+    --sumexp      <- sumexp sumop prodexp / prodexp
+    --prodexp     <- prodexp prodop unexp / unexp
+    --unexp       <- unop unexp / expexp
+    --expexp      <- valexp s'^' expexp / valexp
+    valexp      <- nil / false / true / number / string / s'...' / fundef_a / prefixexp / tablector
+
 
     prefixexp   <- funcall / var / paranexp
 --* prefixexp   <- var / funcall / s'(' exp s')'
@@ -111,8 +131,14 @@ M.grammar = [=[
 
 -- operators
 
-    binop       <- s( '+' / '-' / '*' / '/' / '^' / '%' / '..' / '<=' / '<' / '>=' / '>' / '==' / '~=' / and / or )
-    unop        <- s( '-' / not / '#' )
+    boolop      <- s( '<=' / '<' / '>=' / '>' / '==' / '~=' )
+    sumop       <- s( '+' / '-' )
+    prodop      <- s( '*' / '/' / '%' )
+    unop        <- ( not / s'#' / s'-' )
+    
+    binop <- s( "+" / "-" / "*" / "/" / "^" / "%" / ".." / 
+		 "<=" / "<" / ">=" / ">" / "==" / "~=" / 
+		 and / or )
 
 -- lexems
 
