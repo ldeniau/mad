@@ -30,8 +30,8 @@ M.grammar = [=[
 -- statements
 
     stmt        <- s(
-                      ';' / label / break / goto name / do_block / fundef / funcall
-                    / varlist s'=' explist
+                      ';' / label / break / goto name / do_block / fundef
+                    / varlist s'=' explist / funstmt
                     / local namelist (s'=' explist)?
                     / while exp do_block
                     / repeat block until exp
@@ -49,72 +49,29 @@ M.grammar = [=[
 
 -- expressions
 
---*    exp         <- nil / false / true / number / string / s'...' / 
---                   fundef_a / prefixexp / tablector /
---                   exp binop exp / unop exp
-
---    exp         <- expval exp_r / unop exp exp_r
---    exp_r       <- ( binop exp exp_r )?
---    expval      <- nil / false / true / number / string / s'...' / 
---                   fundef_a / prefixexp / tablector
-
     exp         <- orexp
-    orexp       <- andexp    ( or      andexp    )*
-    andexp      <- boolexp   ( and     boolexp   )*
-    boolexp     <- concatexp ( boolop  concatexp )*
-    concatexp   <- sumexp    ( catop   sumexp    )*
-    sumexp      <- prodexp   ( sumop   prodexp   )*
-    prodexp     <- unexp     ( prodop  unexp     )*
-    unexp       <-             unop    unexp     / powexp
-    powexp      <- valexp      powop   powexp    / valexp
-    valexp      <- nil / false / true / number / string / 
-                   ellipsis / fundef_a / prefixexp / tablector
+    orexp       <- andexp    ( or      andexp  )*
+    andexp      <- boolexp   ( and     boolexp )*
+    boolexp     <- catexp    ( boolop  catexp  )*
+    catexp      <- sumexp    ( catop   sumexp  )*
+    sumexp      <- prodexp   ( sumop   prodexp )*
+    prodexp     <- unexp     ( prodop  unexp   )*
+    unexp       <-             unop*   powexp
+    powexp      <- valexp    ( powop   valexp  )*
     
-    --orexp       <- orexp     or      andexp    / andexp
-    --andexp      <- andexp    and     boolexp   / boolexp
-    --boolexp     <- boolexp   boolop  concatexp / concatexp
-    --concatexp   <- sumexp    s'..'   concatexp / sumexp
-    --sumexp      <- sumexp    sumop   prodexp   / prodexp
-    --prodexp     <- prodexp   prodop  unexp     / unexp
-    --unexp       <-           unop    unexp     / powexp
-    --powexp      <- valexp    s'^'    powexp    / valexp
-    --valexp      <- nil / false / true / number / string / ellipsis / tablector / fundef_a / prefixexp
-
-
-    prefixexp   <- funcall / var / paranexp
---* prefixexp   <- var / funcall / s'(' exp s')'
---    prefixexp   <- name prefixexp_r / s'(' exp s')' prefixexp_r
-
+    valexp      <- literal / tabledef / fundef_a / varexp
+    varexp      <- (name   / grpexp) (tableidx / funcall)*
+    grpexp      <- s'(' exp s')'
+    
     explist     <- exp (s',' exp)*
-    
-    paranexp    <- s'(' exp s')'
-    
---    suffixexp   <- index / call
---    prefixexp_r <- s( suffixexp prefixexp_r )?
 
--- variables
+-- variable definitions (only on lhs of '=')
 
-    var         <- varprefix varsuffix*
-    varprefix   <- name / paranexp varsuffix
-    varsuffix   <- call* index
-    index       <- s'[' exp s']' / s'.' name
+    vardef      <- (name / grpexp varsfx) varsfx*
+    varsfx      <- funcall* tableidx
+    varlist     <- vardef (s',' vardef)*
 
-    varlist     <- var (s',' var)*
-    
---* var         <- name / prefixexp s'[' exp s']' / prefixexp s'.' name
---    var         <- prefixexp index / name --TODO index will always be eaten by suffixexp in prefixexp. pref index/name
-
--- function invocations
-
-    funcall     <- callprefix call+
-    callprefix  <- var / paranexp
-    call        <- ( s':' name )? args
-    args        <- s'(' explist? s')' / tablector / string
-
---* funcall     <- prefixexp args / prefixexp s':' name args
---    funcall     <- prefixexp call --TODO remove call? Won't it always be eaten by suffixexp? pref call
-
--- function definitions
+-- function definitions & call
 
     fundef      <- fundef_n / fundef_l
     fundef_a    <- function funbody             -- anonymous
@@ -122,31 +79,22 @@ M.grammar = [=[
     fundef_l    <- local function name funbody  -- local named
 
     funname     <- name (s'.' name)* (s':' name)?
-    funbody     <- s'(' parlist? s')' block end
-    parlist     <- namelist (s',' ellipsis)? / ellipsis
+    funbody     <- s'(' funparm? s')' block end
+    funparm     <- namelist (s',' ellipsis)? / ellipsis
 
-------------------------------------------------------------------------------------------
+    funstmt     <- (name / grpexp) varsfx* funcall+
 
--- table definitions
+    funcall     <- ( s':' name )? funargs
+    funargs     <- s'(' explist? s')' / tabledef / string
 
-    tablector   <- s'{' fieldlist? s'}'
+-- table definitions & access
+
+    tabledef    <- s'{' fieldlist? s'}'
     fieldlist   <- field (fieldsep field)* fieldsep?
     field       <- s'[' exp s']' s'=' exp / name s'=' exp / exp
     fieldsep    <- s',' / s';'
-
--- expressions
-
-    exp         <- orexp 
-    orexp       <- andexp    ( or      andexp  )*
-    andexp      <- boolexp   ( and     boolexp )*
-    boolexp     <- catexp    ( boolop  catexp  )*
-    concatexp   <- sumexp    ( catop   sumexp  )*
-    sumexp      <- prodexp   ( sumop   prodexp )*
-    prodexp     <- powexp    ( prodop  powexp  )*
-    unexp       <-             unop    unexp   / powexp
-    powexp      <- valexp    ( powop   valexp  )*
-    valexp      <- nil / false / true / number / string / ellipsis / tablector / grpexp
-    grpexp      <- s'(' exp ')'
+    
+    tableidx    <- s'[' exp s']' / s'.' name
 
 -- operators
 
@@ -159,6 +107,7 @@ M.grammar = [=[
     
 -- lexems
 
+    literal     <- nil / false / true / number / string / ellipsis
     name        <- s !keyword ident
     namelist    <- name (s',' name)*
     string      <- s( sstring / lstring )
@@ -235,8 +184,113 @@ function M.test:tearDown()
     self.defs = nil
 end
 
-function M.test:prefixexp(ut)
-    local grammar = "rule <- prefixexp? s (!./''=>error)\n" .. M.grammar
+function M.test:block(ut)
+    local grammar = "rule <- block? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, ";;;;;")
+    ut:succeeds(parser.match, parser, "return 1")
+    ut:succeeds(parser.match, parser, "    ; ; ;;return 1")
+    ut:fails(parser.match, parser, ";;return 1;;;;")
+end
+
+function M.test:stmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, ";")
+    ut:succeeds(parser.match, parser, "::fe::")
+    ut:succeeds(parser.match, parser, "break")
+    ut:succeeds(parser.match, parser, "goto few")
+    ut:succeeds(parser.match, parser, "do ; end")
+    ut:succeeds(parser.match, parser, "function a () return end")
+    ut:succeeds(parser.match, parser, "a, b = 1, 2")
+    ut:succeeds(parser.match, parser, "while true do ; end")
+    ut:succeeds(parser.match, parser, "repeat ; until false")
+    ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
+    ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
+    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+end
+
+function M.test:semicolon(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, ";")
+end
+
+function M.test:label(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "::fe::")
+end
+
+function M.test:breakstmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "break")
+end
+
+function M.test:gotostmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "goto few")
+end
+
+function M.test:dostmt(ut)
+    local grammar = "rule <- do_block? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "do ; end")
+end
+
+function M.test:fundef(ut)
+    local grammar = "rule <- fundef? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "function a () return end")
+end
+
+function M.test:varlistassign(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "a, b = 1, 2")
+end
+
+function M.test:whilestmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "while true do ; end")
+end
+
+function M.test:repeatstmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "repeat ; until false")
+end
+
+function M.test:ifstmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
+    ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
+    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; end")
+    ut:succeeds(parser.match, parser, "if false then ; ; else ; end")
+    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
+    ut:succeeds(parser.match, parser, "if false then ;end")
+end
+
+function M.test:forstmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
+end
+
+function M.test:forinstmt(ut)
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+end
+
+
+function M.test:varexp(ut)
+    local grammar = "rule <- varexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "a()")
     ut:succeeds(parser.match, parser, "a[1]()")
@@ -264,8 +318,8 @@ function M.test:prefixexp(ut)
     ut:succeeds(parser.match, parser, "(a).a")
 end
 
-function M.test:funcall(ut)
-    local grammar = "rule <- funcall? s (!./''=>error)\n" .. M.grammar
+function M.test:funstmt(ut)
+    local grammar = "rule <- funstmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "a()")
     ut:succeeds(parser.match, parser, "a[1]()")
@@ -285,8 +339,8 @@ function M.test:funcall(ut)
     ut:fails(parser.match, parser, "(a)")
 end
 
-function M.test:var(ut)
-    local grammar = "rule <- var? s (!./''=>error)\n" .. M.grammar
+function M.test:vardef(ut)
+    local grammar = "rule <- vardef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "a")
     ut:succeeds(parser.match, parser, "a[1]")
@@ -303,16 +357,16 @@ function M.test:var(ut)
     ut:fails(parser.match, parser, "(a)")
 end
 
-function M.test:paranexp(ut)
-    local grammar = "rule <- paranexp? s (!./''=>error)\n" .. M.grammar
+function M.test:grpexp(ut)
+    local grammar = "rule <- grpexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "(1)")
     ut:succeeds(parser.match, parser, "(few)")
     ut:fails(parser.match, parser, "h(a)")
 end
 
-function M.test:call(ut)
-    local grammar = "rule <- call? s (!./''=>error)\n" .. M.grammar
+function M.test:funcall(ut)
+    local grammar = "rule <- funcall? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, ":a()")
     ut:succeeds(parser.match, parser, "()")
@@ -321,8 +375,8 @@ function M.test:call(ut)
     ut:fails(parser.match, parser, "h(a)")
 end
 
-function M.test:args(ut)
-    local grammar = "rule <- args? s (!./''=>error)\n" .. M.grammar
+function M.test:funargs(ut)
+    local grammar = "rule <- funargs? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "()")
     ut:succeeds(parser.match, parser, "'fe'")
@@ -379,8 +433,8 @@ function M.test:funbody(ut)
     ut:succeeds(parser.match, parser, "() return 1 end")
 end
 
-function M.test:parlist(ut)
-    local grammar = "rule <- parlist? s (!./''=>error)\n" .. M.grammar
+function M.test:funparm(ut)
+    local grammar = "rule <- funparm? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "...")
     ut:succeeds(parser.match, parser, "a")
@@ -388,8 +442,8 @@ function M.test:parlist(ut)
     ut:succeeds(parser.match, parser, "a,...")
 end
 
-function M.test:tablector(ut)
-    local grammar = "rule <- tablector? s (!./''=>error)\n" .. M.grammar
+function M.test:tabledef(ut)
+    local grammar = "rule <- tabledef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "{}")
     ut:succeeds(parser.match, parser, "{[1] = 12, [1] = 12; [1] = 12}")
@@ -412,6 +466,89 @@ function M.test:field(ut)
     ut:succeeds(parser.match, parser, "1")
     ut:succeeds(parser.match, parser, "a = 12")
 end
+
+function M.test:exp(ut)
+    local grammar = "rule <- exp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "1 or 1")
+    ut:succeeds(parser.match, parser, "true or true or false and true or true")
+    ut:succeeds(parser.match, parser, "name or 2")
+    ut:succeeds(parser.match, parser, "name and 2")
+    ut:succeeds(parser.match, parser, "name == 2")
+    ut:succeeds(parser.match, parser, "name..2")
+    ut:succeeds(parser.match, parser, "name+2")
+    ut:succeeds(parser.match, parser, "name*2")
+    ut:succeeds(parser.match, parser, "#name")
+    ut:succeeds(parser.match, parser, "name^2")
+end
+
+function M.test:orexp(ut)
+    local grammar = "rule <- orexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "1 or 1")
+    ut:succeeds(parser.match, parser, "true or true or false and true or true")
+end
+
+function M.test:andexp(ut)
+    local grammar = "rule <- andexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "false and true")
+    ut:succeeds(parser.match, parser, "1+1 and true")
+    ut:fails(parser.match, parser, "true or false")
+end
+
+function M.test:boolexp(ut)
+    local grammar = "rule <- boolexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "1 < 2")
+    ut:succeeds(parser.match, parser, "2 <= 2")
+    ut:succeeds(parser.match, parser, "2 > 2")
+    ut:succeeds(parser.match, parser, "2>=2")
+    ut:succeeds(parser.match, parser, "2 == 2")
+    ut:succeeds(parser.match, parser, "2~=1")
+end
+
+function M.test:catexp(ut)
+    local grammar = "rule <- catexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "'fl'..'fefe'")
+    ut:succeeds(parser.match, parser, "a..'222'")
+end
+
+function M.test:sumexp(ut)
+    local grammar = "rule <- sumexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "1+1")
+    ut:succeeds(parser.match, parser, "1-1")
+    ut:succeeds(parser.match, parser, "a-4")
+    ut:succeeds(parser.match, parser, "5-524+f-123-fewf")
+end
+
+function M.test:prodexp(ut)
+    local grammar = "rule <- prodexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "a*2")
+    ut:succeeds(parser.match, parser, "a/2")
+    ut:succeeds(parser.match, parser, "a*2*gb/ge")
+end
+
+function M.test:unexp(ut)
+    local grammar = "rule <- unexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "-1")
+    ut:succeeds(parser.match, parser, "#a")
+    ut:succeeds(parser.match, parser, "not true")
+    ut:succeeds(parser.match, parser, "- - 2")
+    ut:succeeds(parser.match, parser, "- - #######- - - - -2")
+end
+
+function M.test:powexp(ut)
+    local grammar = "rule <- powexp? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    ut:succeeds(parser.match, parser, "1^2")
+    ut:succeeds(parser.match, parser, "1^2^2^2")
+end
+
 
 function M.test:comment(ut)
     local grammar = "rule <- number? s (!./''=>error)\n" .. M.grammar
