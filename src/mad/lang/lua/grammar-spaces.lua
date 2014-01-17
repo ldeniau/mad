@@ -210,7 +210,7 @@ function M.test:stmt(ut)
     ut:succeeds(parser.match, parser, "for few in eqw do ; end")
 end
 
-function M.test:semicolon(ut)
+function M.test:emptystmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, ";")
@@ -244,12 +244,17 @@ function M.test:fundef(ut)
     local grammar = "rule <- fundef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "function a () return end")
+    ut:succeeds(parser.match, parser, "local function a () return end")
+    ut:succeeds(parser.match, parser, "function a.a:a () return end")
+    ut:fails(parser.match, parser, "function a:a.a () return end")
 end
 
 function M.test:varlistassign(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "a, b = 1, 2")
+    ut:succeeds(parser.match, parser, "a = 1, 2")
+    ut:succeeds(parser.match, parser, "a, b, a, a, a = 1")
 end
 
 function M.test:whilestmt(ut)
@@ -279,13 +284,14 @@ function M.test:forstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
+    ut:succeeds(parser.match, parser, "for fea = 1, 1 do ; end")
 end
 
 function M.test:forinstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     ut:succeeds(parser.match, parser, "for few in eqw do ; end")
-    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+    ut:succeeds(parser.match, parser, "for few,feww in eqw() do ; end")
 end
 
 
