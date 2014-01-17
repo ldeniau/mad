@@ -14,7 +14,7 @@ DESCRIPTION
   required to run MAD.
 
 RETURN VALUES
-  The table of modules and services.
+  The table of MAD modules and services.
 
 SEE ALSO
   None
