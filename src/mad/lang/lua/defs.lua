@@ -311,72 +311,56 @@ end
 ---------------------------------------------------------------------------------------------------------------
 
 function defs.exp ( _, exp )
-    exp.line = defs._line
-    return exp
+    --exp.line = defs._line
+    --return exp
 end
 
-function defs.orexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.orexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.andexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.andexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.logexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.logexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.catexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.catexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.sumexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.sumexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.prodexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.prodexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.unexp( first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.unexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.powexp( _, first, rest )
-    if not rest or #rest == 0 then return first end
-    table.insert(rest, 1, first)
-    rest.ast_id = "expression"
-    return rest
+function defs.powexp( _, first, ... )
+    if ... == nil then return first end
+    return {ast_id = "expression", first, ...}
 end
 
-function defs.literal(val)
-	return { ast_id = "literal", [1] = val, line = defs._line }
+function defs.literal(...)
+	return { ast_id = "literal", ..., line = defs._line }
 end
 
-function defs.name(name)
-	return { ast_id = "name", [1] = name, line = defs._line }
+function defs.name(...)
+	return { ast_id = "name", ..., line = defs._line }
 end
 
 

@@ -50,15 +50,15 @@ fake <- exp* s(!./''=>error)
 
 -- expressions
 
-    exp         <-  { orexp }                                         -> exp
-    orexp       <- ({ andexp  } {| ( or      andexp  )* |})           -> orexp
-    andexp      <- ({ logexp  } {| ( and     logexp  )* |})           -> andexp
-    logexp      <- ({ catexp  } {| ( logop   catexp  )* |})           -> logexp
-    catexp      <- ({ sumexp  } {| ( catop   sumexp  )* |})           -> catexp
-    sumexp      <- ({ prodexp } {| ( sumop   prodexp )* |})           -> sumexp
-    prodexp     <- ({ unexp   } {| ( prodop  unexp   )* |})           -> prodexp
-    unexp       <- (            {|   unop*   powexp     |})           -> unexp
-    powexp      <- ({ valexp  } {| ( powop   valexp  )* |})           -> powexp
+    exp         <- { orexp }                                   -> exp
+    orexp       <- { andexp   ( or      andexp  )* }           -> orexp
+    andexp      <- { logexp   ( and     logexp  )* }           -> andexp
+    logexp      <- { catexp   ( logop   catexp  )* }           -> logexp
+    catexp      <- { sumexp   ( catop   sumexp  )* }           -> catexp
+    sumexp      <- { prodexp  ( sumop   prodexp )* }           -> sumexp
+    prodexp     <- { unexp    ( prodop  unexp   )* }           -> prodexp
+    unexp       <- {          ( unop*   powexp  )  }           -> unexp
+    powexp      <- { valexp   ( powop   valexp  )* }           -> powexp
     
     valexp      <- literal / tabledef / fundef_a / varexp
     varexp      <- (name   / grpexp) (tableidx / funcall)*
@@ -108,8 +108,8 @@ fake <- exp* s(!./''=>error)
     
 -- lexems
 
-    literal     <- s{ nil / false / true / number / string / ellipsis }     -> literal
-    name        <- s !keyword { ident }                                     -> name
+    literal     <- s{nil / false / true / number / string / ellipsis}               -> literal
+    name        <- s !keyword {ident}                                               -> name
     namelist    <- name (s',' name)*
     string      <- s(sstring / lstring)
     number      <- s( hexnum / decnum )
@@ -477,7 +477,7 @@ end
 function M.test:exp(ut)
     local grammar = "rule <- exp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "1 or 1")
+    local res = ut:succeeds(parser.match, parser, "1 or 1")
     ut:succeeds(parser.match, parser, "true or true or false and true or true")
     ut:succeeds(parser.match, parser, "name or 2")
     ut:succeeds(parser.match, parser, "name and 2")
@@ -487,73 +487,157 @@ function M.test:exp(ut)
     ut:succeeds(parser.match, parser, "name*2")
     ut:succeeds(parser.match, parser, "#name")
     ut:succeeds(parser.match, parser, "name^2")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:orexp(ut)
     local grammar = "rule <- orexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "1 or 1")
+    local res = ut:succeeds(parser.match, parser, "1 or 1")
     ut:succeeds(parser.match, parser, "true or true or false and true or true")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:andexp(ut)
     local grammar = "rule <- andexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "false and true")
+    local res = ut:succeeds(parser.match, parser, "false and true")
     ut:succeeds(parser.match, parser, "1+1 and true")
     ut:fails(parser.match, parser, "true or false")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:logexp(ut)
     local grammar = "rule <- logexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "1 < 2")
+    local res = ut:succeeds(parser.match, parser, "1 < 2")
     ut:succeeds(parser.match, parser, "2 <= 2")
     ut:succeeds(parser.match, parser, "2 > 2")
     ut:succeeds(parser.match, parser, "2>=2")
     ut:succeeds(parser.match, parser, "2 == 2")
     ut:succeeds(parser.match, parser, "2~=1")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:catexp(ut)
     local grammar = "rule <- catexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "'fl'..'fefe'")
+    local res = ut:succeeds(parser.match, parser, "'fl'..'fefe'")
     ut:succeeds(parser.match, parser, "a..'222'")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:sumexp(ut)
     local grammar = "rule <- sumexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "1+1")
-    ut:succeeds(parser.match, parser, "1-1")
-    ut:succeeds(parser.match, parser, "a-4")
-    ut:succeeds(parser.match, parser, "5-524+f-123-fewf")
+    local res = ut:succeeds(parser.match, parser, "1+1")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '^')
+    ut:equals(res[5][1], '2')
+    res = ut:succeeds(parser.match, parser, "1-1")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '^')
+    ut:equals(res[5][1], '2')
+    res = ut:succeeds(parser.match, parser, "a-4")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '^')
+    ut:equals(res[5][1], '2')
+    res = ut:succeeds(parser.match, parser, "5-524+f-123-fewf")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '^')
+    ut:equals(res[5][1], '2')
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:prodexp(ut)
     local grammar = "rule <- prodexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a*2")
-    ut:succeeds(parser.match, parser, "a/2")
-    ut:succeeds(parser.match, parser, "a*2*gb/ge")
+    local res = ut:succeeds(parser.match, parser, "a*2")
+    ut:equals(res[1][1], 'a')
+    ut:equals(res[2], '*')
+    ut:equals(res[3][1], '2')
+    res = ut:succeeds(parser.match, parser, "a/2")
+    ut:equals(res[1][1], 'a')
+    ut:equals(res[2], '/')
+    ut:equals(res[3][1], '2')
+    res = ut:succeeds(parser.match, parser, "a*2*gb/ge")
+    ut:equals(res[1][1], 'a')
+    ut:equals(res[2], '*')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '*')
+    ut:equals(res[5][1], 'gb')
+    ut:equals(res[6], '/')
+    ut:equals(res[7][1], 'ge')
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 function M.test:unexp(ut)
     local grammar = "rule <- unexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "-1")
-    ut:succeeds(parser.match, parser, "#a")
-    ut:succeeds(parser.match, parser, "not true")
-    ut:succeeds(parser.match, parser, "- - 2")
-    ut:succeeds(parser.match, parser, "- - #######- - - - -2")
+    local res = ut:succeeds(parser.match, parser, "-1")
+    ut:equals(res[1], '-')
+    ut:equals(res[2][1], '1')
+    res = ut:succeeds(parser.match, parser, "a")
+    require"lua.tableUtil".printTable(res)
+    ut:equals(res[1], 'a')
+    res = ut:succeeds(parser.match, parser, "#a")
+    ut:equals(res[1], '#')
+    ut:equals(res[2][1], 'a')
+    res = ut:succeeds(parser.match, parser, "not true")
+    ut:equals(res[1], 'not')
+    ut:equals(res[2][1], 'true')
+    res = ut:succeeds(parser.match, parser, "- - 2")
+    ut:equals(res[1], '-')
+    ut:equals(res[2], '-')
+    ut:equals(res[3][1], '2')
+    res = ut:succeeds(parser.match, parser, "- - #######- - - - -2")
+    ut:equals(res[1], '-')
+    ut:equals(res[2], '-')
+    ut:equals(res[3], '#')
+    ut:equals(res[4], '#')
+    ut:equals(res[5], '#')
+    ut:equals(res[6], '#')
+    ut:equals(res[7], '#')
+    ut:equals(res[8], '#')
+    ut:equals(res[9], '#')
+    ut:equals(res[10], '-')
+    ut:equals(res[11], '-')
+    ut:equals(res[12], '-')
+    ut:equals(res[13], '-')
+    ut:equals(res[14], '-')
+    ut:equals(res[15][1], '2')
 end
 
 function M.test:powexp(ut)
     local grammar = "rule <- powexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "1^2")
-    ut:succeeds(parser.match, parser, "1^2^2^2")
+    local res = ut:succeeds(parser.match, parser, "1^2")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    res = ut:succeeds(parser.match, parser, "1^2^2^2")
+    ut:equals(res[1][1], '1')
+    ut:equals(res[2], '^')
+    ut:equals(res[3][1], '2')
+    ut:equals(res[4], '^')
+    ut:equals(res[5][1], '2')
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res[1], 'a')
 end
 
 
@@ -566,18 +650,36 @@ function M.test:comment(ut)
 end
 
 function M.test:number(ut)
-    local grammar = "rule <- number? s (!./''=>error)\n" .. M.grammar
+    local grammar = "rule <- literal? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     --Tests taken from 5.2 reference manual
-    ut:succeeds(parser.match, parser, "3")
-    ut:succeeds(parser.match, parser, "3.0")
-    ut:succeeds(parser.match, parser, "3.1416")
-    ut:succeeds(parser.match, parser, "314.16e-2")
-    ut:succeeds(parser.match, parser, "0.31416E1")
-    ut:succeeds(parser.match, parser, "0xff")
-    ut:succeeds(parser.match, parser, "0x0.1E")
-    ut:succeeds(parser.match, parser, "0xA23p-4")
-    ut:succeeds(parser.match, parser, "0X1.921FB54442D18P+1")
+    local res = ut:succeeds(parser.match, parser, "3")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '3')
+    res = ut:succeeds(parser.match, parser, "3.0")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '3.0')
+    res = ut:succeeds(parser.match, parser, "3.1416")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '3.1416')
+    res = ut:succeeds(parser.match, parser, "314.16e-2")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '314.16e-2')
+    res = ut:succeeds(parser.match, parser, "0.31416E1")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '0.31416E1')
+    res = ut:succeeds(parser.match, parser, "0xff")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '0xff')
+    res = ut:succeeds(parser.match, parser, "0x0.1E")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '0x0.1E')
+    res = ut:succeeds(parser.match, parser, "0xA23p-4")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '0xA23p-4')
+    res = ut:succeeds(parser.match, parser, "0X1.921FB54442D18P+1")
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '0X1.921FB54442D18P+1')
     ut:fails(parser.match, parser, "3a")
     ut:fails(parser.match, parser, "3a.0a")
     ut:fails(parser.match, parser, "3a.14a16")
@@ -590,17 +692,32 @@ function M.test:number(ut)
 end
 
 function M.test:string(ut)
-    local grammar = "rule <- string? s (!./''=>error)\n" .. M.grammar
+    local grammar = "rule <- literal? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, [=====["gvrewgr"]=====])
-    ut:succeeds(parser.match, parser, [=====['few']=====])
-    ut:succeeds(parser.match, parser, [=====[[[fe]]]=====])
-    ut:succeeds(parser.match, parser, [=====[[=[dfew]=]]=====])
-    ut:succeeds(parser.match, parser, [=====["'[['"]=====])
+    local res = ut:succeeds(parser.match, parser, [=====["gvrewgr"]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], '"gvrewgr"')
+    res = ut:succeeds(parser.match, parser, [=====['few']=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], "'few'")
+    res = ut:succeeds(parser.match, parser, [=====[[[fe]]]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], "[[fe]]")
+    res = ut:succeeds(parser.match, parser, [=====[[=[dfew]=]]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], "[=[dfew]=]")
+    res = ut:succeeds(parser.match, parser, [=====["'[['"]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], [=["'[['"]=])
     ut:fails(parser.match, parser,    [=====["hiohjoi']=====])
-    ut:succeeds(parser.match, parser, [=====[[[
+    res = ut:succeeds(parser.match, parser, [=====[[[
                                                 fee]]]=====])
-    ut:succeeds(parser.match, parser, [=====["\"\123\n\t\s\r"]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], [=[[[
+                                                fee]]]=])
+    res = ut:succeeds(parser.match, parser, [=====["\"\123\n\t\s\r"]=====])
+    ut:equals(res.ast_id, "literal")
+    ut:equals(res[1], [["\"\123\n\t\s\r"]])
 end
 
 function M.test:name(ut)
