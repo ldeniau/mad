@@ -311,8 +311,8 @@ end
 ---------------------------------------------------------------------------------------------------------------
 
 function defs.exp ( _, exp )
-    --exp.line = defs._line
-    --return exp
+    exp.line = defs._line
+    return exp
 end
 
 function defs.orexp( _, first, ... )
