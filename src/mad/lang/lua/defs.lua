@@ -127,34 +127,6 @@ function defs.error(istream, pos)
 	end
 end
 
-defs.lcomm = function(comm)
-	--return " "
-end
-defs.bcomm = function(comm)
-	--return " "
-end
-
-defs.tonumber = function(s)
-	local n = string.gsub(s, '_', '')
-	return tonumber(n)
-end
-defs.tostring = tostring
-
-function defs.string( op, str, eq )
-	return str, (eq or op)
-end
-function defs.literal(val, op)
-	return { type = "Literal", value = val, stringOperator = op, line = defs._line }
-end
-function defs.boolean(val)
-	return val == 'true'
-end
-function defs.nilExpr()
-	return { type = "Literal", value = nil, line = defs._line }
-end
-function defs.identifier(name)
-	return { type = "Variable", name = name, line = defs._line }
-end
 
 function defs.chunk(body)
 	return { type = "Chunk", body = body, line = defs._line }
@@ -336,64 +308,80 @@ function defs.doStmt(block)
 	return { type = "Do", body = block, line = defs._line }
 end
 
+---------------------------------------------------------------------------------------------------------------
 
-local op_info = {
-	["or"] = { 1, 'L' },
-	["and"] = { 2, 'L' },
-
-	["=="] = { 3, 'L' },
-	["~="] = { 3, 'L' },
-
-	["in"] = { 4, 'L' },
-
-	[">="] = { 5, 'L' },
-	["<="] = { 5, 'L' },
-	[">"] = { 5, 'L' },
-	["<"] = { 5, 'L' },
-
-	[".."] = { 6, 'L' },
-
-	["-"] = { 7, 'L' },
-	["+"] = { 7, 'L' },
-
-	["*"] = { 8, 'L' },
-	["/"] = { 8, 'L' },
-	["%"] = { 8, 'L' },
-
-	["-_"] = { 9, 'R' },
-	["not_"] = { 9, 'R' },
-	
-	["^"] = { 10, 'R' },
-	["#_"] = { 11, 'R' },
-
-}
-
-local shift = table.remove
-
-local function fold_expr(exp, min)
-	local lhs = shift(exp, 1)
-	if type(lhs) == 'table' and lhs.type == 'UnaryExpression' then
-		local op = lhs.operator..'_'
-		local info = op_info[op]
-		table.insert(exp, 1, lhs.argument)
-		lhs.argument = fold_expr(exp, info[1])
-	end
-	while op_info[exp[1]] ~= nil and op_info[exp[1]][1] >= min do
-		local op = shift(exp, 1)
-		local info = op_info[op]
-		local prec, assoc = info[1], info[2]
-		if assoc == 'L' then
-			prec = prec + 1
-		end
-		local rhs = fold_expr(exp, prec)
-		lhs = defs.binaryExpr(op, lhs, rhs)
-	end
-	return lhs
+function defs.exp ( _, exp )
+    exp.line = defs._line
+    return exp
 end
 
-function defs.infixExpr(exp)
-	return fold_expr(exp, 0)
+function defs.orexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
 end
+
+function defs.andexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.logexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.catexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.sumexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.prodexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.unexp( first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.powexp( _, first, rest )
+    if not rest or #rest == 0 then return first end
+    table.insert(rest, 1, first)
+    rest.ast_id = "expression"
+    return rest
+end
+
+function defs.literal(val)
+	return { ast_id = "literal", [1] = val, line = defs._line }
+end
+
+function defs.name(name)
+	return { ast_id = "name", [1] = name, line = defs._line }
+end
+
+
+
+
 
 M.defs = defs
 
