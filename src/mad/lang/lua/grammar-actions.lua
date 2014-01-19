@@ -22,7 +22,7 @@ SEE ALSO
 -- grammar ---------------------------------------------------------------------
 
 M.grammar = [=[
-fake <- exp* s(!./''=>error)
+fake <- tabledef* s(!./''=>error)
 -- top level rules
 
     chunk       <- block s(!./''=>error)
@@ -31,7 +31,8 @@ fake <- exp* s(!./''=>error)
 -- statements
 
     stmt        <- s(
-                      ';' / label / break / goto name / do_block / fundef
+                      ';' / label / break -> breakstmt / goto name -> gotostmt
+                    / do_block -> dostmt / fundef
                     / varlist s'=' explist / funstmt
                     / local namelist (s'=' explist)?
                     / while exp do_block
@@ -45,8 +46,8 @@ fake <- exp* s(!./''=>error)
 
 -- extra stmts
 
-    label       <- s'::' name s'::'
-    retstmt     <- return explist? s';'?
+    label       <- {s'::' name s'::'}                          -> label
+    retstmt     <- {return explist? s';'?}                     -> retstmt
 
 -- expressions
 
@@ -90,9 +91,9 @@ fake <- exp* s(!./''=>error)
 
 -- table definitions & access
 
-    tabledef    <- s'{' fieldlist? s'}'
+    tabledef    <- (s'{' { fieldlist? } s'}')                                       -> tabledef
     fieldlist   <- field (fieldsep field)* fieldsep?
-    field       <- s'[' exp s']' s'=' exp / name s'=' exp / exp
+    field       <- {s{'['} exp s']' s'=' exp / name s'=' exp / exp}                 -> field
     fieldsep    <- s',' / s';'
     
     tableidx    <- s'[' exp s']' / s'.' name
@@ -192,159 +193,172 @@ end
 function M.test:block(ut)
     local grammar = "rule <- block? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, ";;;;;")
-    ut:succeeds(parser.match, parser, "return 1")
-    ut:succeeds(parser.match, parser, "    ; ; ;;return 1")
+    local res = ut:succeeds(parser.match, parser, ";;;;;")
+    res = ut:succeeds(parser.match, parser, "return 1")
+    res = ut:succeeds(parser.match, parser, "    ; ; ;;return 1")
     ut:fails(parser.match, parser, ";;return 1;;;;")
 end
 
 function M.test:stmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, ";")
-    ut:succeeds(parser.match, parser, "::fe::")
-    ut:succeeds(parser.match, parser, "break")
-    ut:succeeds(parser.match, parser, "goto few")
-    ut:succeeds(parser.match, parser, "do ; end")
-    ut:succeeds(parser.match, parser, "function a () return end")
-    ut:succeeds(parser.match, parser, "a, b = 1, 2")
-    ut:succeeds(parser.match, parser, "while true do ; end")
-    ut:succeeds(parser.match, parser, "repeat ; until false")
-    ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
-    ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
-    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+    local res = ut:succeeds(parser.match, parser, ";")
+    res = ut:succeeds(parser.match, parser, "::fe::")
+    res = ut:succeeds(parser.match, parser, "break")
+    res = ut:succeeds(parser.match, parser, "goto few")
+    res = ut:succeeds(parser.match, parser, "do ; end")
+    res = ut:succeeds(parser.match, parser, "function a () return end")
+    res = ut:succeeds(parser.match, parser, "a, b = 1, 2")
+    res = ut:succeeds(parser.match, parser, "while true do ; end")
+    res = ut:succeeds(parser.match, parser, "repeat ; until false")
+    res = ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
+    res = ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
+    res = ut:succeeds(parser.match, parser, "for few in eqw do ; end")
 end
 
 function M.test:emptystmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, ";")
+    local res = ut:succeeds(parser.match, parser, ";")
+end
+
+function M.test:retsmt(ut)
+    local grammar = "rule <- retstmt? s (!./''=>error)\n" .. M.grammar
+    local parser = ut:succeeds(self.compile, grammar, self.defs)
+    local res = ut:succeeds(parser.match, parser, "return 1")
+    ut:equals(res[1][1], "1")
+    ut:equals(res.ast_id, "return")
 end
 
 function M.test:label(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "::fe::")
+    local res = ut:succeeds(parser.match, parser, "::fe::")
+    ut:equals(res[1][1], "fe")
+    ut:equals(res.ast_id, "label")
 end
 
 function M.test:breakstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "break")
+    local res = ut:succeeds(parser.match, parser, "break")
+    ut:equals(res.ast_id, "break")
 end
 
 function M.test:gotostmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "goto few")
+    local res = ut:succeeds(parser.match, parser, "goto few")
+    ut:equals(res[1][1], "few")
+    ut:equals(res.ast_id, "goto")
 end
 
 function M.test:dostmt(ut)
     local grammar = "rule <- do_block? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "do ; end")
+    local res = ut:succeeds(parser.match, parser, "do ; end")
 end
 
 function M.test:fundef(ut)
     local grammar = "rule <- fundef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "function a () return end")
-    ut:succeeds(parser.match, parser, "local function a () return end")
-    ut:succeeds(parser.match, parser, "function a.a:a () return end")
+    local res = ut:succeeds(parser.match, parser, "function a () return end")
+    res = ut:succeeds(parser.match, parser, "local function a () return end")
+    res = ut:succeeds(parser.match, parser, "function a.a:a () return end")
     ut:fails(parser.match, parser, "function a:a.a () return end")
 end
 
 function M.test:varlistassign(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a, b = 1, 2")
-    ut:succeeds(parser.match, parser, "a = 1, 2")
-    ut:succeeds(parser.match, parser, "a, b, a, a, a = 1")
+    local res = ut:succeeds(parser.match, parser, "a, b = 1, 2")
+    res = ut:succeeds(parser.match, parser, "a = 1, 2")
+    res = ut:succeeds(parser.match, parser, "a, b, a, a, a = 1")
 end
 
 function M.test:whilestmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "while true do ; end")
+    res = ut:succeeds(parser.match, parser, "while true do ; end")
 end
 
 function M.test:repeatstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "repeat ; until false")
+    local res = ut:succeeds(parser.match, parser, "repeat ; until false")
 end
 
 function M.test:ifstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
-    ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
-    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; end")
-    ut:succeeds(parser.match, parser, "if false then ; ; else ; end")
-    ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
-    ut:succeeds(parser.match, parser, "if false then ;end")
+    local res = ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
+    res = ut:succeeds(parser.match, parser, "if false then ; elseif false then ; else ; end")
+    res = ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; end")
+    res = ut:succeeds(parser.match, parser, "if false then ; ; else ; end")
+    res = ut:succeeds(parser.match, parser, "if false then ; elseif false then elseif false then ; else ; end")
+    res = ut:succeeds(parser.match, parser, "if false then ;end")
 end
 
 function M.test:forstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
-    ut:succeeds(parser.match, parser, "for fea = 1, 1 do ; end")
+    local res = ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do ; end")
+    res = ut:succeeds(parser.match, parser, "for fea = 1, 1 do ; end")
 end
 
 function M.test:forinstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "for few in eqw do ; end")
-    ut:succeeds(parser.match, parser, "for few,feww in eqw() do ; end")
+    local res = ut:succeeds(parser.match, parser, "for few in eqw do ; end")
+    res = ut:succeeds(parser.match, parser, "for few,feww in eqw() do ; end")
 end
 
 
 function M.test:varexp(ut)
     local grammar = "rule <- varexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a()")
-    ut:succeeds(parser.match, parser, "a[1]()")
-    ut:succeeds(parser.match, parser, "a[a]()")
-    ut:succeeds(parser.match, parser, "a.a()")
-    ut:succeeds(parser.match, parser, "a['a']()")
-    ut:succeeds(parser.match, parser, "a.a:a()")
-    ut:succeeds(parser.match, parser, "a[1][1]()")
-    ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
-    ut:succeeds(parser.match, parser, "a().a()")
-    ut:succeeds(parser.match, parser, "a(a)().a()")
-    ut:succeeds(parser.match, parser, "a()():a()()")
-    ut:succeeds(parser.match, parser, "(a).a()")
-    ut:succeeds(parser.match, parser, "(a)()")
-    ut:succeeds(parser.match, parser, "a")
-    ut:succeeds(parser.match, parser, "a[1]")
-    ut:succeeds(parser.match, parser, "a[a]")
-    ut:succeeds(parser.match, parser, "a.a")
-    ut:succeeds(parser.match, parser, "a['a']")
-    ut:succeeds(parser.match, parser, "a.a.a")
-    ut:succeeds(parser.match, parser, "a[1][1]")
-    ut:succeeds(parser.match, parser, "a.a[1].a[1]")
-    ut:succeeds(parser.match, parser, "a().a")
-    ut:succeeds(parser.match, parser, "a(a)().a")
-    ut:succeeds(parser.match, parser, "(a).a")
+    local res = ut:succeeds(parser.match, parser, "a()")
+    res = ut:succeeds(parser.match, parser, "a[1]()")
+    res = ut:succeeds(parser.match, parser, "a[a]()")
+    res = ut:succeeds(parser.match, parser, "a.a()")
+    res = ut:succeeds(parser.match, parser, "a['a']()")
+    res = ut:succeeds(parser.match, parser, "a.a:a()")
+    res = ut:succeeds(parser.match, parser, "a[1][1]()")
+    res = ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
+    res = ut:succeeds(parser.match, parser, "a().a()")
+    res = ut:succeeds(parser.match, parser, "a(a)().a()")
+    res = ut:succeeds(parser.match, parser, "a()():a()()")
+    res = ut:succeeds(parser.match, parser, "(a).a()")
+    res = ut:succeeds(parser.match, parser, "(a)()")
+    res = ut:succeeds(parser.match, parser, "a")
+    res = ut:succeeds(parser.match, parser, "a[1]")
+    res = ut:succeeds(parser.match, parser, "a[a]")
+    res = ut:succeeds(parser.match, parser, "a.a")
+    res = ut:succeeds(parser.match, parser, "a['a']")
+    res = ut:succeeds(parser.match, parser, "a.a.a")
+    res = ut:succeeds(parser.match, parser, "a[1][1]")
+    res = ut:succeeds(parser.match, parser, "a.a[1].a[1]")
+    res = ut:succeeds(parser.match, parser, "a().a")
+    res = ut:succeeds(parser.match, parser, "a(a)().a")
+    res = ut:succeeds(parser.match, parser, "(a).a")
 end
 
 function M.test:funstmt(ut)
     local grammar = "rule <- funstmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a()")
-    ut:succeeds(parser.match, parser, "a[1]()")
-    ut:succeeds(parser.match, parser, "a[a]()")
-    ut:succeeds(parser.match, parser, "a.a()")
-    ut:succeeds(parser.match, parser, "a['a']()")
-    ut:succeeds(parser.match, parser, "a.a:a()")
-    ut:succeeds(parser.match, parser, "a[1][1]()")
-    ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
-    ut:succeeds(parser.match, parser, "a().a()")
-    ut:succeeds(parser.match, parser, "a(a)():a()")
-    ut:succeeds(parser.match, parser, "a()().a()()")
-    ut:succeeds(parser.match, parser, "(a).a()")
-    ut:succeeds(parser.match, parser, "(a)()")
+    local res = ut:succeeds(parser.match, parser, "a()")
+    res = ut:succeeds(parser.match, parser, "a[1]()")
+    res = ut:succeeds(parser.match, parser, "a[a]()")
+    res = ut:succeeds(parser.match, parser, "a.a()")
+    res = ut:succeeds(parser.match, parser, "a['a']()")
+    res = ut:succeeds(parser.match, parser, "a.a:a()")
+    res = ut:succeeds(parser.match, parser, "a[1][1]()")
+    res = ut:succeeds(parser.match, parser, "a.a[1].a[1]()")
+    res = ut:succeeds(parser.match, parser, "a().a()")
+    res = ut:succeeds(parser.match, parser, "a(a)():a()")
+    res = ut:succeeds(parser.match, parser, "a()().a()()")
+    res = ut:succeeds(parser.match, parser, "(a).a()")
+    res = ut:succeeds(parser.match, parser, "(a)()")
     ut:fails(parser.match, parser, "a()().a")
     ut:fails(parser.match, parser, "a.a")
     ut:fails(parser.match, parser, "(a)")
@@ -353,55 +367,55 @@ end
 function M.test:vardef(ut)
     local grammar = "rule <- vardef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a")
-    ut:succeeds(parser.match, parser, "a[1]")
-    ut:succeeds(parser.match, parser, "a[a]")
-    ut:succeeds(parser.match, parser, "a.a")
-    ut:succeeds(parser.match, parser, "a['a']")
-    ut:succeeds(parser.match, parser, "a.a.a")
-    ut:succeeds(parser.match, parser, "a[1][1]")
-    ut:succeeds(parser.match, parser, "a.a[1].a[1]")
-    ut:succeeds(parser.match, parser, "a().a")
-    ut:succeeds(parser.match, parser, "a(a)().a")
+    local res = ut:succeeds(parser.match, parser, "a")
+    res = ut:succeeds(parser.match, parser, "a[1]")
+    res = ut:succeeds(parser.match, parser, "a[a]")
+    res = ut:succeeds(parser.match, parser, "a.a")
+    res = ut:succeeds(parser.match, parser, "a['a']")
+    res = ut:succeeds(parser.match, parser, "a.a.a")
+    res = ut:succeeds(parser.match, parser, "a[1][1]")
+    res = ut:succeeds(parser.match, parser, "a.a[1].a[1]")
+    res = ut:succeeds(parser.match, parser, "a().a")
+    res = ut:succeeds(parser.match, parser, "a(a)().a")
     ut:fails(parser.match, parser, "a()().a()")
-    ut:succeeds(parser.match, parser, "(a).a")
+    res = ut:succeeds(parser.match, parser, "(a).a")
     ut:fails(parser.match, parser, "(a)")
 end
 
 function M.test:grpexp(ut)
     local grammar = "rule <- grpexp? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "(1)")
-    ut:succeeds(parser.match, parser, "(few)")
+    local res = ut:succeeds(parser.match, parser, "(1)")
+    res = ut:succeeds(parser.match, parser, "(few)")
     ut:fails(parser.match, parser, "h(a)")
 end
 
 function M.test:funcall(ut)
     local grammar = "rule <- funcall? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, ":a()")
-    ut:succeeds(parser.match, parser, "()")
-    ut:succeeds(parser.match, parser, "(a,2,g)")
-    ut:succeeds(parser.match, parser, "''")
+    local res = ut:succeeds(parser.match, parser, ":a()")
+    res = ut:succeeds(parser.match, parser, "()")
+    res = ut:succeeds(parser.match, parser, "(a,2,g)")
+    res = ut:succeeds(parser.match, parser, "''")
     ut:fails(parser.match, parser, "h(a)")
 end
 
 function M.test:funargs(ut)
     local grammar = "rule <- funargs? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "()")
-    ut:succeeds(parser.match, parser, "'fe'")
-    ut:succeeds(parser.match, parser, "{}")
-    ut:succeeds(parser.match, parser, "(1)")
-    ut:succeeds(parser.match, parser, "(1,2,'joi',few)")
+    local res = ut:succeeds(parser.match, parser, "()")
+    res = ut:succeeds(parser.match, parser, "'fe'")
+    res = ut:succeeds(parser.match, parser, "{}")
+    res = ut:succeeds(parser.match, parser, "(1)")
+    res = ut:succeeds(parser.match, parser, "(1,2,'joi',few)")
 end
 
 function M.test:fundef(ut)
     local grammar = "rule <- fundef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "function a () return 1 end")
-    ut:succeeds(parser.match, parser, "function a.a () return 1 end")
-    ut:succeeds(parser.match, parser, "local function a () return 1 end")
+    local res = ut:succeeds(parser.match, parser, "function a () return 1 end")
+    res = ut:succeeds(parser.match, parser, "function a.a () return 1 end")
+    res = ut:succeeds(parser.match, parser, "local function a () return 1 end")
     ut:fails(parser.match, parser, "local function () return 1 end")
     ut:fails(parser.match, parser, "local function a.a () return 1 end")
 end
@@ -409,21 +423,21 @@ end
 function M.test:fundef_a(ut)
     local grammar = "rule <- fundef_a? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "function() return 1 end")
+    local res = ut:succeeds(parser.match, parser, "function() return 1 end")
 end
 
 function M.test:fundef_n(ut)
     local grammar = "rule <- fundef_n? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "function a () return 1 end")
-    ut:succeeds(parser.match, parser, "function a.a () return 1 end")
+    local res = ut:succeeds(parser.match, parser, "function a () return 1 end")
+    res = ut:succeeds(parser.match, parser, "function a.a () return 1 end")
     ut:fails(parser.match, parser, "local function a () return 1 end")
 end
 
 function M.test:fundef_l(ut)
     local grammar = "rule <- fundef_l? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "local function a () return 1 end")
+    local res = ut:succeeds(parser.match, parser, "local function a () return 1 end")
     ut:fails(parser.match, parser, "local function () return 1 end")
     ut:fails(parser.match, parser, "local function a.a () return 1 end")
 end
@@ -431,51 +445,85 @@ end
 function M.test:funname(ut)
     local grammar = "rule <- funname? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "a.a.a")
-    ut:succeeds(parser.match, parser, "a")
-    ut:succeeds(parser.match, parser, "a:a")
+    local res = ut:succeeds(parser.match, parser, "a.a.a")
+    res = ut:succeeds(parser.match, parser, "a")
+    res = ut:succeeds(parser.match, parser, "a:a")
     ut:fails(parser.match, parser, "a[a]")
 end
 
 function M.test:funbody(ut)
     local grammar = "rule <- funbody? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "(...) end")
-    ut:succeeds(parser.match, parser, "() return 1 end")
+    local res = ut:succeeds(parser.match, parser, "(...) end")
+    res = ut:succeeds(parser.match, parser, "() return 1 end")
 end
 
 function M.test:funparm(ut)
     local grammar = "rule <- funparm? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "...")
-    ut:succeeds(parser.match, parser, "a")
-    ut:succeeds(parser.match, parser, "a,b")
-    ut:succeeds(parser.match, parser, "a,...")
+    local res = ut:succeeds(parser.match, parser, "...")
+    res = ut:succeeds(parser.match, parser, "a")
+    res = ut:succeeds(parser.match, parser, "a,b")
+    res = ut:succeeds(parser.match, parser, "a,...")
 end
 
 function M.test:tabledef(ut)
     local grammar = "rule <- tabledef? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "{}")
-    ut:succeeds(parser.match, parser, "{[1] = 12, [1] = 12; [1] = 12}")
+    local res = ut:succeeds(parser.match, parser, "{}")
+    ut:equals(res[1], nil)
+    res = ut:succeeds(parser.match, parser, "{[1] = 12, [1] = 12; [1] = 12}")
+    ut:equals(res[1].value[1], "12")
+    ut:equals(res[1].operator, "[")
+    ut:equals(res[1].key[1], "1")
+    ut:equals(res[2].value[1], "12")
+    ut:equals(res[2].operator, "[")
+    ut:equals(res[2].key[1], "1")
+    ut:equals(res[3].value[1], "12")
+    ut:equals(res[3].operator, "[")
+    ut:equals(res[3].key[1], "1")
 end
 
 function M.test:fieldlist(ut)
-    local grammar = "rule <- fieldlist? s (!./''=>error)\n" .. M.grammar
+    local grammar = "rule <- {|fieldlist?|} s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "[1] = 12, [1] = 12; [1] = 12")
-    ut:succeeds(parser.match, parser, "[1] = 12;")
-    ut:succeeds(parser.match, parser, "[1] = 12;[1] = 12;  [1] = 12;")
+    local res = ut:succeeds(parser.match, parser, "[1] = 12, [1] = 12; [1] = 12")
+    ut:equals(res[1].value[1], "12")
+    ut:equals(res[1].operator, "[")
+    ut:equals(res[1].key[1], "1")
+    res = ut:succeeds(parser.match, parser, "[1] = 12;")
+    ut:equals(res[1].value[1], "12")
+    ut:equals(res[1].operator, "[")
+    ut:equals(res[1].key[1], "1")
+    res = ut:succeeds(parser.match, parser, "[1] = 12;[1] = 12;  [1] = 12;")
+    ut:equals(res[1].value[1], "12")
+    ut:equals(res[1].operator, "[")
+    ut:equals(res[1].key[1], "1")
 end
 
 function M.test:field(ut)
     local grammar = "rule <- field? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    ut:succeeds(parser.match, parser, "[1] = 12")
-    ut:succeeds(parser.match, parser, "[a] = 12")
-    ut:succeeds(parser.match, parser, "a")
-    ut:succeeds(parser.match, parser, "1")
-    ut:succeeds(parser.match, parser, "a = 12")
+    local res = ut:succeeds(parser.match, parser, "[1] = 12")
+    ut:equals(res.value[1], "12")
+    ut:equals(res.operator, "[")
+    ut:equals(res.key[1], "1")
+    res = ut:succeeds(parser.match, parser, "[a] = 12")
+    ut:equals(res.value[1], "12")
+    ut:equals(res.operator, "[")
+    ut:equals(res.key[1], "a")
+    res = ut:succeeds(parser.match, parser, "a")
+    ut:equals(res.value[1], "a")
+    ut:equals(res.operator, nil)
+    ut:equals(res.key, nil)
+    res = ut:succeeds(parser.match, parser, "1")
+    ut:equals(res.value[1], "1")
+    ut:equals(res.operator, nil)
+    ut:equals(res.key, nil)
+    res = ut:succeeds(parser.match, parser, "a = 12")
+    ut:equals(res.value[1], "12")
+    ut:equals(res.operator, nil)
+    ut:equals(res.key[1], "a")
 end
 
 function M.test:exp(ut)

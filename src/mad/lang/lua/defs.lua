@@ -265,34 +265,7 @@ end
 function defs.locNameList(nlst, explst)
 	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true, line = defs._line }
 end
-function defs.tableConstr(flst)
-	local tbl, i = { type = "Table", explicitExpression = {}, implicitExpression = {}, line = defs._line }, 1
-	while i <= #flst do
-		if flst[i] == "[" then
-			local k = flst[i+1]
-			if flst[i+2] and flst[i+2] == "=" and flst[i+3] then
-				tbl.explicitExpression[#tbl.explicitExpression+1] = { key = k, value = flst[i+3], computed = true }
-				i = i+4
-			else
-				error("Error with table constructor")
-			end
-		else
-			local val = flst[i]
-			if flst[i+1] and flst[i+1] == "=" then
-				if flst[i+2] and val and val.type and val.type == "Variable" then
-					tbl.explicitExpression[#tbl.explicitExpression+1] = { key = val, value = flst[i+2], computed = false }
-					i = i+3
-				else
-					error("Error with table constructor.")
-				end
-			else
-				tbl.implicitExpression[#tbl.implicitExpression+1] = { value = val }
-				i = i+1
-			end
-		end
-	end
-	return tbl
-end
+
 
 function defs.prefixExp(varorexp,identthenargs)
 	local var = unpackVOE(varorexp)
@@ -309,6 +282,34 @@ function defs.doStmt(block)
 end
 
 ---------------------------------------------------------------------------------------------------------------
+
+-- stmt
+
+function defs.breakstmt()
+    return { ast_id = "break" }
+end
+
+function defs.gotostmt( label )
+    return { ast_id = "goto", label }
+end
+
+function defs.dostmt( block )
+    return { ast_id = "do", block }
+end
+
+
+
+-- extra stmts
+
+function defs.retstmt ( _, ... )
+    return { ast_id = "return", ... }
+end
+
+function defs.label ( _, val )
+    return { ast_id = "label", val }
+end
+
+-- expressions
 
 function defs.exp ( _, exp )
     exp.line = defs._line
@@ -354,6 +355,27 @@ function defs.powexp( _, first, ... )
     if ... == nil then return first end
     return {ast_id = "expr", first, ...}
 end
+
+-- table defintion
+
+function defs.tabledef( _, ... )
+	return { ast_id = "tableDef", ... }
+end
+
+function defs.field( _, op, key, val )
+    if not key then
+        val = op
+        op = nil
+    end
+    if not val then 
+        val = key
+        key = op
+        op = nil
+    end
+    return { ast_id = "field", key = key, value = val, operator = op }
+end
+
+-- basic lexem
 
 function defs.literal(...)
 	return { ast_id = "literal", ..., line = defs._line }
