@@ -283,6 +283,14 @@ end
 
 ---------------------------------------------------------------------------------------------------------------
 
+function defs.chunk( _, block )
+    return { ast_id = "chunk", block }
+end
+
+function defs.block( _, ... )
+    return { ast_id = "block", ... }
+end
+
 -- stmt
 
 function defs.breakstmt()
@@ -295,6 +303,35 @@ end
 
 function defs.dostmt( block )
     return { ast_id = "do", block }
+end
+
+function defs.assign( lhs, rhs )
+    return { ast_id = "assign", lhs = lhs, rhs = rhs }
+end
+
+function defs.locassign( lhs, rhs )
+    return { ast_id = "assign", localdef = true, lhs = lhs, rhs = rhs }
+end
+
+function defs.whilestmt( exp, block)
+    return { ast_id = "while", test = exp, block }
+end
+
+function defs.repeatstmt( block, exp )
+    return { ast_id = "repeat", test = exp, block }
+end
+
+function defs.ifstmt( test, block, elseifTbl, elseBlock)
+    return { ast_id = "if", test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
+end
+
+function defs.forstmt( name, first, last, step, block)
+    if not block then block = step step = nil end
+    return { ast_id = "for", name = name, first = first, last = last, step = step, block }
+end
+
+function defs.forinstmt( names, exps, block )
+    return { ast_id = "forin", names = names, expressions = exps, block }
 end
 
 
