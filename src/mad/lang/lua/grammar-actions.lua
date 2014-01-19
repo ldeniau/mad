@@ -33,7 +33,8 @@ M.grammar = [=[
     stmt        <- s(
                       ';' / label / break                               -> breakstmt 
                     / goto name                                         -> gotostmt
-                    / do_block -> dostmt / fundef
+                    / do_block                                          -> dostmt 
+                    / fundef
                     / ({|varlist|} s'=' {|explist|})                    -> assign 
                     / funstmt
                     / (local {|namelist|} (s'=' {|explist|})?)          -> locassign
@@ -258,9 +259,11 @@ function M.test:gotostmt(ut)
 end
 
 function M.test:dostmt(ut)
-    local grammar = "rule <- do_block? s (!./''=>error)\n" .. M.grammar
+    local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
-    local res = ut:succeeds(parser.match, parser, "do ; end")
+    local res = ut:succeeds(parser.match, parser, "do break end")
+    ut:equals(res.ast_id, "do")
+    ut:equals(res[1][1].ast_id, "break")
 end
 
 function M.test:fundef(ut)
