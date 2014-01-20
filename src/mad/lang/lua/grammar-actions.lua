@@ -22,86 +22,85 @@ SEE ALSO
 -- grammar ---------------------------------------------------------------------
 
 M.grammar = [=[
---fake <- tabledef* s(!./''=>error)
 -- top level rules
 
-    chunk       <- block s(!./''=>error)                       -> chunk
-    block       <- {stmt* retstmt?}                            -> block
+    chunk       <- block s(!./''=>error)                                        -> chunk
+    block       <- {stmt* retstmt?}                                             -> block
 
 -- statements
 
     stmt        <- s(
-                      ';' / label / break                               -> breakstmt 
-                    / goto name                                         -> gotostmt
-                    / do_block                                          -> dostmt 
+                      ';' / label / break                                       -> breakstmt 
+                    / goto name                                                 -> gotostmt
+                    / do_block                                                  -> dostmt 
                     / fundef
-                    / ({|varlist|} s'=' {|explist|})                    -> assign 
+                    / ({|varlist|} s'=' {|explist|})                            -> assign 
                     / funstmt
-                    / (local {|namelist|} (s'=' {|explist|})?)          -> locassign
-                    / (while exp do_block)                              -> whilestmt
-                    / (repeat block until exp)                          -> repeatstmt
+                    / (local {|namelist|} (s'=' {|explist|})?)                  -> locassign
+                    / (while exp do_block)                                      -> whilestmt
+                    / (repeat block until exp)                                  -> repeatstmt
                     / (if exp then block 
                         {|(elseif exp then block)*|} 
-                        (else block)? end)                              -> ifstmt
-                    / (for name s'=' exp s',' exp (s',' exp)? do_block) -> forstmt
-                    / (for {|namelist|} in {|explist|} do_block)        -> forinstmt
+                        (else block)? end)                                      -> ifstmt
+                    / (for name s'=' exp s',' exp (s',' exp)? do_block)         -> forstmt
+                    / (for {|namelist|} in {|explist|} do_block)                -> forinstmt
                     )
 
     do_block    <- do block end
 
 -- extra stmts
 
-    label       <- {s'::' name s'::'}                          -> label
-    retstmt     <- {return explist? s';'?}                     -> retstmt
+    label       <- {s'::' name s'::'}                                           -> label
+    retstmt     <- {return explist? s';'?}                                      -> retstmt
 
 -- expressions
 
-    exp         <- { orexp }                                   -> exp
-    orexp       <- { andexp   ( or      andexp  )* }           -> orexp
-    andexp      <- { logexp   ( and     logexp  )* }           -> andexp
-    logexp      <- { catexp   ( logop   catexp  )* }           -> logexp
-    catexp      <- { sumexp   ( catop   sumexp  )* }           -> catexp
-    sumexp      <- { prodexp  ( sumop   prodexp )* }           -> sumexp
-    prodexp     <- { unexp    ( prodop  unexp   )* }           -> prodexp
-    unexp       <- {          ( unop*   powexp  )  }           -> unexp
-    powexp      <- { valexp   ( powop   valexp  )* }           -> powexp
+    exp         <- { orexp }                                                    -> exp
+    orexp       <- { andexp   ( or      andexp  )* }                            -> orexp
+    andexp      <- { logexp   ( and     logexp  )* }                            -> andexp
+    logexp      <- { catexp   ( logop   catexp  )* }                            -> logexp
+    catexp      <- { sumexp   ( catop   sumexp  )* }                            -> catexp
+    sumexp      <- { prodexp  ( sumop   prodexp )* }                            -> sumexp
+    prodexp     <- { unexp    ( prodop  unexp   )* }                            -> prodexp
+    unexp       <- {          ( unop*   powexp  )  }                            -> unexp
+    powexp      <- { valexp   ( powop   valexp  )* }                            -> powexp
     
     valexp      <- literal / tabledef / fundef_a / varexp
-    varexp      <- ((name   / grpexp) (tableidx / funcall)*)   -> varexp
-    grpexp      <- (s'(' exp s')')                             -> grpexp
+    varexp      <- ((name   / grpexp) (tableidx / funcall)*)                    -> varexp
+    grpexp      <- (s'(' exp s')')                                              -> grpexp
     
     explist     <- exp (s',' exp)*
 
 -- variable definitions (only on lhs of '=')
 
-    vardef      <- ((name / grpexp varsfx) varsfx*)            -> vardef
+    vardef      <- ((name / grpexp varsfx) varsfx*)                             -> vardef
     varsfx      <- funcall* tableidx
     varlist     <- vardef (s',' vardef)*
 
 -- function definitions & call
 
     fundef      <- fundef_n / fundef_l
-    fundef_a    <- (function funbody)                                               -> fundef_a -- anonymous
-    fundef_n    <- (function funname funbody)                                       -> fundef_n -- named
-    fundef_l    <- (local function name funbody)                                    -> fundef_l -- local named
+    fundef_a    <- (function funbody)                                           -> fundef_a -- anonymous
+    fundef_n    <- (function funname funbody)                                   -> fundef_n -- named
+    fundef_l    <- (local function name funbody)                                -> fundef_l -- local named
 
-    funname     <- ({|name (s'.' name)*|} (s':' name)?)                             -> funname
-    funbody     <- (s'(' {|funparm?|} s')' block end)                               -> funbody
-    funparm     <- ({|namelist|} (s',' ellipsis->literal)? / ellipsis->literal)     -> funparm
+    funname     <- ({|name (s'.' name)*|} (s':' name)?)                         -> funname
+    funbody     <- (s'(' {|funparm?|} s')' block end)                           -> funbody
+    funparm     <- ({|namelist|} (s',' ellipsis->literal)? / ellipsis->literal) -> funparm
 
-    funstmt     <- ((name / grpexp) varsfx* funcall+)                               -> funstmt
+    funstmt     <- ((name / grpexp) varsfx* funcall+)                           -> funstmt
 
-    funcall     <- (( s{':'} name )? funargs)                                       -> funcall
+    funcall     <- (( s{':'} name )? funargs)                                   -> funcall
     funargs     <- s'(' explist? s')' / tabledef / (string->literal)
 
 -- table definitions & access
 
-    tabledef    <- (s'{' { fieldlist? } s'}')                                       -> tabledef
+    tabledef    <- (s'{' { fieldlist? } s'}')                                   -> tabledef
     fieldlist   <- field (fieldsep field)* fieldsep?
-    field       <- {s{'['} exp s']' s'=' exp / name s'=' exp / exp}                 -> field
+    field       <- {s{'['} exp s']' s'=' exp / name s'=' exp / exp}             -> field
     fieldsep    <- s',' / s';'
     
-    tableidx    <- (s{'['} exp s']' / s{'.'} name)                                  -> tableidx
+    tableidx    <- (s{'['} exp s']' / s{'.'} name)                              -> tableidx
 
 -- operators
 
@@ -114,9 +113,9 @@ M.grammar = [=[
     
 -- lexems
 
-    literal     <- s{nil / false / true / number / string / ellipsis}               -> literal
+    literal     <- s{nil / false / true / number / string / ellipsis}           -> literal
     
-    name        <- s !keyword {ident}                                               -> name
+    name        <- s !keyword {ident}                                           -> name
     namelist    <- name (s',' name)*
     string      <- s(sstring / lstring)
     number      <- s( hexnum / decnum )
