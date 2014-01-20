@@ -142,42 +142,42 @@ end
 
 function defs.orexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.andexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.logexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.catexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.sumexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.prodexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.unexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 function defs.powexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", first, ... }
 end
 
 
