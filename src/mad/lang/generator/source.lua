@@ -32,27 +32,24 @@ end
 
 local match = {}
 
-function match:Chunk(node)
-    for i=1, #node.body do
-        self:render(node.body[i])
-        self.writer:writeln()
-    end
+function match:chunk(node)
+    self:render(node[1])
 end
 
-function match:Block(node)
+function match:block(node)
     self.writer:indent()
     self.writer:writeln()
-    for i=1, #node.body do
-        self:render(node.body[i])
-        if i ~= #node.body then 
+    for i=1, #node do
+        self:render(node[i])
+        if i ~= #node then 
             self.writer:writeln()
         end
     end
     self.writer:undent()
 end
 
-function match:Assignment(node)
-    if node.localDeclaration then
+function match:assign(node)
+    if node.localdef then
         self:write("local ")
     end
     for i = 1, #node.lhs do
@@ -63,8 +60,6 @@ function match:Assignment(node)
     end
     if node.rhs then
         self:write(" = ")
-    end
-    if node.rhs then
         for i = 1, #node.rhs do
             self:render(node.rhs[i])
             if i < #node.rhs then
@@ -74,8 +69,12 @@ function match:Assignment(node)
     end
 end
 
-function match:FunctionCall(node)
+function match:call(node)
     self:render(node.callee)
+    if node.selfExp then
+        self:write(":")
+        self:render(node.selfExp)
+    end
     self:write("( ")
     if node.arguments then
         for i,v in ipairs(node.arguments) do
@@ -88,52 +87,54 @@ function match:FunctionCall(node)
     self:write(" )")
 end
 
-function match:Label(node)
-    self:write("::"..node.name.."::")
+function match:label(node)
+    self:write("::")
+    self:render(node[1])
+    self:write("::")
 end
 
-function match:Break(node)
+function match:breakstmt(node)
     self:write("break")
 end
 
-function match:Goto(node)
+function match:gotostmt(node)
     self:write("goto ")
-    self:render(node.name)
+    self:render(node[1])
 end
 
-function match:Do(node)
-    self:write("do")
-    self:render(node.body)
+function match:dostmt(node)
+    self:write("do ")
+    self:render(node[1])
     self.writer:writeln()
     self:write("end")
 end
 
-function match:Loop(node)
-    if node.kind == "For" then
+function match:loop(node)
+    if node.kind == "for" then
         self:write("for ")
         self:render(node.name)
         self:write(" = ")
-        self:render(node.init)
+        self:render(node.first)
         self:write(", ")
         self:render(node.last)
         if node.step then
             self:write(", ")
             self:render(node.step)
         end
-        self:write(" do")
-        self:render(node.body)
+        self:write(" do ")
+        self:render(node[1])
         self.writer:writeln()
         self:write("end")
-    elseif node.kind == "While" then
+    elseif node.kind == "while" then
         self:write("while ")
         self:render(node.test)
-        self:write(" do")
-        self:render(node.body)
+        self:write(" do ")
+        self:render(node[1])
         self.writer:writeln()
         self:write("end")
-    elseif node.kind == "Repeat" then
+    elseif node.kind == "repeat" then
         self:write("repeat ")
-        self:render(node.body)
+        self:render(node[1])
         self.writer:writeln()
         self:write("until ")
         self:render(node.test)
@@ -142,7 +143,7 @@ function match:Loop(node)
     end
 end
 
-function match:GenericFor(node)
+function match:genericfor(node)
     self:write("for ")
     for i,v in ipairs(node.names) do
         self:render(v)
@@ -157,149 +158,123 @@ function match:GenericFor(node)
             self:write", "
         end
     end
-    self:write(" do")
-    self:render(node.body)
+    self:write(" do ")
+    self:render(node[1])
     self.writer:writeln()
     self:write("end")
 end
 
-function match:FunctionDefinition(node)
-    if node.localDeclaration then
+function match:fundef(node)
+    if node.localdef then
         self:write("local ")
     end
     self:write("function ")
-    if node.id then
-        self:render(node.id)
+    if node.name then
+        self:render(node.name)
     end
     self:write("( ")
     if node.parameters then
         for i,v in ipairs(node.parameters) do
             self:render(v)
-            if i ~= #node.parameters or node.rest then
+            if i ~= #node.parameters then
                 self:write(", ")
             end
         end
     end
-    if node.rest then
-        self:write("...")
-    end
     self:write(" )")
-    self:render(node.body)
+    self:render(node[1])
     self.writer:writeln()
     self:write("end")
 end
 
-function match:Return(node)
+function match:returnstmt(node)
     self:write("return ")
-    for i,v in ipairs(node.values) do
+    for i,v in ipairs(node) do
         self:render(v)
-        if i ~= #node.values then
+        if i ~= #node then
             self:write(", ")
         end
     end
 end
 
-function match:BinaryExpression(node)
-    if node.operator ~= "." and node.operator ~= "[" and node.operator ~= ":" then self:write("(") end
-    self:render(node.lhs)
-    if node.operator == "or" or node.operator == "and" then self:write(" ") end
-    self:write(node.operator)
-    if node.operator == "or" or node.operator == "and" then self:write(" ") end
-    self:render(node.rhs)
-    if node.operator == "[" then
-        self:write("]")
-    end
-    if node.operator ~= "." and node.operator ~= "[" and node.operator ~= ":" then self:write(")") end
-end
-
-function match:UnaryExpression(node)
-    self:write(node.operator)
-    if node.operator == "not" then self:write(" ") end
-    self:render(node.argument)
-end
-
-function match:Variable(node)
-    self:write(node.name)
-end
-
-function match:Literal(node)
-    if type(node.value) == "string" then
-        self:write("(")
-        if node.stringOperator == '"' then
-            self:write'"'
-            self:write(node.value)
-            self:write'"'
-        elseif node.stringOperator == "'" then
-            self:write"'"
-            self:write(node.value)
-            self:write"'"
-        elseif node.stringOperator then
-            self:write('['..node.stringOperator..'[')
-            self:write(node.value)
-            self:write(']'..node.stringOperator..']')
+function match:expr(node)
+    for i,v in ipairs(node) do
+        if type(v) =="string" then
+            self:write(" "..v.." ")
         else
-            self:write'[['
-            self:write(node.value)
-            self:write']]'
+            self:render(v)
         end
-        self:write(")")
-    elseif type(node.value) == "boolean" then
-        if node.value then
-            self:write("true")
-        else
-            self:write("false")
-        end
-    elseif type(node.value) == "number" then
-        self:write(tostring(node.value))
-    elseif not node.value then
-        self:write("nil")
     end
 end
 
-function match:Table(node)
+function match:groupexp(node)
+    self:write("( ")
+    self:render(node[1])
+    self:write(" )")
+end
+
+function match:name(node)
+    self:write(node[1])
+end
+
+function match:literal(node)
+    self:write(node[1])
+end
+
+function match:tabledef(node)
     self:write("{ ")
-    if node.implicitExpression then
-        for i,v in ipairs(node.implicitExpression) do
-            self:render(v.value)
-            if #node.explicitExpression > 0 or i ~= #node.implicitExpression then
-                self:write(", ")
-            end
-        end
-    end
-    if node.explicitExpression then
-        for i,v in ipairs(node.explicitExpression) do
-            if v.computed then
-                self:write("[")
-                self:render(v.key)
-                self:write("] = ")
-                self:render(v.value)
-            else
-                self:render(v.key)
-                self:write(" = ")
-                self:render(v.value)
-            end
-            if i ~= #node.explicitExpression then
-                self:write(", ")
-            end
+    for i,v in ipairs(node) do
+        self:render(v)
+        if i < #node then
+            self:write(", ")
         end
     end
     self:write(" }")
 end
 
-function match:If(node)
+function match:field(node)
+    if node.operator == "[" then
+        self:write("[")
+    end
+    if node.key then
+        self:render(node.key)
+    end
+    if node.operator then
+        self:write(node.operator)
+    end
+    if node.key then
+        self:write(" = ")
+    end
+    self:render(node.value)
+end
+
+function match:tblaccess(node)
+    self:render(node.lhs)
+    if node.literalidx then
+        self:write(".")
+    elseif node.selfdef then
+        self:write(":")
+    else
+        self:write("[")
+    end
+    self:render(node.rhs)
+    if not node.literalidx and not node.selfdef then
+        self:write("]")
+    end
+end
+
+function match:ifstmt(node)
     self:write("if ")
     self:render(node.test)
     self:write(" then")
-    self:render(node.consequent)
+    self:render(node[1])
     self.writer:writeln()
-    if node.elseifTest and #node.elseifTest > 0 then
-        for i,v in ipairs(node.elseifTest) do
-            self:write("elseif ")
-            self:render(v)
-            self:write(" then")
-            self:render(node.elseifBlock[i])
-            self.writer:writeln()
-        end
+    for i=1, #node.elseifTable, 2 do
+        self:write("elseif ")
+        self:render(node.elseifTable[i])
+        self:write(" then")
+        self:render(node.elseifTable[i+1])
+        self.writer:writeln()
     end
     if node.elseBlock then
         self:write("else")
@@ -317,11 +292,11 @@ local function render(self, node, ...)
     if type(node) ~= "table" then
         error("not a table: "..tostring(node).." on line "..lastline)
     end
-    if not node.type then
+    if not node.ast_id then
         error("don't know what to do with: "..require"lua.tableUtil".stringTable(node).." on line "..lastline)
     end
-    if not match[node.type] then
-        error("no handler for "..node.type)
+    if not match[node.ast_id] then
+        error("no handler for "..node.ast_id)
     end
     if node.fileName then
         self.lastFileName = self.currentFileName
@@ -330,7 +305,7 @@ local function render(self, node, ...)
     if node.line then
         self.errors:addToLineMap(node.line, self.writer.line, self.currentFileName)
     end
-    local ret = match[node.type](self, node, ...)
+    local ret = match[node.ast_id](self, node, ...)
     if node.fileName then
         self.currentFileName = self.lastFileName
     end
