@@ -10,7 +10,7 @@ DESCRIPTION
 -- require --------------------------------------------------------------------
 
 local re      = require"lib.lpeg.re"
-local grammar = require"mad.lang.lua.grammar-spaces".grammar
+local grammar = require"mad.lang.lua.grammar-actions".grammar
 local actions = require"mad.lang.lua.defs".defs
 
 
@@ -26,8 +26,10 @@ end
 
 local parse = function (self, inputStream, fileName, pos)
 	local position = pos or 1
+	local startTime = os.clock()
 	local ast = self.grammar:match(inputStream, position)
-	print"MATCHED"
+	local totalTime = os.clock() - startTime
+    print(string.format("elapsed time: %.2fs", totalTime))
 	return ast
 end
 
@@ -35,7 +37,6 @@ call = function (_, ...)
 	local self = {}
 	self.parse = parse
 	self.grammar = re.compile(grammar, actions)
-	print"COMPILED"
 	return self
 end
 

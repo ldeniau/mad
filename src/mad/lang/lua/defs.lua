@@ -23,66 +23,9 @@ SEE ALSO
 local tableUtil = require('lua.tableUtil')
 local context = require"mad.lang.context.context"
 
--- utilities ----------------------------------------------------------------
+-- defs -----------------------------------------------------------------------
 
 local defs = { }
-
-local function unpackVOE(list)
-	if list == nil then return list end
-	local endNode,dot,sqrbrc,paran,col = {}, false, false, false, false
-	local nodeNo = 0
-	local callee
-	for i, val in pairs(list) do
-		if val == "." then
-			dot = true
-		elseif dot then
-			endNode[nodeNo] = defs.tableAccess(endNode[nodeNo],val,".")
-			dot = false
-		elseif val == "[" then
-			sqrbrc = true
-		elseif sqrbrc then
-			endNode[nodeNo] = defs.tableAccess(endNode[nodeNo],val,"[")
-			sqrbrc = false
-		elseif val == ":" then
-			col = true
-		elseif col then
-			callee = val
-			col = false
-		elseif callee ~= nil then
-			local args = val
-			endNode[nodeNo] = { type="FunctionCall", callee = defs.tableAccess(endNode[nodeNo],callee, ":"), arguments = args, line = defs._line }
-			callee = nil
-		elseif not val.type then
-			endNode[nodeNo] = { type="FunctionCall", callee = endNode[nodeNo], arguments = val, line = defs._line }
-		else
-			nodeNo = nodeNo + 1
-			endNode[nodeNo] = val
-		end
-	end
-	if #endNode == 1 then endNode = endNode[1] end
-	return endNode
-end
-
-local function unpackITA(callee,list)
-	local endNode,col,callee = callee, false,nil
-	for i, val in ipairs(list) do
-		if val == ":" then
-			col = true
-		elseif col then
-			callee = val
-			col = false
-		elseif callee ~= nil then
-			local args = val
-			endNode = { type="FunctionCall", callee = defs.tableAccess(endNode,callee, ":"), arguments = args, line = defs._line }
-			callee = nil
-		else
-			endNode = { type="FunctionCall", callee = endNode, arguments = val, line = defs._line }
-		end
-	end
-	return endNode
-end
-
--- defs -----------------------------------------------------------------------
 
 defs._line = 1
 
@@ -127,188 +70,70 @@ function defs.error(istream, pos)
 	end
 end
 
+-- block and chunk
 
-function defs.chunk(body)
-	return { type = "Chunk", body = body, line = defs._line }
-end
-function defs.stmt(pos, node)
-	node.pos = pos
-	return node
+function defs.chunk( block )
+    return { ast_id = "chunk", line = defs._line, block }
 end
 
-function defs.ifStmt(test, cons, elseifTable, elseBlock)
-	if cons.type ~= "Block" then
-		cons = defs.blockStmt{ cons }
-	end
-	local eifBlock, eifTest = {}, {}
-	if elseifTable then
-		if not elseifTable.type then
-			for _,v in ipairs(elseifTable) do
-				if v.type == "Block" then
-					eifBlock[#eifBlock+1] = v
-				else
-					eifTest[#eifTest+1] = v
-				end
-			end
-		else
-			elseBlock = elseifTable
-		end
-	end
-	if elseBlock and elseBlock.type and elseBlock.type ~= "Block" then
-		elseBlock = defs.blockStmt{ altn }
-	end
-	return { type = "If", test = test, consequent = cons, elseBlock = elseBlock, elseifTest = eifTest, elseifBlock = eifBlock, line = defs._line }
-end
-function defs.whileStmt(test, body)
-	return { type = "Loop", kind = "While", test = test, body = body, line = defs._line }
-end
-function defs.repeatStmt(body, test)
-	return { type = "Loop", kind = "Repeat", test = test, body = body, line = defs._line }
-end
-function defs.forStmt(name, init, last, step, body)
-	if not body then
-		body = step
-		step = nil
-	end	
-	return {
-		type = "Loop",
-		kind = "For",
-		name = name, init = init, last = last, step = step,
-		body = body,
-		line = defs._line
-	}
-end
-function defs.forInStmt(left, right, body)
-	return { type = "GenericFor", names = left, expressions = right, body = body, line = defs._line }
-end
-function defs.funcDecl(name, args, funcBody)
-	local par, body = args, funcBody
-	if body.type ~= "Block" then
-		body = defs.blockStmt{ body }
-	end
-	local id,dot,col = {}, false, false
-	if type(name) == "table" and #name > 0 then
-		for i, val in ipairs(name) do
-			if val == "." then
-				dot = true
-			elseif dot then
-				id = defs.tableAccess(id, val, ".")
-				dot = false
-			elseif val == ":" then
-				col = true
-			elseif col then
-				id = defs.tableAccess(id, val, ".")
-				col = false
-				table.insert(par,1,defs.identifier("self"))
-			else
-				id = val
-			end
-		end
-	else
-		id = name
-	end
-	local decl = { type = "FunctionDefinition", id = id, body = body, line = defs._line }
-	local params, rest = { }, false
-	for i=1, #par do
-		local p = par[i]
-		if p == "..." then
-			rest = true
-		else
-			params[#params + 1] = p
-		end 
-	end
-	decl.parameters	= params
-	decl.rest	  = rest
-	return decl
-end
-function defs.funcExpr(head, body)
-	local decl = defs.funcDecl(nil, head, body)
-	decl.expression = true
-	return decl
-end
-function defs.blockStmt(body)
-	return { type = "Block", body = body }
-end
-function defs.returnStmt(args)
-	return { type = "Return", values = args, line = defs._line }
-end
-function defs.breakStmt()
-	return { type = "Break", line = defs._line }
-end
-function defs.exprStmt(expr)
-	return expr
-end
-function defs.unaryExp(o, a)
-	return { type = "UnaryExpression", operator = o, argument = a, line = defs._line }
-end
-function defs.funcCall(varorexp, identthenargs)
-	local callee = unpackVOE(varorexp)
-	endNode = unpackITA(callee,identthenargs)
-	return endNode 
-end
-function defs.binaryExpr(op, lhs, rhs)
-	return { type = "BinaryExpression", operator = op, lhs = lhs, rhs = rhs, line = defs._line }
-end
-function defs.varlistAssign(lhs, rhs)
-	lhs = unpackVOE(lhs)
-	if lhs.type then lhs = { lhs } end
-	rhs = unpackVOE(rhs)
-	if rhs.type then rhs = { rhs } end
-	return { type = "Assignment", lhs = lhs, rhs = rhs, line = defs._line }
-end
-function defs.locFuncDecl(name, head, body)
-	local funcDef = defs.funcDecl(name, head, body)
-	funcDef.localDeclaration = true
-	funcDef.line = defs._line
-	return funcDef
-end
-function defs.locNameList(nlst, explst)
-	return { type = "Assignment", lhs = nlst, rhs = explst, localDeclaration = true, line = defs._line }
-end
-function defs.tableConstr(flst)
-	local tbl, i = { type = "Table", explicitExpression = {}, implicitExpression = {}, line = defs._line }, 1
-	while i <= #flst do
-		if flst[i] == "[" then
-			local k = flst[i+1]
-			if flst[i+2] and flst[i+2] == "=" and flst[i+3] then
-				tbl.explicitExpression[#tbl.explicitExpression+1] = { key = k, value = flst[i+3], computed = true }
-				i = i+4
-			else
-				error("Error with table constructor")
-			end
-		else
-			local val = flst[i]
-			if flst[i+1] and flst[i+1] == "=" then
-				if flst[i+2] and val and val.type and val.type == "Variable" then
-					tbl.explicitExpression[#tbl.explicitExpression+1] = { key = val, value = flst[i+2], computed = false }
-					i = i+3
-				else
-					error("Error with table constructor.")
-				end
-			else
-				tbl.implicitExpression[#tbl.implicitExpression+1] = { value = val }
-				i = i+1
-			end
-		end
-	end
-	return tbl
+function defs.block( _, ... )
+    return { ast_id = "block", line = defs._line, ... }
 end
 
-function defs.prefixExp(varorexp,identthenargs)
-	local var = unpackVOE(varorexp)
-	var = unpackITA(var,identthenargs)
-	return var
+-- stmt
+
+function defs.breakstmt()
+    return { ast_id = "breakstmt", line = defs._line }
 end
 
-function defs.tableAccess(lhs, rhs, operator)
-	return { type = "BinaryExpression", lhs = lhs, rhs = rhs, operator = operator, line = defs._line }
+function defs.gotostmt( label )
+    return { ast_id = "gotostmt", line = defs._line, label }
 end
 
-function defs.doStmt(block)
-	return { type = "Do", body = block, line = defs._line }
+function defs.dostmt( block )
+    return { ast_id = "dostmt", line = defs._line, block }
 end
 
----------------------------------------------------------------------------------------------------------------
+function defs.assign( lhs, rhs )
+    return { ast_id = "assign", line = defs._line, lhs = lhs, rhs = rhs }
+end
+
+function defs.locassign( lhs, rhs )
+    return { ast_id = "assign", line = defs._line, localdef = true, lhs = lhs, rhs = rhs }
+end
+
+function defs.whilestmt( exp, block)
+    return { ast_id = "loop", line = defs._line, kind = "while", test = exp, block }
+end
+
+function defs.repeatstmt( block, exp )
+    return { ast_id = "loop", line = defs._line, kind = "repeat", test = exp, block }
+end
+
+function defs.ifstmt( test, block, elseifTbl, elseBlock)
+    return { ast_id = "ifstmt", line = defs._line, test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
+end
+
+function defs.forstmt( name, first, last, step, block)
+    if not block then block = step step = nil end
+    return { ast_id = "loop", line = defs._line, kind = "for", name = name, first = first, last = last, step = step, block }
+end
+
+function defs.forinstmt( names, exps, block )
+    return { ast_id = "genericfor", line = defs._line, names = names, expressions = exps, block }
+end
+
+-- extra stmts
+
+function defs.retstmt ( _, ... )
+    return { ast_id = "returnstmt", line = defs._line, ... }
+end
+
+function defs.label ( _, val )
+    return { ast_id = "label", line = defs._line, val }
+end
+
+-- expressions
 
 function defs.exp ( _, exp )
     exp.line = defs._line
@@ -317,43 +142,158 @@ end
 
 function defs.orexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.andexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.logexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.catexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.sumexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.prodexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.unexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.powexp( _, first, ... )
     if ... == nil then return first end
-    return {ast_id = "expr", first, ...}
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
+
+
+local function createTreeFromListOfTableIndexAndCalls ( startnode, ... )
+    local skip, ret, args = false, startnode, {...}
+    for i = 1, #args, 2 do
+        if not skip then
+            if args[i] == ":" then
+                ret = { ast_id = "call", line = defs._line, callee = ret, selfExp = args[i+1], arguments = args[i+3] }
+                skip = true
+            elseif args[i] == "." then
+                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1], literalidx = true }
+            elseif args[i] == "(" then
+                ret = { ast_id = "call", line = defs._line, callee = ret, arguments = args[i+1] }
+            elseif args[i] == "[" then
+                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1] }
+            end
+        else
+            skip = false
+        end
+    end
+    return ret
+end
+
+function defs.varexp ( name, ... )
+    return createTreeFromListOfTableIndexAndCalls( name, ... )
+end
+
+function defs.grpexp ( exp )
+    return { ast_id = "groupexp", line = defs._line, exp }
+end
+
+
+-- variable definitions
+
+function defs.vardef ( name, ... )
+    return createTreeFromListOfTableIndexAndCalls( name, ... )
+end
+
+-- function definition
+
+function defs.fundef_a ( params, body )
+    return { ast_id = "fundef", line = defs._line, parameters = params, body }
+end
+
+function defs.fundef_n ( name, params, body )
+    return { ast_id = "fundef", line = defs._line, name = name, parameters = params, body }
+end
+
+function defs.fundef_l ( name, params, body )
+    return { ast_id = "fundef", line = defs._line, localdef = true, name = name, parameters = params, body }
+end
+
+function defs.funname ( names, selfname )
+    local ret = names[1]
+    for i = 2, #names do
+        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = names[i], literalidx = true }
+    end
+    if selfname then
+        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = selfname, selfdef = true }
+    end
+    return ret
+end
+
+function defs.funparm ( names, ellipsis )
+    if names[1] == "..." then return {names} end
+    names = names or {}
+    table.insert(names, ellipsis)
+    return names
+end
+
+function defs.funbody ( params, body )
+    if not body then
+        return nil, body
+    end
+    return params[1], body
+end
+
+function defs.funstmt ( name, ... )
+    return createTreeFromListOfTableIndexAndCalls( name, ... )
+end
+
+function defs.funcall ( op, name, ... )
+    if op == ":" then
+        return op, name, "(", {...}
+    elseif type(op) == "table" then
+        return "(", { op, name, ... }
+    else
+        return "(", {}
+    end    
+end
+
+-- table
+
+function defs.tabledef( _, ... )
+	return { ast_id = "tabledef", line = defs._line, ... }
+end
+
+function defs.field( _, op, key, val )
+    if not key then
+        val = op
+        op = nil
+    end
+    if not val then 
+        val = key
+        key = op
+        op = nil
+    end
+    return { ast_id = "field", key = key, value = val, operator = op, line = defs._line }
+end
+
+function defs.tableidx( op, exp )
+    return op, exp
+end
+
+-- basic lexem
 
 function defs.literal(...)
 	return { ast_id = "literal", ..., line = defs._line }
