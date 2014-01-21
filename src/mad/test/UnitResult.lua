@@ -19,14 +19,27 @@ function UnitResult:displayTestName()
 end
 
 function UnitResult:displayTimeSpent()
-    for i = string.len(self.currentTestName) + 2, maxLength - 20 do
+    for i = string.len(self.currentTestName) + 2, maxLength - 24 do
         io.stdout:write(" ")
     end
     io.stdout:write("( "..string.format("%.2f",self.timeSpent).."s ) ")
 end
 
 function UnitResult:displayNumberOfSuccesses()
-    io.stdout:write(self.testsSucceeded.."/"..self.testsStarted)
+    if self.testsSucceeded < 10 then
+        io.stdout:write("  "..self.testsSucceeded.."/")
+    elseif self.testsSucceeded < 100 then
+        io.stdout:write(" "..self.testsSucceeded.."/")
+    else
+        io.stdout:write(self.testsSucceeded.."/")
+    end
+    if self.testsStarted < 10 then
+        io.stdout:write(self.testsStarted.."  ")
+    elseif self.testsStarted < 100 then
+        io.stdout:write(self.testsStarted.." ")
+    else
+        io.stdout:write(self.testsStarted)
+    end
 end
 
 function UnitResult:displayPassOrFail()
