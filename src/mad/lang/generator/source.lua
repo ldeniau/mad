@@ -357,7 +357,7 @@ end
 
 
 function M.test:groupexp(ut)
-    self:render{ ast_id = "groupexp", { ast_id = "literal", "1" } }
+    self:render{ ast_id = "groupexp", { ast_id = "literal", "1" } }
     ut:equals(tostring(self.writer), [[( 1 )]])
 end
 
