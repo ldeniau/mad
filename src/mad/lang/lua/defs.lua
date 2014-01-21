@@ -72,7 +72,7 @@ end
 
 -- block and chunk
 
-function defs.chunk( _, block )
+function defs.chunk( block )
     return { ast_id = "chunk", block }
 end
 
@@ -83,15 +83,15 @@ end
 -- stmt
 
 function defs.breakstmt()
-    return { ast_id = "break" }
+    return { ast_id = "breakstmt" }
 end
 
 function defs.gotostmt( label )
-    return { ast_id = "goto", label }
+    return { ast_id = "gotostmt", label }
 end
 
 function defs.dostmt( block )
-    return { ast_id = "do", block }
+    return { ast_id = "dostmt", block }
 end
 
 function defs.assign( lhs, rhs )
@@ -103,30 +103,30 @@ function defs.locassign( lhs, rhs )
 end
 
 function defs.whilestmt( exp, block)
-    return { ast_id = "while", test = exp, block }
+    return { ast_id = "loop", kind = "while", test = exp, block }
 end
 
 function defs.repeatstmt( block, exp )
-    return { ast_id = "repeat", test = exp, block }
+    return { ast_id = "loop", kind = "repeat", test = exp, block }
 end
 
 function defs.ifstmt( test, block, elseifTbl, elseBlock)
-    return { ast_id = "if", test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
+    return { ast_id = "ifstmt", test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
 end
 
 function defs.forstmt( name, first, last, step, block)
     if not block then block = step step = nil end
-    return { ast_id = "for", name = name, first = first, last = last, step = step, block }
+    return { ast_id = "loop", kind = "for", name = name, first = first, last = last, step = step, block }
 end
 
 function defs.forinstmt( names, exps, block )
-    return { ast_id = "forin", names = names, expressions = exps, block }
+    return { ast_id = "genericfor", names = names, expressions = exps, block }
 end
 
 -- extra stmts
 
 function defs.retstmt ( _, ... )
-    return { ast_id = "return", ... }
+    return { ast_id = "returnstmt", ... }
 end
 
 function defs.label ( _, val )
@@ -234,15 +234,16 @@ end
 function defs.funname ( names, selfname )
     local ret = names[1]
     for i = 2, #names do
-        ret = { ast_id = "binexp", lhs = ret, rhs = names[i], operator = "." }
+        ret = { ast_id = "tblaccess", lhs = ret, rhs = names[i], literalidx = true }
     end
     if selfname then
-        ret = { ast_id = "binexp", lhs = ret, rhs = selfname, operator = ":" }
+        ret = { ast_id = "tblaccess", lhs = ret, rhs = selfname, selfdef = true }
     end
     return ret
 end
 
 function defs.funparm ( names, ellipsis )
+    if names[1] == "..." then return {names} end
     names = names or {}
     table.insert(names, ellipsis)
     return names
@@ -250,10 +251,9 @@ end
 
 function defs.funbody ( params, body )
     if not body then
-        body = params
-        params = nil
+        return nil, body
     end
-    return params, body
+    return params[1], body
 end
 
 function defs.funstmt ( name, ... )
@@ -273,7 +273,7 @@ end
 -- table
 
 function defs.tabledef( _, ... )
-	return { ast_id = "tableDef", ... }
+	return { ast_id = "tabledef", ... }
 end
 
 function defs.field( _, op, key, val )

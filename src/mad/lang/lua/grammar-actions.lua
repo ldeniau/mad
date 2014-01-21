@@ -24,7 +24,7 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- block s(!./''=>error)                                        -> chunk
+    chunk       <- ((''=>setup) block s(!./''=>error))                          -> chunk
     block       <- {stmt* retstmt?}                                             -> block
 
 -- statements
@@ -86,7 +86,7 @@ M.grammar = [=[
 
     funname     <- ({|name (s'.' name)*|} (s':' name)?)                         -> funname
     funbody     <- (s'(' {|funparm?|} s')' block end)                           -> funbody
-    funparm     <- ({|namelist|} (s',' ellipsis->literal)? / ellipsis->literal) -> funparm
+    funparm     <- ({|namelist|}(s','s ellipsis->literal)? /s ellipsis->literal)-> funparm
 
     funstmt     <- ((name / grpexp) varsfx* funcall+)                           -> funstmt
 
@@ -232,7 +232,7 @@ function M.test:retsmt(ut)
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "return 1")
     ut:equals(res[1][1], "1")
-    ut:equals(res.ast_id, "return")
+    ut:equals(res.ast_id, "returnstmt")
 end
 
 function M.test:label(ut)
@@ -247,7 +247,7 @@ function M.test:breakstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "break")
-    ut:equals(res.ast_id, "break")
+    ut:equals(res.ast_id, "breakstmt")
 end
 
 function M.test:gotostmt(ut)
@@ -255,15 +255,15 @@ function M.test:gotostmt(ut)
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "goto few")
     ut:equals(res[1][1], "few")
-    ut:equals(res.ast_id, "goto")
+    ut:equals(res.ast_id, "gotostmt")
 end
 
 function M.test:dostmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "do break end")
-    ut:equals(res.ast_id, "do")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res.ast_id, "dostmt")
+    ut:equals(res[1][1].ast_id, "breakstmt")
 end
 
 function M.test:fundef(ut)
@@ -330,67 +330,67 @@ function M.test:whilestmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "while true do break end")
-    ut:equals(res.ast_id, "while")
+    ut:equals(res.kind, "while")
     ut:equals(res.test[1], "true")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
 end
 
 function M.test:repeatstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "repeat break until false")
-    ut:equals(res.ast_id, "repeat")
+    ut:equals(res.kind, "repeat")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
 end
 
 function M.test:ifstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "if false then break elseif false then break elseif false then break else break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[1][1], "false")
-    ut:equals(res.elseifTable[2][1].ast_id, "break")
+    ut:equals(res.elseifTable[2][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[3][1], "false")
-    ut:equals(res.elseifTable[4][1].ast_id, "break")
-    ut:equals(res.elseBlock[1].ast_id, "break")
+    ut:equals(res.elseifTable[4][1].ast_id, "breakstmt")
+    ut:equals(res.elseBlock[1].ast_id, "breakstmt")
     res = ut:succeeds(parser.match, parser, "if false then break elseif false then break else break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[1][1], "false")
-    ut:equals(res.elseifTable[2][1].ast_id, "break")
-    ut:equals(res.elseBlock[1].ast_id, "break")
+    ut:equals(res.elseifTable[2][1].ast_id, "breakstmt")
+    ut:equals(res.elseBlock[1].ast_id, "breakstmt")
     res = ut:succeeds(parser.match, parser, "if false then break elseif false then break elseif false then break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[1][1], "false")
-    ut:equals(res.elseifTable[2][1].ast_id, "break")
+    ut:equals(res.elseifTable[2][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[3][1], "false")
-    ut:equals(res.elseifTable[4][1].ast_id, "break")
+    ut:equals(res.elseifTable[4][1].ast_id, "breakstmt")
     ut:equals(res.elseBlock, nil)
     res = ut:succeeds(parser.match, parser, "if false then break break else break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
-    ut:equals(res[1][2].ast_id, "break")
-    ut:equals(res.elseBlock[1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
+    ut:equals(res[1][2].ast_id, "breakstmt")
+    ut:equals(res.elseBlock[1].ast_id, "breakstmt")
     res = ut:succeeds(parser.match, parser, "if false then break elseif false then break elseif false then break else break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[1][1], "false")
-    ut:equals(res.elseifTable[2][1].ast_id, "break")
+    ut:equals(res.elseifTable[2][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[3][1], "false")
-    ut:equals(res.elseifTable[4][1].ast_id, "break")
-    ut:equals(res.elseBlock[1].ast_id, "break")
+    ut:equals(res.elseifTable[4][1].ast_id, "breakstmt")
+    ut:equals(res.elseBlock[1].ast_id, "breakstmt")
     res = ut:succeeds(parser.match, parser, "if false then break end")
-    ut:equals(res.ast_id, "if")
+    ut:equals(res.ast_id, "ifstmt")
     ut:equals(res.test[1], "false")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     ut:equals(res.elseifTable[1], nil)
     ut:equals(res.elseBlock, nil)
 end
@@ -399,30 +399,30 @@ function M.test:forstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "for fea = 1, 1, 1 do break end")
-    ut:equals(res.ast_id, "for")
+    ut:equals(res.kind, "for")
     ut:equals(res.name[1], "fea")
     ut:equals(res.step[1], "1")
     ut:equals(res.first[1], "1")
     ut:equals(res.last[1], "1")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
     res = ut:succeeds(parser.match, parser, "for fea = 1, 1 do break end")
-    ut:equals(res.ast_id, "for")
+    ut:equals(res.kind, "for")
     ut:equals(res.name[1], "fea")
     ut:equals(res.step, nil)
     ut:equals(res.first[1], "1")
     ut:equals(res.last[1], "1")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
 end
 
 function M.test:forinstmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "for few,feww in eqw do break end")
-    ut:equals(res.ast_id, "forin")
+    ut:equals(res.ast_id, "genericfor")
     ut:equals(res.names[1][1], "few")
     ut:equals(res.names[2][1], "feww")
     ut:equals(res.expressions[1][1], "eqw")
-    ut:equals(res[1][1].ast_id, "break")
+    ut:equals(res[1][1].ast_id, "breakstmt")
 end
 
 
@@ -801,7 +801,7 @@ function M.test:fundef_a(ut)
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "function() return 1 end")
     ut:equals(res.ast_id, "fundef")
-    ut:equals(res[1][1].ast_id, "return")
+    ut:equals(res[1][1].ast_id, "returnstmt")
     ut:equals(res.name, nil)
     ut:equals(res.localdef, nil)
 end
@@ -811,12 +811,12 @@ function M.test:fundef_n(ut)
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "function a () return 1 end")
     ut:equals(res.ast_id, "fundef")
-    ut:equals(res[1][1].ast_id, "return")
+    ut:equals(res[1][1].ast_id, "returnstmt")
     ut:equals(res.name[1], "a")
     ut:equals(res.localdef, nil)
     res = ut:succeeds(parser.match, parser, "function a.a () return 1 end")
     ut:equals(res.ast_id, "fundef")
-    ut:equals(res[1][1].ast_id, "return")
+    ut:equals(res[1][1].ast_id, "returnstmt")
     ut:equals(res.name.lhs[1], "a")
     ut:equals(res.name.rhs[1], "a")
     ut:equals(res.localdef, nil)
@@ -828,7 +828,7 @@ function M.test:fundef_l(ut)
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "local function a () return 1 end")
     ut:equals(res.ast_id, "fundef")
-    ut:equals(res[1][1].ast_id, "return")
+    ut:equals(res[1][1].ast_id, "returnstmt")
     ut:equals(res.name[1], "a")
     ut:equals(res.localdef, true)
     ut:fails(parser.match, parser, "local function () return 1 end")
@@ -851,13 +851,16 @@ function M.test:funbody(ut)
     ut:equals(body, nil)
     ut:equals(param[1][1], "...")
     param, body = ut:succeeds(parser.match, parser, "() return 1 end")
+    param, body = ut:succeeds(parser.match, parser, "(a,b) return 1 end")
+    ut:equals(param[1][1], "a")
+    ut:equals(param[2][1], "b")
 end
 
 function M.test:funparm(ut)
     local grammar = "rule <- funparm? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "...")
-    ut:equals(res[1], "...")
+    ut:equals(res[1][1], "...")
     res = ut:succeeds(parser.match, parser, "a")
     ut:equals(res[1][1], "a")
     res = ut:succeeds(parser.match, parser, "a,b")
