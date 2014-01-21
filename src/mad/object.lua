@@ -4,20 +4,20 @@ local M = { help={}, test={}, _id="object" }
 
 M.help.self = [[
 NAME
-  mad.object -- transform tables into general purpose objects
+  mad.object -- transform Lua tables into general purpose objects
 
 SYNOPSIS
-  local object = require "mad.object"
-  local var = object [string] table
+  object = require "mad.object"
+  var = object [string] table
 
 DESCRIPTION
   The module mad.object *transforms* any table into an object with inheritance of
   properties and callable semantic. Hence an object is a table that can be used
   as a constructor (a function), an object (a table) or a class (a metatable).
-  This transformation can also be applied to modules.
   
   The returned object has its class (its constructor) set as metatable and
-  inherits all properties of its class autmatically.
+  inherits all properties of its class autmatically, implementing a prototype
+  language.
 
   The optional string argument is stored into the property _id of the object.
 
@@ -30,46 +30,79 @@ ERRORS
   If the table passed is already an opbject, an invalid argument error is raised.
 
 EXAMPLES
-  local object = require "mad.object"
-  local my_a = object 'a' { myflag = true }         -- _id = 'a' (implicit)
-  local my_b = object { _id = 'b', myflag = true }  -- _id = 'b' (explicit)
-  local my_c = object { myflag = false }            -- _id = nil
+  object = require "mad.object"
+  my_a = object 'a' { myflag = true }         -- _id = 'a' (implicit)
+  my_b = object { _id = 'b', myflag = true }  -- _id = 'b' (explicit)
+  my_c = object { myflag = false }            -- _id = nil
 
 SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
 ]]
 
+-- locals ---------------------------------------------------------------------
+
+local getmetatable, setmetatable = getmetatable, setmetatable
+
 -- methods ---------------------------------------------------------------------
 
 -- return the direct parent
 function M:super()
-  return getmetatable(self);
+  return getmetatable(self)
 end
 
--- return the parent of type id, or nil
+-- return the parent id or nil
 function M:isa(id)
-  local obj = self;
+  local a = self;
 
-  repeat
-    if rawget(obj, "_id") == id then break end
-    obj = getmetatable(obj)
-  until obj == nil
-  return obj
+  if type(id) == "string" then
+    while a ~= nil and rawget(a, "_id") ~= id do
+      a = getmetatable(a)
+    end
+    return a
+
+  elseif type(id) == "table" then
+    while a ~= nil and a ~= id do
+      a = getmetatable(a)
+    end
+    return a
+  end
+
+  error("invalid parent id, should be either an object or a string")
 end
 
--- return a cloned instance
-function M:clone(a)
-
-  if type(a) ~= "string" or nil then
-    error ("invalid clone argument, should be: parent:clone [id_string]")
+-- return a clone of self
+function M:clone(id)
+  if type(id) == "string" or id == nil then
+    local c = {} -- clone
+    for k,v in pairs(self) do
+      c[k] = v
+    end
+    return rawset(setmetatable(c, getmetatable(self)), "_id", id)
   end
 
-  local c = {} -- clone
-  for k,v in pairs(self) do
-    c[k] = v
-  end
+  error ("invalid clone argument, should be: parent:clone [id_string]")
+end
 
-  return rawset(setmetatable(c, getmetatable(self)), "_id", a)
+-- return value(s) of each key
+function M:get(key)
+  if type(key) == "table" then
+    local t = {}
+    for i,k in ipairs(key) do
+      t[i] = self[k]
+    end
+    return table.unpack(t)
+  end
+  return self[key];
+end
+
+-- set key, value pair(s)
+function M:set(key, val)
+  if type(key) == "table" then
+    for k,v in pairs(key) do
+      self[k] = v
+    end
+  end
+  self[key] = val;
 end
 
 -- metamethods -----------------------------------------------------------------
@@ -78,26 +111,23 @@ local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (self, a)
 
-  if not rawget(self,"__call") then
+  if not rawget(self, "__call") then
     rawset(self, "__index", self)         -- inheritance
-    rawset(self, "__call",  mt.__call)    -- constructor call
+    rawset(self, "__call", mt.__call)     -- constructor call
   end
 
   -- parent {}
   if type(a) == "table" then
-    if a.isa and a:isa('object') then
-      error ("invalid constructor argument (i.e. object), use :clone instead")
-    end
     return setmetatable(a, self)
   end
 
   -- parent 'id' {}
   if type(a) == "string" then
     return function (t)
-      if t.isa and t:isa('object') then
-        error ("invalid constructor argument (i.e. object), use :clone instead")
+      if type(t) == "table" then
+        return rawset(setmetatable(t, self), "_id", a)
       end
-      return rawset(setmetatable(t, self), "_id", a)
+      error ("invalid constructor argument, should be: parent [id_string] prop_table")
     end
   end
 

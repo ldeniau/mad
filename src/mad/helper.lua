@@ -24,7 +24,7 @@ SEE ALSO
 
 -- require ---------------------------------------------------------------------
 
-local module = require "mad.module"
+--local module = require "mad.module"
 
 -- metamethods -----------------------------------------------------------------
 
