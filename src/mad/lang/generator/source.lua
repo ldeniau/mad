@@ -239,8 +239,8 @@ function match:field(node)
     if node.key then
         self:render(node.key)
     end
-    if node.operator then
-        self:write(node.operator)
+    if node.operator == "[" then
+        self:write("]")
     end
     if node.key then
         self:write(" = ")
@@ -354,7 +354,93 @@ function M.test:tearDown()
     self.errors = nil
 end
 
-function M.test:render(self, node, ...)
+
+
+function M.test:groupexp(ut)
+    self:render{ ast_id = "groupexp", { ast_id = "literal", "1" } }
+    ut:equals(tostring(self.writer), [[( 1 )]])
+end
+
+function M.test:fundef_a(ut)
+    self:render{ ast_id = "fundef", parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function ( a, b )
+    break
+end]])
+end
+function M.test:fundef_n(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function funname( a, b )
+    break
+end]])
+end
+function M.test:fundef_nEllipsis(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" }, { ast_id = "literal", "..." } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function funname( a, b, ... )
+    break
+end]])
+end
+function M.test:fundef_nOnlyEllipsis(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "literal", "..." } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function funname( ... )
+    break
+end]])
+end
+function M.test:fundef_nEmpty(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = {}, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function funname(  )
+    break
+end]])
+end
+function M.test:fundef_nDotName(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "tblaccess", lhs = { ast_id = "name", "a"}, rhs = { ast_id = "tblaccess", lhs = { ast_id = "name", "b" }, rhs = { ast_id = "name", "c" }, selfdef = true }, literalidx = true }, parameters = {}, { ast_id = "block", { ast_id = "breakstmt" } } }
+    ut:equals(tostring(self.writer), [[
+function a.b:c(  )
+    break
+end]])
+end
+function M.test:fundef_l(ut)
+    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } }, localdef = true }
+    ut:equals(tostring(self.writer), [[
+local function funname( a, b )
+    break
+end]])
+end
+
+function M.test:tabledef(ut)
+    self:render{ ast_id = "tabledef", { ast_id = "field", value = { ast_id = "literal", "1" } }}
+    ut:equals(tostring(self.writer), [[{ 1 }]])
+end
+function M.test:tabledefEmpty(ut)
+    self:render{ ast_id = "tabledef" }
+    ut:equals(tostring(self.writer), [[{  }]])
+end
+
+function M.test:fieldNoKey(ut)
+    self:render{ ast_id = "field", value = { ast_id = "literal", "1" } }
+    ut:equals(tostring(self.writer), [[1]])
+end
+function M.test:fieldKeySqrBrckt(ut)
+    self:render{ ast_id = "field", value = { ast_id = "literal", "1" }, key = { ast_id = "literal", "1" }, operator = "[" }
+    ut:equals(tostring(self.writer), [=[[1] = 1]=])
+end
+function M.test:fieldKeyDot(ut)
+    self:render{ ast_id = "field", value = { ast_id = "literal", "1" }, key = { ast_id = "name", "hello" } }
+    ut:equals(tostring(self.writer), [[hello = 1]])
+end
+
+function M.test:literal(ut)
+    self:render{ ast_id = "literal", '"hello"'}
+    ut:equals(tostring(self.writer), [["hello"]])
+end
+
+function M.test:name(ut)
+    self:render{ ast_id = "name", "hello"}
+    ut:equals(tostring(self.writer), [[hello]])
 end
 
 function M.test:write(ut)
@@ -362,8 +448,6 @@ function M.test:write(ut)
     ut:equals(tostring(self.writer),"Yo")
 end
 
-function M.test:generate (self, tree)
-end
 
 -- end  -----------------------------------------------------------------------
 return M
