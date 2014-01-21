@@ -52,7 +52,7 @@ end
 
 -- return the parent id or nil
 function M:isa(id)
-  local a = self;
+  local a = getmetatable(self);
 
   if type(id) == "string" then
     while a ~= nil and rawget(a, "_id") ~= id do
@@ -97,7 +97,7 @@ end
 
 -- set key, value pair(s)
 function M:set(key, val)
-  if type(key) == "table" then
+  if type(key) == "table" and val == nil then
     for k,v in pairs(key) do
       self[k] = v
     end
@@ -105,33 +105,39 @@ function M:set(key, val)
   self[key] = val;
 end
 
+-- unset keys by setting their values to nil
+function M:unset(key)
+  if type(key) == "table" then
+    for i,k in ipairs(key) do
+      self[k] = nil
+    end
+  end
+  self[key] = nil;
+end
+
 -- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
 
-mt.__call = function (self, a)
-
+local function create(self, t, id)
   if not rawget(self, "__call") then
     rawset(self, "__index", self)         -- inheritance
     rawset(self, "__call", mt.__call)     -- constructor call
   end
 
-  -- parent {}
-  if type(a) == "table" then
-    return setmetatable(a, self)
-  end
-
-  -- parent 'id' {}
-  if type(a) == "string" then
-    return function (t)
-      if type(t) == "table" then
-        return rawset(setmetatable(t, self), "_id", a)
-      end
-      error ("invalid constructor argument, should be: parent [id_string] prop_table")
-    end
+  if type(t) == "table" then
+    return rawset(setmetatable(t, self), "_id", id)
   end
 
   error ("invalid constructor argument, should be: parent [id_string] prop_table")
+end
+
+mt.__call = function (self, a)
+  if type(a) == "string" then
+    return function (t) return create(self, t, a) end
+  end
+
+  return create(self, a, nil)
 end
 
 -- tests -----------------------------------------------------------------------
