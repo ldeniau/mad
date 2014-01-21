@@ -10,17 +10,17 @@ DESCRIPTION
 -- require --------------------------------------------------------------------
 local LuaUnit = require"mad.test.luaUnit"
 
--- metamethods ----------------------------------------------------------------
-local mt = {}; setmetatable(M, mt)
-local call
-mt.__call = function (...)
-	return call(...)
-end
-
 -- module ---------------------------------------------------------------------
 
-call = function (_, moduleToRunTable)
-	LuaUnit:run(moduleToRunTable)
+local call = function (_, module_list)
+	LuaUnit:run(module_list)
+end
+
+-- metamethods ----------------------------------------------------------------
+local mt = {}; setmetatable(M, mt)
+
+mt.__call = function (...)
+	return call(...)
 end
 
 -- end ------------------------------------------------------------------------

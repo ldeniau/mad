@@ -1,0 +1,9 @@
+test = require"mad.tester"
+
+
+test ( mad.object ) -- test module (list of functions in test first then self if any)
+test ('mad.object') -- test module (list of functions in test first then self if any)
+test ( mad.object , 'get') -- test function get from mad.object
+test ('mad.object', 'get') -- test function get from mad.object
+test ( mad.object , { 'get', 'set', 'unset' }) -- test functions get, set, unset from mad.object
+test ('mad.object', { 'get', 'set', 'unset' }) -- test functions get, set, unset from mad.object
