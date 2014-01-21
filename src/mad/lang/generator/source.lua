@@ -354,63 +354,6 @@ function M.test:tearDown()
     self.errors = nil
 end
 
-function M.test:Chunk(ut)
-end
-
-function M.test:Block(ut)
-end
-
-function M.test:Assignment(ut)
-end
-
-function M.test:FunctionCall(ut)
-end
-
-function M.test:Label(ut)
-end
-
-function M.test:Break(ut)
-end
-
-function M.test:Goto(ut)
-end
-
-function M.test:Do(ut)
-end
-
-function M.test:Loop(ut)
-end
-
-function M.test:GenericFor(ut)
-end
-
-function M.test:FunctionDefinition(ut)
-end
-
-function M.test:Return(ut)
-end
-
-function M.test:Vararg(ut)
-end
-
-function M.test:BinaryExpression(ut)
-end
-
-function M.test:UnaryExpression(ut)
-end
-
-function M.test:Variable(ut)
-end
-
-function M.test:Literal(ut)
-end
-
-function M.test:Table(ut)
-end
-
-function M.test:If(ut)
-end
-
 function M.test:render(self, node, ...)
 end
 
