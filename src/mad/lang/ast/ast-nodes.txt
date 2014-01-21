@@ -1,0 +1,40 @@
+-- xxxx_list means comma separated list of xxxx in the definition
+-- expr_op_list = expr (op expr)*
+-- name_list_ellipsis = (name,)* ...?
+ -- expr_block_list = expr block (expr block)* block?
+
+{ ast_id = "chunk"      ,  block = block   }
+
+{ ast_id = "block_stmt" ,  stmt_list       }
+{ ast_id = "break_stmt" ,                  }
+{ ast_id = "goto_stmt"  ,  name  = name    }
+{ ast_id = "do_stmt"    ,  block = block   }
+{ ast_id = "label_stmt" ,  name  = name    }
+
+{ ast_id = "while_stmt" , expr = expr, block = block }
+{ ast_id = "repeat_stmt", expr = expr, block = block }
+{ ast_id = "for_stmt"   , name = name, first = expr, last = expr, step = expr, block = block }
+{ ast_id = "genfor_stmt", name = { name_list }, expr = { expr_list },          block = block }
+
+{ ast_id = "if_stmt"    , expr_block_list }
+{ ast_id = "ret_stmt"   , expr_list }
+
+{ ast_id = "assign"     , kind = "local" | nil, lhs = lhs, rhs = rhs }
+
+{ ast_id = "expr"       , expr_op_list }
+
+{ ast_id = "tblidx"     , kind = '.' | nil, lhs = expr, rhs = expr }
+
+{ ast_id = "funcall"    , kind = ':' | nil, name = expr, arg = { expr_list } }
+
+{ ast_id = "grpexpr"    , expr = expr }
+
+{ ast_id = "fundef"     , kind = "local" | nil, name = name, param = { name_list_ellipsis }, block = block }
+
+{ ast_id = "tbldef"     , tblfld_list }
+
+{ ast_id = "tblfld"     , kind = "expr" | "name" | nil, key = key, value = value }
+
+{ ast_id = "name"       , name = name }
+
+{ ast_id = "literal"    , kind = "nil" | "bool" | "number" | "string" | "ellipsis", value = value }
