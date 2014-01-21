@@ -177,7 +177,7 @@ M.grammar = [=[
 -- escape characters, must be outside long strings
 .. "ws <- [ \t\r]"
 .. "ch <- [^\n]"
-.. "nl <- [\n]"
+.. "nl <- [\n]->newLine"
 
 -- test -----------------------------------------------------------------------
 

@@ -73,64 +73,64 @@ end
 -- block and chunk
 
 function defs.chunk( block )
-    return { ast_id = "chunk", block }
+    return { ast_id = "chunk", line = defs._line, block }
 end
 
 function defs.block( _, ... )
-    return { ast_id = "block", ... }
+    return { ast_id = "block", line = defs._line, ... }
 end
 
 -- stmt
 
 function defs.breakstmt()
-    return { ast_id = "breakstmt" }
+    return { ast_id = "breakstmt", line = defs._line }
 end
 
 function defs.gotostmt( label )
-    return { ast_id = "gotostmt", label }
+    return { ast_id = "gotostmt", line = defs._line, label }
 end
 
 function defs.dostmt( block )
-    return { ast_id = "dostmt", block }
+    return { ast_id = "dostmt", line = defs._line, block }
 end
 
 function defs.assign( lhs, rhs )
-    return { ast_id = "assign", lhs = lhs, rhs = rhs }
+    return { ast_id = "assign", line = defs._line, lhs = lhs, rhs = rhs }
 end
 
 function defs.locassign( lhs, rhs )
-    return { ast_id = "assign", localdef = true, lhs = lhs, rhs = rhs }
+    return { ast_id = "assign", line = defs._line, localdef = true, lhs = lhs, rhs = rhs }
 end
 
 function defs.whilestmt( exp, block)
-    return { ast_id = "loop", kind = "while", test = exp, block }
+    return { ast_id = "loop", line = defs._line, kind = "while", test = exp, block }
 end
 
 function defs.repeatstmt( block, exp )
-    return { ast_id = "loop", kind = "repeat", test = exp, block }
+    return { ast_id = "loop", line = defs._line, kind = "repeat", test = exp, block }
 end
 
 function defs.ifstmt( test, block, elseifTbl, elseBlock)
-    return { ast_id = "ifstmt", test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
+    return { ast_id = "ifstmt", line = defs._line, test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
 end
 
 function defs.forstmt( name, first, last, step, block)
     if not block then block = step step = nil end
-    return { ast_id = "loop", kind = "for", name = name, first = first, last = last, step = step, block }
+    return { ast_id = "loop", line = defs._line, kind = "for", name = name, first = first, last = last, step = step, block }
 end
 
 function defs.forinstmt( names, exps, block )
-    return { ast_id = "genericfor", names = names, expressions = exps, block }
+    return { ast_id = "genericfor", line = defs._line, names = names, expressions = exps, block }
 end
 
 -- extra stmts
 
 function defs.retstmt ( _, ... )
-    return { ast_id = "returnstmt", ... }
+    return { ast_id = "returnstmt", line = defs._line, ... }
 end
 
 function defs.label ( _, val )
-    return { ast_id = "label", val }
+    return { ast_id = "label", line = defs._line, val }
 end
 
 -- expressions
@@ -142,42 +142,42 @@ end
 
 function defs.orexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.andexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.logexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.catexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.sumexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.prodexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.unexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.powexp( _, first, ... )
     if ... == nil then return first end
-    return { ast_id = "expr", first, ... }
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 
@@ -186,14 +186,14 @@ local function createTreeFromListOfTableIndexAndCalls ( startnode, ... )
     for i = 1, #args, 2 do
         if not skip then
             if args[i] == ":" then
-                ret = { ast_id = "call", callee = ret, selfExp = args[i+1], arguments = args[i+3] }
+                ret = { ast_id = "call", line = defs._line, callee = ret, selfExp = args[i+1], arguments = args[i+3] }
                 skip = true
             elseif args[i] == "." then
-                ret = { ast_id = "tblaccess", lhs = ret, rhs = args[i+1], literalidx = true }
+                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1], literalidx = true }
             elseif args[i] == "(" then
-                ret = { ast_id = "call", callee = ret, arguments = args[i+1] }
+                ret = { ast_id = "call", line = defs._line, callee = ret, arguments = args[i+1] }
             elseif args[i] == "[" then
-                ret = { ast_id = "tblaccess", lhs = ret, rhs = args[i+1] }
+                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1] }
             end
         else
             skip = false
@@ -207,7 +207,7 @@ function defs.varexp ( name, ... )
 end
 
 function defs.grpexp ( exp )
-    return { ast_id = "groupexp", exp }
+    return { ast_id = "groupexp", line = defs._line, exp }
 end
 
 
@@ -220,24 +220,24 @@ end
 -- function definition
 
 function defs.fundef_a ( params, body )
-    return { ast_id = "fundef", parameters = params, body }
+    return { ast_id = "fundef", line = defs._line, parameters = params, body }
 end
 
 function defs.fundef_n ( name, params, body )
-    return { ast_id = "fundef", name = name, parameters = params, body }
+    return { ast_id = "fundef", line = defs._line, name = name, parameters = params, body }
 end
 
 function defs.fundef_l ( name, params, body )
-    return { ast_id = "fundef", localdef = true, name = name, parameters = params, body }
+    return { ast_id = "fundef", line = defs._line, localdef = true, name = name, parameters = params, body }
 end
 
 function defs.funname ( names, selfname )
     local ret = names[1]
     for i = 2, #names do
-        ret = { ast_id = "tblaccess", lhs = ret, rhs = names[i], literalidx = true }
+        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = names[i], literalidx = true }
     end
     if selfname then
-        ret = { ast_id = "tblaccess", lhs = ret, rhs = selfname, selfdef = true }
+        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = selfname, selfdef = true }
     end
     return ret
 end
@@ -273,7 +273,7 @@ end
 -- table
 
 function defs.tabledef( _, ... )
-	return { ast_id = "tabledef", ... }
+	return { ast_id = "tabledef", line = defs._line, ... }
 end
 
 function defs.field( _, op, key, val )
@@ -286,7 +286,7 @@ function defs.field( _, op, key, val )
         key = op
         op = nil
     end
-    return { ast_id = "field", key = key, value = val, operator = op }
+    return { ast_id = "field", key = key, value = val, operator = op, line = defs._line }
 end
 
 function defs.tableidx( op, exp )
