@@ -1,0 +1,53 @@
+-- ctor
+local obj = type "id" { key=val, ... } 	-- ctor, type=object for 1st level
+-- equivalent to
+local obj = type "id"				-- create the new instance
+obj { key=val, ...} 				-- set properties of obj
+
+-- ctor/set
+local magnet = object "magnet"
+local bend   = magnet "bend" { key = val }
+local mb = bend { key2 = val2 }
+local mq = mb:clone"mq"
+
+-- ctor
+obj:new"id"			-- new instance of object, 1st level (k,v) are not copied
+obj:clone"id"			-- clone an object, 1st level (k,v) are copied
+
+-- type
+obj:super()			-- get the parent
+obj:isa"id"			-- check for _id
+
+-- read
+val = obj.key; 			-- can be nil
+val = obj:get"key" 		-- error on nil
+flg = obj:has"key"		-- true or false
+{val} = obj:get{"key",...} 	-- error on nil
+{flg} = obj:has{"key",...)	-- true or false
+
+-- write
+obj.key = val
+obj:set("key",val) 		-- must not already exist
+obj:update("key",val) 		-- must exist
+obj:set{key=val,...} 		-- must not already exist
+obj:update{key=val,...} 	-- must exist
+
+-- construction
+obj:new"id":set{key=val}
+
+-- outside the sequence it creates a class from class BEND
+-- inside  the sequence it creates an elements of class BEND
+MB: BEND, key=val, ...; -- ctor
+-- outside the sequence it updates/adds values of/to the element
+-- inside  the sequence it's an error
+MB, key=val, ...; 		-- update
+
+sequence {
+	["MB"] = {},
+}
+
+seq:set
+
+seq:update {
+  ["MB"] = { key = val },
+}
