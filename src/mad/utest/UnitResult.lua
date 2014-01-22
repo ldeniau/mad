@@ -1,31 +1,24 @@
-UnitResult = { -- class
-    failureCount = 0,
-    testCount = 0,
-    errorList = {},
-    currentClassName = "",
-    currentTestName = "",
-    testHasFailure = false,
-    verbosity = 0
-}
+local UnitResult = {}
+
 
 local maxLength = 50
 
-function UnitResult:displayClassName()
+local function displayClassName( self )
     io.stdout:write( "["..self.currentClassName.."]\n" )
 end
 
-function UnitResult:displayTestName()
+local function displayTestName( self )
     io.stdout:write( "  "..self.currentTestName )
 end
 
-function UnitResult:displayTimeSpent()
+local function displayTimeSpent( self )
     for i = string.len(self.currentTestName) + 2, maxLength - 24 do
         io.stdout:write(" ")
     end
     io.stdout:write("( "..string.format("%.2f",self.timeSpent).."s ) ")
 end
 
-function UnitResult:displayNumberOfSuccesses()
+local function displayNumberOfSuccesses( self )
     if self.testsSucceeded < 10 then
         io.stdout:write("  "..self.testsSucceeded.."/")
     elseif self.testsSucceeded < 100 then
@@ -42,7 +35,7 @@ function UnitResult:displayNumberOfSuccesses()
     end
 end
 
-function UnitResult:displayPassOrFail()
+local function displayPassOrFail( self )
     if self.testsSucceeded == self.testsStarted and self.testsSucceeded > 0 then
         io.stdout:write(": PASS\n")
     else
@@ -50,20 +43,20 @@ function UnitResult:displayPassOrFail()
     end
 end
 
-function UnitResult:displayErrors()
+local function displayErrors(self)
     if #self.errorList == 0 then return end    
     for i = self.noFailed+1, #self.errorList do
         io.stdout:write("\t"..self.errorList[i][2].."\n")
     end
 end
 
-function UnitResult:displayOneFailedTest( failure )
+local function displayOneFailedTest( self,  failure )
     testName, errorMsg = unpack( failure )
     print("\t"..testName.." failed")
     io.stdout:write("\t"..errorMsg.."\n")
 end
 
-function UnitResult:displayFailedTests()
+local function displayFailedTests( self )
     if #self.errorList == 0 then return end
     print("Failed tests:")
     for _,v in ipairs(self.errorList) do
@@ -71,7 +64,7 @@ function UnitResult:displayFailedTests()
     end
 end
 
-function UnitResult:displayFinalResult()
+local function displayFinalResult( self )
     self:displayFailedTests()
     local failurePercent, successCount
     if self.testCount == 0 then
@@ -85,12 +78,12 @@ function UnitResult:displayFinalResult()
     return self.failureCount
   end
 
-function UnitResult:startClass(className)
+local function startClass( self, className)
     self.currentClassName = className
     self:displayClassName()
 end
 
-function UnitResult:startTest(testName, testObjectForClass)
+local function startTest( self, testName, testObjectForClass)
     self.currentTestName = testName
     self.testCount = self.testCount + 1
     self.startClock = os.clock()
@@ -99,12 +92,12 @@ function UnitResult:startTest(testName, testObjectForClass)
     self.noFailed = #self.errorList
 end
 
-function UnitResult:addFailure( errorMsg )
+local function addFailure( self,  errorMsg )
     self.failureCount = self.failureCount + 1
     table.insert( self.errorList, { self.currentTestName, errorMsg } )
 end
 
-function UnitResult:endTest(testObjectForClass)
+local function endTest( self, testObjectForClass)
     self.timeSpent = os.clock() - self.startClock
     self.testsStarted = testObjectForClass.startedCounter - self.startStartedCounter
     self.testsSucceeded = testObjectForClass.succeedCounter - self.startSucceedCounter
@@ -113,6 +106,33 @@ function UnitResult:endTest(testObjectForClass)
     self:displayNumberOfSuccesses()
     self:displayPassOrFail()
     self:displayErrors()
+end
+
+local mt = {}; setmetatable(UnitResult, mt)
+
+mt.__call = function (...)
+	return {
+	    displayClassName = displayClassName,
+	    displayTestName = displayTestName,
+	    displayTimeSpent = displayTimeSpent,
+	    displayNumberOfSuccesses = displayNumberOfSuccesses,
+	    displayPassOrFail = displayPassOrFail,
+	    displayErrors = displayErrors,
+	    displayOneFailedTest = displayOneFailedTest,
+	    displayFailedTests = displayFailedTests,
+	    displayFinalResult = displayFinalResult,
+	    startClass = startClass,
+	    startTest = startTest,
+	    addFailure = addFailure,
+	    endTest = endTest,
+        failureCount = 0,
+        testCount = 0,
+        errorList = {},
+        currentClassName = "",
+        currentTestName = "",
+        testHasFailure = false,
+        verbosity = 0
+    }
 end
 
 return UnitResult
