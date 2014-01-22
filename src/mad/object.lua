@@ -142,8 +142,36 @@ end
 
 -- tests -----------------------------------------------------------------------
 
+function M.test:setUp()
+end
+
+function M.test:tearDown()
+end
+
+
+function M.test:super(ut)
+    local object = M
+    local any = ut:succeeds(object, { _id = "any" })
+    local sup = ut:succeeds(any.super, any)
+    ut:equals(sup._id, object._id)
+end
+
+function M.test:isa(ut)
+    local object = M
+    local any = ut:succeeds(object, { _id = "any" })
+    local is = ut:succeeds(any.isa, any, object._id)
+    ut:equals(is, object)
+    is = ut:succeeds(any.isa, any, object)
+    ut:equals(is, object)
+    ut:fails(any.isa, any, "bollocks")
+end
+
+function M.test:clone(ut)
+
+end
+
 -- TODO
-M.test.self = function ()
+--[==[M.test.self = function ()
 
   -- helper
   local print_obj = function (s,o)
@@ -205,7 +233,7 @@ M.test.self = function ()
   end
 
   return 9, 9
-end
+end]==]
 
 -- end -------------------------------------------------------------------------
 return M
