@@ -208,7 +208,7 @@ function defs.varexp ( name, ... )
 end
 
 function defs.grpexp ( expr )
-    return { ast_id = "groupexp", line = defs._line, expr = expr }
+    return { ast_id = "grpexpr", line = defs._line, expr = expr }
 end
 
 
