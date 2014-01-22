@@ -5,11 +5,10 @@
 
 { ast_id = "chunk"      ,  block = block   }
 
-{ ast_id = "block_stmt" ,  stmt_list       }
-{ ast_id = "break_stmt" ,                  }
-{ ast_id = "goto_stmt"  ,  name  = name    }
-{ ast_id = "do_stmt"    ,  block = block   }
-{ ast_id = "label_stmt" ,  name  = name    }
+{ ast_id = "block_stmt" ,  kind = "do" | nil, stmt_list }
+{ ast_id = "break_stmt" ,                               }
+{ ast_id = "goto_stmt"  ,  name  = name                 }
+{ ast_id = "label_stmt" ,  name  = name                 }
 
 { ast_id = "while_stmt" , expr = expr, block = block }
 { ast_id = "repeat_stmt", expr = expr, block = block }
@@ -23,7 +22,7 @@
 
 { ast_id = "expr"       , expr_op_list }
 
-{ ast_id = "tblidx"     , kind = '.' | nil, lhs = expr, rhs = expr }
+{ ast_id = "tblaccess"  , kind = '.' | nil, lhs = expr, rhs = expr }
 
 { ast_id = "funcall"    , kind = ':' | nil, name = expr, arg = { expr_list } }
 

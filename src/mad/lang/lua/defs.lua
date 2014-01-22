@@ -189,11 +189,11 @@ local function createTreeFromListOfTableIndexAndCalls ( startnode, ... )
                 ret = { ast_id = "funcall", line = defs._line, name = ret, selfname = args[i+1], arg = args[i+3], kind = ":" }
                 skip = true
             elseif args[i] == "." then
-                ret = { ast_id = "tblidx" , line = defs._line, lhs = ret, rhs = args[i+1], kind = "." }
+                ret = { ast_id = "tblaccess" , line = defs._line, lhs = ret, rhs = args[i+1], kind = "." }
             elseif args[i] == "(" then
                 ret = { ast_id = "funcall", line = defs._line, name = ret, arg = args[i+1] }
             elseif args[i] == "[" then
-                ret = { ast_id = "tblidx" , line = defs._line, lhs = ret, rhs = args[i+1] }
+                ret = { ast_id = "tblaccess" , line = defs._line, lhs = ret, rhs = args[i+1] }
             end
         else
             skip = false
@@ -239,7 +239,7 @@ end
 function defs.funname ( names, selfname )
     local ret = names[1]
     for i = 2, #names do
-        ret = { ast_id = "tblidx", line = defs._line, lhs = ret, rhs = names[i], kind = "." }
+        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = names[i], kind = "." }
     end
     return ret, selfname
 end
