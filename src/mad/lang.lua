@@ -70,5 +70,9 @@ function M.test:getCurrentKey(ut)
 	currentKey = nil
 end
 
+function M.test:self(ut)
+    require"mad.core.unitTest".addModuleToTest("mad.lang.lua.parser")
+end
+
 -- end ------------------------------------------------------------------------
 return M

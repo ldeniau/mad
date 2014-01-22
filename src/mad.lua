@@ -22,9 +22,6 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 
--- initialization
-M.initializer = require "mad.initializer"
-M.lambda = M.initializer.lambda
 
 -- core
 -- M.init   = require "mad.init"
