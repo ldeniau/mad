@@ -105,9 +105,12 @@ function LuaUnit:runTestClassByName( aClassName )
     local testObjectForClass = testObject()
     LuaUnit.result:startClass( aClassName, testObjectForClass )
     for methodName, method in pairs(classInstance.test) do
-        if LuaUnit.isFunction(method) and LuaUnit.isTestFunction(methodName) then
+        if LuaUnit.isFunction(method) and LuaUnit.isTestFunction(methodName) and methodName ~= "self" then
             LuaUnit:runTestMethodName( methodName, classInstance.test, testObjectForClass )
         end
+    end
+    if classInstance.test.self then
+        LuaUnit:runTestMethod("self", classInstance.test, classInstance.test.self, testObjectForClass )
     end
 end
 
