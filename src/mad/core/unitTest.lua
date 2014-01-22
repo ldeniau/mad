@@ -8,7 +8,7 @@ DESCRIPTION
 ]]
 
 -- require --------------------------------------------------------------------
-local LuaUnit = require"mad.test.luaUnit"
+local LuaUnit = require"mad.utest.luaUnit"
 
 -- module ---------------------------------------------------------------------
 

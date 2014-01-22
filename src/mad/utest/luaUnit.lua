@@ -14,8 +14,8 @@ License: X11 License, see LICENSE.txt
 
 
 -------------------------------------------------------------------------------
-local UnitResult = require"mad.test.UnitResult"
-local testObject = require"mad.test.testObject"
+local UnitResult = require"mad.utest.UnitResult"
+local testObject = require"mad.utest.testObject"
 
 LuaUnit = {
     result = UnitResult
