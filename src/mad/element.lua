@@ -1,34 +1,62 @@
-local M  = { help = {}, _id = "mad", _author = "Laurent Deniau", _year = 2013 }
+local M  = { help={}, test={} }
 
 -- MAD -------------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad -- Methodical Accelerator Design package
+  mad.element -- build element database for reuse in sequences
 
 SYNOPSIS
-  local mad = require "mad"
+  elm = require"mad.element"
+  drift, sbend, rbend, quad = elm.drift, elm.sbend, elm.rbend, elm.quadrupole
 
 DESCRIPTION
-  The MAD package provides all the modules and services required to run MAD.
+  The module mad.element is a front-end to the factory of all elements
+  supported by MAD.
 
 RETURN VALUES
-  The table of modules and services.
+  The table of supported elements.
 
 SEE ALSO
-  None
+  mad.sequence, mad.beam, mad.object
 ]]
 
--- modules ---------------------------------------------------------------------
+-- require ---------------------------------------------------------------------
 
-M.env      = require "mad.env"
-M.helper   = require "mad.helper"
-M.tester   = require "mad.tester"
+local object = require"mad.object"
 
-M.beam     = require "mad.beam"
-M.element  = require "mad.element"
-M.sequence = require "mad.sequence"
+-- class of elements -----------------------------------------------------------
+
+local E = object "element" {}
+
+M.drift 		  = E "drift" 		  {}
+M.sbend 		  = E "sbend" 		  {}
+M.rbend 		  = E "rbend" 		  {}
+M.quadrupole  = E "quadrupole"  {}
+M.sextupole  	= E "sextupole"  	{}
+M.octupole   	= E "octupole"   	{}
+M.decapole  	= E "decapole"  	{}
+M.dodecapole  = E "dodecapole"  {}
+
+M.elseparator	= E "elseparator" {}
+
+M.bpm   		  = E "bpm"   		  {}
+M.blm   		  = E "blm"   		  {}
+
+M.marker   		= E "marker"   		{}
+M.placeholder	= E "placeholder" {}
+
+-- metamethods -----------------------------------------------------------------
+
+-- repetition
+E.__mul = function (a, b)
+  error("TODO")
+end
+
+-- reflection
+E.__unm = function (a, b)
+  error("TODO")
+end 
 
 -- end -------------------------------------------------------------------------
-
 return M

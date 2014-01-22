@@ -4,32 +4,33 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.tester -- run modules and services tests
+  mad.tester -- run modules and functions tests
 
 SYNOPSIS
-  local test = require "mad.tester"
+  test = require"mad.tester"
   test(mad.module)
-  test(mad.module.submodule)
+  test(mad.module.function)
 
 DESCRIPTION
-  The tester runs the test of MAD modules and services and return statistics.
+  The tester module runs the test of registered MAD modules and functions and
+  return the statistics.
 
 RETURN VALUES
   The number of the tests failed and passed
 
 SEE ALSO
-  mad.helper
+  mad.helper, mad.module
 ]]
 
 -- require ---------------------------------------------------------------------
 
-local module = require "mad.module"
+local module = require"mad.module"
 
 -- metamethods -----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
 
-mt.__call = function (_, a)
+function mt:__call(a)
   if module.get_module_name(a) and a.test.self then
     return a.test.self()
   end

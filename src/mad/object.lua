@@ -7,8 +7,8 @@ NAME
   mad.object -- transform Lua tables into general purpose objects
 
 SYNOPSIS
-  object = require "mad.object"
-  var = object [string] table
+  object = require"mad.object"
+  obj = object [string] table
 
 DESCRIPTION
   The module mad.object *transforms* any table into an object with inheritance of
@@ -16,13 +16,13 @@ DESCRIPTION
   as a constructor (a function), an object (a table) or a class (a metatable).
   
   The returned object has its class (its constructor) set as metatable and
-  inherits all properties of its class autmatically, implementing a prototype
-  language.
+  inherits all properties of its class autmatically, hence implementing a
+  prototype language.
 
   The optional string argument is stored into the property _id of the object.
 
 RETURN VALUES
-  The table passed as argument, not a copy!
+  The table passed as argument (not a copy!)
 
 ERRORS
   If the constructor does not receive an optional string and a table, an invalid
@@ -117,7 +117,7 @@ end
 
 -- metamethods -----------------------------------------------------------------
 
-local mt = {}; setmetatable(M, mt)
+local mt = {}; setmetatable(M, mt) -- make this module the root of all objects
 
 local function create(self, t, id)
   if not rawget(self, "__call") then
@@ -132,7 +132,7 @@ local function create(self, t, id)
   error ("invalid constructor argument, should be: parent [id_string] prop_table")
 end
 
-mt.__call = function (self, a)
+function mt:__call(a)
   if type(a) == "string" then
     return function (t) return create(self, t, a) end
   end
@@ -142,6 +142,7 @@ end
 
 -- tests -----------------------------------------------------------------------
 
+-- TODO
 M.test.self = function ()
 
   -- helper

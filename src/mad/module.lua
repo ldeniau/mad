@@ -4,23 +4,33 @@ local M = { help={}, test={} }
 
 M.help.self = [=[
 NAME
-  mad.module -- initialize MAD modules properly
+  mad.module -- register MAD modules and functions
 
 SYNOPSIS
-  local module = require "mad.module"
-  local fun_name, mod_name = module.get_function_name(fun)
-  local mod_name = module.get_module_name(module)
+  module = require"mad.module"
+  mod_name           = module.get_module_name(mod)
+  fun_name, mod_name = module.get_function_name(fun)
+  mod_list, fun_list = module.get_all()
 
 DESCRIPTION
-  This module sets MAD modules up within the MAD environment. MAD modules must
-  have tables for help and test. A typical MAD module starts by
+  The module mad.module register MAD modules and functions for name lookup. MAD
+  modules must have 'help' and 'test' tables.
+
+  A MAD module should typically start by:
+
     local M = { help={}, test={} }
     M.help.self = [[
       module documentation
     ]]
 
+  The module name is stored into the property _id of the table.
+
 RETURN VALUES
-  The interface to the MAD modules and services database.
+  The interface to the MAD modules database.
+
+ERRORS
+  If the module does not contain a 'help' and 'test' tables, an invalid argument
+  error is raised.
 
 SEE ALSO
   mad.helper, mad.tester, mad.object
@@ -29,12 +39,12 @@ SEE ALSO
 -- data ------------------------------------------------------------------------
 
 local registered = false
-local registered_module = {}
-local registered_function = {}
+local registered_module = {}    -- { [mod] = 'mod_name' }
+local registered_function = {}  -- { [fun] = { fun_name = 'fun_name', mod_name = 'mod_name' } }
 
 -- local -----------------------------------------------------------------------
 
-local register_mad_function = function (mod, mod_name)
+local register_function = function (mod, mod_name)
   for fun_name,fun in pairs(mod) do
     if type(fun) == "function" then
       registered_function[fun] = { fun_name = fun_name, mod_name = mod_name }
@@ -42,31 +52,32 @@ local register_mad_function = function (mod, mod_name)
   end
 end
 
-local register_mad_module = function (mod_name)
+local register_module = function (mod_name)
   local mod = package.loaded[mod_name]
 
-  if not registered_module[mod] then
-    if not mod.help then
-      error(("MAD module '%s' has NO help"):format(mod_name))
-    end
-    if not mod.test then
-      error(("MAD module '%s' has NO test"):format(mod_name))
-    end
+  if registered_module[mod] ~= nil then return end
 
-    register_mad_function(mod, mod_name)
-    registered_module[mod] = mod_name
+  if not mod.help then
+    error(("module '%s' has NO help"):format(mod_name))
   end
+  if not mod.test then
+    error(("module '%s' has NO test"):format(mod_name))
+  end
+
+  register_function(mod, mod_name)
+  registered_module[mod] = mod_name
 end
 
 local register_mad_modules = function ()
+  local mad = require "mad"
+
   for mod_name,mod in pairs(package.loaded) do
-    if type(mod) == "table" and mod_name:sub(1,4) == "mad." then
-      register_mad_module(mod_name)
+    if type(mod) == "table" and mod_name:sub(1,4) == "mad." and not mod_name:find("%.test%.") then
+      register_module(mod_name)
     end
   end
 
-  register_mad_module("mad")
-  M.registered = true
+  registered = true
 end
 
 -- methods -----------------------------------------------------------------
@@ -77,20 +88,12 @@ M.reset = function ()
   registered_function = {}
 end
 
-M.list = function (list_fun)
+M.get_all = function ()
   if not registered then
     register_mad_modules()
   end
 
-  for _,v in pairs(registered_module) do
-    print(("module '%s'"):format(v))
-  end
-
-  if list_fun then
-    for _,v in pairs(registered_function) do
-      print(("function '%s.%s'"):format(v.mod_name, v.fun_name))
-    end
-  end
+  return registered_module, registered_function
 end
 
 M.get_module_name = function (mod)
@@ -98,7 +101,7 @@ M.get_module_name = function (mod)
     register_mad_modules()
   end
 
-  return registered_module[mod], mod
+  return registered_module[mod]
 end
 
 M.get_function_name = function (fun)
@@ -116,6 +119,7 @@ end
 
 -- tests -----------------------------------------------------------------------
 
+-- TODO
 M.foo = function () print("module.foo called") end
 M.help.foo = "This is the help of module.foo for testing purpose"
 M.test.foo = function () print("This is the test of module.foo") end
