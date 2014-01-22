@@ -182,7 +182,7 @@ M.grammar = [=[
 -- test -----------------------------------------------------------------------
 
 --if mad_loadtest then
-    require "mad.lang.lua.test.grammar-actions"(M)
+M.test = require "mad.lang.lua.test.grammar-actions"
 --end]]
 
 

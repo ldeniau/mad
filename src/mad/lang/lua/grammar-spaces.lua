@@ -174,7 +174,7 @@ M.grammar = [=[
 
 -- test -----------------------------------------------------------------------
 
-require"mad.lang.lua.test.grammar-spaces"(M)
+M.test = require"mad.lang.lua.test.grammar-spaces"
 
 
 

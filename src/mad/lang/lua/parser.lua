@@ -12,6 +12,7 @@ DESCRIPTION
 local re      = require"lib.lpeg.re"
 local grammar = require"mad.lang.lua.grammar-actions".grammar
 local actions = require"mad.lang.lua.defs".defs
+local utest   = require"mad.core.unitTest"
 
 
 -- metamethods ----------------------------------------------------------------
@@ -56,6 +57,7 @@ call = function (_, ...)
 end
 
 -- test -----------------------------------------------------------------------
+
 function M.test:setUp()
 	self.parser = M()
 end
@@ -69,6 +71,10 @@ function M.test:parse(ut)
 	ut:equals(ast.ast_id, "chunk")
 	ut:equals(#ast.block, 1)
 	ut:equals(ast.block[1].ast_id, "assign")
+end
+
+function M.test:self(ut)
+    utest.addModuleToTest("mad.lang.lua.grammar-actions")
 end
 
 -- end ------------------------------------------------------------------------
