@@ -73,25 +73,25 @@ end
 -- block and chunk
 
 function defs.chunk( block )
-    return { ast_id = "chunk", line = defs._line, block }
+    return { ast_id = "chunk", line = defs._line, block = block }
 end
 
 function defs.block( _, ... )
-    return { ast_id = "block", line = defs._line, ... }
+    return { ast_id = "block_stmt", line = defs._line, ... }
 end
 
 -- stmt
 
 function defs.breakstmt()
-    return { ast_id = "breakstmt", line = defs._line }
+    return { ast_id = "break_stmt", line = defs._line }
 end
 
 function defs.gotostmt( label )
-    return { ast_id = "gotostmt", line = defs._line, label }
+    return { ast_id = "goto_stmt", line = defs._line, name = label }
 end
 
 function defs.dostmt( block )
-    return { ast_id = "dostmt", line = defs._line, block }
+    return { ast_id = "do_stmt", line = defs._line, block = block }
 end
 
 function defs.assign( lhs, rhs )
@@ -99,38 +99,38 @@ function defs.assign( lhs, rhs )
 end
 
 function defs.locassign( lhs, rhs )
-    return { ast_id = "assign", line = defs._line, localdef = true, lhs = lhs, rhs = rhs }
+    return { ast_id = "assign", line = defs._line, kind = "local", lhs = lhs, rhs = rhs }
 end
 
 function defs.whilestmt( exp, block)
-    return { ast_id = "loop", line = defs._line, kind = "while", test = exp, block }
+    return { ast_id = "while_stmt", line = defs._line, expr = exp, block = block }
 end
 
 function defs.repeatstmt( block, exp )
-    return { ast_id = "loop", line = defs._line, kind = "repeat", test = exp, block }
+    return { ast_id = "repeat_stmt", line = defs._line, expr = exp, block = block }
 end
 
-function defs.ifstmt( test, block, elseifTbl, elseBlock)
-    return { ast_id = "ifstmt", line = defs._line, test = test, block, elseifTable = elseifTbl, elseBlock = elseBlock }
+function defs.ifstmt( _, ...)
+    return { ast_id = "if_stmt", line = defs._line, ... }
 end
 
 function defs.forstmt( name, first, last, step, block)
     if not block then block = step step = nil end
-    return { ast_id = "loop", line = defs._line, kind = "for", name = name, first = first, last = last, step = step, block }
+    return { ast_id = "for_stmt", line = defs._line, name = name, first = first, last = last, step = step, block = block }
 end
 
 function defs.forinstmt( names, exps, block )
-    return { ast_id = "genericfor", line = defs._line, names = names, expressions = exps, block }
+    return { ast_id = "genfor_stmt", line = defs._line, name = names, expr = exps, block = block }
 end
 
 -- extra stmts
 
 function defs.retstmt ( _, ... )
-    return { ast_id = "returnstmt", line = defs._line, ... }
+    return { ast_id = "ret_stmt", line = defs._line, ... }
 end
 
-function defs.label ( _, val )
-    return { ast_id = "label", line = defs._line, val }
+function defs.label ( _, name )
+    return { ast_id = "label_stmt", line = defs._line, name = name }
 end
 
 -- expressions
@@ -186,14 +186,14 @@ local function createTreeFromListOfTableIndexAndCalls ( startnode, ... )
     for i = 1, #args, 2 do
         if not skip then
             if args[i] == ":" then
-                ret = { ast_id = "call", line = defs._line, callee = ret, selfExp = args[i+1], arguments = args[i+3] }
+                ret = { ast_id = "funcall", line = defs._line, name = ret, selfname = args[i+1], arg = args[i+3], kind = ":" }
                 skip = true
             elseif args[i] == "." then
-                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1], literalidx = true }
+                ret = { ast_id = "tblidx" , line = defs._line, lhs = ret, rhs = args[i+1], kind = "." }
             elseif args[i] == "(" then
-                ret = { ast_id = "call", line = defs._line, callee = ret, arguments = args[i+1] }
+                ret = { ast_id = "funcall", line = defs._line, name = ret, arg = args[i+1] }
             elseif args[i] == "[" then
-                ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = args[i+1] }
+                ret = { ast_id = "tblidx" , line = defs._line, lhs = ret, rhs = args[i+1] }
             end
         else
             skip = false
@@ -206,8 +206,8 @@ function defs.varexp ( name, ... )
     return createTreeFromListOfTableIndexAndCalls( name, ... )
 end
 
-function defs.grpexp ( exp )
-    return { ast_id = "groupexp", line = defs._line, exp }
+function defs.grpexp ( expr )
+    return { ast_id = "groupexp", line = defs._line, expr = expr }
 end
 
 
@@ -220,30 +220,32 @@ end
 -- function definition
 
 function defs.fundef_a ( params, body )
-    return { ast_id = "fundef", line = defs._line, parameters = params, body }
+    return { ast_id = "fundef", line = defs._line, param = params, block = body }
 end
 
-function defs.fundef_n ( name, params, body )
-    return { ast_id = "fundef", line = defs._line, name = name, parameters = params, body }
+function defs.fundef_n ( name, selfname, params, body )
+    if selfname and selfname.ast_id ~= "name" then
+        body = params
+        params = selfname
+        selfname = nil
+    end
+    return { ast_id = "fundef", line = defs._line, name = name, selfname = selfname, param = params, block = body }
 end
 
 function defs.fundef_l ( name, params, body )
-    return { ast_id = "fundef", line = defs._line, localdef = true, name = name, parameters = params, body }
+    return { ast_id = "fundef", line = defs._line, kind = "local", name = name, param = params, block = body }
 end
 
 function defs.funname ( names, selfname )
     local ret = names[1]
     for i = 2, #names do
-        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = names[i], literalidx = true }
+        ret = { ast_id = "tblidx", line = defs._line, lhs = ret, rhs = names[i], kind = "." }
     end
-    if selfname then
-        ret = { ast_id = "tblaccess", line = defs._line, lhs = ret, rhs = selfname, selfdef = true }
-    end
-    return ret
+    return ret, selfname
 end
 
 function defs.funparm ( names, ellipsis )
-    if names[1] == "..." then return {names} end
+    if names.value and names.value == "..." then return {names} end
     names = names or {}
     table.insert(names, ellipsis)
     return names
@@ -273,20 +275,23 @@ end
 -- table
 
 function defs.tabledef( _, ... )
-	return { ast_id = "tabledef", line = defs._line, ... }
+	return { ast_id = "tbldef", line = defs._line, ... }
 end
 
 function defs.field( _, op, key, val )
+    local kind = "expr"
     if not key then
+        kind = nil
         val = op
         op = nil
     end
-    if not val then 
+    if not val then
+        kind = "name"
         val = key
         key = op
         op = nil
     end
-    return { ast_id = "field", key = key, value = val, operator = op, line = defs._line }
+    return { ast_id = "tblfld", key = key, value = val, kind = kind, line = defs._line }
 end
 
 function defs.tableidx( op, exp )
@@ -295,12 +300,12 @@ end
 
 -- basic lexem
 
-function defs.literal(...)
-	return { ast_id = "literal", ..., line = defs._line }
+function defs.literal(val)
+	return { ast_id = "literal", value = val, line = defs._line }
 end
 
-function defs.name(...)
-	return { ast_id = "name", ..., line = defs._line }
+function defs.name(name)
+	return { ast_id = "name", name = name, line = defs._line }
 end
 
 
