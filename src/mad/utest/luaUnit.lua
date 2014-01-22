@@ -16,7 +16,7 @@ License: X11 License, see LICENSE.txt
 -------------------------------------------------------------------------------
 local UnitResult = require"mad.utest.UnitResult"
 local testObject = require"mad.utest.testObject"
-local LuaUnit    = {}
+local LuaUnit    = {help={},test={}}
 
 -- Split text into a list consisting of the strings in text,
 -- separated by strings matching delimiter (which may be a pattern).
@@ -113,23 +113,25 @@ end
 
 local function addModuleToTest( self, modname )
     self.modulesToTest[modname] = true
+    self.modulesToTestSize = self.modulesToTestSize+1
 end
 
 local function addFunctionToTest( self, modname, funname )
     if not self.modulesToTest[modname] then
         self.modulesToTest[modname] = { funname = true }
+        self.modulesToTestSize = self.modulesToTestSize+1
     elseif type(self.modulesToTest[modname]) == "table" then
         self.modulesToTest[modname][funname] = true
-    end        
+        self.modulesToTestSize = self.modulesToTestSize+1
+    end
 end
 
-local function run( self, mod, fun )
-    
+local function testTable( self )
     for modname,v in pairs(self.modulesToTest) do
         if v and type(v) ~= "table" and not self.testedModules[modname] then
             self:runTestClassByName( modname )
             self.testedModules[modname] = true
-        else
+        elseif v and not self.testedModules[modname] then
             for fun,_ in pairs(v) do
                 local classInstance = require(modname)
                 local testObjectForClass = testObject()
@@ -138,7 +140,13 @@ local function run( self, mod, fun )
             end
         end
     end
+end
 
+local function run( self, mod, fun )
+    while self.modulesToTestSize > 0 do
+        self.modulesToTestSize = 0
+        self:testTable()
+    end
     return self.result:displayFinalResult()
 end
 
@@ -148,26 +156,15 @@ mt.__call = function (...)
     return {
         result = UnitResult(),
         modulesToTest = {},
+        modulesToTestSize = 0,
         testedModules = {},
         addModuleToTest = addModuleToTest,
         runTestMethod = runTestMethod,
         runTestMethodName = runTestMethodName,
         runTestClassByName = runTestClassByName,
-        run = run
+        run = run,
+        testTable = testTable
     }
 end
-
---[[local function run(...)
-    args={...}
-    args = args[1]
-    if #args > 0 then
-        for _,className in pairs(args) do
-            self:runTestClassByName( className )
-        end
-    else
-        error("NYI: This will have to be implemented once the tester has been properly implemented.",2)
-    end
-    return self.result:displayFinalResult()
-end]]
 
 return LuaUnit

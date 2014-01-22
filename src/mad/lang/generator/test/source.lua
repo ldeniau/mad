@@ -103,6 +103,8 @@ function M.test:write(ut)
     self.mod:write("Yo")
     ut:equals(tostring(self.mod.writer),"Yo")
 end
+
+
 end
 
 return Mod

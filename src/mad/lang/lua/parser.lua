@@ -24,12 +24,27 @@ end
 
 -- module ---------------------------------------------------------------------
 
+local function countNodes(table)
+    local ret = 0
+    for k,v in pairs(table) do
+        if type(v) == "table" then
+            ret = ret+1+countNodes(v)
+        end
+    end
+    return ret
+end
+
+
 local parse = function (self, inputStream, fileName, pos)
 	local position = pos or 1
+	local startMem = collectgarbage("count")
 	local startTime = os.clock()
 	local ast = self.grammar:match(inputStream, position)
 	local totalTime = os.clock() - startTime
     print(string.format("elapsed time: %.2fs", totalTime))
+    print("memory used before:          "..tostring(startMem).." kB")
+    print("memory used by creating AST: "..tostring(collectgarbage("count")-startMem).." kB")
+    print("number of nodes:             "..tostring(countNodes(ast)))
 	return ast
 end
 
@@ -51,9 +66,9 @@ end
 
 function M.test:parse(ut)
 	local ast = self.parser:parse([[a = 1]])
-	ut:equals(ast.type, "Chunk")
-	ut:equals(#ast.body, 1)
-	ut:equals(ast.body[1].type, "Assignment")
+	ut:equals(ast.ast_id, "chunk")
+	ut:equals(#ast.block, 1)
+	ut:equals(ast.block[1].ast_id, "assign")
 end
 
 -- end ------------------------------------------------------------------------

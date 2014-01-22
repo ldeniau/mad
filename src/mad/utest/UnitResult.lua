@@ -1,4 +1,4 @@
-local UnitResult = {}
+local UnitResult = {help={},test={}}
 
 
 local maxLength = 50
