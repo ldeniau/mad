@@ -33,25 +33,35 @@ local super = object.super
 
 local S = object "sequence" {}
 
+-- methods ---------------------------------------------------------------------
+
+local insert_element = function (self, elem, pos)
+  seq[i] = v              -- vector part
+  k = rawget(v,'_id')
+
+  if k then
+    if type(seq[k]) == "table"
+      seq[k]:insert(v)    -- dict part
+    else
+      seq[k] = v
+    end
+  end
+end
+
+local insert_sequence = function (self, seq, pos)
+end
+
 -- metamethods -----------------------------------------------------------------
 
 S:__call = function (t) -- ctor
   local seq = S {}
-  local i, k = 0
+  local i, k = 1
 
   for _,v in ipairs(t) do
-    if super(v) == S then -- insert sequence
-    else                  -- insert element
-      i = i + 1
-      seq[i] = v          -- vector part refer to element
-      k = rawget(v,'_id') 
-      if k then
-        if type(seq[k]) == "table"
-          seq[k]:insert(i)  -- dict part store index(ex) of elements
-        else
-          seq[k] = i
-        end
-      end
+    if super(v) == S then     -- insert sequence
+
+    else                      -- insert element
+      i = insert_element(seq, v, i)
     end
   end
 
