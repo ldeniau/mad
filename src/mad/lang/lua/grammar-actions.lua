@@ -262,8 +262,9 @@ function M.test:dostmt(ut)
     local grammar = "rule <- stmt? s (!./''=>error)\n" .. M.grammar
     local parser = ut:succeeds(self.compile, grammar, self.defs)
     local res = ut:succeeds(parser.match, parser, "do break end")
-    ut:equals(res.ast_id, "do_stmt")
-    ut:equals(res.block[1].ast_id, "break_stmt")
+    ut:equals(res.ast_id, "block_stmt")
+    ut:equals(res.kind, "do")
+    ut:equals(res[1].ast_id, "break_stmt")
 end
 
 function M.test:fundef(ut)

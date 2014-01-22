@@ -91,7 +91,8 @@ function defs.gotostmt( label )
 end
 
 function defs.dostmt( block )
-    return { ast_id = "do_stmt", line = defs._line, block = block }
+    block.kind = "do"
+    return block
 end
 
 function defs.assign( lhs, rhs )
