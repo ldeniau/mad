@@ -28,7 +28,7 @@
 
 { ast_id = "grpexpr"    , expr = expr }
 
-{ ast_id = "fundef"     , kind = "local" | nil, name = name, param = { name_list_ellipsis }, block = block }
+{ ast_id = "fundef"     , kind = "local" | nil, name = name, selfname = selfname, param = { name_list_ellipsis }, block = block }
 
 { ast_id = "tbldef"     , tblfld_list }
 

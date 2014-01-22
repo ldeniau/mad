@@ -18,8 +18,9 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
-local writer = require"mad.lang.generator.writer"
-local options = require"mad.core.options"
+local writer        = require"mad.lang.generator.writer"
+local options       = require"mad.core.options"
+local tableToString = require"lua.tableUtil".stringTable
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
@@ -30,13 +31,14 @@ end
 
 -- module ---------------------------------------------------------------------
 
-local match = {}
+local dict = {}
 
-function match:chunk(node)
-    self:render(node[1])
+function dict:chunk(node)
+    self:render(node.block)
 end
 
-function match:block(node)
+function dict:block_stmt(node)
+    if node.kind == "do" then self:write("do ") end
     self.writer:indent()
     self.writer:writeln()
     for i=1, #node do
@@ -46,10 +48,14 @@ function match:block(node)
         end
     end
     self.writer:undent()
+    if node.kind == "do" then
+        self.writer:writeln()
+        self:write("end ")
+    end
 end
 
-function match:assign(node)
-    if node.localdef then
+function dict:assign(node)
+    if node.kind == "local" then
         self:write("local ")
     end
     for i = 1, #node.lhs do
@@ -69,17 +75,17 @@ function match:assign(node)
     end
 end
 
-function match:call(node)
-    self:render(node.callee)
-    if node.selfExp then
+function dict:funcall(node)
+    self:render(node.name)
+    if node.kind == ":" then
         self:write(":")
-        self:render(node.selfExp)
+        self:render(node.selfname)
     end
     self:write("( ")
-    if node.arguments then
-        for i,v in ipairs(node.arguments) do
+    if node.arg then
+        for i,v in ipairs(node.arg) do
             self:render(v)
-            if i ~= #node.arguments then
+            if i ~= #node.arg then
                 self:write(", ")
             end
         end
@@ -87,107 +93,111 @@ function match:call(node)
     self:write(" )")
 end
 
-function match:label(node)
+function dict:label_stmt(node)
     self:write("::")
-    self:render(node[1])
+    self:render(node.name)
     self:write("::")
 end
 
-function match:breakstmt(node)
+function dict:break_stmt(node)
     self:write("break")
 end
 
-function match:gotostmt(node)
+function dict:goto_stmt(node)
     self:write("goto ")
-    self:render(node[1])
+    self:render(node.name)
 end
 
-function match:dostmt(node)
+function dict:do_stmt(node)
     self:write("do ")
-    self:render(node[1])
+    self:render(node.block)
     self.writer:writeln()
     self:write("end")
 end
 
-function match:loop(node)
-    if node.kind == "for" then
-        self:write("for ")
-        self:render(node.name)
-        self:write(" = ")
-        self:render(node.first)
+function dict:for_stmt(node)
+    self:write("for ")
+    self:render(node.name)
+    self:write(" = ")
+    self:render(node.first)
+    self:write(", ")
+    self:render(node.last)
+    if node.step then
         self:write(", ")
-        self:render(node.last)
-        if node.step then
-            self:write(", ")
-            self:render(node.step)
-        end
-        self:write(" do ")
-        self:render(node[1])
-        self.writer:writeln()
-        self:write("end")
-    elseif node.kind == "while" then
-        self:write("while ")
-        self:render(node.test)
-        self:write(" do ")
-        self:render(node[1])
-        self.writer:writeln()
-        self:write("end")
-    elseif node.kind == "repeat" then
-        self:write("repeat ")
-        self:render(node[1])
-        self.writer:writeln()
-        self:write("until ")
-        self:render(node.test)
-    else
-        error("Not sure what to do with this node.",2)
+        self:render(node.step)
     end
+    self:write(" do ")
+    self:render(node.block)
+    self.writer:writeln()
+    self:write("end")
 end
 
-function match:genericfor(node)
+function dict:while_stmt(node)
+    self:write("while ")
+    self:render(node.expr)
+    self:write(" do ")
+    self:render(node.block)
+    self.writer:writeln()
+    self:write("end")
+end
+
+function dict:repeat_stmt(node)
+    self:write("repeat ")
+    self:render(node.block)
+    self.writer:writeln()
+    self:write("until ")
+    self:render(node.expr)
+end
+
+function dict:genfor_stmt(node)
     self:write("for ")
-    for i,v in ipairs(node.names) do
+    for i,v in ipairs(node.name) do
         self:render(v)
-        if i < #node.names then
+        if i < #node.name then
             self:write", "
         end
     end
     self:write(" in ")
-    for i,v in ipairs(node.expressions) do
+    for i,v in ipairs(node.expr) do
         self:render(v)
-        if i < #node.expressions then
+        if i < #node.expr then
             self:write", "
         end
     end
     self:write(" do ")
-    self:render(node[1])
+    self:render(node.block)
     self.writer:writeln()
     self:write("end")
 end
 
-function match:fundef(node)
-    if node.localdef then
+function dict:fundef(node)
+    if node.kind == "local" then
         self:write("local ")
     end
     self:write("function ")
     if node.name then
         self:render(node.name)
     end
+    if node.selfname then
+        self:write(":")
+        self:render(node.selfname)
+    end
     self:write("( ")
-    if node.parameters then
-        for i,v in ipairs(node.parameters) do
+    if node.param then
+        for i,v in ipairs(node.param) do
             self:render(v)
-            if i ~= #node.parameters then
+            if i ~= #node.param then
                 self:write(", ")
             end
         end
     end
     self:write(" )")
-    self:render(node[1])
+    self:render(node.block)
     self.writer:writeln()
     self:write("end")
 end
 
-function match:returnstmt(node)
+function dict:ret_stmt(node)
     self:write("return ")
     for i,v in ipairs(node) do
         self:render(v)
@@ -197,7 +207,7 @@ function match:returnstmt(node)
     end
 end
 
-function match:expr(node)
+function dict:expr(node)
     for i,v in ipairs(node) do
         if type(v) =="string" then
             self:write(" "..v.." ")
@@ -207,21 +217,21 @@ function match:expr(node)
     end
 end
 
-function match:groupexp(node)
+function dict:grpexpr(node)
     self:write("( ")
-    self:render(node[1])
+    self:render(node.expr)
     self:write(" )")
 end
 
-function match:name(node)
-    self:write(node[1])
+function dict:name(node)
+    self:write(node.name)
 end
 
-function match:literal(node)
-    self:write(node[1])
+function dict:literal(node)
+    self:write(node.value)
 end
 
-function match:tabledef(node)
+function dict:tbldef(node)
     self:write("{ ")
     for i,v in ipairs(node) do
         self:render(v)
@@ -232,53 +242,48 @@ function match:tabledef(node)
     self:write(" }")
 end
 
-function match:field(node)
-    if node.operator == "[" then
+function dict:tblfld(node)
+    if node.kind == "expr" then
         self:write("[")
-    end
-    if node.key then
         self:render(node.key)
-    end
-    if node.operator == "[" then
-        self:write("]")
-    end
-    if node.key then
+        self:write("] = ")
+    elseif node.kind == "name" then
+        self:render(node.key)
         self:write(" = ")
     end
     self:render(node.value)
 end
 
-function match:tblaccess(node)
+function dict:tblaccess(node)
     self:render(node.lhs)
-    if node.literalidx then
+    if node.kind == "." then
         self:write(".")
-    elseif node.selfdef then
-        self:write(":")
     else
         self:write("[")
     end
     self:render(node.rhs)
-    if not node.literalidx and not node.selfdef then
+    if node.kind ~= "." then
         self:write("]")
     end
 end
 
-function match:ifstmt(node)
+function dict:if_stmt(node)
     self:write("if ")
-    self:render(node.test)
-    self:write(" then")
     self:render(node[1])
+    self:write(" then")
+    self:render(node[2])
     self.writer:writeln()
-    for i=1, #node.elseifTable, 2 do
+    for i=3, #node, 2 do
+        if node[i].ast_id == "block_stmt" then
+            self:write("else")
+            self:render(node[i])
+            self.writer:writeln()
+            break
+        end
         self:write("elseif ")
-        self:render(node.elseifTable[i])
+        self:render(node[i])
         self:write(" then")
-        self:render(node.elseifTable[i+1])
-        self.writer:writeln()
-    end
-    if node.elseBlock then
-        self:write("else")
-        self:render(node.elseBlock)
+        self:render(node[i+1])
         self.writer:writeln()
     end
     self:write("end")
@@ -293,9 +298,9 @@ local function render(self, node, ...)
         error("not a table: "..tostring(node).." on line "..lastline)
     end
     if not node.ast_id then
-        error("don't know what to do with: "..require"lua.tableUtil".stringTable(node).." on line "..lastline)
+        error("don't know what to do with: "..tableToString(node).." on line "..lastline)
     end
-    if not match[node.ast_id] then
+    if not dict[node.ast_id] then
         error("no handler for "..node.ast_id)
     end
     if node.fileName then
@@ -305,7 +310,7 @@ local function render(self, node, ...)
     if node.line then
         self.errors:addToLineMap(node.line, self.writer.line, self.currentFileName)
     end
-    local ret = match[node.ast_id](self, node, ...)
+    local ret = dict[node.ast_id](self, node, ...)
     if node.fileName then
         self.currentFileName = self.lastFileName
     end
@@ -356,90 +361,90 @@ end
 
 
 
-function M.test:groupexp(ut)
-    self:render{ ast_id = "groupexp", { ast_id = "literal", "1" } }
+function M.test:grpexpr(ut)
+    self:render{ ast_id = "grpexpr", expr = { ast_id = "literal", value = "1" } }
     ut:equals(tostring(self.writer), [[( 1 )]])
 end
 
 function M.test:fundef_a(ut)
-    self:render{ ast_id = "fundef", parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function ( a, b )
     break
 end]])
 end
 function M.test:fundef_n(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function funname( a, b )
     break
 end]])
 end
 function M.test:fundef_nEllipsis(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" }, { ast_id = "literal", "..." } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" }, { ast_id = "literal", value = "..." } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function funname( a, b, ... )
     break
 end]])
 end
 function M.test:fundef_nOnlyEllipsis(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "literal", "..." } }, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "literal", value = "..." } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function funname( ... )
     break
 end]])
 end
 function M.test:fundef_nEmpty(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = {}, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = {}, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function funname(  )
     break
 end]])
 end
 function M.test:fundef_nDotName(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "tblaccess", lhs = { ast_id = "name", "a"}, rhs = { ast_id = "tblaccess", lhs = { ast_id = "name", "b" }, rhs = { ast_id = "name", "c" }, selfdef = true }, literalidx = true }, parameters = {}, { ast_id = "block", { ast_id = "breakstmt" } } }
+    self:render{ ast_id = "fundef", name = { ast_id = "tblaccess", lhs = { ast_id = "name", name = "a"}, rhs = { ast_id = "name", name = "b" }, kind = "." }, param = {}, selfname = { ast_id = "name", name = "c" }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.writer), [[
 function a.b:c(  )
     break
 end]])
 end
 function M.test:fundef_l(ut)
-    self:render{ ast_id = "fundef", name = { ast_id = "name", "funname" }, parameters = { { ast_id = "name", "a" }, { ast_id = "name", "b" } }, { ast_id = "block", { ast_id = "breakstmt" } }, localdef = true }
+    self:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } }, kind = "local" }
     ut:equals(tostring(self.writer), [[
 local function funname( a, b )
     break
 end]])
 end
 
-function M.test:tabledef(ut)
-    self:render{ ast_id = "tabledef", { ast_id = "field", value = { ast_id = "literal", "1" } }}
+function M.test:tbldef(ut)
+    self:render{ ast_id = "tbldef", { ast_id = "tblfld", value = { ast_id = "literal", value = "1" } }}
     ut:equals(tostring(self.writer), [[{ 1 }]])
 end
-function M.test:tabledefEmpty(ut)
-    self:render{ ast_id = "tabledef" }
+function M.test:tbldefEmpty(ut)
+    self:render{ ast_id = "tbldef" }
     ut:equals(tostring(self.writer), [[{  }]])
 end
 
-function M.test:fieldNoKey(ut)
-    self:render{ ast_id = "field", value = { ast_id = "literal", "1" } }
+function M.test:tblfldNoKey(ut)
+    self:render{ ast_id = "tblfld", value = { ast_id = "literal", value = "1" } }
     ut:equals(tostring(self.writer), [[1]])
 end
-function M.test:fieldKeySqrBrckt(ut)
-    self:render{ ast_id = "field", value = { ast_id = "literal", "1" }, key = { ast_id = "literal", "1" }, operator = "[" }
+function M.test:tblfldKeySqrBrckt(ut)
+    self:render{ ast_id = "tblfld", value = { ast_id = "literal", value = "1" }, key = { ast_id = "literal", value = "1" }, kind = "expr" }
     ut:equals(tostring(self.writer), [=[[1] = 1]=])
 end
-function M.test:fieldKeyDot(ut)
-    self:render{ ast_id = "field", value = { ast_id = "literal", "1" }, key = { ast_id = "name", "hello" } }
+function M.test:tblfldKeyDot(ut)
+    self:render{ ast_id = "tblfld", value = { ast_id = "literal", value = "1" }, key = { ast_id = "name", name = "hello" }, kind = "name" }
     ut:equals(tostring(self.writer), [[hello = 1]])
 end
 
 function M.test:literal(ut)
-    self:render{ ast_id = "literal", '"hello"'}
+    self:render{ ast_id = "literal", value = '"hello"'}
     ut:equals(tostring(self.writer), [["hello"]])
 end
 
 function M.test:name(ut)
-    self:render{ ast_id = "name", "hello"}
+    self:render{ ast_id = "name", name = "hello"}
     ut:equals(tostring(self.writer), [[hello]])
 end
 
