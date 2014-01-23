@@ -22,8 +22,8 @@ end
 -----------------------------------------------------------------------------
 local function succeeds(ut, f, ...)
     ut.startedCounter = ut.startedCounter+1
-    local status, ret = pcall(f,...)
-    if status then ut.succeedCounter = ut.succeedCounter+1 return ret end
+    local status, ret, q,w,e,r,t,y,u,i,o = pcall(f,...)
+    if status then ut.succeedCounter = ut.succeedCounter+1 return ret,q,w,e,r,t,y,u,i,o end
     error("Error generated "..ret,2)
 end
 
