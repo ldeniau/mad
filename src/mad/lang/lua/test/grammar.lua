@@ -1,7 +1,7 @@
 local M = {}
 
 function M:setUp()
-    self.grammar = require "mad.lang.lua.grammar-actions".grammar
+    self.grammar = require "mad.lang.lua.grammar".grammar
     self.compile = require"lib.lpeg.re".compile
     self.defs = require"mad.lang.lua.defs".defs
 end

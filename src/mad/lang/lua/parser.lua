@@ -10,7 +10,7 @@ DESCRIPTION
 -- require --------------------------------------------------------------------
 
 local re      = require"lib.lpeg.re"
-local grammar = require"mad.lang.lua.grammar-actions".grammar
+local grammar = require"mad.lang.lua.grammar".grammar
 local actions = require"mad.lang.lua.defs".defs
 local utest   = require"mad.core.unitTest"
 
@@ -74,7 +74,7 @@ function M.test:parse(ut)
 end
 
 function M.test:self(ut)
-    utest.addModuleToTest("mad.lang.lua.grammar-actions")
+    utest.addModuleToTest("mad.lang.lua.grammar")
 end
 
 -- end ------------------------------------------------------------------------
