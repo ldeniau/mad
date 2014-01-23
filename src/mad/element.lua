@@ -53,10 +53,5 @@ E.__mul = function (a, b)
   error("TODO")
 end
 
--- reflection
-E.__unm = function (a, b)
-  error("TODO")
-end 
-
 -- end -------------------------------------------------------------------------
 return M
