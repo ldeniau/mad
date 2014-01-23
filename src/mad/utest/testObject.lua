@@ -24,7 +24,7 @@ local function succeeds(ut, f, ...)
     ut.startedCounter = ut.startedCounter+1
     local status = {pcall(f,...)}
     if status[1] then ut.succeedCounter = ut.succeedCounter+1 table.remove(status, 1) return table.unpack(status) end
-    error("Error generated "..ret[2],2)
+    error("Error generated "..status[2],2)
 end
 
 -----------------------------------------------------------------------------
