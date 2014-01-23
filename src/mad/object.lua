@@ -75,7 +75,7 @@ end
 function M:new(name)
   if not rawget(self, '__call') then
     rawset(self, '__index', self)         -- inheritance
-    rawset(self, '__call', MT.__call)     -- constructor call
+    rawset(self, '__call', MT.__call)     -- call
   end
   return rawset(setmetatable({}, self), 'name', name)
 end
@@ -130,7 +130,7 @@ function MT:__call(a)
     return self:set(a)
   end
 
-  error ("invalid object (implicit) call argument")
+  error ("invalid ".. self.name .." (implicit) call argument")
 end
 
 -- tests -----------------------------------------------------------------------
