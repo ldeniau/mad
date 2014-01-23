@@ -46,6 +46,8 @@ SEE ALSO
 local type, rawget, rawset, pairs, ipairs = type, rawget, rawset, pairs, ipairs
 local getmetatable, setmetatable = getmetatable, setmetatable
 
+local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
+
 -- methods ---------------------------------------------------------------------
 
 -- return the direct parent
@@ -98,7 +100,7 @@ end
 
 -- set key, value pair(s)
 function M:set(key, val)
-  if type(key) == 'table' then
+  if type(key) == 'table' and val == nil then
     for k,v in pairs(key) do rawset(self, k, v) end
     return self
   else
@@ -117,8 +119,6 @@ function M:unset(key)
 end
 
 -- metamethods -----------------------------------------------------------------
-
-local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 
 -- object used as a function
 function MT:__call(a)
