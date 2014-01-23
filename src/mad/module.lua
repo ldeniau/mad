@@ -118,16 +118,50 @@ end
 -- tests -----------------------------------------------------------------------
 
 -- TODO
-M.foo = function () print("module.foo called") end
-M.help.foo = "This is the help of module.foo for testing purpose"
-M.test.foo = function () print("This is the test of module.foo") end
 
-M.test.self = function ()
-  local help = require "mad.helper"
-  local module = M
-  help(module)
-  help(module.foo)
-  return 2, 2
+--M.test.foo = function () print("This is the test of module.foo") end
+
+function M.test:setUp()
+    self.savePr = print
+    self.wasPrinted = ""
+    print = function(...)
+        local ret = ""
+        for i,v in ipairs{...} do
+            ret = ret..tostring(v)
+        end
+        self.wasPrinted = ret
+    end
+end
+
+function M.test:tearDown()
+    print = self.savePr
+    self.savePr = nil
+    M.reset()
+end
+
+function M.test:reset(ut)
+    local help = require"mad.helper"
+    register_mad_modules()
+    ut:succeeds(M.reset)
+    ut:equals(registered, false)
+    local count = 0
+    for _,_ in pairs(registered_module) do count = count + 1 end
+    ut:equals(count, 0)
+    count = 0
+    for _,_ in pairs(registered_function) do count = count + 1 end
+    ut:equals(count, 0)
+end
+
+
+function M.test:selfie (ut)
+    M.foo = function () print("module.foo called") end
+    M.help.foo = "This is the help of module.foo for testing purpose"
+    local help = require "mad.helper"
+    local module = M
+    ut:succeeds(help, module)
+    ut:equals(self.wasPrinted, M.help.self)
+    ut:succeeds(help, module.foo)
+    ut:equals(self.wasPrinted, M.help.foo)
 end
 
 -- end -------------------------------------------------------------------------
