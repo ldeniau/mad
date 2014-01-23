@@ -158,12 +158,14 @@ end
 
 function M.test:isa(ut)
     local object = M
-    local any = ut:succeeds(object, { _id = "any" })
+    local any = object "any" {  }
     local is = ut:succeeds(any.isa, any, object._id)
     ut:equals(is, object)
     is = ut:succeeds(any.isa, any, object)
     ut:equals(is, object)
-    ut:fails(any.isa, any, "bollocks")
+    ut:fails(any.isa, any, 1)
+    is = ut:succeeds(any.isa, any, "bollock")
+    ut:equals(is, nil)
 end
 
 function M.test:ctor(ut)
@@ -173,6 +175,77 @@ function M.test:ctor(ut)
     ut:equals(obj1.val1, 1)
     ut:equals(obj2.val2, 2)
     ut:equals(obj2.val1, 1)
+    obj1.val3 = 3
+    ut:equals(obj2.val3, obj1.val3)
+end
+
+function M.test:clone(ut)
+    local object = M
+    local obj    = object "obj" { val1 = 1 }
+    local clone1 = ut:succeeds(obj.clone, obj, "clone1")
+    ut:equals(clone1.val1, 1)
+    clone1.val2 = 2
+    local clone2 = ut:succeeds(clone1.clone, clone1, "clone2")
+    ut:equals(clone2.val1, clone1.val1)
+    ut:equals(clone2.val2, clone1.val2)
+    clone1.val3 = 3
+    ut:differs(clone2.val3, clone1.val3)
+end
+
+function M.test:set(ut)
+    local object = M
+    local obj1   = object "obj1" { val1 = 1 }
+    local obj2   = obj1   "obj2" { val2 = 2 }
+    ut:succeeds(obj2.set, obj2, "val3", 3)
+    ut:equals(obj2.val3, 3)
+    ut:differs(obj1.val3, 3)
+    ut:succeeds(obj1.set, obj1, "val4", 4)
+    ut:equals(obj2.val4, 4)
+    ut:equals(obj1.val4, 4)
+    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
+    ut:equals(obj2.val5, 5)
+    ut:equals(obj1.val5, 5)
+    ut:equals(obj2.val6, 6)
+    ut:equals(obj1.val6, 6)
+end
+
+function M.test:get(ut)
+    local object = M
+    local obj1   = object "obj1" { val1 = 1 }
+    local obj2   = obj1   "obj2" { val2 = 2 }
+    ut:succeeds(obj2.set, obj2, "val3", 3)
+    ut:equals(obj2:get("val3"), 3)
+    ut:differs(obj1:get("val3"), 3)
+    ut:succeeds(obj1.set, obj1, "val4", 4)
+    ut:equals(obj2:get("val4"), 4)
+    ut:equals(obj1:get("val4"), 4)
+    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
+    local a1,b1 = ut:succeeds(obj1.get, obj1, { "val5", "val6" })
+    local a2,b2 = ut:succeeds(obj2.get, obj2, { "val5", "val6" })
+    ut:equals(a2, 5)
+    ut:equals(a1, 5)
+    ut:equals(b2, 6)
+    ut:equals(b1, 6)
+end
+
+function M.test:unset(ut)
+    local object = M
+    local obj1   = object "obj1" { val1 = 1 }
+    local obj2   = obj1   "obj2" { val2 = 2 }
+    ut:succeeds(obj2.set, obj2, "val3", 3)
+    ut:succeeds(obj1.set, obj1, "val4", 4)
+    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
+    ut:succeeds(obj2.unset, obj2, "val3")
+    ut:equals(obj2.val3, nil)
+    ut:differs(obj1.val3, 3)
+    ut:succeeds(obj1.unset, obj1, { "val4", "val5" })
+    ut:equals(obj2.val4, nil)
+    ut:equals(obj1.val4, nil)
+    ut:equals(obj2.val5, nil)
+    ut:equals(obj1.val5, nil)
+    ut:succeeds(obj2.unset, obj2, "val6")
+    ut:equals(obj2.val6, 6)
+    ut:equals(obj1.val6, 6)
 end
 
 -- TODO
