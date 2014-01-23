@@ -59,12 +59,11 @@ end
 function M:isa(id)
   local a = getmetatable(self);
 
-  if type(id) == 'string' then
-    while a ~= nil and rawget(a, 'name') ~= id do a = getmetatable(a) end
-    return a
-
-  elseif type(id) == 'table' then
+  if type(id) == 'table' then
     while a ~= nil and a ~= id do a = getmetatable(a) end
+    return a
+  elseif type(id) == 'string' then
+    while a ~= nil and rawget(a, 'name') ~= id do a = getmetatable(a) end
     return a
   end
 
@@ -73,9 +72,9 @@ end
 
 -- return a new instance of self
 function M:new(name)
-  if not rawget(self, '__call') then
-    rawset(self, '__index', self)         -- inheritance
-    rawset(self, '__call', MT.__call)     -- call
+  if not self.__call then
+    self.__index = self         -- inheritance
+    self.__call  = MT.__call    -- call
   end
   return rawset(setmetatable({}, self), 'name', name)
 end
@@ -83,7 +82,7 @@ end
 -- return a copy of self
 function M:cpy(name)
   local c = {}
-  for k,v in pairs(self) do rawset(c, k, v) end
+  for k,v in pairs(self) do c[k] = v end
   return rawset(setmetatable(c, getmetatable(self)), 'name', name)
 end
 
@@ -91,7 +90,7 @@ end
 function M:get(key)
   if type(key) == 'table' then
     local t = {}
-    for i,k in ipairs(key) do rawset(t, i, self[k]) end
+    for i,k in ipairs(key) do t[i] = self[k] end
     return table.unpack(t)
   else
     return self[key];
@@ -101,21 +100,21 @@ end
 -- set key, value pair(s)
 function M:set(key, val)
   if type(key) == 'table' and val == nil then
-    for k,v in pairs(key) do rawset(self, k, v) end
-    return self
+    for k,v in pairs(key) do self[k] = v end
   else
-    return rawset(self, key, val)
+    self[key] = val
   end
+  return self
 end
 
 -- unset keys by setting their values to nil
 function M:unset(key)
   if type(key) == 'table' then
-    for _,k in ipairs(key) do rawset(self, k, nil) end
-    return self
+    for _,k in ipairs(key) do self[k] = nil end
   else
-    return rawset(self, key, nil)
+    self[key] = nil
   end
+  return self
 end
 
 -- metamethods -----------------------------------------------------------------
