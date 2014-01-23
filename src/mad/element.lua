@@ -21,30 +21,30 @@ SEE ALSO
   mad.sequence, mad.beam, mad.object
 ]]
 
--- require ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
 
--- class of elements -----------------------------------------------------------
+-- elements --------------------------------------------------------------------
 
-local E = object "element" {}
+local E = object 'element' {}
 
-M.drift 		  = E "drift" 		  {}
-M.sbend 		  = E "sbend" 		  {}
-M.rbend 		  = E "rbend" 		  {}
-M.quadrupole  = E "quadrupole"  {}
-M.sextupole  	= E "sextupole"  	{}
-M.octupole   	= E "octupole"   	{}
-M.decapole  	= E "decapole"  	{}
-M.dodecapole  = E "dodecapole"  {}
+M.drift 		  = E 'drift' 		   {}
+M.sbend 		  = E 'sbend' 		   {}
+M.rbend 		  = E 'rbend' 		   {}
+M.quadrupole  = E 'quadrupole'   {}
+M.sextupole  	= E 'sextupole'  	 {}
+M.octupole   	= E 'octupole'   	 {}
+M.decapole  	= E 'decapole'  	 {}
+M.dodecapole  = E 'dodecapole'   {}
 
-M.elseparator	= E "elseparator" {}
+M.elseparator	= E 'elseparator'  {}
 
-M.bpm   		  = E "bpm"   		  {}
-M.blm   		  = E "blm"   		  {}
+M.bpm   		  = E 'bpm'   	     {}
+M.blm   		  = E 'blm'   		   {}
 
-M.marker   		= E "marker"   		{}
-M.placeholder	= E "placeholder" {}
+M.marker   		= E 'marker'   		 {}
+M.placeholder	= E 'placeholder'  {}
 
 -- metamethods -----------------------------------------------------------------
 

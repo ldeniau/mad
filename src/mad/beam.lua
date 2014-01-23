@@ -1,6 +1,6 @@
-local M  = { help = {}, _id = "mad", _author = "Laurent Deniau", _year = 2013 }
+local M  = { help={}, test={} }
 
--- MAD -------------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
@@ -19,7 +19,7 @@ SEE ALSO
   None
 ]]
 
--- modules ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
 M.env      = require "mad.env"
 M.helper   = require "mad.helper"
@@ -30,5 +30,4 @@ M.element  = require "mad.element"
 M.sequence = require "mad.sequence"
 
 -- end -------------------------------------------------------------------------
-
 return M

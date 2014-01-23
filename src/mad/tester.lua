@@ -22,15 +22,15 @@ SEE ALSO
   mad.helper, mad.module
 ]]
 
--- require ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
 local module = require"mad.module"
 
 -- metamethods -----------------------------------------------------------------
 
-local mt = {}; setmetatable(M, mt)
+local MT = {}; setmetatable(M, MT)
 
-function mt:__call(a)
+function MT:__call(a)
   if module.get_module_name(a) and a.test.self then
     return a.test.self()
   end
@@ -41,7 +41,7 @@ function mt:__call(a)
     return mod.test[fun_name]()
   end
 
-  return 0, 0
+  return 0, 0 -- ??
 end
 
 -- tests -----------------------------------------------------------------------

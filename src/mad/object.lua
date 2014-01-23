@@ -1,46 +1,49 @@
-local M = { help={}, test={}, _id="object" }
+local M = { help={}, test={}, name='object' }
 
 -- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  mad.object -- transform Lua tables into general purpose objects
+  mad.object -- creates objects
 
 SYNOPSIS
   object = require"mad.object"
-  obj = object [string] table
+  obj = object 'name'           -- create a new object
+  obj { ... }                   -- set obj values
+  obj = object 'name' { ... }   -- create and set obj in one shot
 
 DESCRIPTION
-  The module mad.object *transforms* any table into an object with inheritance of
-  properties and callable semantic. Hence an object is a table that can be used
-  as a constructor (a function), an object (a table) or a class (a metatable).
+  The module mad.object creates new objects that are instances of their parent,
+  with callable semantic.
   
-  The returned object has its class (its constructor) set as metatable and
-  inherits all properties of its class autmatically, hence implementing a
-  prototype language.
+  The returned object has its parent (its constructor) set as metatable and
+  inherits all properties of it autmatically, hence implementing a prototype
+  language.
 
-  The optional string argument is stored into the property _id of the object.
+  Hence an object is a 'table' that can be used as a constructor (a function)
+  to create new instances, an object (a table) or a class/parent (a metatable).
+
+  The string argument is stored into the property 'name' of the object.
 
 RETURN VALUES
-  The table passed as argument (not a copy!)
+  The new object
 
 ERRORS
-  If the constructor does not receive an optional string and a table, an invalid
-  argument error is raised.
-  If the table passed is already an opbject, an invalid argument error is raised.
+  If the object does not receive a string (used as constructor) or a table (used
+  as set), an invalid argument error is raised.
 
 EXAMPLES
   object = require "mad.object"
-  my_a = object 'a' { myflag = true }         -- _id = 'a' (implicit)
-  my_b = object { _id = 'b', myflag = true }  -- _id = 'b' (explicit)
-  my_c = object { myflag = false }            -- _id = nil
+  obj = object 'a' { flg = true }       -- name = 'a'
+  obj { flg = false }                   -- set flg
 
 SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
 ]]
 
--- locals ---------------------------------------------------------------------
+-- locals ----------------------------------------------------------------------
 
+local type, rawget, rawset, pairs, ipairs = type, rawget, rawset, pairs, ipairs
 local getmetatable, setmetatable = getmetatable, setmetatable
 
 -- methods ---------------------------------------------------------------------
@@ -54,90 +57,80 @@ end
 function M:isa(id)
   local a = getmetatable(self);
 
-  if type(id) == "string" then
-    while a ~= nil and rawget(a, "_id") ~= id do
-      a = getmetatable(a)
-    end
+  if type(id) == 'string' then
+    while a ~= nil and rawget(a, 'name') ~= id do a = getmetatable(a) end
     return a
 
-  elseif type(id) == "table" then
-    while a ~= nil and a ~= id do
-      a = getmetatable(a)
-    end
+  elseif type(id) == 'table' then
+    while a ~= nil and a ~= id do a = getmetatable(a) end
     return a
   end
 
-  error("invalid parent id, should be either an object or a string")
+  error("invalid parent id, should be either an object or a name")
 end
 
--- return a clone of self
-function M:clone(id)
-  if type(id) == "string" or id == nil then
-    local c = {} -- clone
-    for k,v in pairs(self) do
-      c[k] = v
-    end
-    return rawset(setmetatable(c, getmetatable(self)), "_id", id)
+-- return a new instance of self
+function M:new(name)
+  if not rawget(self, '__call') then
+    rawset(self, '__index', self)         -- inheritance
+    rawset(self, '__call', MT.__call)     -- constructor call
   end
+  return rawset(setmetatable({}, self), 'name', name)
+end
 
-  error ("invalid clone argument, should be: parent:clone [id_string]")
+-- return a copy of self
+function M:cpy(name)
+  local c = {}
+  for k,v in pairs(self) do rawset(c, k, v) end
+  return rawset(setmetatable(c, getmetatable(self)), 'name', name)
 end
 
 -- return value(s) of each key
 function M:get(key)
-  if type(key) == "table" then
+  if type(key) == 'table' then
     local t = {}
-    for i,k in ipairs(key) do
-      t[i] = self[k]
-    end
+    for i,k in ipairs(key) do rawset(t, i, self[k]) end
     return table.unpack(t)
+  else
+    return self[key];
   end
-  return self[key];
 end
 
 -- set key, value pair(s)
 function M:set(key, val)
-  if type(key) == "table" and val == nil then
-    for k,v in pairs(key) do
-      self[k] = v
-    end
+  if type(key) == 'table' then
+    for k,v in pairs(key) do rawset(self, k, v) end
+    return self
+  else
+    return rawset(self, key, val)
   end
-  self[key] = val;
 end
 
 -- unset keys by setting their values to nil
 function M:unset(key)
-  if type(key) == "table" then
-    for i,k in ipairs(key) do
-      self[k] = nil
-    end
+  if type(key) == 'table' then
+    for _,k in ipairs(key) do rawset(self, k, nil) end
+    return self
+  else
+    return rawset(self, key, nil)
   end
-  self[key] = nil;
 end
 
 -- metamethods -----------------------------------------------------------------
 
-local mt = {}; setmetatable(M, mt) -- make this module the root of all objects
+local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 
-local function create(self, t, id)
-  if not rawget(self, "__call") then
-    rawset(self, "__index", self)         -- inheritance
-    rawset(self, "__call", mt.__call)     -- constructor call
+-- object used as a function
+function MT:__call(a)
+  if type(a) == 'string' then
+    return self:new(a)
   end
 
-  if type(t) == "table" then
-    return rawset(setmetatable(t, self), "_id", id)
+  if type(a) == 'table' then
+    return self:set(a)
   end
 
-  error ("invalid constructor argument, should be: parent [id_string] prop_table")
-end
-
-function mt:__call(a)
-  if type(a) == "string" then
-    return function (t) return create(self, t, a) end
-  end
-
-  return create(self, a, nil)
+  error ("invalid object (implicit) call argument")
 end
 
 -- tests -----------------------------------------------------------------------
@@ -148,18 +141,17 @@ end
 function M.test:tearDown()
 end
 
-
 function M.test:super(ut)
     local object = M
-    local any = ut:succeeds(object, { _id = "any" })
+    local any = ut:succeeds(object, 'any')
     local sup = ut:succeeds(any.super, any)
-    ut:equals(sup._id, object._id)
+    ut:equals(sup, object)
 end
 
 function M.test:isa(ut)
     local object = M
     local any = object "any" {  }
-    local is = ut:succeeds(any.isa, any, object._id)
+    local is = ut:succeeds(any.isa, any, object.name)
     ut:equals(is, object)
     is = ut:succeeds(any.isa, any, object)
     ut:equals(is, object)
@@ -168,7 +160,7 @@ function M.test:isa(ut)
     ut:equals(is, nil)
 end
 
-function M.test:ctor(ut)
+function M.test:new(ut)
     local object = M
     local obj1 = ut:succeeds(ut:succeeds(object, "obj1"), { val1 = 1 })
     local obj2 = ut:succeeds(ut:succeeds(obj1,   "obj2"), { val2 = 2 })
@@ -179,17 +171,17 @@ function M.test:ctor(ut)
     ut:equals(obj2.val3, obj1.val3)
 end
 
-function M.test:clone(ut)
+function M.test:cpy(ut)
     local object = M
     local obj    = object "obj" { val1 = 1 }
-    local clone1 = ut:succeeds(obj.clone, obj, "clone1")
-    ut:equals(clone1.val1, 1)
-    clone1.val2 = 2
-    local clone2 = ut:succeeds(clone1.clone, clone1, "clone2")
-    ut:equals(clone2.val1, clone1.val1)
-    ut:equals(clone2.val2, clone1.val2)
-    clone1.val3 = 3
-    ut:differs(clone2.val3, clone1.val3)
+    local cpy1   = ut:succeeds(obj.cpy, obj, "cpy1")
+    ut:equals(cpy1.val1, 1)
+    cpy1.val2 = 2
+    local cpy2 = ut:succeeds(cpy1.cpy, cpy1, "cpy2")
+    ut:equals(cpy2.val1, cpy1.val1)
+    ut:equals(cpy2.val2, cpy1.val2)
+    cpy1.val3 = 3
+    ut:differs(cpy2.val3, cpy1.val3)
 end
 
 function M.test:set(ut)
@@ -247,71 +239,6 @@ function M.test:unset(ut)
     ut:equals(obj2.val6, 6)
     ut:equals(obj1.val6, 6)
 end
-
--- TODO
---[==[M.test.self = function ()
-
-  -- helper
-  local print_obj = function (s,o)
-    print("---")
-    print(s, " = ", o)
-    print(s, "._id = ", o._id)
-    local super = o:super()
-    if super then
-      print(s, ".super = ", super)
-      print(s, ".super._id = ", super._id)
-    end
-  end
-
-  local object = M
-  print("M = ", M)
-  print("mt = ", mt)
-  print_obj("object", object)
-
-  -- simple instance of "object"
-  local any = object { _id = "any" }
-
-  -- new objects as instances of "object"
-  local bend = object "bend" { len = 2 }
-  local quad = object "quad" { len = 1 }
-
-  -- new objects as instances of previous objects
-  local mb = bend "mb" { at = 1 }
-  local mq = quad "mq" { at = 3 }
-  local cpy = mb:clone "cpy"
-
-  -- array of objects
-  local arr = {}
-  for i = 1,5 do
-    arr[i] = cpy { at = i }
-  end
-
-  -- print inheritance chain
-  print_obj("any" , any)
-  print_obj("bend", bend); print_obj("mb", mb)
-  print_obj("quad", quad); print_obj("mq", mq)
-  print_obj("cpy" , cpy)
-
-  -- check lookup chain
-  print("name = ", mb._id, "at = ", mb.at, "len = ", mb.len)
-  print("name = ", mq._id, "at = ", mq.at, "len = ", mq.len)
-
-  -- check scan
-  print("keys of mb")
-  for k,v in pairs(mb) do
-    print(k, "=", v)
-  end
-
-  -- check array
-  for i = 1,#arr do
-    print_obj("arr["..i.."]", arr[i])
-    for k,v in pairs(arr[i]) do
-      print(k, "=", v)
-    end
-  end
-
-  return 9, 9
-end]==]
 
 -- end -------------------------------------------------------------------------
 return M

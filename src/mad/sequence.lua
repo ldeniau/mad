@@ -1,6 +1,6 @@
 local M  = { help={}, test={} }
 
--- MAD -------------------------------------------------------------------------
+-- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
@@ -26,19 +26,21 @@ SEE ALSO
   mad.sequence, mad.beam, mad.object
 ]]
 
--- require ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
-local super = object.super
 
-local S = object "sequence" {}
+-- locals ----------------------------------------------------------------------
+
+local type, rawget, rawset, ipairs, pairs = type, rawget, rawset, ipairs, pairs
 
 -- methods ---------------------------------------------------------------------
 
-local add_element = function (self, elem)
+local add_element = function (self, elem_)
+  local elem = elem_:clone()
   self:insert(elem)                -- vector part
 
-  local k = rawget(elem,'_id')     -- dict part
+  local k = rawget(elem,'name')    -- dict part
   if k then
     local ref = rawget(self, k)
     if type(ref) == "table" then
@@ -53,11 +55,14 @@ end
 
 local add_sequence = function (self, seq)
   for _,v in ipairs(t) do
-    add_element(self, v)
+    add_element(self, v
   end
 end
 
 -- metamethods -----------------------------------------------------------------
+
+local S = object "sequence" {}
+local super = S.super
 
 S:__call = function (t) -- ctor
   local seq = S {}

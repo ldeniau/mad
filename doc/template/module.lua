@@ -1,10 +1,10 @@
-local M = { _id="object", _author="LD", _year=2013, help={}, test={} }
+local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  object -- transform tables into general purpose objects
+  object -- this a template example, what follows as no meaning
 
 SYNOPSIS
   local object = require "mad.object"
@@ -31,11 +31,9 @@ SEE ALSO
   None
 ]]
 
--- require ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
-local module = require "mad.module"
-
--- local -----------------------------------------------------------------------
+-- locals ----------------------------------------------------------------------
 
 -- functions -------------------------------------------------------------------
 
@@ -43,18 +41,9 @@ local module = require "mad.module"
 
 -- metamethods -----------------------------------------------------------------
 
-local mt = {}; setmetatable(M, mt)
-
-mt.__call = function (t, o)
-  ...
-end
+local MT = {}; setmetatable(M, MT)
 
 -- tests -----------------------------------------------------------------------
 
-M.test.self = function (...)
-  ...
-  return passed, failed, title
-end
-
 -- end -------------------------------------------------------------------------
-return (require "mad.module")(M)
+return M

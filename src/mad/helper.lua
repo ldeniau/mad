@@ -22,15 +22,15 @@ SEE ALSO
   mad.tester, mad.module
 ]]
 
--- require ---------------------------------------------------------------------
+-- requires --------------------------------------------------------------------
 
 local module = require"mad.module"
 
 -- metamethods -----------------------------------------------------------------
 
-local mt = {}; setmetatable(M, mt)
+local MT = {}; setmetatable(M, MT)
 
-function mt:__call(a)
+function MT:__call(a)
   if type(a) == "table" then
     local mod = a
     local mod_name = module.get_module_name(mod)

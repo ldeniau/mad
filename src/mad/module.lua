@@ -23,8 +23,6 @@ DESCRIPTION
       module documentation
     ]]
 
-  The module name is stored into the property _id of the table.
-
 RETURN VALUES
   The interface to the MAD modules database.
 
@@ -36,13 +34,13 @@ SEE ALSO
   mad.helper, mad.tester, mad.object
 ]=]
 
--- data ------------------------------------------------------------------------
+-- locals ----------------------------------------------------------------------
 
 local registered = false
 local registered_module = {}    -- { [mod] = 'mod_name' }
 local registered_function = {}  -- { [fun] = { fun_name = 'fun_name', mod_name = 'mod_name' } }
 
--- local -----------------------------------------------------------------------
+-- functions -------------------------------------------------------------------
 
 local register_function = function (mod, mod_name)
   for fun_name,fun in pairs(mod) do
@@ -80,7 +78,7 @@ local register_mad_modules = function ()
   registered = true
 end
 
--- methods -----------------------------------------------------------------
+-- methods ---------------------------------------------------------------------
 
 M.reset = function ()
   registered = false
