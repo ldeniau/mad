@@ -9,7 +9,12 @@ options.process(arg)
 
 -- Do tests if applicable
 if options.utest then
-	require"mad.core.unitTest"(options.utest)
+    require"mad.core.unitTest"(options.utest)
+end
+
+-- Benchmark if applicable
+if options.benchmark then
+    require"mad.benchmark"(options.benchmark)
 end
 
 -- Exec
