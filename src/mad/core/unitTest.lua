@@ -31,6 +31,30 @@ function M.addModuleToTest( modname )
     utest:addModuleToTest(modname)
 end
 
+function M.run( mod, fun )
+    if type(mod) == "table" then
+        mod = module.get_module_name(mod)
+    end
+    if fun and type(fun) == "function" then
+        fun = module.get_function_name(fun)
+    end
+    
+    if type(mod) ~= "string" then
+        error("Module isn't of type string")
+    elseif fun and type(fun) ~= "string" then
+        error("Function isn't of type string")
+    end
+    
+    utest = luaUnit()
+    if fun then
+        utest:addFunctionToTest( mod, fun )
+    else
+        utest:addModuleToTest( mod )
+    end
+    
+    utest:run()
+end
+
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
 
