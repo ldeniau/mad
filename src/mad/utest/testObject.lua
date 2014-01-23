@@ -39,6 +39,7 @@ local function equals(ut, actual,expected)
     local function equalsRec(actual,expected,key)
         local errorMsg = ''
         if type(actual) == 'table' and type(expected) == 'table' then
+            if actual == expected then return errorMsg end
             for k,v in pairs(expected) do
                 if actual[k] == nil then
                     errorMsg = errorMsg..nesting..'expected : key : '..tostring(k)..'\n'
