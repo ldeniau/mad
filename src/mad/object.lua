@@ -72,7 +72,7 @@ end
 
 -- return a new instance of self
 function M:new(name)
-  if not self.__call then
+  if not rawget(self,'__call') then
     self.__index = self         -- inheritance
     self.__call  = MT.__call    -- call
   end
@@ -161,8 +161,10 @@ end
 
 function M.test:new(ut)
     local object = M
-    local obj1 = ut:succeeds(ut:succeeds(object, "obj1"), { val1 = 1 })
-    local obj2 = ut:succeeds(ut:succeeds(obj1,   "obj2"), { val2 = 2 })
+    local obj1 = ut:succeeds(object, "obj1")
+    ut:succeeds(obj1, { val1 = 1 })
+    local obj2 = ut:succeeds(obj1,   "obj2")
+    ut:succeeds(obj2, { val2 = 2 })
     ut:equals(obj1.val1, 1)
     ut:equals(obj2.val2, 2)
     ut:equals(obj2.val1, 1)
