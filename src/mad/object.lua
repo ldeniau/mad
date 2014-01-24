@@ -34,8 +34,13 @@ ERRORS
 
 EXAMPLES
   object = require "mad.object"
-  obj = object 'a' { flg = true }       -- name = 'a'
+  obj = object 'a' { flg = true }       -- name = 'a', flg = true
   obj { flg = false }                   -- set flg
+  obj.flg = false                       -- set flg (fast)
+  flg = obj.flg                         -- get flg (fast)
+  obj2 = object obj.name (obj)          -- copy of obj, assume object is parent
+  obj3 = obj:super() obj.name (obj)     -- copy of obj, don't know parent
+  obj4 = obj:cpy()                      -- copy of obj, idem but faster
 
 SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
@@ -43,7 +48,7 @@ SEE ALSO
 
 -- locals ----------------------------------------------------------------------
 
-local type, rawget, rawset, pairs, ipairs = type, rawget, rawset, pairs, ipairs
+local type, rawget, rawset, pairs = type, rawget, rawset, pairs
 local getmetatable, setmetatable = getmetatable, setmetatable
 
 local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
@@ -62,6 +67,7 @@ function M:isa(id)
   if type(id) == 'table' then
     while a ~= nil and a ~= id do a = getmetatable(a) end
     return a
+
   elseif type(id) == 'string' then
     while a ~= nil and rawget(a, 'name') ~= id do a = getmetatable(a) end
     return a
@@ -70,51 +76,10 @@ function M:isa(id)
   error("invalid parent id, should be either an object or a name")
 end
 
--- return a new instance of self
-function M:new(name)
-  if not self.__call then
-    self.__index = self         -- inheritance
-    self.__call  = MT.__call    -- call
-  end
-  return rawset(setmetatable({}, self), 'name', name)
-end
-
--- return a copy of self
-function M:cpy(name)
-  local c = {}
+function M:cpy()
+  local c = setmetatable({}, getmetatable(self))
   for k,v in pairs(self) do c[k] = v end
-  return rawset(setmetatable(c, getmetatable(self)), 'name', name)
-end
-
--- return value(s) of each key
-function M:get(key)
-  if type(key) == 'table' then
-    local t = {}
-    for i,k in ipairs(key) do t[i] = self[k] end
-    return table.unpack(t)
-  else
-    return self[key];
-  end
-end
-
--- set key, value pair(s)
-function M:set(key, val)
-  if type(key) == 'table' and val == nil then
-    for k,v in pairs(key) do self[k] = v end
-  else
-    self[key] = val
-  end
-  return self
-end
-
--- unset keys by setting their values to nil
-function M:unset(key)
-  if type(key) == 'table' then
-    for _,k in ipairs(key) do self[k] = nil end
-  else
-    self[key] = nil
-  end
-  return self
+  return c
 end
 
 -- metamethods -----------------------------------------------------------------
@@ -122,14 +87,19 @@ end
 -- object used as a function
 function MT:__call(a)
   if type(a) == 'string' then
-    return self:new(a)
+    if not rawget(self, '__call') then
+      rawset(self, '__index', self)         -- inheritance
+      rawset(self, '__call' , MT.__call)    -- call
+    end
+    return rawset(setmetatable({}, self), 'name', a)
   end
 
   if type(a) == 'table' then
-    return self:set(a)
+    for k,v in pairs(a) do self[k] = v end
+    return self
   end
 
-  error ("invalid ".. self.name .." (implicit) call argument")
+  error ("invalid ".. self.name .." (implicit) call argument, string or table expected")
 end
 
 -- tests -----------------------------------------------------------------------
