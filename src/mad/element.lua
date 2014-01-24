@@ -25,26 +25,32 @@ SEE ALSO
 
 local object = require"mad.object"
 
--- elements --------------------------------------------------------------------
+-- locals ----------------------------------------------------------------------
 
-local E = object 'element' {}
+local E = object 'element' -- root of all elements
 
-M.drift 		  = E 'drift' 		   {}
-M.sbend 		  = E 'sbend' 		   {}
-M.rbend 		  = E 'rbend' 		   {}
-M.quadrupole  = E 'quadrupole'   {}
-M.sextupole  	= E 'sextupole'  	 {}
-M.octupole   	= E 'octupole'   	 {}
-M.decapole  	= E 'decapole'  	 {}
-M.dodecapole  = E 'dodecapole'   {}
+-- members ---------------------------------------------------------------------
 
-M.elseparator	= E 'elseparator'  {}
+-- elements
 
-M.bpm   		  = E 'bpm'   	     {}
-M.blm   		  = E 'blm'   		   {}
+M.element     = E
 
-M.marker   		= E 'marker'   		 {}
-M.placeholder	= E 'placeholder'  {}
+M.drift       = E 'drift'
+M.sbend       = E 'sbend'
+M.rbend       = E 'rbend'
+M.quadrupole  = E 'quadrupole'
+M.sextupole   = E 'sextupole'
+M.octupole    = E 'octupole'
+M.decapole    = E 'decapole'
+M.dodecapole  = E 'dodecapole'
+
+M.elseparator = E 'elseparator'
+
+M.bpm         = E 'bpm'
+M.blm         = E 'blm'
+
+M.marker      = E 'marker'
+M.placeholder = E 'placeholder'
 
 -- metamethods -----------------------------------------------------------------
 

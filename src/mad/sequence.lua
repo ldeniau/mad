@@ -10,17 +10,16 @@ SYNOPSIS
   seq = require"mad.sequence"
   elm = require"mad.element"
   MB, MQ = elm.sbend, elm.quadrupole
-  my_seq = seq {
-    MQ 'QF' {}, MB 'MB' {},
-    MQ 'QD' {}, MB 'MB' {},
+  my_seq = seq 'name' {
+    MQ 'QF', MB 'MB', MQ 'QD', MB 'MB',
   }
 
 DESCRIPTION
-  The module mad.element is a front-end to the factory of all physcial elements
-  supported by MAD.
+  The module mad.sequence is a front-end to the factory of sequences and lines
+  supported by MAD. The elements and the subsequences are copies of the table.
 
 RETURN VALUES
-  The table of supported elements.
+  The object (table) that represents the flat sequence.
 
 SEE ALSO
   mad.sequence, mad.beam, mad.object
@@ -29,13 +28,13 @@ SEE ALSO
 -- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
-local drift  = require"mad.element".drift
-
-M = object 'sequence' M -- make the module an object
+local marker = require"mad.element".marker
 
 -- locals ----------------------------------------------------------------------
 
 local type, rawget, rawset, ipairs, pairs = type, rawget, rawset, ipairs, pairs
+
+M = object 'sequence' (M) -- root of all sequences
 
 -- functions -------------------------------------------------------------------
 
@@ -96,7 +95,19 @@ end
 
 -- metamethods -----------------------------------------------------------------
 
--- M:__call is inherited
+-- object used as a function
+function M:__call(a)
+  if type(a) == 'string' then
+    return rawset(setmetatable({}, self), 'name', a)
+  end
+
+  if type(a) == 'table' then
+    for k,v in pairs(a) do self[k] = v end
+    return self
+  end
+
+  error ("invalid ".. self.name .." (implicit) call argument, string or table expected")
+end
 
 -- repetition
 function M.__mul(a, b)
