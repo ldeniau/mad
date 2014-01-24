@@ -92,6 +92,8 @@ M.grammar = [=[
 
     funcall     <- (( s{':'} name )? funargs)                                   -> funcall
     funargs     <- s'(' explist? s')' / tabledef / (string->literal)
+    
+    lambda      <- (s'\' {|(namenosp (s',' namelist)?)?|} ( {exp} / (s'(' {|explist|} s')') )) -> lambda
 
 -- table definitions & access
 
@@ -116,6 +118,7 @@ M.grammar = [=[
     literal     <- s{nil / false / true / number / string / ellipsis}           -> literal
     
     name        <- s !keyword {ident}                                           -> name
+    namenosp    <- (  !keyword {ident})                                         -> name
     namelist    <- name (s',' name)*
     string      <- s(sstring / lstring)
     number      <- s( hexnum / decnum )

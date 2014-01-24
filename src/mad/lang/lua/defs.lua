@@ -273,6 +273,16 @@ function defs.funcall ( op, name, ... )
     end    
 end
 
+function defs.lambda ( params, explist, exp )
+    local ret
+    if exp then
+        ret = { ast_id = "ret_stmt", line = defs._line, exp }
+    else
+        ret = { ast_id = "ret_stmt", line = defs._line, table.unpack(explist) }
+    end
+    return { ast_id = "fundef", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
+end
+
 -- table
 
 function defs.tabledef( _, ... )
