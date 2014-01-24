@@ -29,15 +29,18 @@ SEE ALSO
 -- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
+local drift  = require"mad.element".drift
+
+M = object 'sequence' M -- make the module an object
 
 -- locals ----------------------------------------------------------------------
 
 local type, rawget, rawset, ipairs, pairs = type, rawget, rawset, ipairs, pairs
 
--- methods ---------------------------------------------------------------------
+-- functions -------------------------------------------------------------------
 
-local add_element = function (self, elem_)
-  local elem = elem_:clone()
+local function add_element(self, elem_)
+  local elem = elem_:cpy()
   self:insert(elem)                -- vector part
 
   local k = rawget(elem,'name')    -- dict part
@@ -53,38 +56,55 @@ local add_element = function (self, elem_)
   end
 end
 
-local add_sequence = function (self, seq)
+local function add_sequence(self, seq)
   for _,v in ipairs(t) do
     add_element(self, v
   end
 end
 
--- metamethods -----------------------------------------------------------------
+local function add_last_drift(self, ds)
+  add_element(self, drift '' { length = ds })
+  self.length = self.length + ds
+end
 
-local S = object "sequence" {}
-local super = S.super
+-- methods ---------------------------------------------------------------------
 
-S:__call = function (t) -- ctor
-  local seq = S {}
+-- M:new is inherited
+
+function M:set(t)
+  if type(t) ~= 'table' then
+    error("invalid sequence description")
+  end
 
   for _,v in ipairs(t) do
-    if super(v) == S then
-      add_sequence(seq, v)
+    if super(v) == M then
+      add_sequence(self, v)
     else
-      add_element(seq, v)
+      add_element(self, v)
     end
   end
 
-  return seq
+  self.length = get_sequence_length(self)
+  self.refer  = t.refer
+
+  if t.length ~= nil and t.length > self.length then
+    add_last_drift(self, t.length-self.length)
+  end
+
+  return self
 end
 
+-- metamethods -----------------------------------------------------------------
+
+-- M:__call is inherited
+
 -- repetition
-S.__mul = function (a, b)
+function M.__mul(a, b)
   error("TODO")
 end
 
 -- reflection
-S.__unm = function (a, b)
+function M.__unm(a, b)
   error("TODO")
 end 
 

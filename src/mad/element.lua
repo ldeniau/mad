@@ -49,7 +49,7 @@ M.placeholder	= E 'placeholder'  {}
 -- metamethods -----------------------------------------------------------------
 
 -- repetition
-E.__mul = function (a, b)
+function E.__mul(a, b)
   error("TODO")
 end
 
