@@ -61,7 +61,7 @@ local function processArgs(arg)
         local opt = table.remove(arg,1)
         if opt == "-utest" then
             processUTest(arg)
-        elseif opt == "-interactive" then
+        elseif opt == "-interactive" or opt == "-i" then
             M.interactive = true
         elseif opt == "-dumpAst" then
             M.dumpAst = true

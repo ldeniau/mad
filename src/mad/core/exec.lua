@@ -50,8 +50,10 @@ call = function (_, options)
 		local totalTime = os.clock() - startTime
 		print(string.format("elapsed time: %.2fs", totalTime))
 	end
-	--errors:setCurrentChunkName("stdin")
-	--require"mad.lang.interactive".interactive(errors)
+	if options.interactive then
+    	errors:setCurrentChunkName("stdin")
+	    require"mad.lang.interactive".interactive(errors)
+	end
 end
 
 -- end ------------------------------------------------------------------------
