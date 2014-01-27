@@ -27,7 +27,7 @@ local context = require"mad.lang.context.context"
 
 local defs = { }
 
-defs._line = 1
+defs._line = 0
 defs._lastPos = 0
 defs._maxPos = 0
 
@@ -60,36 +60,35 @@ function defs.newLine()
 end
 
 function defs.error(str, pos)
+    print("."..str..".")
+    print("max",defs._maxPos)
+    print("last",defs._lastPos)
     local loc = string.sub(str, pos, pos)
     if loc == '' then
         error("Unexpected end of input while parsing file ")
     else
-        local line = 0
-        local ofs  = 0
-        local _, stop = string.find(str, '%s*', defs._maxPos)
-        if stop == string.len(str) then
-            while ofs < defs._maxPos do
-                local a, b = string.find(str, "\n", ofs)
-                if a then
-                    ofs = a + 1
-                    line = line + 1
-                else
-                    break
-                end
-            end
-            error("Unfinished rule on line "..line)
+        local strtbl = {}
+        for val in string.gmatch(str,"([^\n]*)\n") do
+            strtbl[#strtbl+1] = val
         end
-        local lasttok = string.match(str, '(%w+)', defs._lastPos)
-        while ofs < defs._lastPos do
-            local a, b = string.find(str, "\n", ofs)
-            if a then
-                ofs = a + 1
-                line = line + 1
-            else
+        local line = 0
+        local col = 0
+        local ofs = 0
+        for i = 1, #strtbl do
+            col = defs._maxPos - ofs
+            ofs = ofs + string.len(strtbl[i]) + 1
+            line = i
+            if ofs > defs._maxPos then
                 break
             end
         end
-        error("Unexpected token '"..lasttok.."' on line "..tostring(line))
+        local _, stop = string.find(str, '%s*', defs._maxPos)
+        if stop == string.len(str) then
+            error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line])
+        end
+        local lasttok = string.match(str, '(%w+)', defs._maxPos)
+        local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
+        error("Unexpected token '"..lasttok.."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"')
     end
 end
 

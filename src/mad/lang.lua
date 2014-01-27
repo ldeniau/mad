@@ -42,9 +42,11 @@ M.getParser = function (key)
 	local parse = p.parse
 	local modifiedParse = function(self, inputStream, fileName, pos)
 		currentKey = key
-		local startMem = collectgarbage("count")
+		--collectgarbage("collect")
+		--local startMem = collectgarbage("count")
 		local ast = parse(self, inputStream, fileName, pos)
-		print("memory used by creating AST: "..tostring((collectgarbage("count")-startMem)*1024).." B")
+		--collectgarbage("collect")
+		--print("memory used by creating AST: "..tostring((collectgarbage("count")-startMem)*1024).." B")
 		if options.dumpAst then
 			tableUtil.printTable(ast)
 		end

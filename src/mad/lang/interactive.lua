@@ -21,37 +21,41 @@ local source = require"mad.lang.generator.source"
 -- module ---------------------------------------------------------------------
 
 local function getline()
-    return io.read()
+    local line = io.read()
+    if line then line = line..'\n' end
+    return line
 end
 
 function M.interactive(errors)
+    local lineNo = 0
     while true do
         local parser = lang.getParser(lang.getCurrentKey())
         local source = source(errors)
         io.stdout:write(">")
         local line = getline()
+        lineNo = lineNo + 1
         if not line then break end
-        local status, ast = pcall(parser.parse, parser, line, "stdin")
+        local status, ast = pcall(parser.parse, parser, line, 'stdin')
         while not status do
             if string.find(ast, "Unfinished rule") then
-                io.stdout:write(">>")
-                line = line.."\n"..getline()
-                status, ast = pcall(parser.parse, parser, line, "stdin")
+                io.stdout:write('>>')
+                line = line..getline()
+                lineNo = lineNo + 1
+                status, ast = pcall(parser.parse, parser, line, 'stdin')
             else
-                print(ast)
+                io.stderr:write(ast..'\n')
                 break
             end
         end
         if status then
-            local code = loadstring(source:generate(ast), "@stdin")
+            local code = loadstring(source:generate(ast), '@stdin')
             local err,trace
             local status, result = xpcall(code, function(_err)
                 err = _err
-                trace = debug.traceback("",2)
+                trace = debug.traceback('',2)
                 end)
             if not status then
-                io.stderr:write(errors:handleError(err,trace).."\n")
-                os.exit(-1)
+                io.stderr:write(errors:handleError(err,trace)..'\n')
             end
         end
     end
