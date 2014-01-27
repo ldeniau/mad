@@ -35,22 +35,24 @@ local parsers = {
 
 local currentKey
 
-M.getParser = function (key)
+M.getParser = function (key, line)
+    line = line or 0
 	if not options then error("Options haven't been set for lang.lua") end
 	if not parsers[key] then error("There's no parser mapped to key: "..key) end
 	local p = parsers[key]()
 	local parse = p.parse
 	local modifiedParse = function(self, inputStream, fileName, pos)
+	    pos = pos or 1
 		currentKey = key
 		--collectgarbage("collect")
 		--local startMem = collectgarbage("count")
-		local ast = parse(self, inputStream, fileName, pos)
+		local ast = parse(self, inputStream, fileName, pos, line)
 		--collectgarbage("collect")
 		--print("memory used by creating AST: "..tostring((collectgarbage("count")-startMem)*1024).." B")
+		ast.fileName = fileName
 		if options.dumpAst then
 			tableUtil.printTable(ast)
 		end
-		ast.fileName = fileName
 		return ast
 	end
 	p.parse = modifiedParse

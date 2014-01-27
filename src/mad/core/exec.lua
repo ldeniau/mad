@@ -39,7 +39,7 @@ call = function (_, options)
 			local status, result = xpcall(loadedCode, function(_err)
 				err = _err
 				trace = debug.traceback("",2)
-      end)
+            end)
 			if not status then
 				io.stderr:write(errors:handleError(err,trace).."\n")
 				os.exit(-1)
@@ -51,7 +51,6 @@ call = function (_, options)
 		print(string.format("elapsed time: %.2fs", totalTime))
 	end
 	if options.interactive then
-    	errors:setCurrentChunkName("stdin")
 	    require"mad.lang.interactive".interactive(errors)
 	end
 end

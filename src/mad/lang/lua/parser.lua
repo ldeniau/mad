@@ -35,8 +35,8 @@ end
     return ret
 end]]
 
-local parse = function (self, str, fileName, pos)
-	local position = pos or 1
+local parse = function (self, str, fileName, pos, line)
+	defs._line = line
 	local startTime = os.clock()
 	local ast = self.grammar:match(str, position)
 	local totalTime = os.clock() - startTime

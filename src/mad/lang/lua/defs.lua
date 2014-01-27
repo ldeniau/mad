@@ -38,7 +38,7 @@ function defs.savePos(_, pos)
 end
 
 function defs.setup(str, pos)
-    local line = 0
+    local line = defs._line
     local ofs  = 0
     while ofs < pos do
         local a, b = string.find(str, "\n", ofs)
@@ -60,9 +60,6 @@ function defs.newLine()
 end
 
 function defs.error(str, pos)
-    print("."..str..".")
-    print("max",defs._maxPos)
-    print("last",defs._lastPos)
     local loc = string.sub(str, pos, pos)
     if loc == '' then
         error("Unexpected end of input while parsing file ")

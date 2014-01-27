@@ -20,35 +20,40 @@ local source = require"mad.lang.generator.source"
 
 -- module ---------------------------------------------------------------------
 
-local function getline()
-    local line = io.read()
-    if line then line = line..'\n' end
-    return line
-end
+
 
 function M.interactive(errors)
-    local lineNo = 0
+    local lineNo, chunkNo = 0, 0
+    local function getline()
+        local line = io.read()
+        if line then line = line..'\n' end
+        lineNo = lineNo + 1
+        return line
+    end
     while true do
-        local parser = lang.getParser(lang.getCurrentKey())
+        chunkNo = chunkNo + 1
+        local chunkname = 'stdin'..tostring(chunkNo)
+        errors:setCurrentChunkName(chunkname)
+        local parser = lang.getParser(lang.getCurrentKey(), lineNo)
         local source = source(errors)
         io.stdout:write(">")
         local line = getline()
-        lineNo = lineNo + 1
         if not line then break end
-        local status, ast = pcall(parser.parse, parser, line, 'stdin')
+        local status, ast = pcall(parser.parse, parser, line, "stdin")
         while not status do
             if string.find(ast, "Unfinished rule") then
                 io.stdout:write('>>')
                 line = line..getline()
-                lineNo = lineNo + 1
-                status, ast = pcall(parser.parse, parser, line, 'stdin')
+                status, ast = pcall(parser.parse, parser, line, "stdin")
             else
                 io.stderr:write(ast..'\n')
                 break
             end
         end
         if status then
-            local code = loadstring(source:generate(ast), '@stdin')
+            local src = source:generate(ast)
+            print("."..src..".")
+            local code = loadstring(src, '@'..chunkname)
             local err,trace
             local status, result = xpcall(code, function(_err)
                 err = _err
