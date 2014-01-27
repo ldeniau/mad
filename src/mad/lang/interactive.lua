@@ -34,7 +34,7 @@ function M.interactive(errors)
         local status, ast = pcall(parser.parse, parser, line, "stdin")
         while not status do
             if string.find(ast, "Unfinished rule") then
-                io.stdout:write("\n>>")
+                io.stdout:write(">>")
                 line = line.."\n"..getline()
                 status, ast = pcall(parser.parse, parser, line, "stdin")
             else
