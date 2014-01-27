@@ -85,9 +85,10 @@ local function getStackTraceBack(err)
 	return string.match(err, ".*stack traceback:%s*(.*)%s%[C%]: in function 'xpcall'")
 end
 
-local function createStackTable(self, stack, chunkName)
+local function createStackTable(self, stack)
 	local stacktable = {}
 	for s in string.gmatch(stack,"(.-)\n%s*") do
+	    local chunkName = string.match(s,"(.-):%d+:")
 		local name, line = getNameAndLine(self, s, chunkName)
 		stacktable[#stacktable+1] = "\t"..name..":"..line..":"..string.match(s,":%d+:(.*)")
 	end
@@ -112,7 +113,7 @@ local function translateLuaErrToMadErr(self, err, trace)
 	local errmess = getErrorMessage(err)
 	errmess = name..":"..realLine..": "..errmess
 	local stack = getStackTraceBack(trace)
-	local stacktable = createStackTable(self, stack, chunkName)
+	local stacktable = createStackTable(self, stack)
 	errmess = errmess..createStackErrorMessage(stacktable)
 	return errmess
 end
