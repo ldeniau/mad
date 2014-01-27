@@ -2,17 +2,25 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  source
+  mad.lang.generator.source
 
 SYNOPSIS
-  local source = require"mad.lang.generator.source"
-
+  local source_ctor = require"mad.lang.generator.source"
+  local source      = source_ctor(error_map_instance)
+  local source_code = source:generate(ast)
+  
 DESCRIPTION
+  Generates Lua code from an AST.
   
-
+  local source      = source_ctor(error_map_instance)
+    -Creates a new instance of the source generator, suitable for generating
+     one chunk of code.
+  local source_code = source:generate(ast)
+    -Generates Lua-code and maps the output lines to the lines in the AST.
+    
 RETURN VALUES
+  None
   
-
 SEE ALSO
   None
 ]]

@@ -4,16 +4,16 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  grammar
+  mad.lang.lua.grammar
 
 SYNOPSIS
-  local grammar = require"lang.parser.lua.grammar".grammar
-
+  local grammar = require"mad.lang.lua.grammar".grammar
+  
 DESCRIPTION
   Returns the regex-based grammar of Lua.
 
 RETURN VALUES
-  The table of modules and services.
+  The grammar
 
 SEE ALSO
   None
