@@ -2,9 +2,19 @@ local M = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-	mad.exec
+	mad.core.exec
+	
+SYNOPSIS
+  require"mad.core.exec"(options)
+
 DESCRIPTION
-	contains functions for executing a file
+  Runs the files contained in the options, and enters interactive mode if that option is set.  
+
+RETURN VALUES
+  None
+
+SEE ALSO
+  None
 ]]
 
 -- require --------------------------------------------------------------------

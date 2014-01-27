@@ -2,9 +2,23 @@ local M = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-	lang.parser.lua.parser
+	mad.lang.lua.parser
+	
+SYNOPSIS
+  local parser = mad.lang.getParser("lua")
+  local ast    = parser:parse(stringToParse, chunkName, startPosInFile, [startingLine])
+  
+DESCRIPTION
+  Parses a string that contains a chunk of Lua code and creates an AST.
 
-DESCRIPTION	
+  parser:parse(stringToParse, chunkName, startPosInFile, [startingLine])
+    -Creates an AST from the given stringToParse, which must be valid Lua code.
+
+RETURN VALUES
+  None
+  
+SEE ALSO
+  mad.lang - For getting the parser set up correctly.
 ]]
 
 -- require --------------------------------------------------------------------

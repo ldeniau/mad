@@ -7,16 +7,24 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  lang
+  mad.lang
 
 SYNOPSIS
-  
+  local lang   = require"mad.lang"
+  local parser = lang.getParser(key, [line])
+  local key    = lang.getCurrentKey()
 
 DESCRIPTION
+  Contains functions for getting the parsers corresponding to different languages.
   
+  local parser = lang.getParser(key, [line])
+    -Returns the parser corresponding to key. line is an optional argument to be
+     given when parsing in interactive mode.
+  local key    = lang.getCurrentKey()
+    -Returns the key of the parser being used at the moment.
 
 RETURN VALUES
-  The table of modules and services.
+  None
 
 SEE ALSO
   None
