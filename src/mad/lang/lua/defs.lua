@@ -28,46 +28,69 @@ local context = require"mad.lang.context.context"
 local defs = { }
 
 defs._line = 1
+defs._lastPos = 0
+defs._maxPos = 0
 
-function defs.setup(istream, pos)
-	local line = 0
-	local ofs  = 0
-	while ofs < pos do
-		local a, b = string.find(istream, "\n", ofs)
-		if a then
-			ofs = a + 1
-			line = line + 1
-		else
-			break
-		end
-	end
-	defs._line = line
-	return true
+function defs.savePos(_, pos)
+    defs._lastPos = pos
+    if pos > defs._maxPos then defs._maxPos = pos end
+    return true
+end
+
+function defs.setup(str, pos)
+    local line = 0
+    local ofs  = 0
+    while ofs < pos do
+        local a, b = string.find(str, "\n", ofs)
+        if a then
+            ofs = a + 1
+            line = line + 1
+        else
+            break
+        end
+    end
+    defs._line = line
+    defs._lastPos = line
+    defs._maxPos = line
+    return true
 end
 
 function defs.newLine()
-	defs._line = defs._line + 1
+    defs._line = defs._line + 1
 end
 
-function defs.error(istream, pos)
-	local loc = string.sub(istream, pos, pos)
-	if loc == '' then
-		error("Unexpected end of input while parsing file ")
-	else
-		local tok = string.match(istream, '(%w+)', pos) or loc
-		local line = 0
-		local ofs  = 0
-		while ofs < pos do
-			local a, b = string.find(istream, "\n", ofs)
-			if a then
-				ofs = a + 1
-				line = line + 1
-			else
-				break
-			end
-		end
-		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file")
-	end
+function defs.error(str, pos)
+    local loc = string.sub(str, pos, pos)
+    if loc == '' then
+        error("Unexpected end of input while parsing file ")
+    else
+        local line = 0
+        local ofs  = 0
+        local _, stop = string.find(str, '%s*', defs._maxPos)
+        if stop == string.len(str) then
+            while ofs < defs._maxPos do
+                local a, b = string.find(str, "\n", ofs)
+                if a then
+                    ofs = a + 1
+                    line = line + 1
+                else
+                    break
+                end
+            end
+            error("Unfinished rule on line "..line)
+        end
+        local lasttok = string.match(str, '(%w+)', defs._lastPos)
+        while ofs < defs._lastPos do
+            local a, b = string.find(str, "\n", ofs)
+            if a then
+                ofs = a + 1
+                line = line + 1
+            else
+                break
+            end
+        end
+        error("Unexpected token '"..lasttok.."' on line "..tostring(line))
+    end
 end
 
 -- block and chunk
@@ -286,7 +309,7 @@ end
 -- table
 
 function defs.tabledef( _, ... )
-	return { ast_id = "tbldef", line = defs._line, ... }
+    return { ast_id = "tbldef", line = defs._line, ... }
 end
 
 function defs.field( _, op, key, val )
@@ -312,11 +335,11 @@ end
 -- basic lexem
 
 function defs.literal(val)
-	return { ast_id = "literal", value = val, line = defs._line }
+    return { ast_id = "literal", value = val, line = defs._line }
 end
 
 function defs.name(name)
-	return { ast_id = "name", name = name, line = defs._line }
+    return { ast_id = "name", name = name, line = defs._line }
 end
 
 

@@ -38,13 +38,11 @@ end
 
 local parse = function (self, inputStream, fileName, pos)
 	local position = pos or 1
-	local startMem = collectgarbage("count")
+	
 	local startTime = os.clock()
 	local ast = self.grammar:match(inputStream, position)
 	local totalTime = os.clock() - startTime
     print(string.format("elapsed time: %.2fs", totalTime))
-    print("memory used before:          "..tostring(startMem).." kB")
-    print("memory used by creating AST: "..tostring(collectgarbage("count")-startMem).." kB")
     print("number of nodes:             "..tostring(countNodes(ast)))
 	return ast
 end
