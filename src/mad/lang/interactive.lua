@@ -4,13 +4,17 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-
+  mad.lang.interactive - Interactive mode
 SYNOPSIS
-
+  require"mad.lang.interactive".interactive(error_mapping_module)
 DESCRIPTION
-
+  Starts the interactive handler of mad. Will get the current parser and start
+  parsing line by line. If a line is unfinished, it will prompt the user for
+  another line until the input can be read as a chunk.
+  Each finished line/multiple lines will be a single chunk, meaning that local
+  values do not work between different chunks.
 RETURN VALUES
-
+  None
 SEE ALSO
 ]]
 
@@ -19,8 +23,6 @@ local lang = require"mad.lang"
 local source = require"mad.lang.generator.source"
 
 -- module ---------------------------------------------------------------------
-
-
 
 function M.interactive(errors)
     local lineNo, chunkNo = 0, 0
