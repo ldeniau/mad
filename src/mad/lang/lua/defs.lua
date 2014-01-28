@@ -62,7 +62,7 @@ end
 function defs.error(str, pos)
     local loc = string.sub(str, pos, pos)
     if loc == '' then
-        error("Unexpected end of input while parsing file ")
+        error("Unexpected end of input while parsing file",2)
     else
         local strtbl = {}
         for val in string.gmatch(str,"([^\n]*)\n") do
@@ -81,11 +81,11 @@ function defs.error(str, pos)
         end
         local _, stop = string.find(str, '%s*', defs._maxPos)
         if stop == string.len(str) then
-            error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line])
+            error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line],2)
         else
             local lasttok = string.match(str, '(%w+)', defs._maxPos) or string.match(str, '(.)', defs._maxPos)
             local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
-            error("Unexpected token '"..(lasttok or '').."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"')
+            error("Unexpected token '"..(lasttok or '').."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"',2)
         end
     end
 end
