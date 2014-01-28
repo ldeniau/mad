@@ -10,6 +10,181 @@ function test:tearDown()
     self.mod = nil
 end
 
+--[=[
+self.mod:render{}
+    ut:equals(tostring(self.mod.writer),
+[[]])
+]=]
+
+function block_stmt(ut)
+    self.mod:render{ ast_id = "block_stmt",
+                        { ast_id = "break_stmt" },
+                        { ast_id = "break_stmt" },
+                        { ast_id = "break_stmt" }  }
+    ut:equals(tostring(self.mod.writer),
+[[  break
+    break
+    break]])
+end
+function block_stmtDo(ut)
+    self.mod:render{ ast_id = "block_stmt", kind = "do",
+                        { ast_id = "break_stmt" },
+                        { ast_id = "break_stmt" },
+                        { ast_id = "break_stmt" }  }
+    ut:equals(tostring(self.mod.writer),
+[[do
+    break
+    break
+    break
+end]])
+end
+
+function test:break_stmt(ut)
+    self.mod:render{ ast_id = "break_stmt" }
+    ut:equals(tostring(self.mod.writer),
+[[break]])
+end
+
+function test:goto_stmt(ut)
+    self.mod:render{ ast_id = "goto_stmt", name = { ast_id = "name", name = "name" } }
+    ut:equals(tostring(self.mod.writer),
+[[goto name]])
+end
+
+
+function test:label_stmt(ut)
+    self.mod:render{ ast_id = "label_stmt", name = { ast_id = "name", name = "name" } }
+    ut:equals(tostring(self.mod.writer),
+[[::name::]])
+end
+
+function test:repeat_stmt(ut)
+    self.mod:render{ ast_id = "repeat_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        expr = { ast_id = "literal", value = "1" } }
+    ut:equals(tostring(self.mod.writer),
+[[repeat
+    break
+until 1]])
+end
+
+function test:while_stmt(ut)
+    self.mod:render{ ast_id = "while_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        expr = { ast_id = "literal", value = "1" } }
+    ut:equals(tostring(self.mod.writer),
+[[while 1 do
+    break
+end]])
+end
+
+function test:for_stmtStep(ut)
+    self.mod:render{ ast_id = "for_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        name  = { ast_id = "name",    name  = "a" },
+                        first = { ast_id = "literal", value = "1" },
+                        last  = { ast_id = "literal", value = "2" },
+                        step  = { ast_id = "literal", value = "3" } }
+    ut:equals(tostring(self.mod.writer),
+[[for a = 1, 2, 3 do
+    break
+end]])
+end
+function test:for_stmt(ut)
+    self.mod:render{ ast_id = "for_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        name  = { ast_id = "name",    name  = "a" },
+                        first = { ast_id = "literal", value = "1" },
+                        last  = { ast_id = "literal", value = "2" } }
+    ut:equals(tostring(self.mod.writer),
+[[for a = 1, 2 do
+    break
+end]])
+end
+
+function test:genfor_stmtMltpl(ut)
+    self.mod:render{ ast_id = "genfor_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        name = { { ast_id = "name",    name  = "a" }, { ast_id = "name",    name  = "b" } },
+                        expr = { { ast_id = "literal", value = "1" }, { ast_id = "literal", value = "2" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[for a, b in 1, 2 do
+    break
+end]])
+end
+function test:genfor_stmt(ut)
+    self.mod:render{ ast_id = "genfor_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        name = { { ast_id = "name",    name  = "a" } },
+                        expr = { { ast_id = "literal", value = "1" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[for a in 1 do
+    break
+end]])
+end
+
+function test:ifstmt(ut)
+    self.mod:render{ ast_id = "if_stmt",
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "literal", value = "false" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[if true then
+    break
+elseif false then
+    break
+elseif true then
+    break
+else
+    break
+end]])
+end
+function test:ifstmtNoElseif(ut)
+    self.mod:render{ ast_id = "if_stmt",
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[if true then
+    break
+else
+    break
+end]])
+end
+function test:ifstmtNoElse(ut)
+    self.mod:render{ ast_id = "if_stmt",
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "literal", value = "false" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } },
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[if true then
+    break
+elseif false then
+    break
+elseif true then
+    break
+end]])
+end
+function test:ifstmt(ut)
+    self.mod:render{ ast_id = "if_stmt",
+                        { ast_id = "literal", value = "true" },
+                        { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(self.mod.writer), 
+[[if true then
+    break
+end]])
+end
+
+function test:retstmt(ut)
+    self.mod:render{ ast_id = "ret_stmt", { ast_id = "literal", value = 1 } }
+    ut:equals(tostring(self.mod.writer), [[return 1]])
+end
+function test:retstmtmltpl(ut)
+    self.mod:render{ ast_id = "ret_stmt", { ast_id = "literal", value = 1 }, { ast_id = "literal", value = 2 } }
+    ut:equals(tostring(self.mod.writer), [[return 1, 2]])
+end
+
 function test:assign(ut)
     self.mod:render{ ast_id = "assign",
                         lhs = {{ ast_id = "name", name = "a" }},

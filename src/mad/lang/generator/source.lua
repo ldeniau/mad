@@ -117,7 +117,7 @@ function dict:goto_stmt(node)
 end
 
 function dict:do_stmt(node)
-    self:write("do ")
+    self:write("do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -134,7 +134,7 @@ function dict:for_stmt(node)
         self:write(", ")
         self:render(node.step)
     end
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -143,14 +143,14 @@ end
 function dict:while_stmt(node)
     self:write("while ")
     self:render(node.expr)
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
 end
 
 function dict:repeat_stmt(node)
-    self:write("repeat ")
+    self:write("repeat")
     self:render(node.block)
     self.writer:writeln()
     self:write("until ")
@@ -172,7 +172,7 @@ function dict:genfor_stmt(node)
             self:write", "
         end
     end
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
