@@ -41,7 +41,7 @@ function M.interactive(errors)
         return line
     end
     
-    local function runAst(ast)
+    local function run(ast)
         local code = load(source:generate(ast), '@'..chunkname)
         local err,trace
         local status, result = xpcall(code, function(_err)
@@ -76,7 +76,7 @@ function M.interactive(errors)
             end
         end
         if status then
-            runAst(ast)
+            run(ast)
         elseif eof then
             break
         end
