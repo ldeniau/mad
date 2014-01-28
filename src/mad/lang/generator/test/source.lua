@@ -10,12 +10,6 @@ function test:tearDown()
     self.mod = nil
 end
 
---[=[
-self.mod:render{}
-    ut:equals(tostring(self.mod.writer),
-[[]])
-]=]
-
 function block_stmt(ut)
     self.mod:render{ ast_id = "block_stmt",
                         { ast_id = "break_stmt" },
