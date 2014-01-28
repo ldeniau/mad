@@ -75,7 +75,7 @@ M.grammar = [=[
 
     vardef      <- ((name / grpexp varsfx) varsfx*                                  sp) -> vardef
     varsfx      <- funcall* tableidx
-    varlist     <- vardef (s',' vardef)*
+    varlist     <- vardef (s','sp vardef)*
 
 -- function definitions & call
 
@@ -97,7 +97,7 @@ M.grammar = [=[
 
 -- table definitions & access
 
-    tabledef    <- (s'{' { fieldlist? } s'}'                                        sp) -> tabledef
+    tabledef    <- (s'{'sp { fieldlist? } s'}'                                      sp) -> tabledef
     fieldlist   <- field (fieldsep field)* fieldsep?
     field       <- ({s{'['}sp exp s']'sp s'='sp exp / name s'='sp exp / exp}        sp) -> field
     fieldsep    <- s','sp / s';'sp
@@ -119,7 +119,7 @@ M.grammar = [=[
     
     name        <- ((s !keyword {ident})                                            sp) -> name
     namenosp    <- ((  !keyword {ident})                                            sp) -> name
-    namelist    <- name (s',' name)*
+    namelist    <- name (s','sp name)*
     string      <- s(sstring / lstring)
     number      <- s( hexnum / decnum )
     ellipsis    <- s'...'
