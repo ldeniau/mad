@@ -10,6 +10,92 @@ function test:tearDown()
     self.mod = nil
 end
 
+function test:assign(ut)
+    self.mod:render{ ast_id = "assign",
+                        lhs = {{ ast_id = "name", name = "a" }},
+                        rhs = {{ ast_id = "name", name = "b" }} }
+    ut:equals(tostring(self.mod.writer),  [[a = b]])
+end
+function test:assignMany(ut)
+    self.mod:render{ ast_id = "assign",
+                        lhs = {{ ast_id = "name", name = "a" }, { ast_id = "name",    name  = "c" }},
+                        rhs = {{ ast_id = "name", name = "b" }, { ast_id = "literal", value = "1" }} }
+    ut:equals(tostring(self.mod.writer),  [[a, c = b, 1]])
+end
+function test:assignLocal(ut)
+    self.mod:render{ ast_id = "assign", kind = "local",
+                        lhs = {{ ast_id = "name", name = "a" }},
+                        rhs = {{ ast_id = "name", name = "b" }} }
+    ut:equals(tostring(self.mod.writer),  [[local a = b]])
+end
+
+function test:expr(ut)
+self.mod:render{ ast_id = "expr",
+                   { ast_id = "name", name = "a"},
+                   "+",
+                   { ast_id = "name", name = "b" } }
+    ut:equals(tostring(self.mod.writer),  [[a + b]])
+end
+function test:exprTree(ut)
+    self.mod:render{ ast_id = "expr",
+                       { ast_id = "name", name = "a"},
+                       "+",
+                       { ast_id = "name", name = "b" },
+                       "+",
+                       { ast_id = "expr",
+                           { ast_id = "name", name = "c" },
+                           "*",
+                           { ast_id = "name", name = "d" }} }
+    ut:equals(tostring(self.mod.writer),  [[a + b + c * d]])
+end
+
+function test:tblaccessDot(ut)
+    self.mod:render{ ast_id = "tblaccess", kind = ".",
+                         lhs = { ast_id = "name", name = "a"},
+                         rhs = { ast_id = "name", name = "b" } }
+    ut:equals(tostring(self.mod.writer),  [[a.b]])
+end
+function test:tblaccess(ut)
+    self.mod:render{ ast_id = "tblaccess", kind = nil,
+                         lhs = { ast_id = "name", name = "a"},
+                         rhs = { ast_id = "name", name = "b" } }
+    ut:equals(tostring(self.mod.writer),  [=[a[b]]=])
+end
+
+function test:funcall(ut)
+    self.mod:render{ ast_id = "funcall",
+                         name = { ast_id = "name", name = "a"},
+                         arg = {},
+                         kind = nil}
+    ut:equals(tostring(self.mod.writer),  [[a(  )]])
+end
+function test:funcallTwoArg(ut)
+    self.mod:render{ ast_id = "funcall",
+                         name = { ast_id = "name", name = "a"},
+                         arg = { { ast_id = "literal", value = "1" }, { ast_id = "literal", value = "..." }},
+                         kind = nil}
+    ut:equals(tostring(self.mod.writer),  [[a( 1, ... )]])
+end
+function test:funcallMultiname(ut)
+    self.mod:render{ ast_id = "funcall",
+                         name = { ast_id = "tblaccess", kind = ".",
+                            lhs = { ast_id = "name", name = "a"},
+                            rhs = { ast_id = "name", name = "b" } },
+                         arg = {},
+                         kind = nil}
+    ut:equals(tostring(self.mod.writer),  [[a.b(  )]])
+end
+function test:funcallSelfname(ut)
+    self.mod:render{ ast_id = "funcall",
+                         name = { ast_id = "tblaccess", kind = ".",
+                            lhs = { ast_id = "name", name = "a"},
+                            rhs = { ast_id = "name", name = "b" } },
+                         selfname = { ast_id = "name", name = "c" },
+                         arg = {},
+                         kind = ":"}
+    ut:equals(tostring(self.mod.writer),  [[a.b:c(  )]])
+end
+
 function test:grpexpr(ut)
     self.mod:render{ ast_id = "grpexpr", expr = { ast_id = "literal", value = "1" } }
     ut:equals(tostring(self.mod.writer), [[( 1 )]])
