@@ -82,10 +82,11 @@ function defs.error(str, pos)
         local _, stop = string.find(str, '%s*', defs._maxPos)
         if stop == string.len(str) then
             error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line])
+        else
+            local lasttok = string.match(str, '(%w+)', defs._maxPos) or string.match(str, '(.)', defs._maxPos)
+            local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
+            error("Unexpected token '"..(lasttok or '').."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"')
         end
-        local lasttok = string.match(str, '(%w+)', defs._maxPos)
-        local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
-        error("Unexpected token '"..lasttok.."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"')
     end
 end
 
