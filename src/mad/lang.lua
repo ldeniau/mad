@@ -34,7 +34,6 @@ local options = require"mad.core.options"
 -- module ---------------------------------------------------------------------
 local parsers = {
 	lua = require"mad.lang.lua.parser",
-	--mad = require"mad.lang.mad.parser",
 }
 
 local currentKey
@@ -48,11 +47,7 @@ M.getParser = function (key, line)
 	local modifiedParse = function(self, inputStream, fileName, pos)
 	    pos = pos or 1
 		currentKey = key
-		--collectgarbage("collect")
-		--local startMem = collectgarbage("count")
 		local ast = parse(self, inputStream, fileName, pos, line)
-		--collectgarbage("collect")
-		--print("memory used by creating AST: "..tostring((collectgarbage("count")-startMem)*1024).." B")
 		ast.fileName = fileName
 		if options.dumpAst then
 			tableUtil.printTable(ast)
