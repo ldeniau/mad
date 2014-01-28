@@ -30,7 +30,8 @@ M.grammar = [=[
 -- statements
 
     stmt        <- s(
-                      ';'sp / label / (break                                        sp) -> breakstmt 
+                      (include s{string}                                            sp) => include
+                    / ';'sp / label / (break                                        sp) -> breakstmt 
                     / (goto name                                                    sp) -> gotostmt
                     / (do_block                                                     sp) -> dostmt 
                     / fundef
@@ -147,7 +148,7 @@ M.grammar = [=[
 
     keyword     <- and / break / do / else / elseif / end / false / for /
                    function / goto / if / in / local / nil / not /
-                   or / repeat / return / then / true / until / while
+                   or / repeat / return / then / true / until / while / include
 
     and         <- s{'and'}    e sp
     break       <- s'break'    e sp
@@ -171,6 +172,7 @@ M.grammar = [=[
     true        <- s'true'     e sp
     until       <- s'until'    e sp
     while       <- s'while'    e sp
+    include     <- s'include'  e sp
     
 -- comments
 

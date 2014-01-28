@@ -102,6 +102,17 @@ end
 
 -- stmt
 
+function defs.include( str, pos, name )
+    name = string.sub(name, 2, string.len(name)-1)
+    local lang = require"mad.lang"
+	local file = assert(io.open(name, 'r'))
+	local inputStream = file:read('*a')
+	file:close()
+	local parser = lang.getParser(lang.getCurrentKey())
+    local ast = parser:parse(inputStream, name)
+    return true, table.unpack(ast.block)
+end
+
 function defs.breakstmt()
     return { ast_id = "break_stmt", line = defs._line }
 end
