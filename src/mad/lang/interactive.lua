@@ -58,7 +58,7 @@ function M.interactive(errors)
         end
         if status then
             local src = source:generate(ast)
-            local code = loadstring(src, '@'..chunkname)
+            local code = load(src, '@'..chunkname)
             local err,trace
             local status, result = xpcall(code, function(_err)
                 err = _err

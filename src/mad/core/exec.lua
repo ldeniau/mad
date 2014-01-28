@@ -44,7 +44,7 @@ call = function (_, options)
 		file:close()
 		local parser = lang.getParser(ext)
 		local source = gen:generate(parser:parse(inputStream, fileName))
-		local loadedCode, err = loadstring(source,'@'..fileName)
+		local loadedCode, err = load(source,'@'..fileName)
 		if loadedCode then
 			local status, result = xpcall(loadedCode, function(_err)
 				err = _err
