@@ -23,25 +23,42 @@ SEE ALSO
 ]]
 
 -- require --------------------------------------------------------------------
-local lang = require"mad.lang"
-local source = require"mad.lang.generator.source"
+local lang       = require"mad.lang"
+local sourcector = require"mad.lang.generator.source"
 
 -- module ---------------------------------------------------------------------
 
+
+
 function M.interactive(errors)
     local lineNo, chunkNo = 0, 0
+    local chunkname, source, parser, eof
+    
     local function getline()
         local line = io.read()
         if line then line = line..'\n' end
         lineNo = lineNo + 1
         return line
     end
+    
+    local function runAst(ast)
+        local code = load(source:generate(ast), '@'..chunkname)
+        local err,trace
+        local status, result = xpcall(code, function(_err)
+            err = _err
+            trace = debug.traceback('',2)
+            end)
+        if not status then
+            io.stderr:write(errors:handleError(err,trace)..'\n')
+        end
+    end
+    
     while true do
         chunkNo = chunkNo + 1
-        local chunkname = 'stdin'..tostring(chunkNo)
+        chunkname = 'stdin'..tostring(chunkNo)
         errors:setCurrentChunkName(chunkname)
-        local parser = lang.getParser(lang.getCurrentKey(), lineNo)
-        local source = source(errors)
+        parser = lang.getParser(lang.getCurrentKey(), lineNo)
+        source = sourcector(errors)
         io.stdout:write(">")
         local line = getline()
         if not line then break end
@@ -50,7 +67,7 @@ function M.interactive(errors)
             if string.find(ast, "Unfinished rule") then
                 io.stdout:write('>>')
                 local newline = getline()
-                if not newline then break end
+                if not newline then eof = true break end
                 line = line..newline
                 status, ast = pcall(parser.parse, parser, line, "stdin")
             else
@@ -59,16 +76,8 @@ function M.interactive(errors)
             end
         end
         if status then
-            local code = load(source:generate(ast), '@'..chunkname)
-            local err,trace
-            local status, result = xpcall(code, function(_err)
-                err = _err
-                trace = debug.traceback('',2)
-                end)
-            if not status then
-                io.stderr:write(errors:handleError(err,trace)..'\n')
-            end
-        else
+            runAst(ast)
+        elseif eof then
             break
         end
     end
