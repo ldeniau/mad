@@ -349,7 +349,7 @@ call = function (_, errors, ...)
 end
 
 -- test -----------------------------------------------------------------------
-require"mad.lang.generator.test.source"(M)
+M.test = require"mad.lang.generator.test.source"
 
 -- end  -----------------------------------------------------------------------
 return M
