@@ -49,7 +49,9 @@ function M.interactive(errors)
         while not status do
             if string.find(ast, "Unfinished rule") then
                 io.stdout:write('>>')
-                line = line..getline()
+                local newline = getline()
+                if not newline then break end
+                line = line..newline
                 status, ast = pcall(parser.parse, parser, line, "stdin")
             else
                 io.stderr:write(ast..'\n')
@@ -57,8 +59,7 @@ function M.interactive(errors)
             end
         end
         if status then
-            local src = source:generate(ast)
-            local code = load(src, '@'..chunkname)
+            local code = load(source:generate(ast), '@'..chunkname)
             local err,trace
             local status, result = xpcall(code, function(_err)
                 err = _err
@@ -67,6 +68,8 @@ function M.interactive(errors)
             if not status then
                 io.stderr:write(errors:handleError(err,trace)..'\n')
             end
+        else
+            break
         end
     end
 end
