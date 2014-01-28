@@ -130,8 +130,8 @@ M.grammar = [=[
     sstring     <- {:qt: ['"] :} ssclose
     ssclose     <- =qt / '\' =qt ssclose / ch ssclose
 
-    lstring     <- '[' {:eq: '='* :} '[' lsclose
-    lsclose     <- ']' =eq ']' / any lsclose
+    lstring     <- '[' {:eq: '='* :} '['sp lsclose
+    lsclose     <- ']' =eq ']' / any sp lsclose
 
     decnum      <-         num ('.' num)? ([eE] sign? num)?
     hexnum      <- '0'[xX] hex ('.' hex)? ([pP] sign? hex)?
