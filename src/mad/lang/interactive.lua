@@ -41,6 +41,14 @@ function M.interactive(errors)
         return line
     end
     
+    local function initialize()
+        chunkNo = chunkNo + 1
+        chunkname = 'stdin'..tostring(chunkNo)
+        errors:setCurrentChunkName(chunkname)
+        parser = lang.getParser(lang.getCurrentKey(), lineNo)
+        source = sourcector(errors)
+    end
+    
     local function run(ast)
         local code = load(source:generate(ast), '@'..chunkname)
         local err,trace
@@ -54,11 +62,7 @@ function M.interactive(errors)
     end
     
     while true do
-        chunkNo = chunkNo + 1
-        chunkname = 'stdin'..tostring(chunkNo)
-        errors:setCurrentChunkName(chunkname)
-        parser = lang.getParser(lang.getCurrentKey(), lineNo)
-        source = sourcector(errors)
+        initialize()
         io.stdout:write(">")
         local line = getline()
         if not line then break end
