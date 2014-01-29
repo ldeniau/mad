@@ -4,7 +4,7 @@ local M  = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.element -- build element database for reuse in sequences
+  mad.element -- build element for reuse in sequences (database)
 
 SYNOPSIS
   elm = require"mad.element"
@@ -27,37 +27,118 @@ local object = require"mad.object"
 
 -- locals ----------------------------------------------------------------------
 
-local E = object 'element' -- root of all elements
+local type, setmetatable = type, setmetatable
+local rawget, pairs = rawget, pairs
 
--- members ---------------------------------------------------------------------
+-- metatable for the root class of all elements
+local MT = object { name='meta_element' }
 
--- elements
+ -- root of all elements
+M.element = MT { name='element', is_element=true, kind='element' }
 
-M.element     = E
+-- functions -------------------------------------------------------------------
 
-M.drift       = E 'drift'
-M.sbend       = E 'sbend'
-M.rbend       = E 'rbend'
-M.quadrupole  = E 'quadrupole'
-M.sextupole   = E 'sextupole'
-M.octupole    = E 'octupole'
-M.decapole    = E 'decapole'
-M.dodecapole  = E 'dodecapole'
+local function init(self)
+  if not rawget(self, 'name') then
+    error('classes must be named')
+  end
+  self.__index  = self              -- inheritance
+  self.__call   = MT.__call         -- constructor
+  self.__mul    = MT.__mul          -- repetition
+end
 
-M.elseparator = E 'elseparator'
+local special_field = {  name=true, __mul=true, __call=true, __index=true }
 
-M.bpm         = E 'bpm'
-M.blm         = E 'blm'
+local function print(self, nodisp)
+  for k,v in pairs(self) do
+    if type(k) == 'number' then
+      io.write('[',k,']=', tostring(v), ', ')
+    elseif not special_field[k] and not (nodisp and nodisp[k]) then
+      io.write(k, '=', tostring(v), ', ')
+    end
+  end
+end
 
-M.marker      = E 'marker'
-M.placeholder = E 'placeholder'
+-- methods ---------------------------------------------------------------------
+
+function MT:class() -- same as obj:spr() but more 'common' on MAD element
+  return getmetatable(self)
+end
+
+function MT:toclass()
+  init(self)
+  return self
+end
+
+function MT:is_class()
+  return rawget(self, '__call') ~= nil
+end
+
+function MT:show(depth, nodisp)
+  io.write("'", self.name, "' { ")
+  print(self, nodisp)
+  if depth and depth > 0 then
+    self:class():show(depth-1)
+  end
+  io.write('class=', self:class().name, ' }, ')
+end
 
 -- metamethods -----------------------------------------------------------------
 
--- repetition
-function E.__mul(a, b)
-  error("TODO")
+-- constructor of elements, can be anonymous
+function MT:__call(a)
+  if type(a) == 'string' then
+    return function(t)
+      if type(t) == 'table' then
+        t.name = a
+        if not self:is_class() then init(self) end
+        return setmetatable(t, self)
+      end
+      error ("invalid constructor argument, table expected")
+    end
+  end
+
+  if type(a) == 'table' then
+    if not self:is_class() then init(self) end
+    return setmetatable(a, self)
+  end
+
+  error ("invalid constructor argument, string expected")
 end
+
+-- repetition
+function MT.__mul(n, elem)
+  if type(elem) == 'number' then
+    n, elem = elem, n
+  end
+  return { _rep=n<0 and -n or n, elem } -- return a list
+end
+
+-- members ---------------------------------------------------------------------
+
+-- element famillies
+M.drift       = M.element 'drift'       { kind='drift' }
+M.magnet      = M.element 'magnet'      { kind='magnet' }
+M.marker      = M.element 'marker'      { kind='marker' }
+M.patch       = M.element 'patch'       { kind='patch' }
+
+-- drifts
+M.monitor     = M.drift   'monitor'     { kind='monitor' }
+M.placeholder = M.drift   'placeholder' { kind='placeholder' }
+
+-- magnets
+M.sbend       = M.magnet  'sbend'       { kind='sbend' }
+M.rbend       = M.magnet  'rbend'       { kind='rbend' }
+M.quadrupole  = M.magnet  'quadrupole'  { kind='quadrupole' }
+M.sextupole   = M.magnet  'sextupole'   { kind='sextupole' }
+M.octupole    = M.magnet  'octupole'    { kind='octupole' }
+M.decapole    = M.magnet  'decapole'    { kind='decapole' }
+M.dodecapole  = M.magnet  'dodecapole'  { kind='dodecapole' }
+M.elseparator = M.magnet  'elseparator' { kind='elseparator' }
+
+-- monitors
+M.bpm         = M.monitor 'bpm'         { kind='bpm' }
+M.blm         = M.monitor 'blm'         { kind='blm' }
 
 -- end -------------------------------------------------------------------------
 return M
