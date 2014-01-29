@@ -2,9 +2,39 @@ local M = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-    core.options
+  mad.core.options
+    
 SYNOPSIS
-    Reads the command line options and fills the options table.
+  require"mad.core.options".process(stringFilledWithOptions)
+  stringFilledWithOptions = [options] listOfFileNames
+    
+DESCRIPTION
+  Reads the command line options and fills the options table.
+  
+  options.process(string)
+    -Reads the string and sets values corresponding to the options.
+    
+  Options:
+    -profiler "profilerArgs"   - Must be last option
+    -utest "list of filenames" - starts unit tests of the files given.
+    -dumpAst                   - dumps the AST of the parsed files
+    -dumpSource                - dumps the created source code
+    -interactive               - starts interactive mode once all files have been finished
+    -i                         - same as -interactive
+    -benchmark "list of names" - looks in mad.benchmark after a file with name and runs it.
+
+RETURN VALUES
+  The table of options
+  options.files       - A list of files to be parsed and run
+  options.utest       - A list of modules to be unit tested
+  options.benchmark   - A list of modules to be benchmarked
+  options.dumpAst     - Whether the AST should be printed or not
+  options.dumpSource  - Whether the generated source code should be printed or not
+  options.profile     - Whether the profiler is running or not
+  options.interactive - Whether interactive mode should be started or not
+
+SEE ALSO
+  None
 ]]
 
 -- require --------------------------------------------------------------------
@@ -61,7 +91,7 @@ local function processArgs(arg)
         local opt = table.remove(arg,1)
         if opt == "-utest" then
             processUTest(arg)
-        elseif opt == "-interactive" then
+        elseif opt == "-interactive" or opt == "-i" then
             M.interactive = true
         elseif opt == "-dumpAst" then
             M.dumpAst = true

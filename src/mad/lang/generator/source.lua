@@ -2,17 +2,25 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  source
+  mad.lang.generator.source
 
 SYNOPSIS
-  local source = require"mad.lang.generator.source"
-
+  local source_ctor = require"mad.lang.generator.source"
+  local source      = source_ctor(error_map_instance)
+  local source_code = source:generate(ast)
+  
 DESCRIPTION
+  Generates Lua code from an AST.
   
-
+  local source      = source_ctor(error_map_instance)
+    -Creates a new instance of the source generator, suitable for generating
+     one chunk of code.
+  local source_code = source:generate(ast)
+    -Generates Lua-code and maps the output lines to the lines in the AST.
+    
 RETURN VALUES
+  None
   
-
 SEE ALSO
   None
 ]]
@@ -109,7 +117,7 @@ function dict:goto_stmt(node)
 end
 
 function dict:do_stmt(node)
-    self:write("do ")
+    self:write("do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -126,7 +134,7 @@ function dict:for_stmt(node)
         self:write(", ")
         self:render(node.step)
     end
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -135,14 +143,14 @@ end
 function dict:while_stmt(node)
     self:write("while ")
     self:render(node.expr)
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
 end
 
 function dict:repeat_stmt(node)
-    self:write("repeat ")
+    self:write("repeat")
     self:render(node.block)
     self.writer:writeln()
     self:write("until ")
@@ -164,7 +172,7 @@ function dict:genfor_stmt(node)
             self:write", "
         end
     end
-    self:write(" do ")
+    self:write(" do")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -341,7 +349,7 @@ call = function (_, errors, ...)
 end
 
 -- test -----------------------------------------------------------------------
-require"mad.lang.generator.test.source"(M)
+M.test = require"mad.lang.generator.test.source"
 
 -- end  -----------------------------------------------------------------------
 return M

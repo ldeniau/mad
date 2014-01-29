@@ -27,47 +27,67 @@ local context = require"mad.lang.context.context"
 
 local defs = { }
 
-defs._line = 1
+defs._line = 0
+defs._lastPos = 0
+defs._maxPos = 0
 
-function defs.setup(istream, pos)
-	local line = 0
-	local ofs  = 0
-	while ofs < pos do
-		local a, b = string.find(istream, "\n", ofs)
-		if a then
-			ofs = a + 1
-			line = line + 1
-		else
-			break
-		end
-	end
-	defs._line = line
-	return true
+function defs.savePos(_, pos)
+    defs._lastPos = pos
+    if pos > defs._maxPos then defs._maxPos = pos end
+    return true
+end
+
+function defs.setup(str, pos)
+    local line = defs._line
+    local ofs  = 0
+    while ofs < pos do
+        local a, b = string.find(str, "\n", ofs)
+        if a then
+            ofs = a + 1
+            line = line + 1
+        else
+            break
+        end
+    end
+    defs._line = line
+    defs._lastPos = line
+    defs._maxPos = line
+    return true
 end
 
 function defs.newLine()
-	defs._line = defs._line + 1
+    defs._line = defs._line + 1
 end
 
-function defs.error(istream, pos)
-	local loc = string.sub(istream, pos, pos)
-	if loc == '' then
-		error("Unexpected end of input while parsing file ")
-	else
-		local tok = string.match(istream, '(%w+)', pos) or loc
-		local line = 0
-		local ofs  = 0
-		while ofs < pos do
-			local a, b = string.find(istream, "\n", ofs)
-			if a then
-				ofs = a + 1
-				line = line + 1
-			else
-				break
-			end
-		end
-		error("Unexpected token '"..tok.."' on line "..tostring(line).." in file")
-	end
+function defs.error(str, pos)
+    local loc = string.sub(str, pos, pos)
+    if loc == '' then
+        error("Unexpected end of input while parsing file",2)
+    else
+        local strtbl = {}
+        for val in string.gmatch(str,"([^\n]*)\n") do
+            strtbl[#strtbl+1] = val
+        end
+        local line = 0
+        local col = 0
+        local ofs = 0
+        for i = 1, #strtbl do
+            col = defs._maxPos - ofs
+            ofs = ofs + string.len(strtbl[i]) + 1
+            line = i
+            if ofs > defs._maxPos then
+                break
+            end
+        end
+        local _, stop = string.find(str, '%s*', defs._maxPos)
+        if stop == string.len(str) then
+            error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line],2)
+        else
+            local lasttok = string.match(str, '(%w+)', defs._maxPos) or string.match(str, '(.)', defs._maxPos)
+            local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
+            error("Unexpected token '"..(lasttok or '').."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"',2)
+        end
+    end
 end
 
 -- block and chunk
@@ -81,6 +101,17 @@ function defs.block( _, ... )
 end
 
 -- stmt
+
+function defs.include( str, pos, name )
+    name = string.sub(name, 2, string.len(name)-1)
+    local lang = require"mad.lang"
+	local file = assert(io.open(name, 'r'))
+	local inputStream = file:read('*a')
+	file:close()
+	local parser = lang.getParser(lang.getCurrentKey())
+    local ast = parser:parse(inputStream, name)
+    return true, table.unpack(ast.block)
+end
 
 function defs.breakstmt()
     return { ast_id = "break_stmt", line = defs._line }
@@ -280,13 +311,13 @@ function defs.lambda ( params, explist, exp )
     else
         ret = { ast_id = "ret_stmt", line = defs._line, table.unpack(explist) }
     end
-    return { ast_id = "fundef", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
+    return { ast_id = "fundef", kind = "lambda", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
 end
 
 -- table
 
 function defs.tabledef( _, ... )
-	return { ast_id = "tbldef", line = defs._line, ... }
+    return { ast_id = "tbldef", line = defs._line, ... }
 end
 
 function defs.field( _, op, key, val )
@@ -312,11 +343,11 @@ end
 -- basic lexem
 
 function defs.literal(val)
-	return { ast_id = "literal", value = val, line = defs._line }
+    return { ast_id = "literal", value = val, line = defs._line }
 end
 
 function defs.name(name)
-	return { ast_id = "name", name = name, line = defs._line }
+    return { ast_id = "name", name = name, line = defs._line }
 end
 
 

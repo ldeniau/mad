@@ -1,22 +1,27 @@
--- Should return the factory and keep track of all the different parsers.
-
-
 local M = { help={}, test={} }
 
 -- module ---------------------------------------------------------------------
 
 M.help.self = [[
 NAME
-  lang
+  mad.lang
 
 SYNOPSIS
-  
+  local lang   = require"mad.lang"
+  local parser = lang.getParser(key, [line])
+  local key    = lang.getCurrentKey()
 
 DESCRIPTION
+  Contains functions for getting the parsers corresponding to different languages.
   
+  local parser = lang.getParser(key, [line])
+    -Returns the parser corresponding to key. line is an optional argument to be
+     given when parsing in interactive mode.
+  local key    = lang.getCurrentKey()
+    -Returns the key of the parser being used at the moment.
 
 RETURN VALUES
-  The table of modules and services.
+  None
 
 SEE ALSO
   None
@@ -29,24 +34,24 @@ local options = require"mad.core.options"
 -- module ---------------------------------------------------------------------
 local parsers = {
 	lua = require"mad.lang.lua.parser",
-	--mad = require"mad.lang.mad.parser",
 }
-
 
 local currentKey
 
-M.getParser = function (key)
+M.getParser = function (key, line)
+    line = line or 0
 	if not options then error("Options haven't been set for lang.lua") end
 	if not parsers[key] then error("There's no parser mapped to key: "..key) end
 	local p = parsers[key]()
 	local parse = p.parse
 	local modifiedParse = function(self, inputStream, fileName, pos)
+	    pos = pos or 1
 		currentKey = key
-		local ast = parse(self, inputStream, fileName, pos)
+		local ast = parse(self, inputStream, fileName, pos, line)
+		ast.fileName = fileName
 		if options.dumpAst then
 			tableUtil.printTable(ast)
 		end
-		ast.fileName = fileName
 		return ast
 	end
 	p.parse = modifiedParse

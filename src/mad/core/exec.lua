@@ -2,9 +2,19 @@ local M = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-	mad.exec
+	mad.core.exec
+	
+SYNOPSIS
+  require"mad.core.exec"(options)
+
 DESCRIPTION
-	contains functions for executing a file
+  Runs the files contained in the options, and enters interactive mode if that option is set.  
+
+RETURN VALUES
+  None
+
+SEE ALSO
+  None
 ]]
 
 -- require --------------------------------------------------------------------
@@ -34,12 +44,12 @@ call = function (_, options)
 		file:close()
 		local parser = lang.getParser(ext)
 		local source = gen:generate(parser:parse(inputStream, fileName))
-		local loadedCode, err = loadstring(source,'@'..fileName)
+		local loadedCode, err = load(source,'@'..fileName)
 		if loadedCode then
 			local status, result = xpcall(loadedCode, function(_err)
 				err = _err
 				trace = debug.traceback("",2)
-      end)
+            end)
 			if not status then
 				io.stderr:write(errors:handleError(err,trace).."\n")
 				os.exit(-1)
@@ -50,8 +60,9 @@ call = function (_, options)
 		local totalTime = os.clock() - startTime
 		print(string.format("elapsed time: %.2fs", totalTime))
 	end
-	--errors:setCurrentChunkName("stdin")
-	--require"mad.lang.interactive".interactive(errors)
+	if options.interactive then
+	    require"mad.lang.interactive".interactive(errors)
+	end
 end
 
 -- end ------------------------------------------------------------------------

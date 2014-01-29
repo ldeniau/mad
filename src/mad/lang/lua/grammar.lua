@@ -4,16 +4,16 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  grammar
+  mad.lang.lua.grammar
 
 SYNOPSIS
-  local grammar = require"lang.parser.lua.grammar".grammar
-
+  local grammar = require"mad.lang.lua.grammar".grammar
+  
 DESCRIPTION
   Returns the regex-based grammar of Lua.
 
 RETURN VALUES
-  The table of modules and services.
+  The grammar
 
 SEE ALSO
   None
@@ -24,102 +24,104 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- ((''=>setup) block s(!./''=>error))                          -> chunk
-    block       <- {stmt* retstmt?}                                             -> block
+    chunk       <- ((''=>setup) block s(!./''=>error))                                  -> chunk
+    block       <- ({stmt* retstmt?}                                                sp) -> block
 
 -- statements
 
     stmt        <- s(
-                      ';' / label / break                                       -> breakstmt 
-                    / goto name                                                 -> gotostmt
-                    / do_block                                                  -> dostmt 
+                      (include s{string}                                            sp) => include
+                    / ';'sp / label / (break                                        sp) -> breakstmt 
+                    / (goto name                                                    sp) -> gotostmt
+                    / (do_block                                                     sp) -> dostmt 
                     / fundef
-                    / ({|varlist|} s'=' {|explist|})                            -> assign 
+                    / ({|varlist|} s'='sp {|explist|}                               sp) -> assign 
                     / funstmt
-                    / (local {|namelist|} (s'=' {|explist|})?)                  -> locassign
-                    / (while exp do_block)                                      -> whilestmt
-                    / (repeat block until exp)                                  -> repeatstmt
-                    / {if exp then block 
+                    / (local {|namelist|} (s'='sp {|explist|})?                     sp) -> locassign
+                    / (while exp do_block                                           sp) -> whilestmt
+                    / (repeat block until exp                                       sp) -> repeatstmt
+                    / ({if exp then block 
                         (elseif exp then block)*
-                        (else block)? end}                                      -> ifstmt
-                    / (for name s'=' exp s',' exp (s',' exp)? do_block)         -> forstmt
-                    / (for {|namelist|} in {|explist|} do_block)                -> forinstmt
+                        (else block)? end}                                          sp) -> ifstmt
+                    / (for name s'='sp exp s','sp exp (s','sp exp)? do_block        sp) -> forstmt
+                    / (for {|namelist|} in {|explist|} do_block                     sp) -> forinstmt
                     )
 
     do_block    <- do block end
 
 -- extra stmts
 
-    label       <- {s'::' name s'::'}                                           -> label
-    retstmt     <- {return explist? s';'?}                                      -> retstmt
+    label       <- ({s'::'sp name s'::'}                                            sp) -> label
+    retstmt     <- ({return explist? s';'?}                                         sp) -> retstmt
 
 -- expressions
 
-    exp         <- { orexp }                                                    -> exp
-    orexp       <- { andexp   ( or      andexp  )* }                            -> orexp
-    andexp      <- { logexp   ( and     logexp  )* }                            -> andexp
-    logexp      <- { catexp   ( logop   catexp  )* }                            -> logexp
-    catexp      <- { sumexp   ( catop   sumexp  )* }                            -> catexp
-    sumexp      <- { prodexp  ( sumop   prodexp )* }                            -> sumexp
-    prodexp     <- { unexp    ( prodop  unexp   )* }                            -> prodexp
-    unexp       <- {          ( unop*   powexp  )  }                            -> unexp
-    powexp      <- { valexp   ( powop   valexp  )* }                            -> powexp
+    exp         <- ({ orexp }                                                       sp) -> exp
+    orexp       <- ({ andexp   ( or      andexp  )* }                               sp) -> orexp
+    andexp      <- ({ logexp   ( and     logexp  )* }                               sp) -> andexp
+    logexp      <- ({ catexp   ( logop   catexp  )* }                               sp) -> logexp
+    catexp      <- ({ sumexp   ( catop   sumexp  )* }                               sp) -> catexp
+    sumexp      <- ({ prodexp  ( sumop   prodexp )* }                               sp) -> sumexp
+    prodexp     <- ({ unexp    ( prodop  unexp   )* }                               sp) -> prodexp
+    unexp       <- ({          ( unop*   powexp  )  }                               sp) -> unexp
+    powexp      <- ({ valexp   ( powop   valexp  )* }                               sp) -> powexp
     
-    valexp      <- literal / tabledef / fundef_a / varexp
-    varexp      <- ((name   / grpexp) (tableidx / funcall)*)                    -> varexp
-    grpexp      <- (s'(' exp s')')                                              -> grpexp
+    valexp      <- literal / tabledef / fundef_a / lambda / varexp
+    varexp      <- ((name   / grpexp) (tableidx / funcall)*                         sp) -> varexp
+    grpexp      <- (s'('sp exp s')'                                                 sp) -> grpexp
     
-    explist     <- exp (s',' exp)*
+    explist     <- exp (s','sp exp)*
 
 -- variable definitions (only on lhs of '=')
 
-    vardef      <- ((name / grpexp varsfx) varsfx*)                             -> vardef
+    vardef      <- ((name / grpexp varsfx) varsfx*                                  sp) -> vardef
     varsfx      <- funcall* tableidx
-    varlist     <- vardef (s',' vardef)*
+    varlist     <- vardef (s','sp vardef)*
 
 -- function definitions & call
 
     fundef      <- fundef_n / fundef_l
-    fundef_a    <- (function funbody)                                           -> fundef_a -- anonymous
-    fundef_n    <- (function funname funbody)                                   -> fundef_n -- named
-    fundef_l    <- (local function name funbody)                                -> fundef_l -- local named
+    fundef_a    <- (function funbody                                                sp) -> fundef_a -- anonymous
+    fundef_n    <- (function funname funbody                                        sp) -> fundef_n -- named
+    fundef_l    <- (local function name funbody                                     sp) -> fundef_l -- local named
 
-    funname     <- ({|name (s'.' name)*|} (s':' name)?)                         -> funname
-    funbody     <- (s'(' {|funparm?|} s')' block end)                           -> funbody
-    funparm     <- ({|namelist|}(s','s ellipsis->literal)? /s ellipsis->literal)-> funparm
+    funname     <- ({|name (s'.'sp name)*|} (s':'sp name)?                          sp) -> funname
+    funbody     <- (s'('sp {|funparm?|} s')'sp block end                            sp) -> funbody
+    funparm     <- ({|namelist|}(s','sp s ellipsis->literal)? /s ellipsis->literal  sp) -> funparm
 
-    funstmt     <- ((name / grpexp) varsfx* funcall+)                           -> funstmt
+    funstmt     <- ((name / grpexp) varsfx* funcall+                                sp) -> funstmt
 
-    funcall     <- (( s{':'} name )? funargs)                                   -> funcall
-    funargs     <- s'(' explist? s')' / tabledef / (string->literal)
+    funcall     <- (( s{':'}sp name )? funargs                                      sp) -> funcall
+    funargs     <- s'('sp explist? s')'sp / tabledef / (string->literal)
     
-    lambda      <- (s'\' {|(namenosp (s',' namelist)?)?|} ( {exp} / (s'(' {|explist|} s')') )) -> lambda
+    lambda      <- (s'\'sp {|(namenosp (s','sp namelist)?)?|} 
+                        ( (s'('sp {|explist|} s')') / {exp} )                       sp) -> lambda
 
 -- table definitions & access
 
-    tabledef    <- (s'{' { fieldlist? } s'}')                                   -> tabledef
+    tabledef    <- (s'{'sp { fieldlist? } s'}'                                      sp) -> tabledef
     fieldlist   <- field (fieldsep field)* fieldsep?
-    field       <- {s{'['} exp s']' s'=' exp / name s'=' exp / exp}             -> field
-    fieldsep    <- s',' / s';'
+    field       <- ({s{'['}sp exp s']'sp s'='sp exp / name s'='sp exp / exp}        sp) -> field
+    fieldsep    <- s','sp / s';'sp
     
-    tableidx    <- (s{'['} exp s']' / s{'.'} name)                              -> tableidx
+    tableidx    <- (s{'['}sp exp s']'sp / s{'.'}sp name                             sp) -> tableidx
 
 -- operators
 
-    logop       <- s{'<=' / '<' / '>=' / '>' / '==' / '~='}
-    catop       <- s{'..'}
-    sumop       <- s{'+' / '-'}
-    prodop      <- s{'*' / '/' / '%'}
-    unop        <- s{not / '#' / '-'}
-    powop       <- s{'^'}
+    logop       <- s{'<=' / '<' / '>=' / '>' / '==' / '~='} sp
+    catop       <- s{'..'} sp
+    sumop       <- s{'+' / '-'} sp
+    prodop      <- s{'*' / '/' / '%'} sp
+    unop        <- s{not / '#' / '-'} sp
+    powop       <- s{'^'} sp
     
 -- lexems
 
-    literal     <- s{nil / false / true / number / string / ellipsis}           -> literal
+    literal     <- (s{nil / false / true / number / string / ellipsis}              sp) -> literal
     
-    name        <- s !keyword {ident}                                           -> name
-    namenosp    <- (  !keyword {ident})                                         -> name
-    namelist    <- name (s',' name)*
+    name        <- ((s !keyword {ident})                                            sp) -> name
+    namenosp    <- ((  !keyword {ident})                                            sp) -> name
+    namelist    <- name (s','sp name)*
     string      <- s(sstring / lstring)
     number      <- s( hexnum / decnum )
     ellipsis    <- s'...'
@@ -129,8 +131,8 @@ M.grammar = [=[
     sstring     <- {:qt: ['"] :} ssclose
     ssclose     <- =qt / '\' =qt ssclose / ch ssclose
 
-    lstring     <- '[' {:eq: '='* :} '[' lsclose
-    lsclose     <- ']' =eq ']' / any lsclose
+    lstring     <- '[' {:eq: '='* :} '['sp lsclose
+    lsclose     <- ']' =eq ']' / any sp lsclose
 
     decnum      <-         num ('.' num)? ([eE] sign? num)?
     hexnum      <- '0'[xX] hex ('.' hex)? ([pP] sign? hex)?
@@ -147,34 +149,38 @@ M.grammar = [=[
 
     keyword     <- and / break / do / else / elseif / end / false / for /
                    function / goto / if / in / local / nil / not /
-                   or / repeat / return / then / true / until / while
+                   or / repeat / return / then / true / until / while / include
 
-    and         <- s{'and'}    e
-    break       <- s'break'    e
-    do          <- s'do'       e
-    else        <- s'else'     e
-    elseif      <- s'elseif'   e
-    end         <- s'end'      e
-    false       <- s'false'    e 
-    for         <- s'for'      e
-    function    <- s'function' e
-    goto        <- s'goto'     e
-    if          <- s'if'       e
-    in          <- s'in'       e
-    local       <- s'local'    e
-    nil         <- s'nil'      e
-    not         <- s'not'      e 
-    or          <- s{'or'}     e
-    repeat      <- s'repeat'   e
-    return      <- s'return'   e
-    then        <- s'then'     e
-    true        <- s'true'     e
-    until       <- s'until'    e
-    while       <- s'while'    e
+    and         <- s{'and'}    e sp
+    break       <- s'break'    e sp
+    do          <- s'do'       e sp
+    else        <- s'else'     e sp
+    elseif      <- s'elseif'   e sp
+    end         <- s'end'      e sp
+    false       <- s'false'    e sp
+    for         <- s'for'      e sp
+    function    <- s'function' e sp
+    goto        <- s'goto'     e sp
+    if          <- s'if'       e sp
+    in          <- s'in'       e sp
+    local       <- s'local'    e sp
+    nil         <- s'nil'      e sp
+    not         <- s'not'      e sp
+    or          <- s{'or'}     e sp
+    repeat      <- s'repeat'   e sp
+    return      <- s'return'   e sp
+    then        <- s'then'     e sp
+    true        <- s'true'     e sp
+    until       <- s'until'    e sp
+    while       <- s'while'    e sp
+    include     <- s'include'  e sp
     
 -- comments
 
-    cmt    <- '--' ( lstring / ch* (nl/!.) )
+    cmt    <- '--' ( lstring / ch* (nl/!.) ) => savePos
+
+-- saving position
+    sp     <- (''=>savePos)
 
 ]=]
 -- escape characters, must be outside long strings
