@@ -311,7 +311,7 @@ function defs.lambda ( params, explist, exp )
     else
         ret = { ast_id = "ret_stmt", line = defs._line, table.unpack(explist) }
     end
-    return { ast_id = "fundef", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
+    return { ast_id = "fundef", kind = "lambda", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
 end
 
 -- table

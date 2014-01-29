@@ -94,7 +94,8 @@ M.grammar = [=[
     funcall     <- (( s{':'}sp name )? funargs                                      sp) -> funcall
     funargs     <- s'('sp explist? s')'sp / tabledef / (string->literal)
     
-    lambda      <- (s'\'sp {|(namenosp (s','sp namelist)?)?|} ( {exp} / (s'('sp {|explist|} s')') ) sp) -> lambda
+    lambda      <- (s'\'sp {|(namenosp (s','sp namelist)?)?|} 
+                        ( (s'('sp {|explist|} s')') / {exp} )                       sp) -> lambda
 
 -- table definitions & access
 
