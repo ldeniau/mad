@@ -1,4 +1,4 @@
-local M = { help={}, test={}, name='object' }
+local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
 
@@ -8,20 +8,20 @@ NAME
 
 SYNOPSIS
   object = require"mad.object"
-  obj = object 'name'           -- create a new object
-  obj { ... }                   -- set obj values
-  obj = object 'name' { ... }   -- create and set obj in one shot
+  obj1 = object {}               -- create a new empty object
+  obj2 = object { ... }          -- create a new object with values
 
 DESCRIPTION
-  The module mad.object creates new objects that are instances of their parent,
-  with callable semantic.
+  The module mad.object creates new objects from tables that become instances
+  of their parent, with callable semantic (i.e. constructor).
   
   The returned object has its parent (its constructor) set as metatable and
   inherits all properties of it autmatically, hence implementing a prototype
   language.
 
   Hence an object is a 'table' that can be used as a constructor (a function)
-  to create new instances, an object (a table) or a class/parent (a metatable).
+  to create new instances of itself, an object (a table) or a class/parent
+  (a metatable).
 
   The string argument is stored into the property 'name' of the object.
 
@@ -29,18 +29,16 @@ RETURN VALUES
   The new object
 
 ERRORS
-  If the object does not receive a string (used as constructor) or a table (used
-  as set), an invalid argument error is raised.
+  If the object does not receive a table, an invalid argument error is raised.
 
 EXAMPLES
-  object = require "mad.object"
-  obj = object 'a' { flg = true }       -- name = 'a', flg = true
-  obj { flg = false }                   -- set flg
-  obj.flg = false                       -- set flg (fast)
-  flg = obj.flg                         -- get flg (fast)
-  obj2 = object obj.name (obj)          -- copy of obj, assume object is parent
-  obj3 = obj:super() obj.name (obj)     -- copy of obj, don't know parent
-  obj4 = obj:cpy()                      -- copy of obj, idem but faster
+  Object = require"mad.object"
+  Point = Object {}                     -- Point derives from Object
+  p0 = Point { x=0, y=0 }               -- p0 is an instance of Point
+  p1 = Point { x=1, y=1 }               -- p1 is an instance of Point
+  p2 = p1:cpy()                         -- p2 is a copy of p1
+  p1:set { x=-1, y=-2 }                 -- set p1.x and p1.y (slow)
+  p1.x, p1.y = 1, 2                     -- set p1.x and p1.y (faster)
 
 SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
@@ -48,58 +46,51 @@ SEE ALSO
 
 -- locals ----------------------------------------------------------------------
 
-local type, rawget, rawset, pairs = type, rawget, rawset, pairs
-local getmetatable, setmetatable = getmetatable, setmetatable
+local type, getmetatable, setmetatable = type, getmetatable, setmetatable
+local pairs = pairs
 
 local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 
+-- members ---------------------------------------------------------------------
+
+M.is_object = true
+M.name = 'object'
+
 -- methods ---------------------------------------------------------------------
 
--- return the direct parent
-function M:super()
+-- return the next parent
+function M:spr()
   return getmetatable(self)
 end
 
 -- return the parent id or nil
 function M:isa(id)
   local a = getmetatable(self);
-
-  if type(id) == 'table' then
-    while a ~= nil and a ~= id do a = getmetatable(a) end
-    return a
-
-  elseif type(id) == 'string' then
-    while a ~= nil and rawget(a, 'name') ~= id do a = getmetatable(a) end
-    return a
-  end
-
-  error("invalid parent id, should be either an object or a name")
+  while a ~= nil and a ~= id do a = getmetatable(a) end
+  return a
 end
 
+-- set values taken from iterator
+function M:set(a)
+  for k,v in pairs(a) do self[k] = v end
+  return self
+end
+
+-- make a copy
 function M:cpy()
-  local c = setmetatable({}, getmetatable(self))
-  for k,v in pairs(self) do c[k] = v end
-  return c
+  return setmetatable({}, getmetatable(self)):set(self)
 end
 
 -- metamethods -----------------------------------------------------------------
 
--- object used as a function
+-- constructor
 function MT:__call(a)
-  if type(a) == 'string' then
-    if not rawget(self, '__call') then
-      rawset(self, '__index', self)         -- inheritance
-      rawset(self, '__call' , MT.__call)    -- call
-    end
-    return rawset(setmetatable({}, self), 'name', a)
-  end
-
   if type(a) == 'table' then
-    for k,v in pairs(a) do self[k] = v end
-    return self
+    self.__index = self         -- inheritance
+    self.__call  = MT.__call    -- constructor
+    return setmetatable(a, self)
   end
-
-  error ("invalid ".. self.name .." (implicit) call argument, string or table expected")
+  error ("invalid constructor argument, table expected")
 end
 
 -- tests -----------------------------------------------------------------------
@@ -110,7 +101,7 @@ end
 function M.test:tearDown()
 end
 
-function M.test:super(ut)
+function M.test:spr(ut)
     local object = M
     local any = ut:succeeds(object, 'any')
     local sup = ut:succeeds(any.super, any)
@@ -129,7 +120,7 @@ function M.test:isa(ut)
     ut:equals(is, nil)
 end
 
-function M.test:new(ut)
+function M.test:ctor(ut)
     local object = M
     local obj1 = ut:succeeds(object, "obj1")
     ut:succeeds(obj1, { val1 = 1 })
@@ -155,23 +146,6 @@ function M.test:cpy(ut)
     ut:differs(cpy2.val3, cpy1.val3)
 end
 
-function M.test:set(ut)
-    local object = M
-    local obj1   = object "obj1" { val1 = 1 }
-    local obj2   = obj1   "obj2" { val2 = 2 }
-    ut:succeeds(obj2.set, obj2, "val3", 3)
-    ut:equals(obj2.val3, 3)
-    ut:differs(obj1.val3, 3)
-    ut:succeeds(obj1.set, obj1, "val4", 4)
-    ut:equals(obj2.val4, 4)
-    ut:equals(obj1.val4, 4)
-    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
-    ut:equals(obj2.val5, 5)
-    ut:equals(obj1.val5, 5)
-    ut:equals(obj2.val6, 6)
-    ut:equals(obj1.val6, 6)
-end
-
 function M.test:get(ut)
     local object = M
     local obj1   = object "obj1" { val1 = 1 }
@@ -189,6 +163,23 @@ function M.test:get(ut)
     ut:equals(a1, 5)
     ut:equals(b2, 6)
     ut:equals(b1, 6)
+end
+
+function M.test:set(ut)
+    local object = M
+    local obj1   = object "obj1" { val1 = 1 }
+    local obj2   = obj1   "obj2" { val2 = 2 }
+    ut:succeeds(obj2.set, obj2, "val3", 3)
+    ut:equals(obj2.val3, 3)
+    ut:differs(obj1.val3, 3)
+    ut:succeeds(obj1.set, obj1, "val4", 4)
+    ut:equals(obj2.val4, 4)
+    ut:equals(obj1.val4, 4)
+    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
+    ut:equals(obj2.val5, 5)
+    ut:equals(obj1.val5, 5)
+    ut:equals(obj2.val6, 6)
+    ut:equals(obj1.val6, 6)
 end
 
 function M.test:unset(ut)
