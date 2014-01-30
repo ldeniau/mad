@@ -23,7 +23,7 @@ local is_lambda = is_lambda
 -- module ---------------------------------------------------------------------
 
 local sbyte = string.byte
-sbyte = function (s, i, j)
+string.byte = function (s, i, j)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -37,15 +37,15 @@ sbyte = function (s, i, j)
 end
 
 local sdump = string.dump
-sdump = function (s)
+string.dump = function (s)
     if is_lambda(s) then
-        s = s.__lambda()
+        s = s.__lambda
     end
     return sdump(s)
 end
 
 local sfind = string.find
-sfind = function (s, pattern, init, plain)
+string.find = function (s, pattern, init, plain)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -62,15 +62,23 @@ sfind = function (s, pattern, init, plain)
 end
 
 local sformat = string.format
-sformat = function (formatstring, ...)
+string.format = function (formatstring, ...)
     if is_lambda(formatstring) then
         formatstring = formatstring.__lambda()
     end
-    return sformat(formatstring, ...)
+    local vararg = {}
+    for i,v in ipairs({...}) do
+        if is_lambda(v) then
+            vararg[#vararg+1] = v.__lambda()
+        else
+            vararg[#vararg+1] = v
+        end
+    end
+    return sformat(formatstring, table.unpack(vararg))
 end
 
 local sgmatch = string.gmatch
-sgmatch = function (s, pattern)
+string.gmatch = function (s, pattern)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -81,7 +89,7 @@ sgmatch = function (s, pattern)
 end
 
 local sgsub = string.gsub
-sgsub = function (s, pattern, repl, n)
+string.gsub = function (s, pattern, repl, n)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -98,7 +106,7 @@ sgsub = function (s, pattern, repl, n)
 end
 
 local slen = string.len
-slen = function (s)
+string.len = function (s)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -106,7 +114,7 @@ slen = function (s)
 end
 
 local slower = string.lower
-slower = function (s)
+string.lower = function (s)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -114,21 +122,21 @@ slower = function (s)
 end
 
 local smatch = string.match
-smatch = function (s, pattern, init)
+string.match = function (s, pattern, init)
     if is_lambda(s) then
         s = s.__lambda()
     end
     if is_lambda(pattern) then
         pattern = pattern.__lambda()
     end
-    if i and is_lambda(init) then
+    if init and is_lambda(init) then
         init = init.__lambda()
     end
     return smatch(s, pattern, init)
 end
 
 local srep = string.rep
-srep = function (s, n, sep)
+string.rep = function (s, n, sep)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -142,7 +150,7 @@ srep = function (s, n, sep)
 end
 
 local sreverse = string.reverse
-sreverse = function (s)
+string.reverse = function (s)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -150,7 +158,7 @@ sreverse = function (s)
 end
 
 local ssub = string.sub
-ssub = function (s, i, j)
+string.sub = function (s, i, j)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -164,7 +172,7 @@ ssub = function (s, i, j)
 end
 
 local supper = string.upper
-supper = function (s)
+string.upper = function (s)
     if is_lambda(s) then
         s = s.__lambda()
     end
@@ -173,6 +181,7 @@ end
 
 -- test -----------------------------------------------------------------------
 
+M.test = load_test and require"mad.lang.lambda.test.string" or {}
 
 
 -- end ------------------------------------------------------------------------

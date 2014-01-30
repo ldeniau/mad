@@ -20,15 +20,18 @@ SEE ALSO
 -- global functions -----------------------------------------------------------
 
 local is_lambda = function(a)
-    return type(a) == "table" and a.__lambda
+    return a and type(a) == "table" and a.__lambda and type(a.__lambda) == "function" or false
 end
 
 local g_tonumber = tonumber
-_G.tonumber = function(a)
+_G.tonumber = function(a, b)
     if is_lambda(a) then
         a = a.__lambda()        
     end
-    return g_tonumber(a)
+    if b and is_lambda(b) then
+        b = b.__lambda()        
+    end
+    return g_tonumber(a, b)
 end
 
 _G.is_lambda = is_lambda
@@ -43,11 +46,14 @@ require"mad.lang.lambda.string"
 
 local mt = {}
 
-local Mcall = function(_, func )
-    if type(func) ~= "function" then func = function() return func end end
-    return setmetatable({ __lambda = func }, mt)
-end
-setmetatable(M,Mcall)
+setmetatable(M, { __call = function(_, func )
+    local func1
+    if type(func) ~= "function" then
+        func1 = function() return func end
+    end
+    func1 = func1 or func
+    return setmetatable({ __lambda = func1 }, mt)
+end })
 
 local eval = function(lhs,rhs)
     if type(lhs) == "table" and lhs.__lambda then
@@ -141,92 +147,9 @@ mt.__eq = function(lhs, rhs)
     return lhs==rhs
 end
 
-
-
 -- test -----------------------------------------------------------------------
 
-function M.test:self(ut)
-    require"mad.core.unitTest".addModuleToTest"mad.lang.lambda.math"
-    require"mad.core.unitTest".addModuleToTest"mad.lang.lambda.table"
-    require"mad.core.unitTest".addModuleToTest"mad.lang.lambda.string"
-end
-
-local tbl1 = { __lambda = function() return 1 end }
-setmetatable(tbl1, mt)
-local tbl2 = { __lambda = function() return 1 end }
-setmetatable(tbl2, mt)
-
-print("tbl1 + 1", tbl1 + 1)
-print("1 + tbl1", 1 + tbl1)
-print("tbl1 + tbl2", tbl1 + tbl2)
-print("1 + 2", 1+2)
-
-print("tbl1 - 1", tbl1 - 1)
-print("1 - tbl1", 1 - tbl1)
-print("tbl1 - tbl2", tbl1 - tbl2)
-print("1 - 2", 1-2)
-
-print("tbl1 * 1", tbl1 * 1)
-print("1 * tbl1", 1 * tbl1)
-print("tbl1 * tbl2", tbl1 * tbl2)
-print("1 * 2", 1 * 2)
-
-print("tbl1 / 1", tbl1 / 1)
-print("1 / tbl1", 1 / tbl1)
-print("tbl1 / tbl2", tbl1 / tbl2)
-print("1 / 2", 1 / 2)
-
-print("tbl1 % 1", tbl1 % 1)
-print("1 % tbl1", 1 % tbl1)
-print("tbl1 % tbl2", tbl1 % tbl2)
-print("1 % 2", 1 % 2)
-
-print("tbl1 ^ 1", tbl1 ^ 1)
-print("1 ^ tbl1", 1 ^ tbl1)
-print("tbl1 ^ tbl2", tbl1 ^ tbl2)
-print("1 ^ 2", 1 ^ 2)
-
-print("-tbl1", -tbl1)
-
-print("tbl1 < 1", tbl1 < 1)
-print("1 < tbl1", 1 < tbl1)
-print("tbl1 < tbl2", tbl1 < tbl2)
-print("1 < 2", 1 < 2)
-
-print("tbl1 > 1", tbl1 > 1)
-print("1 > tbl1", 1 > tbl1)
-print("tbl1 > tbl2", tbl1 > tbl2)
-print("1 > 2", 1 > 2)
-
-print("tbl1 <= 1", tbl1 <= 1)
-print("1 <= tbl1", 1 <= tbl1)
-print("tbl1 <= tbl2", tbl1 <= tbl2)
-print("1 <= 2", 1 <= 2)
-
-print("tbl1 >= 1", tbl1 >= 1)
-print("1 >= tbl1", 1 >= tbl1)
-print("tbl1 >= tbl2", tbl1 >= tbl2)
-print("1 >= 2", 1 >= 2)
-
-local tbl = {2,3,4}
-local tbltbl = { __lambda = function () return tbl end }
-setmetatable(tbltbl, mt)
-print("tbltbl[1]", tbltbl[1])
-print("tbltbl[2]", tbltbl[2])
-print("tbltbl[3]", tbltbl[3])
-print("tbltbl[4]", tbltbl[4])
-
-tbltbl[1] = "one"
-print("Should print one", tbltbl[1])
-print("bonustest, should print one", tbl[1])
-
-print("tbl1()", tbl1())
-
-print("tbl1", tbl1)
-
-print("tbl1==1", tbl1 == tbl2)
-
-print("sin", math.sin(tbl1))
+M.test = load_test and require"mad.lang.test.lambda" or {}
 
 -- end ------------------------------------------------------------------------
 
