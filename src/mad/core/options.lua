@@ -90,6 +90,7 @@ local function processArgs(arg)
     while index and index == 1 do
         local opt = table.remove(arg,1)
         if opt == "-utest" then
+            load_test = true
             processUTest(arg)
         elseif opt == "-interactive" or opt == "-i" then
             M.interactive = true
