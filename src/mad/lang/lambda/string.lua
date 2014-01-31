@@ -2,13 +2,20 @@ local M  = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-  mad.__lambda -- MAD module containing helper functions for the lambda-function.
+  mad.lambda.string
 
 SYNOPSIS
-  
+  Overloads the string library for usage with lambda-function.
 
 DESCRIPTION
-  
+  All functions are overloaded to call the lambda-function with no arguments if
+  it is received as an argument.
+    lambda = { __lambda = func }
+    string.xxx( lambda ) -> string.xxx( lambda.__lambda() )
+  Exception: string.dump
+    string.dump will dump the function, not the function called.
+      lambda = { __lambda = func }
+      string.dump( lambda ) -> string.dump( lambda.__lambda )
 
 RETURN VALUES
   The table of modules and services.
@@ -24,13 +31,13 @@ local is_lambda = is_lambda
 
 local sbyte = string.byte
 string.byte = function (s, i, j)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if i and is_lambda(i) then
+    while i and is_lambda(i) do
         i = i.__lambda()
     end
-    if j and is_lambda(j) then
+    while j and is_lambda(j) do
         j = j.__lambda()
     end
     return sbyte(s, i, j)
@@ -46,16 +53,16 @@ end
 
 local sfind = string.find
 string.find = function (s, pattern, init, plain)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(pattern) then
+    while is_lambda(pattern) do
         pattern = pattern.__lambda()
     end
-    if init and is_lambda(init) then
+    while init and is_lambda(init) do
         init = init.__lambda()
     end
-    if plain and is_lambda(plain) then
+    while plain and is_lambda(plain) do
         plain = plain.__lambda()
     end
     return sfind(s, pattern, init, plain)
@@ -63,26 +70,25 @@ end
 
 local sformat = string.format
 string.format = function (formatstring, ...)
-    if is_lambda(formatstring) then
+    while is_lambda(formatstring) do
         formatstring = formatstring.__lambda()
     end
     local vararg = {}
     for i,v in ipairs({...}) do
-        if is_lambda(v) then
-            vararg[#vararg+1] = v.__lambda()
-        else
-            vararg[#vararg+1] = v
+        while is_lambda(v) do
+            v = v.__lambda()
         end
+        vararg[#vararg+1] = v
     end
     return sformat(formatstring, table.unpack(vararg))
 end
 
 local sgmatch = string.gmatch
 string.gmatch = function (s, pattern)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(pattern) then
+    while is_lambda(pattern) do
         pattern = pattern.__lambda()
     end
     return sgmatch(s, pattern)
@@ -90,16 +96,16 @@ end
 
 local sgsub = string.gsub
 string.gsub = function (s, pattern, repl, n)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(pattern) then
+    while is_lambda(pattern) do
         pattern = pattern.__lambda()
     end
-    if is_lambda(repl) then
+    while is_lambda(repl) do
         repl = repl.__lambda()
     end
-    if n and is_lambda(n) then
+    while n and is_lambda(n) do
         n = n.__lambda()
     end
     return sgsub(s, pattern, repl, n)
@@ -107,7 +113,7 @@ end
 
 local slen = string.len
 string.len = function (s)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
     return slen(s)
@@ -115,7 +121,7 @@ end
 
 local slower = string.lower
 string.lower = function (s)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
     return slower(s)
@@ -123,13 +129,13 @@ end
 
 local smatch = string.match
 string.match = function (s, pattern, init)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(pattern) then
+    while is_lambda(pattern) do
         pattern = pattern.__lambda()
     end
-    if init and is_lambda(init) then
+    while init and is_lambda(init) do
         init = init.__lambda()
     end
     return smatch(s, pattern, init)
@@ -137,13 +143,13 @@ end
 
 local srep = string.rep
 string.rep = function (s, n, sep)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(n) then
+    while is_lambda(n) do
         n = n.__lambda()
     end
-    if sep and is_lambda(sep) then
+    while sep and is_lambda(sep) do
         sep = sep.__lambda()
     end
     return srep(s, n, sep)
@@ -151,7 +157,7 @@ end
 
 local sreverse = string.reverse
 string.reverse = function (s)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
     return sreverse(s)
@@ -159,13 +165,13 @@ end
 
 local ssub = string.sub
 string.sub = function (s, i, j)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
-    if is_lambda(i) then
+    while is_lambda(i) do
         i = i.__lambda()
     end
-    if j and is_lambda(j) then
+    while j and is_lambda(j) do
         j = j.__lambda()
     end
     return ssub(s, i, j)
@@ -173,7 +179,7 @@ end
 
 local supper = string.upper
 string.upper = function (s)
-    if is_lambda(s) then
+    while is_lambda(s) do
         s = s.__lambda()
     end
     return supper(s)
