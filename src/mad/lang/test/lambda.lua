@@ -86,6 +86,11 @@ function test:__add(ut)
     ut:equals(self.tbl1+self.tbl1cp, 2)
     ut:equals(1+self.tbl1, 2)
     ut:equals(1+1, 2)
+    
+    local doubleLambda = self.module(self.tbl1)
+    ut:equals(doubleLambda+1, 2)
+    ut:equals(doubleLambda+self.tbl1cp, 2)
+    ut:equals(1+doubleLambda, 2)
 end
 
 function test:__sub(ut)
@@ -93,6 +98,11 @@ function test:__sub(ut)
     ut:equals(self.tbl1-self.tbl1cp, 0)
     ut:equals(1-self.tbl1, 0)
     ut:equals(1-1, 0)
+    
+    local doubleLambda = self.module(self.tbl1)
+    ut:equals(doubleLambda-1, 0)
+    ut:equals(doubleLambda-self.tbl1cp, 0)
+    ut:equals(1-doubleLambda, 0)
 end
 
 function test:__mul(ut)
@@ -100,6 +110,11 @@ function test:__mul(ut)
     ut:equals(self.tbl1*self.tbl2, 2)
     ut:equals(2*self.tbl1, 2)
     ut:equals(1*2, 2)
+    
+    local doubleLambda = self.module(self.tbl1)
+    ut:equals(doubleLambda*1, 1)
+    ut:equals(doubleLambda*self.tbl1cp, 1)
+    ut:equals(1*doubleLambda, 1)
 end
 
 function test:__div(ut)
@@ -107,6 +122,11 @@ function test:__div(ut)
     ut:equals(self.tbl1/self.tbl2, 0.5)
     ut:equals(1/self.tbl2, 0.5)
     ut:equals(1/2, 0.5)
+    
+    local doubleLambda = self.module(self.tbl1)
+    ut:equals(doubleLambda/1, 1)
+    ut:equals(doubleLambda/self.tbl1cp, 1)
+    ut:equals(1/doubleLambda, 1)
 end
 
 function test:__mod(ut)
@@ -114,6 +134,11 @@ function test:__mod(ut)
     ut:equals(self.tbl1%self.tbl1cp, 0)
     ut:equals(1%self.tbl1, 0)
     ut:equals(1%1, 0)
+    
+    local doubleLambda = self.module(self.tbl1)
+    ut:equals(doubleLambda%1, 0)
+    ut:equals(doubleLambda%self.tbl1cp, 0)
+    ut:equals(1%doubleLambda, 0)
 end
 
 function test:__pow(ut)
