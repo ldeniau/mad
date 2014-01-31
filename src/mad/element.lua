@@ -4,15 +4,17 @@ local M  = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.element -- build element for reuse in sequences (database)
+  mad.element -- build MAD element
 
 SYNOPSIS
   elm = require"mad.element"
   drift, sbend, rbend, quad = elm.drift, elm.sbend, elm.rbend, elm.quadrupole
+  mq = quad 'mq' {}
+  qf = mq { k1= 0.1 } -- focusing quadrupole
+  qd = mq { k1=-0.1 } -- defocusing quadrupole
 
 DESCRIPTION
-  The module mad.element is a front-end to the factory of all elements
-  supported by MAD.
+  The module mad.element is a front-end to the factory of all MAD elements.
 
 RETURN VALUES
   The table of supported elements.
@@ -40,28 +42,48 @@ M.element = MT { name='element', is_element=true, kind='element' }
 
 local function init(self)
   if not rawget(self, 'name') then
-    error('classes must be named')
+    error("classes must be named")
   end
   self.__index  = self              -- inheritance
   self.__call   = MT.__call         -- constructor
   self.__mul    = MT.__mul          -- repetition
 end
 
-local special_field = {  name=true, __mul=true, __call=true, __index=true }
+local special_field = {  name=true, s_pos=true, i_pos=true, __mul=true, __call=true, __index=true }
 
-local function print(self, nodisp)
+local function show_list(t, list)
+  for _,v in ipairs(list) do
+    if t[v] then io.write(', ', v, '= ', tostring(t[v])) end
+  end
+end
+
+local function show_tree(self, depth)
   for k,v in pairs(self) do
     if type(k) == 'number' then
-      io.write('[',k,']=', tostring(v), ', ')
-    elseif not special_field[k] and not (nodisp and nodisp[k]) then
-      io.write(k, '=', tostring(v), ', ')
+      io.write(', ', tostring(v))
+    elseif not special_field[k] then
+      io.write(', ', k, '= ', tostring(v))
     end
+  end
+  if depth > 0 and not rawget(self:class(), 'kind') then
+    show_tree(self:class(), depth-1)
+  end
+end
+
+local function show_properties(self, disp)
+  disp = disp or 0
+  if type(disp) == 'number' then
+    show_tree(self, disp)
+  elseif type(disp) == 'table' then
+    show_list(self, disp)
+  else
+    error("invalid show argument, depth level or list of fields expected")
   end
 end
 
 -- methods ---------------------------------------------------------------------
 
-function MT:class() -- same as obj:spr() but more 'common' on MAD element
+function MT:class() -- same as obj:spr() but more 'common' for MAD element
   return getmetatable(self)
 end
 
@@ -74,20 +96,23 @@ function MT:is_class()
   return rawget(self, '__call') ~= nil
 end
 
-function MT:show(depth, nodisp)
-  io.write("'", self.name, "' { ")
-  print(self, nodisp)
-  if depth and depth > 0 then
-    self:class():show(depth-1)
-  end
-  io.write('class=', self:class().name, ' }, ')
+function MT:show(disp)
+  io.write('  ', self:class().name, " '", self.name, "' { at= ", self.s_pos)
+  show_properties(self, disp)
+  io.write(' }\n')
+end
+
+function MT:show_madx(disp)
+  io.write('  ', self.name, ': ', self:class().name, ',\t\t at= ', self.s_pos)
+  show_properties(self, disp)
+  io.write(';\n')
 end
 
 -- metamethods -----------------------------------------------------------------
 
 -- constructor of elements, can be anonymous
 function MT:__call(a)
-  if type(a) == 'string' then
+  if type(a) == 'string' then   -- class 'name' { ... }
     return function(t)
       if type(t) == 'table' then
         t.name = a
@@ -98,7 +123,7 @@ function MT:__call(a)
     end
   end
 
-  if type(a) == 'table' then
+  if type(a) == 'table' then    -- class { ... }
     if not self:is_class() then init(self) end
     return setmetatable(a, self)
   end

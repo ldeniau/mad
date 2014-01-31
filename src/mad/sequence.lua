@@ -59,6 +59,12 @@ local function test_membership(seq, a)
   end
 end
 
+local function show_list(t, list)
+  for _,v in ipairs(list) do
+    if t[v] then io.write(', ', v, '= ', tostring(t[v])) end
+  end
+end
+
 -- search
 local function find_index_by_ref(t, a, start)
   for i=start or 1,#t do
@@ -139,7 +145,7 @@ local function localise(self, start)
   return self
 end
 
--- edition -- TODO: check s_pos, l
+-- edition -- TODO: check s_pos and l
 local function insert_element(self, elem, before)
   test_membership(self, before)
   local i = before.i_pos
@@ -194,7 +200,7 @@ end
 
 local function add_sequence(self, seq, rev)
   if rev and rev<0 then
-    for i=#seq,1,-1 do
+    for i=#seq,1,-1 do -- TODO: reorder reversed markers
       add_element(self, seq[i])
     end
   else
@@ -262,22 +268,38 @@ end
 
 -- methods ---------------------------------------------------------------------
 
-function M:show(depth, nodisp)
+local member_field = {  'refer', 'refpos', 'l' }
+
+function M:show(disp)
   io.write('sequence: ', self.name, '\n')
-  for i,v in ipairs(self) do
-    io.write('[',i,']  ')
-    v:show(depth, nodisp)
-    io.write('\n')
-  end
+  for i,v in ipairs(self) do v:show(disp) end
   io.write('endsequence: ', self.name, '\n')
 end
 
-function M:remove(a, count)
+function M:show_madx(disp)
+  io.write(self.name, ': sequence')
+  show_list(self, member_field)
+  io.write(';\n')
+  for i,v in ipairs(self) do v:show_madx(disp) end
+  io.write('endsequence;\n')
+end
+
+function M:remove(a, count) -- TODO
   if type(a) == 'string' then
     a = self[a]
     if is_list(a) then a = a[count or 1] end
   end
   remove_element(self, a)
+end
+
+function M:insert(a, at, count) -- TODO
+  if type(at) == 'string' then
+    at = self[at]
+    if is_list(at) then at = at[count or 1] end
+  elseif type(at) == 'number' then
+    at = self[find_index_by_pos(self, at)]
+  end
+  insert_element(self, a, at)
 end
 
 -- metamethods -----------------------------------------------------------------
