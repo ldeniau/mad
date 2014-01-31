@@ -24,234 +24,248 @@ local is_lambda = is_lambda
 
 
 local mabs = math.abs
-_G.math.abs = function(x)
-    if is_lambda(x) then
+math.abs = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mabs(x)
 end
 
 local macos = math.acos
-_G.math.acos = function(x)
-    if is_lambda(x) then
+math.acos = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return macos(x)
 end
 
 local masin = math.asin
-_G.math.asin = function(x)
-    if is_lambda(x) then
+math.asin = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return masin(x)
 end
 
 local matan = math.atan
-_G.math.atan = function(x)
-    if is_lambda(x) then
+math.atan = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return matan(x)
 end
 
 local matan2 = math.atan2
-_G.math.atan2 = function(y, x)
-    if x and is_lambda(x) then
+math.atan2 = function(y, x)
+    while x and is_lambda(x) do
         x = x.__lambda()
     end
-    if is_lambda(y) then
+    while is_lambda(y) do
         y = y.__lambda()
     end
     return matan2(y, x)
 end
 
 local mceil = math.ceil
-_G.math.ceil = function(x)
-    if is_lambda(x) then
+math.ceil = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mceil(x)
 end
 
 local mcos = math.cos
-_G.math.cos = function(x)
-    if is_lambda(x) then
+math.cos = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mcos(x)
 end
 
 local mcosh = math.cosh
-_G.math.cosh = function(x)
-    if is_lambda(x) then
+math.cosh = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mcosh(x)
 end
 
 local mdeg = math.deg
-_G.math.deg = function(x)
-    if is_lambda(x) then
+math.deg = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mdeg(x)
 end
 
 local mexp = math.exp
-_G.math.exp = function(x)
-    if is_lambda(x) then
+math.exp = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mexp(x)
 end
 
 local mfloor = math.floor
-_G.math.floor = function(x)
-    if is_lambda(x) then
+math.floor = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mfloor(x)
 end
 
 local mfmod = math.fmod
-_G.math.fmod = function(x, y)
-    if is_lambda(x) then
+math.fmod = function(x, y)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    if y and is_lambda(y) then
+    while y and is_lambda(y) do
         y = y.__lambda()
     end
-    return mfmod(x, y)
+    return y and mfmod(x, y) or mfmod(x)
 end
 
 local mfrexp = math.frexp
-_G.math.frexp = function(x)
-    if is_lambda(x) then
+math.frexp = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mfrexp(x)
 end
 
 local mldexp = math.ldexp
-_G.math.ldexp = function(m, e)
-    if is_lambda(m) then
+math.ldexp = function(m, e)
+    while is_lambda(m) do
         m = m.__lambda()
     end
-    if e and is_lambda(e) then
+    while e and is_lambda(e) do
         e = e.__lambda()
     end
-    return mldexp(m, e)
+    return e and mldexp(m, e) or mldexp(m)
 end
 
 local mlog = math.log
-_G.math.log = function(x, base)
-    if is_lambda(x) then
+math.log = function(x, base)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    if base and is_lambda(base) then
+    while base and is_lambda(base) do
         base = base.__lambda()
     end
-    return mlog(x, base)
+    return base and mlog(x, base) or mlog(x)
 end
 
 local mmax = math.max
-_G.math.max = function(x, ...)
-    if is_lambda(x) then
+math.max = function(x, ...)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    return mmax(x, ...)
+    local vararg = {}
+    for i,v in ipairs({...}) do
+        while is_lambda(v) do
+            v = v.__lambda()
+        end
+        vararg[#vararg+1] = v
+    end
+    return mmax(x, table.unpack(vararg))
 end
 
 local mmin = math.min
-_G.math.min = function(x, ...)
-    if is_lambda(x) then
+math.min = function(x, ...)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    return mmin(x, ...)
+    local vararg = {}
+    for i,v in ipairs({...}) do
+        while is_lambda(v) do
+            v = v.__lambda()
+        end
+        vararg[#vararg+1] = v
+    end
+    return mmin(x, table.unpack(vararg))
 end
 
 local mmodf = math.modf
-_G.math.modf = function(x)
-    if is_lambda(x) then
+math.modf = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mmodf(x)
 end
 
 local mpow = math.pow
-_G.math.pow = function(x, y)
-    if is_lambda(x) then
+math.pow = function(x, y)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    if is_lambda(y) then
+    while is_lambda(y) do
         y = y.__lambda()
     end
     return mpow(x, y)
 end
 
 local mrad = math.rad
-_G.math.rad = function(x)
-    if is_lambda(x) then
+math.rad = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mrad(x)
 end
 
 local mrandom = math.random
-_G.math.random = function(m, n)
-    if m and is_lambda(m) then
+math.random = function(m, n)
+    while m and is_lambda(m) do
         m = m.__lambda()
     end
-    if n and is_lambda(n) then
+    while n and is_lambda(n) do
         n = n.__lambda()
     end
-    return mrandom(m, n)
+    return m and (n and mrandom(m, n) or mrandom(m)) or mrandom()
 end
 
 local mrandomseed = math.randomseed
-_G.math.randomseed = function(x)
-    if is_lambda(x) then
+math.randomseed = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
-    return mrandomseed(x)
+    mrandomseed(x)
 end
 
 local msin = math.sin
-_G.math.sin = function(x)
-    if is_lambda(x) then
+math.sin = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return msin(x)
 end
 
 local msinh = math.sinh
-_G.math.sinh = function(x)
-    if is_lambda(x) then
+math.sinh = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return msinh(x)
 end
 
 local msqrt = math.sqrt
-_G.math.sqrt = function(x)
-    if is_lambda(x) then
+math.sqrt = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return msqrt(x)
 end
 
 local mtan = math.tan
-_G.math.tan = function(x)
-    if is_lambda(x) then
+math.tan = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mtan(x)
 end
 
 local mtanh = math.tanh
-_G.math.tanh = function(x)
-    if is_lambda(x) then
+math.tanh = function(x)
+    while is_lambda(x) do
         x = x.__lambda()
     end
     return mtanh(x)
@@ -259,7 +273,69 @@ end
 
 -- test -----------------------------------------------------------------------
 
+M.test = load_test and require"mad.lang.lambda.test.math" or {}
 
+function M.test:setUp()
+    self.lambda = require"mad.lang.lambda"
+    self.abs = mabs
+    self.acos = macos
+    self.asin = masin
+    self.atan = matan
+    self.atan2 = matan2
+    self.ceil = mceil
+    self.cos = mcos
+    self.cosh = mcosh
+    self.deg = mdeg
+    self.exp = mexp
+    self.floor = mfloor
+    self.fmod = mfmod
+    self.frexp = mfrexp
+    self.ldexp = mldexp
+    self.log = mlog
+    self.max = mmax
+    self.min = mmin
+    self.modf = mmodf
+    self.pow = mpow
+    self.rad = mrad
+    self.random = mrandom
+    self.randomseed = mrandomseed
+    self.sin = msin
+    self.sinh = msinh
+    self.sqrt = msqrt
+    self.tan = mtan
+    self.tanh = mtanh
+end
+
+function M.test:tearDown()
+    self.lambda = nil
+    self.abs = nil
+    self.acos = nil
+    self.asin = nil
+    self.atan = nil
+    self.atan2 = nil
+    self.ceil = nil
+    self.cos = nil
+    self.cosh = nil
+    self.deg = nil
+    self.exp = nil
+    self.floor = nil
+    self.fmod = nil
+    self.frexp = nil
+    self.ldexp = nil
+    self.log = nil
+    self.max = nil
+    self.min = nil
+    self.modf = nil
+    self.pow = nil
+    self.rad = nil
+    self.random = nil
+    self.randomseed = nil
+    self.sin = nil
+    self.sinh = nil
+    self.sqrt = nil
+    self.tan = nil
+    self.tanh = nil
+end
 
 -- end ------------------------------------------------------------------------
 
