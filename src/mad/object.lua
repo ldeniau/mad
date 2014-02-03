@@ -111,34 +111,49 @@ function M.test:spr(ut)
     local par2 = ut:succeeds(par1, {})
     local par2spr = ut:succeeds(par2.spr, par2)
     ut:equals(par2spr, par1)
-    ut:fails(object)
-    ut:fails(par2, "name")
-    ut:fails(par1, "name", {})
 end
 
 function M.test:isa(ut)
     local object = self.object
-    local any = object {  }
-    local is = ut:succeeds(any.isa, any, object.name)
+    local par1 = object {  }
+    local is = ut:succeeds(par1.isa, par1, object)
     ut:equals(is, object)
-    is = ut:succeeds(any.isa, any, object)
+    is = ut:succeeds(par1.isa, par1, 1)
+    ut:equals(is, nil)
+    is = ut:succeeds(par1.isa, par1)
+    ut:equals(is, nil)
+    local par21 = par1 {}
+    local par22 = par1 {}
+    is = ut:succeeds(par21.isa, par21, object)
     ut:equals(is, object)
-    ut:fails(any.isa, any, 1)
-    is = ut:succeeds(any.isa, any)
+    is = ut:succeeds(par21.isa, par21, par1)
+    ut:equals(is, par1)
+    is = ut:succeeds(par22.isa, par22, object)
+    ut:equals(is, object)
+    is = ut:succeeds(par22.isa, par22, par1)
+    ut:equals(is, par1)
+    is = ut:succeeds(par22.isa, par22, par21)
+    ut:equals(is, nil)
+    is = ut:succeeds(par21.isa, par21, par22)
     ut:equals(is, nil)
 end
 
 function M.test:ctor(ut)
     local object = self.object
-    local obj1 = ut:succeeds(object)
-    ut:succeeds(obj1, { val1 = 1 })
-    local obj2 = ut:succeeds(obj1)
-    ut:succeeds(obj2, { val2 = 2 })
-    ut:equals(obj1.val1, 1)
-    ut:equals(obj2.val2, 2)
-    ut:equals(obj2.val1, 1)
+    local obj1 = ut:succeeds(object, {})
+    ut:fails(object)
+    ut:fails(object, 1)
+    ut:fails(object, 1, {})
+    ut:fails(object, "hiojo")
+    local obj11 = ut:succeeds(obj1, { val1 = 1 })
+    local obj12 = ut:succeeds(obj1, {})
+    ut:equals(obj11.val1, 1)
+    ut:equals(obj12.val1, nil)
+    ut:equals(obj1.val1, nil)
     obj1.val3 = 3
-    ut:equals(obj2.val3, obj1.val3)
+    ut:equals(obj1.val3, 3)
+    ut:equals(obj12.val3, obj1.val3)
+    ut:equals(obj11.val3, obj1.val3)
 end
 
 function M.test:cpy(ut)
@@ -147,6 +162,8 @@ function M.test:cpy(ut)
     local cpy1   = ut:succeeds(obj.cpy, obj)
     ut:equals(cpy1.val1, 1)
     cpy1.val2 = 2
+    ut:equals(cpy1.val2, 2)
+    ut:equals(obj.val2, nil)
     local cpy2 = ut:succeeds(cpy1.cpy, cpy1)
     ut:equals(cpy2.val1, cpy1.val1)
     ut:equals(cpy2.val2, cpy1.val2)
@@ -155,20 +172,38 @@ function M.test:cpy(ut)
 end
 
 function M.test:set(ut)
-    local object = self.object
-    local obj1   = object { val1 = 1 }
-    local obj2   = obj1   { val2 = 2 }
-    ut:succeeds(obj2.set, obj2, 3)
-    ut:equals(obj2.val3, 3)
-    ut:differs(obj1.val3, 3)
-    ut:succeeds(obj1.set, obj1, 4)
-    ut:equals(obj2.val4, 4)
-    ut:equals(obj1.val4, 4)
-    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
-    ut:equals(obj2.val5, 5)
-    ut:equals(obj1.val5, 5)
-    ut:equals(obj2.val6, 6)
-    ut:equals(obj1.val6, 6)
+    local object  = self.object
+    local obj1    = object { val1 = 1 }
+    local obj11   = obj1   { val2 = 2 }
+    local obj12   = obj1   {  }
+    ut:succeeds(obj11.set, obj11, { val3 = 3 })
+    ut:succeeds(obj11.set, obj11, { val5 = 5 })
+    ut:succeeds(obj12.set, obj12, { val4 = 4 })
+    ut:succeeds(obj12.set, obj12, { val6 = 6 })
+    ut:equals(obj1.val1, 1)
+    ut:equals(obj1.val2, nil)
+    ut:equals(obj1.val3, nil)
+    ut:equals(obj1.val4, nil)
+    ut:equals(obj1.val5, nil)
+    ut:equals(obj1.val6, nil)
+    ut:equals(obj11.val1, 1)
+    ut:equals(obj11.val2, 2)
+    ut:equals(obj11.val3, 3)
+    ut:equals(obj11.val4, nil)
+    ut:equals(obj11.val5, 5)
+    ut:equals(obj11.val6, nil)
+    ut:equals(obj12.val1, 1)
+    ut:equals(obj12.val2, nil)
+    ut:equals(obj12.val3, nil)
+    ut:equals(obj12.val4, 4)
+    ut:equals(obj12.val5, nil)
+    ut:equals(obj12.val6, 6)
+    ut:fails(obj1.set,obj1,1)
+    ut:fails(obj11.set,obj11,1)
+    ut:fails(obj12.set,obj12,1)
+    ut:fails(obj1.set,obj1)
+    ut:fails(obj11.set,obj11)
+    ut:fails(obj12.set,obj12)
 end
 
 
