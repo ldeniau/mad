@@ -12,10 +12,11 @@ DESCRIPTION
   it is received as an argument.
     lambda = { __lambda = func }
     string.xxx( lambda ) -> string.xxx( lambda.__lambda() )
-  Exception: string.dump
+  Exception:
     string.dump will dump the function, not the function called.
       lambda = { __lambda = func }
       string.dump( lambda ) -> string.dump( lambda.__lambda )
+    string.format. Lambdas sent to string.format will need to be explicitly called.
 
 RETURN VALUES
   The table of modules and services.
@@ -66,21 +67,6 @@ string.find = function (s, pattern, init, plain)
         plain = plain.__lambda()
     end
     return sfind(s, pattern, init, plain)
-end
-
-local sformat = string.format
-string.format = function (formatstring, ...)
-    while is_lambda(formatstring) do
-        formatstring = formatstring.__lambda()
-    end
-    local vararg = {}
-    for i,v in ipairs({...}) do
-        while is_lambda(v) do
-            v = v.__lambda()
-        end
-        vararg[#vararg+1] = v
-    end
-    return sformat(formatstring, table.unpack(vararg))
 end
 
 local sgmatch = string.gmatch

@@ -2,13 +2,18 @@ local M  = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-  mad.__lambda -- MAD module containing helper functions for the lambda-function.
+  mad.lambda.math
 
 SYNOPSIS
-  
+  Overloads the math-library to work with the lambda function
 
 DESCRIPTION
-  
+  All functions are overloaded to call the lambda function with no arguments if
+  it is received as an argument.
+  lambda = { __lambda = func }
+    math.xxx( lambda ) -> math.xxx( lambda.__lambda() )
+  Exceptions:
+    math.max/math.min won't work with deferred calls
 
 RETURN VALUES
   The table of modules and services.
@@ -153,36 +158,6 @@ math.log = function(x, base)
         base = base.__lambda()
     end
     return base and mlog(x, base) or mlog(x)
-end
-
-local mmax = math.max
-math.max = function(x, ...)
-    while is_lambda(x) do
-        x = x.__lambda()
-    end
-    local vararg = {}
-    for i,v in ipairs({...}) do
-        while is_lambda(v) do
-            v = v.__lambda()
-        end
-        vararg[#vararg+1] = v
-    end
-    return mmax(x, table.unpack(vararg))
-end
-
-local mmin = math.min
-math.min = function(x, ...)
-    while is_lambda(x) do
-        x = x.__lambda()
-    end
-    local vararg = {}
-    for i,v in ipairs({...}) do
-        while is_lambda(v) do
-            v = v.__lambda()
-        end
-        vararg[#vararg+1] = v
-    end
-    return mmin(x, table.unpack(vararg))
 end
 
 local mmodf = math.modf

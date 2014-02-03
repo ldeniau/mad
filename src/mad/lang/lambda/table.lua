@@ -10,6 +10,10 @@ SYNOPSIS
 DESCRIPTION
   All functions in the table library that takes a table as argument have been
   overloaded to call lambdas before doing the actual work.
+  lambda = { __lambda = func }
+    table.xxx( lambda ) -> table.xxx( lambda.__lambda() )
+  Exception:
+    table.pack. pack will park the lambda into a table, not the lambdas return value.
 
 RETURN VALUES
   The table of modules and services.
