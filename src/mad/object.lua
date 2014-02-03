@@ -16,14 +16,12 @@ DESCRIPTION
   of their parent, with callable semantic (i.e. constructor).
   
   The returned object has its parent (its constructor) set as metatable and
-  inherits all properties of it autmatically, hence implementing a prototype
+  inherits all properties of it automatically, hence implementing a prototype
   language.
 
   Hence an object is a 'table' that can be used as a constructor (a function)
   to create new instances of itself, an object (a table) or a class/parent
   (a metatable).
-
-  The string argument is stored into the property 'name' of the object.
 
 RETURN VALUES
   The new object
@@ -98,35 +96,43 @@ end
 -- tests -----------------------------------------------------------------------
 
 function M.test:setUp()
+    self.object = require"mad.object"
 end
 
 function M.test:tearDown()
+    self.object = nil
 end
 
 function M.test:spr(ut)
-    local object = M
-    local any = ut:succeeds(object, 'any')
-    local sup = ut:succeeds(any.super, any)
-    ut:equals(sup, object)
+    local object = self.object
+    local par1 = ut:succeeds(object, {})
+    local par1spr = ut:succeeds(par1.spr, par1)
+    ut:equals(par1spr, object)
+    local par2 = ut:succeeds(par1, {})
+    local par2spr = ut:succeeds(par2.spr, par2)
+    ut:equals(par2spr, par1)
+    ut:fails(object)
+    ut:fails(par2, "name")
+    ut:fails(par1, "name", {})
 end
 
 function M.test:isa(ut)
-    local object = M
-    local any = object "any" {  }
+    local object = self.object
+    local any = object {  }
     local is = ut:succeeds(any.isa, any, object.name)
     ut:equals(is, object)
     is = ut:succeeds(any.isa, any, object)
     ut:equals(is, object)
     ut:fails(any.isa, any, 1)
-    is = ut:succeeds(any.isa, any, "bollock")
+    is = ut:succeeds(any.isa, any)
     ut:equals(is, nil)
 end
 
 function M.test:ctor(ut)
-    local object = M
-    local obj1 = ut:succeeds(object, "obj1")
+    local object = self.object
+    local obj1 = ut:succeeds(object)
     ut:succeeds(obj1, { val1 = 1 })
-    local obj2 = ut:succeeds(obj1,   "obj2")
+    local obj2 = ut:succeeds(obj1)
     ut:succeeds(obj2, { val2 = 2 })
     ut:equals(obj1.val1, 1)
     ut:equals(obj2.val2, 2)
@@ -136,45 +142,26 @@ function M.test:ctor(ut)
 end
 
 function M.test:cpy(ut)
-    local object = M
-    local obj    = object "obj" { val1 = 1 }
-    local cpy1   = ut:succeeds(obj.cpy, obj, "cpy1")
+    local object = self.object
+    local obj    = object { val1 = 1 }
+    local cpy1   = ut:succeeds(obj.cpy, obj)
     ut:equals(cpy1.val1, 1)
     cpy1.val2 = 2
-    local cpy2 = ut:succeeds(cpy1.cpy, cpy1, "cpy2")
+    local cpy2 = ut:succeeds(cpy1.cpy, cpy1)
     ut:equals(cpy2.val1, cpy1.val1)
     ut:equals(cpy2.val2, cpy1.val2)
     cpy1.val3 = 3
     ut:differs(cpy2.val3, cpy1.val3)
 end
 
-function M.test:get(ut)
-    local object = M
-    local obj1   = object "obj1" { val1 = 1 }
-    local obj2   = obj1   "obj2" { val2 = 2 }
-    ut:succeeds(obj2.set, obj2, "val3", 3)
-    ut:equals(obj2:get("val3"), 3)
-    ut:differs(obj1:get("val3"), 3)
-    ut:succeeds(obj1.set, obj1, "val4", 4)
-    ut:equals(obj2:get("val4"), 4)
-    ut:equals(obj1:get("val4"), 4)
-    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
-    local a1,b1 = ut:succeeds(obj1.get, obj1, { "val5", "val6" })
-    local a2,b2 = ut:succeeds(obj2.get, obj2, { "val5", "val6" })
-    ut:equals(a2, 5)
-    ut:equals(a1, 5)
-    ut:equals(b2, 6)
-    ut:equals(b1, 6)
-end
-
 function M.test:set(ut)
-    local object = M
-    local obj1   = object "obj1" { val1 = 1 }
-    local obj2   = obj1   "obj2" { val2 = 2 }
-    ut:succeeds(obj2.set, obj2, "val3", 3)
+    local object = self.object
+    local obj1   = object { val1 = 1 }
+    local obj2   = obj1   { val2 = 2 }
+    ut:succeeds(obj2.set, obj2, 3)
     ut:equals(obj2.val3, 3)
     ut:differs(obj1.val3, 3)
-    ut:succeeds(obj1.set, obj1, "val4", 4)
+    ut:succeeds(obj1.set, obj1, 4)
     ut:equals(obj2.val4, 4)
     ut:equals(obj1.val4, 4)
     ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
@@ -184,25 +171,6 @@ function M.test:set(ut)
     ut:equals(obj1.val6, 6)
 end
 
-function M.test:unset(ut)
-    local object = M
-    local obj1   = object "obj1" { val1 = 1 }
-    local obj2   = obj1   "obj2" { val2 = 2 }
-    ut:succeeds(obj2.set, obj2, "val3", 3)
-    ut:succeeds(obj1.set, obj1, "val4", 4)
-    ut:succeeds(obj1.set, obj1, { val5 = 5, val6 = 6 })
-    ut:succeeds(obj2.unset, obj2, "val3")
-    ut:equals(obj2.val3, nil)
-    ut:differs(obj1.val3, 3)
-    ut:succeeds(obj1.unset, obj1, { "val4", "val5" })
-    ut:equals(obj2.val4, nil)
-    ut:equals(obj1.val4, nil)
-    ut:equals(obj2.val5, nil)
-    ut:equals(obj1.val5, nil)
-    ut:succeeds(obj2.unset, obj2, "val6")
-    ut:equals(obj2.val6, 6)
-    ut:equals(obj1.val6, 6)
-end
 
 -- end -------------------------------------------------------------------------
 return M
