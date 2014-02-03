@@ -36,7 +36,6 @@ end
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
 		errors:setCurrentChunkName(fileName)
-		local startTime = os.clock()
 		local gen = sourceCodeGenerator(errors)
 		local path, name, ext = fn.split(fileName)
 		local file = assert(io.open(fileName, 'r'))
@@ -57,8 +56,6 @@ call = function (_, options)
 		else
 			error(err)
 		end
-		local totalTime = os.clock() - startTime
-		print(string.format("elapsed time: %.2fs", totalTime))
 	end
 	if options.interactive then
 	    require"mad.lang.interactive".interactive(errors)
