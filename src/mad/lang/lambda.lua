@@ -55,16 +55,6 @@ setmetatable(M, { __call = function(_, func )
     return setmetatable({ __lambda = func1 }, mt)
 end })
 
-M.eval_lambda = function(a,...)
-    --if not a then return end
-    if not ... then
-        if is_lambda(a) then return M.eval_lambda(a()) end
-        return a
-    end
-    if is_lambda(a) then return M.eval_lambda(a()), M.eval_lambda(...) end
-    return a, M.eval_lambda(...)
-end
-
 local eval = function(lhs,rhs)
     if type(lhs) == "table" and lhs.__lambda then
         lhs = lhs.__lambda()        
