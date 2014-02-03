@@ -86,8 +86,10 @@ end
 -- constructor
 function MT:__call(a)
   if type(a) == 'table' then
-    self.__index = self         -- inheritance
-    self.__call  = MT.__call    -- constructor
+    if not rawget(self, '__call') then
+      self.__index = self         -- inheritance
+      self.__call  = MT.__call    -- constructor
+    end
     return setmetatable(a, self)
   end
   error ("invalid constructor argument, table expected")

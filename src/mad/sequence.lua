@@ -72,10 +72,10 @@ local function shadow_class(elem)
   return getmetatable(elem).__index:class()
 end
 
-local function shadow_element(elem)
+local function shadow_element(elem, i)
   return setmetatable(
     {i_pos=i, s_pos=1e100, class=shadow_class},
-    {__index=elem, __newindex=elem} )
+    {__index=elem, __newindex=elem})
 end
 
 -- search
