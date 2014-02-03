@@ -60,9 +60,22 @@ local function test_membership(seq, a)
 end
 
 local function show_list(t, list)
+  local a
   for _,v in ipairs(list) do
-    if t[v] then io.write(', ', v, '= ', tostring(t[v])) end
+    a = t[v]
+    if a then io.write(', ', v, '= ', tostring(a)) end
   end
+end
+
+-- shadow elements (special inheritance)
+local function shadow_class(elem)
+  return getmetatable(elem).__index:class()
+end
+
+local function shadow_element(elem)
+  return setmetatable(
+    {i_pos=i, s_pos=1e100, class=shadow_class},
+    {__index=elem, __newindex=elem} )
 end
 
 -- search
@@ -187,15 +200,9 @@ end
 
 -- construction
 local function add_element(self, elem)
-  if elem:is_class() then
-    elem = elem {}                    -- inherit from class
-  else
-    elem = elem:cpy()                 -- clone element
-  end
   local i = #self+1
-  self[i] = elem
-  elem.i_pos = i
-  add_element_key(self, elem)
+  self[i] = shadow_element(elem, i)
+  add_element_key(self, self[i])
 end
 
 local function add_sequence(self, seq, rev)

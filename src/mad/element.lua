@@ -36,33 +36,40 @@ local rawget, pairs = rawget, pairs
 local MT = object { name='meta_element' }
 
  -- root of all elements
-M.element = MT { name='element', is_element=true, kind='element' }
+M.element = MT { name='element', kind='element', is_element=true }
 
 -- functions -------------------------------------------------------------------
 
+-- transform elements to classes during first instanciation
 local function init(self)
   if not rawget(self, 'name') then
     error("classes must be named")
+  end
+  if rawget(self, 'kind') then
+    self['is_'..self.kind] = true   -- kind shortcut
   end
   self.__index  = self              -- inheritance
   self.__call   = MT.__call         -- constructor
   self.__mul    = MT.__mul          -- repetition
 end
 
-local special_field = {  name=true, s_pos=true, i_pos=true, __mul=true, __call=true, __index=true }
+local special_field = {  name=true,  s_pos=true,   i_pos=true,
+                        __mul=true, __call=true, __index=true }
 
-local function show_list(t, list)
+local function show_list(t, list, sep)
+  local a
   for _,v in ipairs(list) do
-    if t[v] then io.write(', ', v, '= ', tostring(t[v])) end
+    a = t[v]
+    if a then io.write(', ', v, sep, tostring(a)) end
   end
 end
 
-local function show_tree(self, depth)
+local function show_tree(self, depth, sep)
   for k,v in pairs(self) do
     if type(k) == 'number' then
       io.write(', ', tostring(v))
     elseif not special_field[k] then
-      io.write(', ', k, '= ', tostring(v))
+      io.write(', ', k, sep, tostring(v))
     end
   end
   if depth > 0 and not rawget(self:class(), 'kind') then
@@ -70,12 +77,12 @@ local function show_tree(self, depth)
   end
 end
 
-local function show_properties(self, disp)
+local function show_properties(self, disp, sep)
   disp = disp or 0
   if type(disp) == 'number' then
-    show_tree(self, disp)
+    show_tree(self, disp, sep)
   elseif type(disp) == 'table' then
-    show_list(self, disp)
+    show_list(self, disp, sep)
   else
     error("invalid show argument, depth level or list of fields expected")
   end
@@ -83,13 +90,8 @@ end
 
 -- methods ---------------------------------------------------------------------
 
-function MT:class() -- same as obj:spr() but more 'common' for MAD element
+function MT:class() -- idem obj:spr() but more 'common' in MAD world
   return getmetatable(self)
-end
-
-function MT:toclass()
-  init(self)
-  return self
 end
 
 function MT:is_class()
@@ -98,19 +100,19 @@ end
 
 function MT:show(disp)
   io.write('  ', self:class().name, " '", self.name, "' { at= ", self.s_pos)
-  show_properties(self, disp)
+  show_properties(self, disp, '= ')
   io.write(' }\n')
 end
 
 function MT:show_madx(disp)
-  io.write('  ', self.name, ': ', self:class().name, ',\t\t at= ', self.s_pos)
-  show_properties(self, disp)
+  io.write('  ', self.name, ': ', self:class().name, ',\t\t at:= ', self.s_pos)
+  show_properties(self, disp, ':= ')
   io.write(';\n')
 end
 
 -- metamethods -----------------------------------------------------------------
 
--- constructor of elements, can be anonymous
+-- constructor of elements, can be unamed (inherit its name)
 function MT:__call(a)
   if type(a) == 'string' then   -- class 'name' { ... }
     return function(t)
