@@ -21,7 +21,6 @@ SEE ALSO
 
 -- require ------------------------------------------------------------------
 local tableUtil = require('lua.tableUtil')
-local context = require"mad.lang.context.context"
 
 -- defs -----------------------------------------------------------------------
 
