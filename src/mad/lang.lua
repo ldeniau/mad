@@ -34,6 +34,7 @@ local options = require"mad.core.options"
 -- module ---------------------------------------------------------------------
 local parsers = {
 	lua = require"mad.lang.lua.parser",
+	madx = require"mad.lang.madx.parser",
 }
 
 local currentKey
@@ -65,6 +66,7 @@ end
 -- test -----------------------------------------------------------------------
 function M.test:getParser(ut)
 	ut:succeeds(M.getParser, "lua")
+	ut:succeeds(M.getParser, "sequence")
 	ut:fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
 end
 
@@ -77,6 +79,7 @@ end
 
 function M.test:self(ut)
     require"mad.core.unitTest".addModuleToTest("mad.lang.lua.parser")
+    require"mad.core.unitTest".addModuleToTest("mad.lang.madx.parser")
 end
 
 -- end ------------------------------------------------------------------------
