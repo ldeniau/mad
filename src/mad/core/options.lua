@@ -70,20 +70,6 @@ local function processProfiler(arg)
     require"jit.p".start(profilerArgs, output)
 end
 
-local function processBenchmark(arg)
-    M.benchmark = {}
-    if arg[1] and (#arg > 1 or string.find(arg[1], "%s")) then
-        local index = string.find(arg[1], "%-")
-        if not index or index ~= 1 then
-            local tobench = table.remove(arg,1)
-            for name in string.gmatch(tobench, "(%S+)") do
-                M.benchmark[#M.benchmark + 1] = name
-            end
-        end
-    end
-    return arg
-end
-
 local function processArgs(arg)
     local handlingArgs = true
     local index = string.find(arg[1], "%-")
@@ -101,9 +87,8 @@ local function processArgs(arg)
         elseif opt == "-profile" then
             M.profile = true
             processProfiler(arg)
-        elseif opt == "-benchmark" then
-            M.benchmark = true
-            processBenchmark(arg)
+        elseif opt == "-lambdatable" then
+            M.lambdatable = true
         else
             error("Unhandled argument "..opt)
         end

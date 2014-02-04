@@ -36,7 +36,7 @@ end
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
 		errors:setCurrentChunkName(fileName)
-		local gen = sourceCodeGenerator(errors)
+		local gen = sourceCodeGenerator(errors, options.lambdatable)
 		local path, name, ext = fn.split(fileName)
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')

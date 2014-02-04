@@ -1,12 +1,15 @@
 local test = {}
     
 function test:setUp()
-    local errors = require"mad.lang.errors"()
-    errors:setCurrentChunkName("test")
-    self.mod = require"mad.lang.generator.source"(errors)
+    self.errors = require"mad.lang.errors"()
+    self.errors:setCurrentChunkName("test")
+    self.module = require"mad.lang.generator.source"
+    self.mod = self.module(self.errors)
 end
 
 function test:tearDown()
+    self.module = nil
+    self.errors = nil
     self.mod = nil
 end
 
@@ -270,6 +273,22 @@ function test:grpexpr(ut)
     ut:equals(tostring(self.mod.writer), [[( 1 )]])
 end
 
+function test:lambda_unsafe(ut)
+    local generator = self.module(self.errors,true)
+    generator:render{ ast_id = "fundef", kind = "lambda", param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(generator.writer), [[
+require"mad.lang.lambda"( function ( a, b )
+    break
+end )]])
+end
+
+function test:lambda(ut)
+    self.mod:render{ ast_id = "fundef", kind = "lambda", param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
+    ut:equals(tostring(self.mod.writer), [[
+function ( a, b )
+    break
+end]])
+end
 function test:fundef_a(ut)
     self.mod:render{ ast_id = "fundef", param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[

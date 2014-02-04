@@ -178,7 +178,27 @@ function dict:genfor_stmt(node)
     self:write("end")
 end
 
+local function lambda(self, node)
+    self:write([[require"mad.lang.lambda"( function ( ]])
+    if node.param then
+        for i,v in ipairs(node.param) do
+            self:render(v)
+            if i ~= #node.param then
+                self:write(", ")
+            end
+        end
+    end
+    self:write(" )")
+    self:render(node.block)
+    self.writer:writeln()
+    self:write("end )")
+end
+
 function dict:fundef(node)
+    if node.kind == "lambda" and self.lambda then
+        lambda(self, node)
+        return
+    end
     if node.kind == "local" then
         self:write("local ")
     end
@@ -337,8 +357,9 @@ local function generate (self, tree)
     return tostring(self.writer)
 end
 
-call = function (_, errors, ...)
+call = function (_, errors, lambda, ...)
     local self = {
+        lambda = lambda or nil,
         errors = errors,
         writer = writer:new(),
         render = render,
