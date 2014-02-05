@@ -21,6 +21,7 @@ SEE ALSO
 
 -- require ------------------------------------------------------------------
 local tableUtil = require('lua.tableUtil')
+local lower     = string.lower
 
 -- defs -----------------------------------------------------------------------
 
@@ -116,10 +117,22 @@ function defs.chunk( block )
                         { { ast_id = "literal", value = '"mad.sequence"'} }
                     }
                 },
+                { ast_id = "assign", kind = "local",
+                lhs = 
+                    { ast_id = "name", name = "elem"},
+                rhs = 
+                    { ast_id = "funcall", 
+                    name = 
+                        { ast_id = "name", name = "require" },
+                    arg =
+                        { { ast_id = "literal", value = '"mad.element"'} }
+                    }
+                },
                 block } }
 end
 
 -- stmt
+local seqedit = nil
 
 function defs.assign( lhs, rhs )
     _M[lhs.name] = "const"
@@ -137,8 +150,80 @@ function defs.defassign( lhs, rhs )
             }
 end
 
+local sequenceAddition( name, class, ... )
+    local attrtbl = {}
+    local at, from
+    for _,v in ipairs{...} do
+        if v.kind and v.kind == "name" and v.key == "at" then
+            at = { ast_id = "tblfld", kind = "name", key = { ast_id = "name", name = "at" }, value = v.value }
+        elseif v.kind and v.kind == "name" and v.key == "from" then
+            from = { ast_id = "tblfld", kind = "name", key = { ast_id = "name", name = "from" }, value = v.value }
+        else
+            attrtbl[#attrtbl+1] = v
+        end
+    end
+    return { ast_id = "expr", 
+                seqedit,
+                '+',
+                { ast_id = "tbldef", 
+                    { ast_id = "tblfld", 
+                    value = 
+                        { ast_id = "funcall", arg = attrtbl,
+                        name = 
+                            { ast_id = "funcall", arg = { name.name }, name = class }
+                        }
+                    },
+                    at or from, -- Strictly speaking unecessary, as you will never have from without at...
+                    at and from
+                },
+            }
+end
+
 function defs.lblstmt ( name, class, ... ) -- ... = attrlist
-    
+    _M[name.name] = "label"
+    if seqedit then
+        return sequenceAddition(name, class, ...) 
+    end
+    if string.lower(class.name) == "sequence" then
+        seqedit = name
+    end
+    return { ast_id = "assign", line = defs._line,
+            lhs = 
+                name,
+            rhs = 
+                { ast_id = "funcall",
+                name = 
+                    { ast_id = "funcall", name = class, arg = { name.name } },
+                arg =
+                    { ast_id = "tbldef", ... }
+                }
+            }
+end
+
+function defs.cmdstmt ( class, ... )
+    if _M[class.name] == "label" then -- it's an update
+        return { ast_id = "funcall", kind = ':',
+                selfname = { ast_id = "name", name = "set" },
+                name = class, arg = { ... } }
+    end
+    if seqedit and string.lower(class.name) == "endsequence" then
+        seqedit = nil
+        return { ast_id = "funcall", kind = ":",
+                name = seqedit,
+                selfname =
+                    { ast_id = "name", name = "done" },
+                arg = {}
+                }
+    end
+    return { ast_id = "funcall", name = class },
+            arg = { ast_id = "tbldef", ... } }
+end
+
+function defs.attr ( val )
+    if val.ast_id == "assign" then
+        return { ast_id = "tblfld", kind = "name", key = val.lhs, value = val.rhs }
+    end
+    return { ast_id = "tblfld", value = val }
 end
 
 

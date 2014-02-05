@@ -24,20 +24,21 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- ((''=>setup) {(stmt s';'sp)* (retstmt s';'sp)?}  s(!./''=>error))    -> chunk
+    chunk       <- ((''=>setup) {(stmt s';'sp)*}  s(!./''=>error))    -> chunk
 
 -- statement
     
-    stmt        <- assignment / defassign / lblstmt / prcdstmt
-    assign      <- (real? const? name s'='sp exp                                    sp) -> assign
-    defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
-    lblstmt     <- (name s':'sp name (s','sp attrlist)?                             sp) -> lblstmt
-    prcdstmt    <- (name s','?sp attrlist?                                          sp) -> 
-    
-    attrlist    <- attr (s','sp attr)*
-    attr        <- (name s'=' exp / name s':'s'=' exp / exp                         sp) -> 
-    
+    stmt        <- assignstmt / defassign / lblstmt / cmdstmt / retstmt
+    assignstmt  <- real? const? assign
+    lblstmt     <- (name s':'sp name (s','?sp attrlist)?                            sp) -> lblstmt
+    cmdstmt     <- (name s','?sp attrlist?                                          sp) -> cmdstmt
     retstmt     <- (return explist?                                                 sp) -> retstmt
+    assign      <- (name s'='sp exp                                                 sp) -> assign
+    defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
+    
+    attr        <- (assign / defassign / exp                                        sp) -> attr
+    attrlist    <- attr (s','sp attr)*
+    
 
 -- expressions
 
