@@ -35,7 +35,7 @@ end
 
 function M.stringTable(t,level)
 	local n = level or 0
-	local ret = ""
+	local ret = {}
 	local tabs = ""
 		for i = 1, n do
 			tabs = tabs.."-"
@@ -43,17 +43,17 @@ function M.stringTable(t,level)
 	if type(t) == "table" then
 		n = n + 1
 		for i,v in pairs(t) do
-			ret = ret..tabs..tostring(i).."\n"
-			ret = ret..M.stringTable(v, n)
+			ret[#ret+1] = tabs..tostring(i).."\n"
+			ret[#ret+1] = M.stringTable(v, n)
 		end
 	else
 		if t~=nil then
-			ret = ret..tabs..tostring(t).."\n"
+			ret[#ret+1] = tabs..tostring(t).."\n"
 		else
-			ret = ret..tabs.."nil".."\n"
+			ret[#ret+1] = tabs.."nil".."\n"
 		end
 	end
-	return ret
+	return table.concat(ret)
 end
 
 -- end ------------------------------------------------------------------------
