@@ -35,6 +35,7 @@ local options = require"mad.core.options"
 local parsers = {
 	lua = require"mad.lang.lua.parser",
 	madx = require"mad.lang.madx.parser",
+	mad = require"mad.lang.mad.parser",
 }
 
 local currentKey
@@ -76,6 +77,7 @@ end
 
 function M.test:self(ut)
     require"mad.core.unitTest".addModuleToTest("mad.lang.lua.parser")
+    require"mad.core.unitTest".addModuleToTest("mad.lang.mad.parser")
     require"mad.core.unitTest".addModuleToTest("mad.lang.madx.parser")
 end
 
