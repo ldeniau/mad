@@ -2,10 +2,10 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.lang.generator.source
+  mad.lang.generator.lua
 
 SYNOPSIS
-  local source_ctor = require"mad.lang.generator.source"
+  local source_ctor = require"mad.lang.generator.lua"
   local source      = source_ctor(error_map_instance)
   local source_code = source:generate(ast)
   
@@ -351,9 +351,6 @@ end
 
 local function generate (self, tree)
     local code = self:render(tree)
-    if options.dumpSource then
-        print(tostring(self.writer))
-    end
     return tostring(self.writer)
 end
 
