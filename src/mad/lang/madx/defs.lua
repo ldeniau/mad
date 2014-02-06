@@ -22,6 +22,8 @@ SEE ALSO
 -- require ------------------------------------------------------------------
 local tableUtil = require('lua.tableUtil')
 local lower     = string.lower
+                  require"mad.madxenv"
+_M.__name = _M.__name or {}
 
 -- defs -----------------------------------------------------------------------
 
@@ -91,143 +93,156 @@ function defs.error(str, pos)
 end
 
 -- block and chunk
-
-function defs.chunk( block )
-    return { ast_id = "chunk", line = defs._line, block = 
-                { ast_id = "block_stmt", 
-                { ast_id = "assign", kind = "local",
-                lhs = 
-                    { ast_id = "name", name = "env"},
-                rhs = 
-                    { ast_id = "funcall", 
-                    name = 
-                        { ast_id = "name", name = "require" },
-                    arg =
-                        { { ast_id = "literal", value = '"mad.env"'} }
-                    }
-                },
-                { ast_id = "assign", kind = "local",
-                lhs = 
-                    { ast_id = "name", name = "seq"},
-                rhs = 
-                    { ast_id = "funcall", 
-                    name = 
-                        { ast_id = "name", name = "require" },
-                    arg =
-                        { { ast_id = "literal", value = '"mad.sequence"'} }
-                    }
-                },
-                { ast_id = "assign", kind = "local",
-                lhs = 
-                    { ast_id = "name", name = "elem"},
-                rhs = 
-                    { ast_id = "funcall", 
-                    name = 
-                        { ast_id = "name", name = "require" },
-                    arg =
-                        { { ast_id = "literal", value = '"mad.element"'} }
-                    }
-                },
-                block } }
+local ch = {}
+function defs.chunk( )
+    table.insert(ch,1, { ast_id = "assign", kind = "local",
+    lhs = {
+        { ast_id = "name", name = "env"},
+        },
+    rhs = {
+        { ast_id = "funcall", 
+        name = 
+            { ast_id = "name", name = "require" },
+        arg =
+            { { ast_id = "literal", value = '"mad.madxenv"'} }
+        }
+        },
+    })
+    table.insert(ch,1, { ast_id = "assign", kind = "local",
+    lhs = {
+        { ast_id = "name", name = "seq"},
+        },
+    rhs = {
+        { ast_id = "funcall", 
+        name = 
+            { ast_id = "name", name = "require" },
+        arg =
+            { { ast_id = "literal", value = '"mad.sequence"'} }
+        }
+        },
+    })
+    table.insert(ch,1, { ast_id = "assign", kind = "local",
+    lhs = {
+        { ast_id = "name", name = "elem"},
+        },
+    rhs = {
+        { ast_id = "funcall", 
+        name = 
+            { ast_id = "name", name = "require" },
+        arg =
+            { { ast_id = "literal", value = '"mad.element"'} }
+        }
+        }
+    })
+    ch.ast_id = "block_stmt"
+    return { ast_id = "chunk", block = ch }
 end
 
 -- stmt
+
+function defs.stmt( _, _, val )
+    table.insert(ch, val)
+    return true
+end
+
 local seqedit = nil
 
 function defs.assign( lhs, rhs )
-    _M[lhs.name] = "const"
-    return { ast_id = "assign", line = defs._line, lhs = lhs, rhs = rhs }
+    _M.__name[lhs.name] = "const"
+    return { ast_id = "assign", line = defs._line, lhs = {lhs}, rhs = {rhs} }
 end
 
 function defs.defassign( lhs, rhs )
-    _M[lhs.name] = "lambda"
-    return { ast_id = "assign", line = defs._line, lhs = lhs, 
-            rhs = 
+    _M.__name[lhs.name] = "lambda"
+    return { ast_id = "assign", line = defs._line, lhs = {lhs}, 
+            rhs = {
                 { ast_id = "fundef", kind = "lambda", line = defs._line, param = {}, 
                 block = 
                     { ast_id = "block_stmt", { ast_id = "ret_stmt", rhs } }
                 }
+                }
             }
 end
 
-local sequenceAddition( name, class, ... )
-    local attrtbl = {}
+local function sequenceAddition( name, class, ... )
+    local attrtbl = { ast_id = "tbldef"}
     local at, from
     for _,v in ipairs{...} do
-        if v.kind and v.kind == "name" and v.key == "at" then
-            at = { ast_id = "tblfld", kind = "name", key = { ast_id = "name", name = "at" }, value = v.value }
-        elseif v.kind and v.kind == "name" and v.key == "from" then
-            from = { ast_id = "tblfld", kind = "name", key = { ast_id = "name", name = "from" }, value = v.value }
+        if v.kind and v.kind == "name" and v.key.name == "at" then
+            at = v
+        elseif v.kind and v.kind == "name" and v.key.name == "from" then
+            from = v
         else
             attrtbl[#attrtbl+1] = v
         end
     end
-    return { ast_id = "expr", 
-                seqedit,
+    return { ast_id = "expr",
                 '+',
                 { ast_id = "tbldef", 
                     { ast_id = "tblfld", 
                     value = 
-                        { ast_id = "funcall", arg = attrtbl,
+                        { ast_id = "funcall", arg = {attrtbl},
                         name = 
-                            { ast_id = "funcall", arg = { name.name }, name = class }
+                            { ast_id = "funcall", arg = { { ast_id = "literal", value = '"'..name.name..'"' } }, name = class }
                         }
                     },
-                    at or from, -- Strictly speaking unecessary, as you will never have from without at...
+                    at,
                     at and from
                 },
             }
 end
 
 function defs.lblstmt ( name, class, ... ) -- ... = attrlist
-    _M[name.name] = "label"
+    _M.__name[name.name] = "label"
     if seqedit then
         return sequenceAddition(name, class, ...) 
     end
-    if string.lower(class.name) == "sequence" then
+    if class.name == "sequence" then
         seqedit = name
     end
     return { ast_id = "assign", line = defs._line,
-            lhs = 
+            lhs = {
                 name,
-            rhs = 
+                },
+            rhs = {
                 { ast_id = "funcall",
                 name = 
-                    { ast_id = "funcall", name = class, arg = { name.name } },
+                    { ast_id = "funcall", name = class, arg = { { ast_id = "literal", value = '"'..name.name..'"' } } },
                 arg =
-                    { ast_id = "tbldef", ... }
+                    {{ ast_id = "tbldef", ... }}
+                }
                 }
             }
 end
 
 function defs.cmdstmt ( class, ... )
-    if _M[class.name] == "label" then -- it's an update
+    if _M.__name[class.name] == "label" then -- it's an update
         return { ast_id = "funcall", kind = ':',
                 selfname = { ast_id = "name", name = "set" },
-                name = class, arg = { ... } }
+                name = class, arg = { { ast_id = "tbldef", ... } } }
     end
-    if seqedit and string.lower(class.name) == "endsequence" then
+    if seqedit and class.name == "endsequence" then
+        local name = seqedit
         seqedit = nil
         return { ast_id = "funcall", kind = ":",
-                name = seqedit,
+                name = name,
                 selfname =
                     { ast_id = "name", name = "done" },
                 arg = {}
                 }
     end
-    return { ast_id = "funcall", name = class },
-            arg = { ast_id = "tbldef", ... } }
+    return { ast_id = "funcall", name = class,
+            arg = {{ ast_id = "tbldef", ... }} }
 end
 
 function defs.attr ( val )
     if val.ast_id == "assign" then
-        return { ast_id = "tblfld", kind = "name", key = val.lhs, value = val.rhs }
+        return { ast_id = "tblfld", kind = "name", key = val.lhs[1], value = val.rhs[1] }
     end
     return { ast_id = "tblfld", value = val }
 end
 
-
-function defs.retstmt( ... )
+function defs.retstmt( _, ... )
     return { ast_id = "ret_stmt", line = defs._line, ... }
 end
 
@@ -276,7 +291,9 @@ function defs.literal(val)
 end
 
 function defs.name(name)
-    return { ast_id = "name", name = name, line = defs._line }
+    name = string.gsub(name, '(_)', '__')
+    name = string.gsub(name, '(%.)', '_')
+    return { ast_id = "name", name = lower(name), line = defs._line }
 end
 
 

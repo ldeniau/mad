@@ -21,7 +21,7 @@ SEE ALSO
 local fn = require"mad.core.fileName"
 local lang = require"mad.lang"
 local tableUtil = require"lua.tableUtil"
-local sourceCodeGenerator = require"mad.lang.generator.source"
+local generator = require"mad.lang.generator"
 local errors = require"mad.lang.errors"()
 
 -- metamethods ----------------------------------------------------------------
@@ -36,26 +36,36 @@ end
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
 		errors:setCurrentChunkName(fileName)
-		local gen = sourceCodeGenerator(errors, options.lambdatable)
 		local path, name, ext = fn.split(fileName)
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')
 		file:close()
-		local parser = lang.getParser(ext)
-		local source = gen:generate(parser:parse(inputStream, fileName))
-		local loadedCode, err = load(source,'@'..fileName)
-		if loadedCode then
-			local status, result = xpcall(loadedCode, function(_err)
-				err = _err
-				trace = debug.traceback("",2)
-            end)
-			if not status then
-				io.stderr:write(errors:handleError(err,trace).."\n")
-				os.exit(-1)
-			end
-		else
-			error(err)
-		end
+		local parser = lang.getParser(ext, 0, gen)
+        if options.dump and options.dump == "ast" then
+            io.write(tableUtil.stringTable(parser:parse(inputStream, fileName)))
+            io.write'\n'
+            return
+        end
+        local gen = generator.getGenerator(options.generator, errors, options.lambdatable)
+        local source = gen:generate(parser:parse(inputStream, fileName))
+		if options.dump and options.dump ~= "ast" then
+		    io.write(source)
+            io.write'\n'
+	    else
+		    local loadedCode, err = load(source,'@'..fileName)
+		    if loadedCode then
+			    local status, result = xpcall(loadedCode, function(_err)
+				    err = _err
+				    trace = debug.traceback("",2)
+                end)
+			    if not status then
+				    io.stderr:write(errors:handleError(err,trace).."\n")
+				    os.exit(-1)
+			    end
+		    else
+			    error(err)
+		    end
+	    end
 	end
 	if options.interactive then
 	    require"mad.lang.interactive".interactive(errors)

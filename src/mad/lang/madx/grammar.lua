@@ -7,10 +7,10 @@ NAME
   mad.lang.lua.grammar
 
 SYNOPSIS
-  local grammar = require"mad.lang.lua.grammar".grammar
+  local grammar = require"mad.lang.madx.grammar".grammar
   
 DESCRIPTION
-  Returns the regex-based grammar of Lua.
+  Returns the regex-based grammar of MAD-X.
 
 RETURN VALUES
   The grammar
@@ -24,20 +24,21 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- ((''=>setup) {(stmt s';'sp)*}  s(!./''=>error))    -> chunk
+    chunk       <- ((''=>setup) (stmt s';'sp)* s(!./''=>error))                         -> chunk
 
 -- statement
     
-    stmt        <- assignstmt / defassign / lblstmt / cmdstmt / retstmt
-    assignstmt  <- real? const? assign
+    stmt        <- (s( assignstmt / defassign / lblstmt / cmdstmt / retstmt )       sp) => stmt
+    assignstmt  <- (real? const? assign)
     lblstmt     <- (name s':'sp name (s','?sp attrlist)?                            sp) -> lblstmt
     cmdstmt     <- (name s','?sp attrlist?                                          sp) -> cmdstmt
     retstmt     <- (return explist?                                                 sp) -> retstmt
+    
     assign      <- (name s'='sp exp                                                 sp) -> assign
     defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
     
     attr        <- (assign / defassign / exp                                        sp) -> attr
-    attrlist    <- attr (s','sp attr)*
+    attrlist    <- (attr (s','sp attr)*)
     
 
 -- expressions
@@ -62,7 +63,7 @@ M.grammar = [=[
 
     sumop       <- s{'+' / '-'} sp
     prodop      <- s{'*' / '/'} sp
-    unop        <- s{'-' / '+'} sp
+    unop        <- s({'-'} / '+') sp -- Implicit + if - isn't present.
     powop       <- s{'^'} sp
     
 -- keywords
@@ -75,7 +76,7 @@ M.grammar = [=[
     
 -- lexems
 
-    literal     <- (s{"nil" / "false" / "true" / number / string}                   sp) -> literal
+    literal     <- (s{number / string}                                              sp) -> literal
     
     name        <- ((s !keyword {ident})                                            sp) -> name
     string      <- s(sstring)
@@ -114,9 +115,6 @@ M.grammar = [=[
 --if mad_loadtest then
 M.test = require "mad.lang.lua.test.grammar"
 --end]]
-
-
-
 
 -- end ------------------------------------------------------------------------
 

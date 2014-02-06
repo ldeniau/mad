@@ -50,9 +50,6 @@ M.getParser = function (key, line)
 		currentKey = key
 		local ast = parse(self, inputStream, fileName, pos, line)
 		ast.fileName = fileName
-		if options.dumpAst then
-			tableUtil.printTable(ast)
-		end
 		return ast
 	end
 	p.parse = modifiedParse
@@ -66,7 +63,7 @@ end
 -- test -----------------------------------------------------------------------
 function M.test:getParser(ut)
 	ut:succeeds(M.getParser, "lua")
-	ut:succeeds(M.getParser, "sequence")
+	ut:succeeds(M.getParser, "madx")
 	ut:fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
 end
 

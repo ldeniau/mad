@@ -25,7 +25,6 @@ SEE ALSO
 
 local re      = require"lib.lpeg.re"
 local grammar = require"mad.lang.madx.grammar".grammar
-local rmDot   = require"mad.lang.madx.parserRmDot"
 local defs    = require"mad.lang.madx.defs".defs
 local utest   = require"mad.core.unitTest"
 
@@ -41,7 +40,6 @@ end
 -- module ---------------------------------------------------------------------
 
 local parse = function (self, str, fileName, pos, line)
-    local str = self.rmDot:parse(str)
 	defs._line = line
 	local ast = self.grammar:match(str, position)
 	return ast
@@ -50,7 +48,6 @@ end
 call = function (_, ...)
 	local self = {}
 	self.parse = parse
-	self.rmDot = rmDot()
 	self.grammar = re.compile(grammar, defs)
 	return self
 end
