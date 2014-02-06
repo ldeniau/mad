@@ -40,8 +40,17 @@ end
 -- module ---------------------------------------------------------------------
 
 local parse = function (self, str, fileName, pos, line)
+    local start = os.clock()
+    --[[local ast = { ast_id = "chunk", block = { ast_id = "block_stmt" } }
 	defs._line = line
-	local ast = self.grammar:match(str, position)
+	local stmt, pos = self.grammar:match(str, pos)
+	while stmt and type(stmt) == "table" do
+	    ast.block[#ast.block+1] = stmt
+	    stmt, pos = self.grammar:match(str, pos)
+	end]]
+	local ast = self.grammar:match(str,pos)
+	local stop = os.clock()
+	print("TIME SPENT: ", stop-start)
 	return ast
 end
 

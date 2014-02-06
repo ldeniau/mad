@@ -25,6 +25,7 @@ M.grammar = [=[
 -- top level rules
 
     chunk       <- ((''=>setup) (stmt s';'sp)* s(!./''=>error))                         -> chunk
+    --safe        <- ((stmt s';'sp {} / s !. / (''=>error))                           sp) -> safe
 
 -- statement
     

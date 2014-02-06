@@ -148,6 +148,10 @@ end
 
 -- stmt
 
+function defs.safe( val, pos )
+    return val, pos
+end
+
 function defs.stmt(_,_, val )
     table.insert(ch, val)
     return true
