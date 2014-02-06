@@ -92,6 +92,14 @@ function defs.error(str, pos)
     end
 end
 
+local function translatename(name)
+    name = string.gsub(name, '(_)', '__')
+    name = string.gsub(name, '(%.)', '_')
+    name = string.gsub(name, '($)', '')
+    name = lower(name)
+    return name
+end
+
 -- block and chunk
 local ch = {}
 function defs.chunk( )
@@ -140,7 +148,7 @@ end
 
 -- stmt
 
-function defs.stmt( _, _, val )
+function defs.stmt(_,_, val )
     table.insert(ch, val)
     return true
 end
@@ -183,7 +191,7 @@ local function sequenceAddition( name, class, ... )
                     value = 
                         { ast_id = "funcall", arg = {attrtbl},
                         name = 
-                            { ast_id = "funcall", arg = { { ast_id = "literal", value = '"'..name.name..'"' } }, name = class }
+                            { ast_id = "funcall", arg = { { ast_id = "literal", value = "'"..name.strname.."'" } }, name = class }
                         }
                     },
                     at,
@@ -291,9 +299,7 @@ function defs.literal(val)
 end
 
 function defs.name(name)
-    name = string.gsub(name, '(_)', '__')
-    name = string.gsub(name, '(%.)', '_')
-    return { ast_id = "name", name = lower(name), line = defs._line }
+    return { ast_id = "name", name = translatename(name), strname = name, line = defs._line }
 end
 
 
