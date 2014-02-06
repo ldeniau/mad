@@ -17,8 +17,7 @@ DESCRIPTION
   Options:
     -profiler "profilerArgs"   - Must be last option
     -utest "list of filenames" - starts unit tests of the files given.
-    -dumpAst                   - dumps the AST of the parsed files
-    -dumpSource                - dumps the created source code
+    -dump "to_be_dumped"       - dumps the AST or source code of the parsed files
     -interactive               - starts interactive mode once all files have been finished
     -i                         - same as -interactive
     -benchmark "list of names" - looks in mad.benchmark after a file with name and runs it.
@@ -28,8 +27,7 @@ RETURN VALUES
   options.files       - A list of files to be parsed and run
   options.utest       - A list of modules to be unit tested
   options.benchmark   - A list of modules to be benchmarked
-  options.dumpAst     - Whether the AST should be printed or not
-  options.dumpSource  - Whether the generated source code should be printed or not
+  options.dump        - What should be dumped, if anything
   options.profile     - Whether the profiler is running or not
   options.interactive - Whether interactive mode should be started or not
 
@@ -80,10 +78,9 @@ local function processArgs(arg)
             processUTest(arg)
         elseif opt == "-interactive" or opt == "-i" then
             M.interactive = true
-        elseif opt == "-dumpAst" then
-            M.dumpAst = true
-        elseif opt == "-dumpSource" then
-            M.dumpSource = true
+        elseif opt == "-dump" then
+            M.dump = table.remove(arg,1)
+            if M.dump ~= "ast" then M.generator = M.dump end
         elseif opt == "-profile" then
             M.profile = true
             processProfiler(arg)
@@ -95,6 +92,7 @@ local function processArgs(arg)
         if #arg == 0 then break end
         index = string.find(arg[1], "%-")
     end
+    if not M.generator then M.generator = "lua" end
     return arg
 end
 
