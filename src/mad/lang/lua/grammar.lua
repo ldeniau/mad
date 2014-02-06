@@ -30,7 +30,7 @@ M.grammar = [=[
 -- statements
 
     stmt        <- s(
-                      (include s{string}                                            sp) => include
+                      (include s{string}                                           sp) => include
                     / ';'sp / label / (break                                        sp) -> breakstmt 
                     / (goto name                                                    sp) -> gotostmt
                     / (do_block                                                     sp) -> dostmt 
@@ -173,7 +173,7 @@ M.grammar = [=[
     true        <- s'true'     e sp
     until       <- s'until'    e sp
     while       <- s'while'    e sp
-    include     <- s'include'  e sp
+    include     <- s'@include' e sp
     
 -- comments
 
