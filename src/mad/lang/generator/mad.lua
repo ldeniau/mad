@@ -89,16 +89,22 @@ function dict:funcall(node)
         self:write(":")
         self:render(node.selfname)
     end
-    self:write("( ")
-    if node.arg then
-        for i,v in ipairs(node.arg) do
-            self:render(v)
-            if i ~= #node.arg then
-                self:write(", ")
+    if node.arg and #node.arg == 1 and node.arg[1].ast_id == "literal" and string.find(node.arg[1].value, [==[["'[]]==]) then
+        self:render(node.arg[1])
+    elseif node.arg and #node.arg == 1 and node.arg[1].ast_id == "tbldef" then
+        self:render(node.arg[1])
+    else
+        self:write("( ")
+        if node.arg then
+            for i,v in ipairs(node.arg) do
+                self:render(v)
+                if i ~= #node.arg then
+                    self:write(", ")
+                end
             end
         end
+        self:write(" )")
     end
-    self:write(" )")
 end
 
 function dict:label_stmt(node)
