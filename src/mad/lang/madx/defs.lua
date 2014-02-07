@@ -185,6 +185,7 @@ local function sequenceAddition( name, class, ... )
             at = v
         elseif v.kind and v.kind == 'name' and v.key.name == 'from' then
             from = v
+            from.value = { ast_id = "literal", value = "'"..v.value.strname.."'" }
         else
             attrtbl[#attrtbl+1] = v
         end
@@ -208,7 +209,8 @@ local function sequenceAddition( name, class, ... )
                     },
                     at,
                     at and from
-                }, }
+                }
+                }
             }
 end
 
@@ -227,7 +229,7 @@ function defs.lblstmt ( name, class, ... ) -- ... = attrlist
             rhs = {
                 { ast_id = 'funcall',
                 name = 
-                    { ast_id = 'funcall', name = class, arg = { { ast_id = 'literal', value = '"'..name.name..'"' } } },
+                    { ast_id = 'funcall', name = class, arg = { { ast_id = 'literal', value = "'"..name.strname.."'" } } },
                 arg =
                     {{ ast_id = 'tbldef', ... }}
                 }
