@@ -1,6 +1,6 @@
 local M = { help = {}, test = {} }
 
-M.help = [[
+M.help.self = [[
 NAME
   lua.process
   
@@ -25,14 +25,14 @@ local function read(self,...)
 end
 
 local mt = { 
-    __call = function(str) return {} end 
+    __call = function(str) return { open = open, close = close, write = write, read = read } end 
 }
 setmetatable(M,mt)
 
 M.help.gnuplot = [[
 Example usage for gnuplot:
 
-local pr = require'lua.process'
+local pr = require'lua.process'()
 local gp = pr.open('gnuplot', 'w')
 -- To make x11 window stay open after closing gnuplot.
 -- local gp = pr.open('gnuplot -persist', 'w')
