@@ -8,7 +8,21 @@ SYNOPSIS
   
 ]]
 
+local function lines(self,...)
+    return self.process:lines(...)
+end
 
+local function flush(self)
+    return self.process:flush()
+end
+
+local function seek(self,wh,off)
+    return self.process:seek(wh,off)
+end
+
+local function setvbuf(self,md,sz)
+    return self.process:setvbug(md,sz)
+end
 
 local function close(self)
     return self.process.close()
@@ -30,7 +44,11 @@ function M.open(str, op)
         open = open,
         write = write,
         read = read,
-        close = close
+        close = close,
+        lines = lines,
+        flush = flush,
+        seek = seek,
+        setvbuf = setvbuf
     }
 end
 
