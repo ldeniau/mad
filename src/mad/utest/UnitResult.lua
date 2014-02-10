@@ -79,6 +79,8 @@ end
 local function displayPassOrFail( self )
     if self.testsSucceeded == self.testsStarted and self.testsSucceeded > 0 then
         io.stdout:write(": PASS\n")
+    elseif self.testsSucceeded == 0 and self.testsStarted == 0 then
+        io.stdout:write(": NO TESTS RUN\n")
     else
         io.stdout:write(": FAIL\n")
     end
