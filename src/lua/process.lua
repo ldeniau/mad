@@ -8,26 +8,31 @@ SYNOPSIS
   
 ]]
 
-local function open(str, op)
-    return assert(io.popen(str, op))
-end
+
 
 local function close(self)
-    return self.close()
+    return self.process.close()
 end
 
 local function write(self, ...)
-    return self:write(...)
+    return self.process:write(...)
 end
 
 local function read(self,...)
-    return self:read(...)
+    return self.process:read(...)
 end
 
-local mt = { 
-    __call = function(str) return { open = open, close = close, write = write, read = read } end 
-}
-setmetatable(M,mt)
+function M.open(str, op)
+    local pr, err = io.popen(str, op)
+    if not pr then return err end
+    return {
+        process = pr,
+        open = open,
+        write = write,
+        read = read,
+        close = close
+    }
+end
 
 M.help.gnuplot = [[
 Example usage for gnuplot:
@@ -36,9 +41,9 @@ local pr = require'lua.process'()
 local gp = pr.open('gnuplot', 'w')
 -- To make x11 window stay open after closing gnuplot.
 -- local gp = pr.open('gnuplot -persist', 'w')
-gp:write"set term png"
-gp:write'set output "output.png"'
-gp:write"plot sin(x)"
+gp:write"set term png\n"
+gp:write'set output "output.png"\n'
+gp:write"plot sin(x)\n"
 gp:close()
 ]]
 
