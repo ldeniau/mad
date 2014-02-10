@@ -2,11 +2,22 @@ local M = { test = {}, help = {} }
 
 M.help = [[
 NAME
-	tableUtil
+  lua.tableUtil
 SYNOPSIS
-	tableUtil.printTable(table[, level])
+  local tableUtil = require'lua.tableUtil'
+  tableUtil.printTable(table[, level])
+  tableUtil.stringTable(table[, level])
 DESCRIPTION
-	prints table and recursively calls itself if tables values are themselves tables.
+  printTable
+    prints table and recursively calls itself if tables values are themselves tables.
+  stringTable
+    returns table as a string.
+    
+RETURN VALUES
+  A table containing the functions
+  
+SEE ALSO
+  none
 
 ]]
 
