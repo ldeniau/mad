@@ -1,10 +1,51 @@
-local UnitResult = {help={},test={}}
+local M = { help = {}, test = {} }
 
+M.help.self = [[
+NAME
+  mad.utest.UnitResult
+  
+SYNOPSIS
+  local result = require'mad.utest.UnitResult'()
+  result:startModule(moduleName, testObject)
+  result:startTest(name, testObject)
+  result:endTest(testObject)
+  result:addFailure(errMsg)
+  result:displayFinalResult()
+  
+DESCRIPTION
+  local ur = require'mad.utest.UnitResult'
+  result = ur()
+    Sets up an instance of UnitResult
+  result:startModule(moduleName, testObject)
+    Updates the UnitResult-instance for testing of a new module.
+    testObject is the modules corresponding mad.utest.testObject.
+  result:startTest(name, testObject)
+    Sets up the testObject to start a single test function.
+    testObject is the modules corresponding mad.utest.testObject.
+  result:endTest(testObject)
+    Finished the current test and gathers all necessary statistics.
+    testObject is the modules corresponding mad.utest.testObject.
+  result:displayFinalResult()
+    Displays the result of the tests that's been run.
+RETURN VALUES
+  A table with a call semantic to set up an instance of UnitResult
+
+SEE ALSO
+  mad.utest.luaUnit
+  mad.utest.testObject
+  
+ACKNOWLEDGMENTS
+  Based on LuaUnit (http://phil.freehackers.org/luaunit/),
+  written by Ryu, Gwang (http://www.gpgstudy.com/gpgiki/LuaUnit)
+  and updated by Philippe Fremy <phil@freehackers.org>.
+  Released under the X11 license.
+
+]]
 
 local maxLength = 50
 
-local function displayClassName( self )
-    io.stdout:write( "["..self.currentClassName.."]\n" )
+local function displayModuleName( self )
+    io.stdout:write( "["..self.currentModuleName.."]\n" )
 end
 
 local function displayTestName( self )
@@ -52,13 +93,13 @@ end
 
 local function displayOneFailedTest( self,  failure )
     testName, errorMsg = unpack( failure )
-    print("\t"..testName.." failed")
+    io.stdout:write("\t"..testName.." failed\n")
     io.stdout:write("\t"..errorMsg.."\n")
 end
 
 local function displayFailedTests( self )
     if #self.errorList == 0 then return end
-    print("Failed tests:")
+    io.stdout:write("Failed tests:\n")
     for _,v in ipairs(self.errorList) do
         self:displayOneFailedTest(v)
     end
@@ -73,22 +114,22 @@ local function displayFinalResult( self )
         failurePercent = 100 * self.failureCount / self.testCount
     end
     successCount = self.testCount - self.failureCount
-    print( string.format("Success : %d%% - %d / %d",
+    io.stdout:write( string.format("Success : %d%% - %d / %d\n",
         100-math.ceil(failurePercent), successCount, self.testCount) )
     return self.failureCount
   end
 
-local function startClass( self, className)
-    self.currentClassName = className
-    self:displayClassName()
+local function startModule( self, moduleName)
+    self.currentModuleName = moduleName
+    self:displayModuleName()
 end
 
-local function startTest( self, testName, testObjectForClass)
+local function startTest( self, testName, testObjectForModule)
     self.currentTestName = testName
     self.testCount = self.testCount + 1
     self.startClock = os.clock()
-    self.startStartedCounter = testObjectForClass.startedCounter
-    self.startSucceedCounter = testObjectForClass.succeedCounter
+    self.startStartedCounter = testObjectForModule.startedCounter
+    self.startSucceedCounter = testObjectForModule.succeedCounter
     self.noFailed = #self.errorList
 end
 
@@ -97,10 +138,10 @@ local function addFailure( self,  errorMsg )
     table.insert( self.errorList, { self.currentTestName, errorMsg } )
 end
 
-local function endTest( self, testObjectForClass)
+local function endTest( self, testObjectForModule)
     self.timeSpent = os.clock() - self.startClock
-    self.testsStarted = testObjectForClass.startedCounter - self.startStartedCounter
-    self.testsSucceeded = testObjectForClass.succeedCounter - self.startSucceedCounter
+    self.testsStarted = testObjectForModule.startedCounter - self.startStartedCounter
+    self.testsSucceeded = testObjectForModule.succeedCounter - self.startSucceedCounter
     self:displayTestName()
     self:displayTimeSpent()
     self:displayNumberOfSuccesses()
@@ -108,11 +149,11 @@ local function endTest( self, testObjectForClass)
     self:displayErrors()
 end
 
-local mt = {}; setmetatable(UnitResult, mt)
+local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (...)
 	return {
-	    displayClassName = displayClassName,
+	    displayModuleName = displayModuleName,
 	    displayTestName = displayTestName,
 	    displayTimeSpent = displayTimeSpent,
 	    displayNumberOfSuccesses = displayNumberOfSuccesses,
@@ -121,18 +162,18 @@ mt.__call = function (...)
 	    displayOneFailedTest = displayOneFailedTest,
 	    displayFailedTests = displayFailedTests,
 	    displayFinalResult = displayFinalResult,
-	    startClass = startClass,
+	    startModule = startModule,
 	    startTest = startTest,
 	    addFailure = addFailure,
 	    endTest = endTest,
         failureCount = 0,
         testCount = 0,
         errorList = {},
-        currentClassName = "",
+        currentModuleName = "",
         currentTestName = "",
         testHasFailure = false,
         verbosity = 0
     }
 end
 
-return UnitResult
+return M

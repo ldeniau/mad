@@ -2,6 +2,45 @@ local M = { help = {}, test = {} }
 local MT = {__index = M,__metatable = {}}
 setmetatable(M,MT)
 
+M.help.self = [[
+NAME
+  mad.utest.testObject
+  
+SYNOPSIS
+  testObject:fails(function, [args]...)
+  testObject:succeeds(function, [args]...)
+  testObject:equals(actual, expected)
+  testObject:differs(actual, expected)
+  
+DESCRIPTION
+  Contains the functions to be used in the unit tests.
+  The functions will be run by luaUnit and keep their own statistics within.
+  
+  testObject:fails(function, [args]...)
+    Runs function with args and raises an error if function succeeded.
+  testObject:succeeds(function, [args]...)
+    Runs function with args and raises an error if function raised an error.
+    Returns the functions return values if it succeeded.
+  testObject:equals(actual, expected)
+    Raises an error if actual differs from expected.
+  testObject:differs(actual, expected)
+    Raises an error if actual is equal to expected.
+
+RETURN VALUES
+  A table with a call semantic to set up an instance of testObject.
+
+SEE ALSO
+  mad.utest.luaUnit
+  mad.utest.testObject
+
+ACKNOWLEDGMENTS
+  Based on LuaUnit (http://phil.freehackers.org/luaunit/),
+  written by Ryu, Gwang (http://www.gpgstudy.com/gpgiki/LuaUnit)
+  and updated by Philippe Fremy <phil@freehackers.org>.
+  Released under the X11 license.
+
+]]
+
 -----------------------------------------------------------------------------
 -- Assert that calling f with the arguments will raise an error
 -- @param     f             function under test
@@ -103,9 +142,5 @@ MT.__call = function ()
         trace = trace
     }
 end
-
------------------------------------------------------------------------------
--- Exported functions.
------------------------------------------------------------------------------
 
 return M

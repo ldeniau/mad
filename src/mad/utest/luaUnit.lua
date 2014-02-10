@@ -1,22 +1,55 @@
---[[
-Updated LuaUnit for use in MAD-framework.
+local M = { help = {}, test = {} }
 
+M.help.self = [[
+NAME
+  mad.utest.LuaUnit
+  
+SYNOPSIS
+  local lu = require'mad.utest.luaUnit'()
+  lu:addModuleToTest(modname)
+  lu:addFunctionToTest(modname,funname)
+  lu:run()
+  
+DESCRIPTION
+  Contains functions for running unit tests for several modules and 
+  print statistics afterwards.
+  
+  luaUnit = require'mad.utest.luaUnit'
+  lu = luaUnit()
+    Initializes an instance of luaUnit, with its own statistics.
+  lu:addModuleToTest(modname)
+    Adds the module modname to the list of modules to be tested.
+    A module can be added while the tests are being run, and will only
+    be run once.
+  lu:addFunctionToTest(modname,funname)
+    Adds the function funname in the module modname to be tested.
+    A function can be added while the tests are being run, and will
+    only be run once. It will also not be run if the module modname
+    is in the list of modules ot be run.
+  lu:run()
+    Runs all modules and function in it's list of modules to be run, 
+    and displays the statistics.  
+    
+RETURN VALUES
+  A table with call semantic to start an instance of luaUnit.
 
-        local function lua
+SEE ALSO
+  mad.utest.UnitResult
+  mad.utest.testObject
 
-Description: A unit testing framework
-Homepage: http://phil.freehackers.org/luaunit/
-Initial author: Ryu, Gwang (http://www.gpgstudy.com/gpgiki/LuaUnit)
-Lot of improvements by Philippe Fremy <phil@freehackers.org>
-Version: 1.3
-License: X11 License, see LICENSE.txt
-]]--
+ACKNOWLEDGMENTS
+  Based on LuaUnit (http://phil.freehackers.org/luaunit/),
+  written by Ryu, Gwang (http://www.gpgstudy.com/gpgiki/LuaUnit)
+  and updated by Philippe Fremy <phil@freehackers.org>.
+  Released under the X11 license.
 
+]]
 
--------------------------------------------------------------------------------
+-- require ---------------------------------------------------------------------
 local UnitResult = require"mad.utest.UnitResult"
 local testObject = require"mad.utest.testObject"
-local LuaUnit    = {help={},test={}}
+
+-- module ---------------------------------------------------------------------
 
 -- Split text into a list consisting of the strings in text,
 -- separated by strings matching delimiter (which may be a pattern).
@@ -27,7 +60,7 @@ local function strsplit(delimiter, text)
     if string.find("", delimiter, 1) then -- this would result in endless loops
         error("delimiter matches empty string!")
     end
-    while 1 do
+    while true do
         local first, last = string.find(text, delimiter, pos)
         if first then -- found?
             table.insert(list, string.sub(text, pos, first-1))
@@ -66,48 +99,48 @@ local function strip_luaunit_stack(stack_trace)
     return stack_trace
 end
 
-local function runTestMethod(self,aName, aClassInstance, aMethod, testObjectForClass)
+local function runTestMethod(self,aName, aModuleInstance, aMethod, testObjectForModule)
     local ok, errorMsg
-    self.result:startTest(aName, testObjectForClass)
+    self.result:startTest(aName, testObjectForModule)
     local function err_handler(e)
         return e..'\n'..debug.traceback()
     end
-    ok, errorMsg = xpcall( function() return aMethod(aClassInstance, testObjectForClass) end, err_handler )
+    ok, errorMsg = xpcall( function() return aMethod(aModuleInstance, testObjectForModule) end, err_handler )
     if not ok then
         errorMsg = string.match(errorMsg, "(.-)\n")
         self.result:addFailure( errorMsg )
     end
-    self.result:endTest(testObjectForClass)
+    self.result:endTest(testObjectForModule)
 end
 
-local function runTestMethodName( self, methodName, testInstance, testObjectForClass )
+local function runTestMethodName( self, methodName, testInstance, testObjectForModule )
     local methodInstance = testInstance[methodName]
     if isFunction( testInstance.setUp) then
         testInstance:setUp()
     end
-    self:runTestMethod(methodName, testInstance, methodInstance, testObjectForClass )
+    self:runTestMethod(methodName, testInstance, methodInstance, testObjectForModule )
     if isFunction(testInstance.tearDown) then
         testInstance:tearDown()
     end
 end
 
-local function runTestClassByName( self, aClassName )
-    local classInstance = require(aClassName)
-    if not classInstance then
-        error( "No such class: "..aClassName )
-    elseif not classInstance.test then
-        print( "Class: "..aClassName.." does not have a test-member." )
+local function runTestModuleByName( self, aModuleName )
+    local moduleInstance = require(aModuleName)
+    if not moduleInstance then
+        error( "No such module: "..aModuleName )
+    elseif not moduleInstance.test then
+        io.stdout:write( "Module: "..aModuleName.." does not have a test-member.\n")
         return
     end
-    local testObjectForClass = testObject()
-    self.result:startClass( aClassName, testObjectForClass )
-    for methodName, method in pairs(classInstance.test) do
+    local testObjectForModule = testObject()
+    self.result:startModule( aModuleName, testObjectForModule )
+    for methodName, method in pairs(moduleInstance.test) do
         if isFunction(method) and isTestFunction(methodName) and methodName ~= "self" then
-            self:runTestMethodName( methodName, classInstance.test, testObjectForClass )
+            self:runTestMethodName( methodName, moduleInstance.test, testObjectForModule )
         end
     end
-    if classInstance.test.self then
-        self:runTestMethod("self", classInstance.test, classInstance.test.self, testObjectForClass )
+    if moduleInstance.test.self then
+        self:runTestMethod("self", moduleInstance.test, moduleInstance.test.self, testObjectForModule )
     end
 end
 
@@ -129,20 +162,20 @@ end
 local function testTable( self )
     for modname,v in pairs(self.modulesToTest) do
         if v and type(v) ~= "table" and not self.testedModules[modname] then
-            self:runTestClassByName( modname )
+            self:runTestModuleByName( modname )
             self.testedModules[modname] = true
         elseif v and not self.testedModules[modname] then
             for fun,_ in pairs(v) do
-                local classInstance = require(modname)
-                local testObjectForClass = testObject()
-                self.result:startClass( modname, testObjectForClass )
-                self:runTestMethodName( fun, classInstance.test, testObjectForClass )
+                local moduleInstance = require(modname)
+                local testObjectForModule = testObject()
+                self.result:startModule( modname, testObjectForModule )
+                self:runTestMethodName( fun, moduleInstance.test, testObjectForModule )
             end
         end
     end
 end
 
-local function run( self, mod, fun )
+local function run( self )
     while self.modulesToTestSize > 0 do
         self.modulesToTestSize = 0
         self:testTable()
@@ -150,7 +183,7 @@ local function run( self, mod, fun )
     return self.result:displayFinalResult()
 end
 
-local mt = {}; setmetatable(LuaUnit, mt)
+local mt = {}; setmetatable(M, mt)
 
 mt.__call = function (...)
     return {
@@ -159,12 +192,13 @@ mt.__call = function (...)
         modulesToTestSize = 0,
         testedModules = {},
         addModuleToTest = addModuleToTest,
+        addFunctionToTest = addFunctionToTest,
         runTestMethod = runTestMethod,
         runTestMethodName = runTestMethodName,
-        runTestClassByName = runTestClassByName,
+        runTestModuleByName = runTestModuleByName,
         run = run,
         testTable = testTable
     }
 end
 
-return LuaUnit
+return M
