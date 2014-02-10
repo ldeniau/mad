@@ -8,13 +8,13 @@ NAME
 
 SYNOPSIS
   local lang   = require"mad.lang"
-  local parser = lang.getParser(key, [line])
+  local parser = lang.getParser(key [,line])
   local key    = lang.getCurrentKey()
 
 DESCRIPTION
   Contains functions for getting the parsers corresponding to different languages.
   
-  local parser = lang.getParser(key, [line])
+  local parser = lang.getParser(key [,line])
     -Returns the parser corresponding to key. line is an optional argument to be
      given when parsing in interactive mode.
   local key    = lang.getCurrentKey()
@@ -65,6 +65,7 @@ end
 function M.test:getParser(ut)
 	ut:succeeds(M.getParser, "lua")
 	ut:succeeds(M.getParser, "madx")
+	ut:succeeds(M.getParser, "mad")
 	ut:fails(M.getParser, "IGuessThereWillNeverBeALanguageWithThisKey")
 end
 
