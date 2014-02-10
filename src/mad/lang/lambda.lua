@@ -2,7 +2,7 @@ local M  = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-  mad.lambda
+  mad.lang.lambda
 
 SYNOPSIS
   lambda = require'mad.lang.lambda'
