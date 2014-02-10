@@ -16,6 +16,9 @@ DESCRIPTION
   Contains the functions to be used in the unit tests.
   The functions will be run by luaUnit and keep their own statistics within.
   
+  All functions will raise startedCounter with 1 per run and raise
+  succeedCounter with 1 after finishing without raising an error.
+  
   testObject:fails(function, [args]...)
     Runs function with args and raises an error if function succeeded.
   testObject:succeeds(function, [args]...)
@@ -41,24 +44,12 @@ ACKNOWLEDGMENTS
 
 ]]
 
------------------------------------------------------------------------------
--- Assert that calling f with the arguments will raise an error
--- @param     f             function under test
--- @param     ...         parameters to function onder test
--- @usage                     fails(f,1,2) => f(1,2) should generate an error
------------------------------------------------------------------------------
 local function fails(ut, f,...)
     ut.startedCounter = ut.startedCounter+1
     if not pcall(f,...) then ut.succeedCounter = ut.succeedCounter+1 return end
     error("No error generated",2)
 end
 
------------------------------------------------------------------------------
--- Assert that calling f with the arguments will not raise an error
--- @param     f             function under test
--- @param     ...         parameters to function onder test
--- @usage                     succeeds(f,1,2) => f(1,2) should not generate an error
------------------------------------------------------------------------------
 local function succeeds(ut, f, ...)
     ut.startedCounter = ut.startedCounter+1
     local status = {pcall(f,...)}
@@ -66,12 +57,6 @@ local function succeeds(ut, f, ...)
     error("Error generated "..status[2],2)
 end
 
------------------------------------------------------------------------------
--- Assert that two values are equal and calls error else
--- @param     actual            result of test
--- @param     expected        expected result of test
--- @usage                             equals(1 + 1,2) => 1 + 1 = 2 ?
------------------------------------------------------------------------------
 local function equals(ut, actual,expected)
     ut.startedCounter = ut.startedCounter+1
     local nesting = ''
@@ -106,12 +91,6 @@ local function equals(ut, actual,expected)
     error(errorMsg,2)
 end
 
------------------------------------------------------------------------------
--- Assert that two values are different and calls error else
--- @param     actual            result of test
--- @param     expected        expected result of test
--- @usage                             differs(1 / 0,1) => 1 / 0 ~= 1 ?
------------------------------------------------------------------------------
 local function differs(ut, actual,expected)
     ut.startedCounter = ut.startedCounter+1
     local function differsRec(actual,expected,key)
