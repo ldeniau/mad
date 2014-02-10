@@ -2,19 +2,48 @@ local M  = { help = {}, test = {} }
 
 M.help.self = [[
 NAME
-  mad.__lambda -- MAD module containing helper functions for the lambda-function.
+  mad.lambda
 
 SYNOPSIS
+  lambda = require'mad.lang.lambda'
   
+  _G.is_lambda(tbl)
+  _G.tonumber(x[,base])
 
 DESCRIPTION
+  When required, tables with type(tbl.__lambda) == 'function' will
+  be read as a lambda-function.
+  Lambda-functions have their metatable overloaded, to allow for lazy evaluation
+  if the function doesn't need arguments.
   
+  Operators and functions supporting lazy evaluation of lambdas:
+  +,
+  -(unary and binary),
+  *,
+  /,
+  ..,
+  %,
+  ^,
+  <=,
+  >=,
+  <,
+  >,
+  #,
+  pairs,
+  ipairs,
+  tostring,
+  index,
+  newindex.
+  
+  Some functions in math, string and table also support lazy evaluation.
 
 RETURN VALUES
-  The table of modules and services.
+  A table with tests and help.
 
 SEE ALSO
-  None
+  mad.lang.lambda.math
+  mad.lang.lambda.string
+  mad.lang.lambda.table
 ]]
 
 -- global functions -----------------------------------------------------------
