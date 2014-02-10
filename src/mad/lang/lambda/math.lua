@@ -16,7 +16,7 @@ DESCRIPTION
     math.max/math.min won't work with deferred calls
 
 RETURN VALUES
-  The table of modules and services.
+  A table with help and test.
 
 SEE ALSO
   None

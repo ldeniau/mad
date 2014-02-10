@@ -19,7 +19,7 @@ DESCRIPTION
     string.format. Lambdas sent to string.format will need to be explicitly called.
 
 RETURN VALUES
-  The table of modules and services.
+  A table with help and test.
 
 SEE ALSO
   None

@@ -16,7 +16,7 @@ DESCRIPTION
     table.pack. pack will park the lambda into a table, not the lambdas return value.
 
 RETURN VALUES
-  The table of modules and services.
+  A table with tests and help.
 
 SEE ALSO
   None
