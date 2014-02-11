@@ -7,21 +7,22 @@ NAME
   mad.lang.generator
 
 SYNOPSIS
-  local gen    = require"mad.lang.generator"
+  local gen       = require'mad.lang.generator'
   local sourcegen = gen.getGenerator(key, errors, lambdatable)
 
 DESCRIPTION
-  Contains functions for getting the parsers corresponding to different languages.
+  Contains functions for getting the generators corresponding to different languages.
   
   local sourcegen = gen.getGenerator(key, errors, lambdatable)
-    -Returns the generator corresponding to key. errors and lambdatable are sent to
+    Returns the generator corresponding to key. errors and lambdatable are sent to
     the generators.
 
 RETURN VALUES
-  None
+  A table with the getGenerator function
 
 SEE ALSO
-  None
+  mad.lang.generator.lua
+  mad.lang.generator.mad
 ]]
 
 -- require --------------------------------------------------------------------
@@ -42,7 +43,24 @@ end
 
 
 -- test -----------------------------------------------------------------------
+function M.test:setUp()
+    self.errors = require"mad.lang.errors"()
+end
 
+function M.test:tearDown()
+    self.errors = nil
+end
+
+function M.test.self(ut)
+    require"mad.tester".addModuleToTest"mad.lang.generator.lua"
+    require"mad.tester".addModuleToTest"mad.lang.generator.mad"
+end
+
+function M.test:getGenerator(ut)
+    ut:succeeds(M.getGenerator, 'lua', self.errors)
+    ut:succeeds(M.getGenerator, 'mad', self.errors)
+    ut:fails(M.getGenerator, 'IGuessThereWillNeverBeAGeneratorWithThisKey', self.errors)
+end
 
 -- end ------------------------------------------------------------------------
 return M

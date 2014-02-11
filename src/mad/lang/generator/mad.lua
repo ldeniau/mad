@@ -13,10 +13,10 @@ DESCRIPTION
   Generates MAD code from an AST.
   
   local source      = source_ctor(error_map_instance)
-    -Creates a new instance of the source generator, suitable for generating
+    Creates a new instance of the source generator, suitable for generating
      one chunk of code.
   local source_code = source:generate(ast)
-    -Generates MAD-code and maps the output lines to the lines in the AST.
+    Generates MAD-code and maps the output lines to the lines in the AST.
     
 RETURN VALUES
   None
@@ -378,7 +378,7 @@ call = function (_, errors, lambda, ...)
 end
 
 -- test -----------------------------------------------------------------------
-M.test = require"mad.lang.generator.test.source"
+M.test = require"mad.lang.generator.test.mad"
 
 -- end  -----------------------------------------------------------------------
 return M

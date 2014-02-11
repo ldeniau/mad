@@ -3,7 +3,7 @@ local test = {}
 function test:setUp()
     self.errors = require"mad.lang.errors"()
     self.errors:setCurrentChunkName("test")
-    self.module = require"mad.lang.generator.source"
+    self.module = require"mad.lang.generator.lua"
     self.mod = self.module(self.errors)
 end
 
