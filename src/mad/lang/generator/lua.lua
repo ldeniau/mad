@@ -22,7 +22,7 @@ RETURN VALUES
   None
   
 SEE ALSO
-  None
+  mad.lang.generator
 ]]
 
 -- require --------------------------------------------------------------------
