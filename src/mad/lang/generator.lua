@@ -13,7 +13,7 @@ SYNOPSIS
 DESCRIPTION
   Contains functions for getting the generators corresponding to different languages.
   
-  local sourcegen = gen.getGenerator(key, errors, lambdatable)
+  gen.getGenerator(key, errors, lambdatable)
     Returns the generator corresponding to key. errors and lambdatable are sent to
     the generators.
 
@@ -35,10 +35,10 @@ local generators = {
 	mad = require"mad.lang.generator.mad",
 }
 
-M.getGenerator = function (key, errors, l)
+M.getGenerator = function (key, errors, lambdaTable)
 	if not options then error("Options haven't been set for lang.generator") end
 	if not generators[key] then error("There's no generator mapped to key: "..key) end
-	return generators[key](errors, l)
+	return generators[key](errors, lambdaTable)
 end
 
 
