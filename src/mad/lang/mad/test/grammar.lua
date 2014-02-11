@@ -1,9 +1,9 @@
 local M = {}
 
 function M:setUp()
-    self.grammar = require "mad.lang.lua.grammar".grammar
+    self.grammar = require "mad.lang.mad.grammar".grammar
     self.compile = require"lib.lpeg.re".compile
-    self.defs = require"mad.lang.lua.defs".defs
+    self.defs = require"mad.lang.mad.defs".defs
 end
 
 function M:tearDown()

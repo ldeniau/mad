@@ -101,7 +101,7 @@ end
 
 -- stmt
 
-function defs.include( str, pos, name )
+function defs.include( _, _, name )
     name = string.sub(name, 2, string.len(name)-1)
     local lang = require"mad.lang"
 	local file = assert(io.open(name, 'r'))
@@ -354,7 +354,7 @@ M.defs = defs
 
 -- test suite -----------------------------------------------------------------------
 
-M.test = require"mad.lang.lua.test.defs"
+M.test = require"mad.lang.mad.test.defs"
 
 -- end ------------------------------------------------------------------------
 

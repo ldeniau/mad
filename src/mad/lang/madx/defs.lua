@@ -32,6 +32,7 @@ local defs = { }
 defs._line = 0
 defs._lastPos = 0
 defs._maxPos = 0
+local ch
 
 function defs.savePos(_, pos)
     defs._lastPos = pos
@@ -40,6 +41,7 @@ function defs.savePos(_, pos)
 end
 
 function defs.setup(str, pos)
+    ch = {}
     local line = defs._line
     local ofs  = 0
     while ofs < pos do
@@ -101,7 +103,6 @@ local function translatename(name)
 end
 
 -- block and chunk
-local ch = {}
 function defs.chunk( )
     table.insert(ch,1, { ast_id = 'assign', kind = 'local',
     lhs = {
@@ -321,7 +322,7 @@ M.defs = defs
 
 -- test suite -----------------------------------------------------------------------
 
-M.test = require"mad.lang.lua.test.defs"
+M.test = require"mad.lang.madx.test.defs"
 
 -- end ------------------------------------------------------------------------
 

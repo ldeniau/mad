@@ -95,9 +95,9 @@ function M.test:tearDown()
 end
 
 function M.test:self(ut)
-    require"mad.core.unitTest".addModuleToTest("mad.lang")
-    require"mad.core.unitTest".addModuleToTest("mad.lang.generator.source")
-    require"mad.core.unitTest".addModuleToTest("mad.lang.errors")
+    require"mad.tester".addModuleToTest("mad.lang")
+    require"mad.tester".addModuleToTest("mad.lang.generator.lua")
+    require"mad.tester".addModuleToTest("mad.lang.errors")
 end
 
 -- end ------------------------------------------------------------------------

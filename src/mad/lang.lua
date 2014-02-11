@@ -77,9 +77,9 @@ function M.test:getCurrentKey(ut)
 end
 
 function M.test:self(ut)
-    require"mad.core.unitTest".addModuleToTest("mad.lang.lua.parser")
-    require"mad.core.unitTest".addModuleToTest("mad.lang.mad.parser")
-    require"mad.core.unitTest".addModuleToTest("mad.lang.madx.parser")
+    require"mad.tester".addModuleToTest("mad.lang.lua.parser")
+    require"mad.tester".addModuleToTest("mad.lang.mad.parser")
+    require"mad.tester".addModuleToTest("mad.lang.madx.parser")
 end
 
 -- end ------------------------------------------------------------------------

@@ -4,10 +4,10 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.lang.lua.grammar
+  mad.lang.madx.grammar
 
 SYNOPSIS
-  local grammar = require"mad.lang.madx.grammar".grammar
+  grammar = require"mad.lang.madx.grammar".grammar
   
 DESCRIPTION
   Returns the regex-based grammar of MAD-X.
@@ -113,7 +113,7 @@ M.grammar = [=[
 -- test -----------------------------------------------------------------------
 
 --if mad_loadtest then
-M.test = require "mad.lang.lua.test.grammar"
+M.test = require "mad.lang.madx.test.grammar"
 --end]]
 
 -- end ------------------------------------------------------------------------

@@ -26,7 +26,7 @@ SEE ALSO
 local re      = require"lib.lpeg.re"
 local grammar = require"mad.lang.mad.grammar".grammar
 local defs    = require"mad.lang.mad.defs".defs
-local utest   = require"mad.core.unitTest"
+local utest   = require"mad.tester"
 
 
 -- metamethods ----------------------------------------------------------------
@@ -40,7 +40,7 @@ end
 -- module ---------------------------------------------------------------------
 
 local parse = function (self, str, fileName, pos, line)
-	defs._line = line
+	defs._line = line or 0
 	local ast = self.grammar:match(str, position)
 	return ast
 end
@@ -70,7 +70,8 @@ function M.test:parse(ut)
 end
 
 function M.test:self(ut)
-    utest.addModuleToTest("mad.lang.mad.grammar")
+    utest.addModuleToTest"mad.lang.mad.grammar"
+    utest.addModuleToTest"mad.lang.mad.defs"
 end
 
 -- end ------------------------------------------------------------------------
