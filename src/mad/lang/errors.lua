@@ -78,7 +78,7 @@ local function getErrorMessage(err)
 end
 
 local function getStackTraceBack(err)
-	return string.match(err, ".*stack traceback:%s*(.*)%s%[C%]: in function 'xpcall'")
+	return string.match(err, ".*stack traceback:%s*(.*)%s*%[C%]: in function 'xpcall'")
 end
 
 local function createStackTable(self, stack)
@@ -94,13 +94,13 @@ end
 local function createStackErrorMessage(stacktable)
 	local errmess = "\nstack traceback:"
 	for i,v in ipairs(stacktable) do
-		errmess = errmess.."\n"..v
+		errmess = errmess..'\n'..v
 	end
 	return errmess
 end
 
 local function getChunkName(err)
-	return string.match(err, "(.*):%d+:")
+	return string.match(err, "(.-):%d+:")
 end
 
 local function translateLuaErrToMadErr(self, err, trace)
@@ -176,31 +176,167 @@ function M.test:addToLineMap(ut)
     ut:equals(self.errors._lineMap.chunk2[1].fileName, 'fn')
 end
 
-function M.test:searchForLineMatch(self, line, chunkName)
+function M.test:searchForLineMatch(ut)
+    self.errors:setCurrentChunkName'chunk'
+    self.errors:addToLineMap(14, 14, 'fn')
+    self.errors:addToLineMap(12, 12, 'fn')
+    self.errors:addToLineMap(15, 15, 'fn')
+    local line = ut:succeeds(searchForLineMatch, self.errors, 9, 'chunk')
+    ut:equals(line, 8)
+    line = ut:succeeds(searchForLineMatch, self.errors, 2, 'chunk')
+    ut:equals(line, 3)
+    line = ut:succeeds(searchForLineMatch, self.errors, 11, 'chunk')
+    ut:equals(line, 12)
+    line = ut:succeeds(searchForLineMatch, self.errors, 10, 'chunk')
+    ut:equals(line, 8)
+    line = ut:succeeds(searchForLineMatch, self.errors, 13, 'chunk')
+    ut:equals(line, 14)
+    line = ut:succeeds(searchForLineMatch, self.errors, 100, 'chunk')
+    ut:equals(line, 15)
 end
 
-function M.test:getNameAndLine(self, err, chunkName)
+function M.test:getNameAndLine(ut)
+    local name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:1:Some kind of error", 'chunk')
+    ut:equals(name, "fn")
+    ut:equals(line, 1)
+    name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:12:Some kind of error", 'chunk')
+    ut:equals(name, "fn")
+    ut:equals(line, 8)
+    name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:5:Some kind of error", 'chunk')
+    ut:equals(name, "fn2")
+    ut:equals(line, 1)
 end
 
-function M.test:getErrorMessage(err)
+function M.test:getErrorMessage(ut)
+    local errmess = ut:succeeds(getErrorMessage, [[./mad/lang/errors.lua:184: '=' expected near '+'
+stack traceback:
+	[C]: at 0x004504e0
+	[C]: in function 'require'
+	./mad/utest/luaUnit.lua:128: in function 'runTestModuleByName'
+	./mad/utest/luaUnit.lua:165: in function 'testTable'
+	./mad/utest/luaUnit.lua:181: in function 'run'
+	./mad/tester.lua:85: in function <./mad/tester.lua:75>
+	./mad-e:12: in main chunk
+	[C]: at 0x00404250]])
+    ut:equals(errmess, [['=' expected near '+'
+stack traceback:
+	[C]: at 0x004504e0
+	[C]: in function 'require'
+	./mad/utest/luaUnit.lua:128: in function 'runTestModuleByName'
+	./mad/utest/luaUnit.lua:165: in function 'testTable'
+	./mad/utest/luaUnit.lua:181: in function 'run'
+	./mad/tester.lua:85: in function <./mad/tester.lua:75>
+	./mad-e:12: in main chunk
+	[C]: at 0x00404250]])
+    errmess = ut:succeeds(getErrorMessage, [[:213:name]])
+    ut:equals(errmess, [[name]])
 end
 
-function M.test:getStackTraceBack(err)
+function M.test:getStackTraceBack(ut)
+    local stb = ut:succeeds(getStackTraceBack, [[./mad/lang/errors.lua:184: '=' expected near '+'
+stack traceback:
+	stuffhanppfewpfkw
+	fewf
+	hrthrst43t
+	h
+	grte
+	
+	few
+	[C]: in function 'xpcall'
+	./mad/utest/luaUnit.lua:128: in function 'runTestModuleByName'
+	./mad/utest/luaUnit.lua:165: in function 'testTable'
+	./mad/utest/luaUnit.lua:181: in function 'run'
+	./mad/tester.lua:85: in function <./mad/tester.lua:75>
+	./mad-e:12: in main chunk
+	[C]: at 0x00404250]])
+    ut:equals(stb, [[stuffhanppfewpfkw
+	fewf
+	hrthrst43t
+	h
+	grte
+	
+	few
+	]])
+    stb = ut:succeeds(getStackTraceBack, [[./mad/lang/errors.lua:184: '=' expected near '+'
+stack traceback:
+	[C]: at 0x004504e0
+	[C]: in function 'require'
+	./mad/utest/luaUnit.lua:128: in function 'runTestModuleByName'
+	./mad/utest/luaUnit.lua:165: in function 'testTable'
+	./mad/utest/luaUnit.lua:181: in function 'run'
+	./mad/tester.lua:85: in function <./mad/tester.lua:75>
+	./mad-e:12: in main chunk
+	[C]: at 0x00404250]])
+    ut:equals(stb, nil)
+    stb = ut:succeeds(getStackTraceBack, [[:213:name]])
+    ut:equals(stb, nil)
 end
 
-function M.test:createStackTable(self, stack)
+function M.test:createStackTable(ut)
+    local stbl = ut:succeeds(createStackTable, self.errors, [[chunk:1:error
+chunk:2:error2
+chunk:5:error5
+chunk:9:error9
+]])
+    ut:equals(stbl, { "\tfn:1:error", "\tfn:2:error2", "\tfn2:1:error5", "\tfn:8:error9" })
 end
 
-function M.test:createStackErrorMessage(stacktable)
+function M.test:createStackErrorMessage(ut)
+    local st = ut:succeeds(createStackErrorMessage, { '1','2','3','4','5' })
+    ut:equals(st, [[
+
+stack traceback:
+1
+2
+3
+4
+5]])
 end
 
-function M.test:getChunkName(err)
+function M.test:getChunkName(ut)
+    local ch = ut:succeeds(getChunkName,[[./mad/lang/errors.lua:184: '=' expected near '+']])
+	ut:equals(ch, "./mad/lang/errors.lua")
+    ch = ut:succeeds(getChunkName,[[./mad/lang/errors.lua:184: '=' expected near '+'
+stack traceback:
+	[C]: at 0x004504e0
+	[C]: in function 'require'
+	./mad/utest/luaUnit.lua:128: in function 'runTestModuleByName'
+	./mad/utest/luaUnit.lua:165: in function 'testTable'
+	./mad/utest/luaUnit.lua:181: in function 'run'
+	./mad/tester.lua:85: in function <./mad/tester.lua:75>
+	./mad-e:12: in main chunk
+	[C]: at 0x00404250]])
+	ut:equals(ch, "./mad/lang/errors.lua")
 end
 
-function M.test:translateLuaErrToMadErr(self, err, trace)
+function M.test:translateLuaErrToMadErr(ut)
+    local transmess = ut:succeeds(translateLuaErrToMadErr, self.errors, "chunk:1:error1", 
+[[stack traceback:
+	chunk:2:error2
+	chunk:5:error5
+	chunk:10:error10
+	[C]: in function 'xpcall'
+	]])
+    ut:equals(transmess, [[fn:1: error1
+stack traceback:
+	fn:2:error2
+	fn2:1:error5
+	fn:8:error10]])
 end
 
-function M.test:handleError (self, err, trace)
+function M.test:handleError (ut)
+    local transmess = ut:succeeds(self.errors.handleError, self.errors, "chunk:1:error1", 
+[[stack traceback:
+	chunk:2:error2
+	chunk:5:error5
+	chunk:10:error10
+	[C]: in function 'xpcall'
+	]])
+    ut:equals(transmess, [[fn:1: error1
+stack traceback:
+	fn:2:error2
+	fn2:1:error5
+	fn:8:error10]])
 end
 
 
