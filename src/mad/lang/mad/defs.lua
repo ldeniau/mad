@@ -4,13 +4,13 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  luaMadKernel
+  mad.lang.mad.defs
 
 SYNOPSIS
-  local defsLuaMadKernel = require"mad.lang.parser.actions.luaMadKernel".actions
+  local defs = require"mad.lang.mad.defs".defs
 
 DESCRIPTION
-  Returns the actions used by patternLuaMadKernel
+  Returns the actions used by mad.lang.mad.grammar
 
 RETURN VALUES
   The table of modules and services.
@@ -20,7 +20,7 @@ SEE ALSO
 ]]
 
 -- require ------------------------------------------------------------------
-local tableUtil = require('lua.tableUtil')
+local tableUtil = require'lua.tableUtil'
 
 -- defs -----------------------------------------------------------------------
 
