@@ -4,13 +4,13 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  luaMadKernel
+  mad.lang.lua.defs
 
 SYNOPSIS
-  local defsLuaMadKernel = require"mad.lang.parser.actions.luaMadKernel".actions
+  defs = require"mad.lang.lua.defs".defs
 
 DESCRIPTION
-  Returns the actions used by patternLuaMadKernel
+  Returns the actions used by mad.lang.lua.grammar
 
 RETURN VALUES
   The table of modules and services.
@@ -100,17 +100,6 @@ function defs.block( _, ... )
 end
 
 -- stmt
-
-function defs.include( str, pos, name )
-    name = string.sub(name, 2, string.len(name)-1)
-    local lang = require"mad.lang"
-	local file = assert(io.open(name, 'r'))
-	local inputStream = file:read('*a')
-	file:close()
-	local parser = lang.getParser(lang.getCurrentKey())
-    local ast = parser:parse(inputStream, name)
-    return true, table.unpack(ast.block)
-end
 
 function defs.breakstmt()
     return { ast_id = "break_stmt", line = defs._line }
@@ -301,16 +290,6 @@ function defs.funcall ( op, name, ... )
     else
         return "(", {}
     end    
-end
-
-function defs.lambda ( params, explist, exp )
-    local ret
-    if exp then
-        ret = { ast_id = "ret_stmt", line = defs._line, exp }
-    else
-        ret = { ast_id = "ret_stmt", line = defs._line, table.unpack(explist) }
-    end
-    return { ast_id = "fundef", kind = "lambda", line = defs._line, param = params, block = { ast_id = "block_stmt", line = defs._line, ret } }
 end
 
 -- table

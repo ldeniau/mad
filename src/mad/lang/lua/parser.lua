@@ -12,7 +12,7 @@ DESCRIPTION
   Parses a string that contains a chunk of Lua code and creates an AST.
 
   parser:parse(stringToParse, chunkName, startPosInFile, [startingLine])
-    -Creates an AST from the given stringToParse, which must be valid Lua code.
+    Creates an AST from the given stringToParse, which must be valid Lua code.
 
 RETURN VALUES
   None
@@ -40,7 +40,7 @@ end
 -- module ---------------------------------------------------------------------
 
 local parse = function (self, str, fileName, pos, line)
-	defs._line = line
+	defs._line = line or 0
 	local ast = self.grammar:match(str, position)
 	return ast
 end
@@ -63,7 +63,7 @@ function M.test:tearDown()
 end
 
 function M.test:parse(ut)
-	local ast = self.parser:parse([[a = 1]])
+	local ast = ut:succeeds(self.parser.parse, self.parser, [[a = 1]])
 	ut:equals(ast.ast_id, "chunk")
 	ut:equals(#ast.block, 1)
 	ut:equals(ast.block[1].ast_id, "assign")

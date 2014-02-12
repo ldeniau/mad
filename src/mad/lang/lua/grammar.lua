@@ -29,9 +29,7 @@ M.grammar = [=[
 
 -- statements
 
-    stmt        <- s(
-                      (include s{string}                                           sp) => include
-                    / ';'sp / label / (break                                        sp) -> breakstmt 
+    stmt        <- s(';'sp / label / (break                                        sp) -> breakstmt 
                     / (goto name                                                    sp) -> gotostmt
                     / (do_block                                                     sp) -> dostmt 
                     / fundef
@@ -66,7 +64,7 @@ M.grammar = [=[
     unexp       <- ({          ( unop*   powexp  )  }                               sp) -> unexp
     powexp      <- ({ valexp   ( powop   valexp  )* }                               sp) -> powexp
     
-    valexp      <- literal / tabledef / fundef_a / lambda / varexp
+    valexp      <- literal / tabledef / fundef_a / varexp
     varexp      <- ((name   / grpexp) (tableidx / funcall)*                         sp) -> varexp
     grpexp      <- (s'('sp exp s')'                                                 sp) -> grpexp
     
@@ -93,9 +91,6 @@ M.grammar = [=[
 
     funcall     <- (( s{':'}sp name )? funargs                                      sp) -> funcall
     funargs     <- s'('sp explist? s')'sp / tabledef / (string->literal)
-    
-    lambda      <- (s'\'sp {|(namenosp (s','sp namelist)?)?|} 
-                        ( (s'('sp {|explist|} s')') / {exp} )                       sp) -> lambda
 
 -- table definitions & access
 
