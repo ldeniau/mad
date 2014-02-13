@@ -40,7 +40,7 @@ call = function (_, options)
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')
 		file:close()
-		local parser = lang.getParser(ext, 0, errors)
+		local parser = lang.getParser(ext, 0, errors, run)
         if options.dump and options.dump == 'ast' then
             io.write(tableUtil.stringTable(parser:parse(inputStream, fileName)))
             io.write'\n'

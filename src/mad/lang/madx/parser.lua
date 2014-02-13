@@ -44,6 +44,7 @@ local parse = function (self, str, fileName, pos, line)
 	defs._line = line or 0
 	defs._fileName = fileName
 	defs._errors = self.errors
+	defs._run = self.run
     --[[NOTE-DEV: It was attempted to call grammar:match in a while, getting one and
         one statement, but it was 10% slower than the current approach.]]
     defs.genctor = require"mad.lang.generator"
@@ -51,8 +52,9 @@ local parse = function (self, str, fileName, pos, line)
 	return ast
 end
 
-call = function (_, errors, ...)
+call = function (_, errors, run)
 	local self = {}
+	self.run = run
 	self.parse = parse
 	self.errors = errors
 	self.grammar = re.compile(grammar, defs)
