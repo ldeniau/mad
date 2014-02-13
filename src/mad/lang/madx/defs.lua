@@ -23,7 +23,7 @@ SEE ALSO
 local tableUtil = require('lua.tableUtil')
 local lower     = string.lower
                   require"mad.madxenv"
-_M.__name = _M.__name or {}
+__name = __name or {}
 
 -- defs -----------------------------------------------------------------------
 
@@ -104,7 +104,7 @@ end
 
 -- block and chunk
 function defs.chunk( )
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
+    --[[table.insert(ch,1, { ast_id = 'assign', kind = 'local',
     lhs = {
         { ast_id = 'name', name = 'env'},
         },
@@ -142,32 +142,56 @@ function defs.chunk( )
             { { ast_id = 'literal', value = "'mad.element'"} }
         }
         }
-    })
+    })]]
     ch.ast_id = 'block_stmt'
     return { ast_id = 'chunk', block = ch }
 end
 
 -- stmt
 
-function defs.safe( val, pos )
-    return val, pos
-end
-
-function defs.stmt(_,_, st1, st2 )
+local statnum = 0
+local chunknum = 1
+local st = {}
+function defs.stmt( str, pos, st1, st2 )
     table.insert(ch, st1)
-    if st2 then table.insert(ch,st2) end
+    table.insert(st, st1)
+    statnum = statnum+1
+    if st2 then
+        table.insert(ch,st2)
+        table.insert(st,st2)
+    end
+    if statnum % 1000 == 0 or not string.find(str, "([^;%s])", pos) then
+        defs._errors:setCurrentChunkName('chunkno'..chunknum)
+        local gen = defs.genctor.getGenerator('lua',defs._errors)
+        local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', table.unpack(st) }, fileName = defs._fileName }
+        local loadedCode, err = load(code, '@chunkno'..chunknum)
+        if loadedCode then
+	        local status, result = xpcall(loadedCode, function(_err)
+		        err = _err
+		        trace = debug.traceback("",2)
+            end)
+	        if not status then
+		        io.stderr:write(defs._errors:handleError(err,trace)..'\n')
+		        os.exit(-1)
+	        end
+        else
+	        error(err)
+        end
+        chunknum = chunknum+1
+        st = {}
+    end
     return true
 end
 
 local seqedit = nil
 
 function defs.assign( lhs, rhs )
-    _M.__name[lhs.name] = 'const'
+    __name[lhs.name] = 'const'
     return { ast_id = 'assign', line = defs._line, lhs = {lhs}, rhs = {rhs} }
 end
 
 function defs.defassign( lhs, rhs )
-    _M.__name[lhs.name] = 'lambda'
+    __name[lhs.name] = 'lambda'
     return { ast_id = 'assign', line = defs._line, lhs = {lhs}, 
             rhs = {
                 { ast_id = 'fundef', kind = 'lambda', line = defs._line, param = {}, 
@@ -187,6 +211,8 @@ local function sequenceAddition( name, class, ... )
         elseif v.kind and v.kind == 'name' and v.key.name == 'from' then
             from = v
             from.value = { ast_id = "literal", value = "'"..v.value.strname.."'" }
+        --elseif v.kind and v.kind == 'name' and (v.key.name == 'assembly__id' or v.key.name == 'slot__id') then
+            --do nothing
         else
             attrtbl[#attrtbl+1] = v
         end
@@ -216,7 +242,7 @@ local function sequenceAddition( name, class, ... )
 end
 
 function defs.lblstmt ( name, class, ... ) -- ... = attrlist
-    _M.__name[name.name] = 'label'
+    __name[name.name] = 'label'
     if seqedit then
         return sequenceAddition(name, class, ...) 
     end
@@ -239,7 +265,7 @@ function defs.lblstmt ( name, class, ... ) -- ... = attrlist
 end
 
 function defs.cmdstmt ( class, ... )
-    if _M.__name[class.name] == 'label' then -- it's an update
+    if __name[class.name] == 'label' then -- it's an update
         return { ast_id = 'funcall', kind = ':',
                 selfname = { ast_id = 'name', name = "set" },
                 name = class, arg = { { ast_id = 'tbldef', ... } } }

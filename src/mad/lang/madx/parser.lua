@@ -40,16 +40,21 @@ end
 -- module ---------------------------------------------------------------------
 
 local parse = function (self, str, fileName, pos, line)
+    require"mad.madxenv"
 	defs._line = line or 0
+	defs._fileName = fileName
+	defs._errors = self.errors
     --[[NOTE-DEV: It was attempted to call grammar:match in a while, getting one and
         one statement, but it was 10% slower than the current approach.]]
+    defs.genctor = require"mad.lang.generator"
 	local ast = self.grammar:match(str,pos)
 	return ast
 end
 
-call = function (_, ...)
+call = function (_, errors, ...)
 	local self = {}
 	self.parse = parse
+	self.errors = errors
 	self.grammar = re.compile(grammar, defs)
 	return self
 end

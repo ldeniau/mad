@@ -176,6 +176,9 @@ M.hkicker     = M.kicker  'hkicker'     { kind='hkicker' }
 M.vkicker     = M.kicker  'vkicker'     { kind='vkicker' } 
 M.tkicker     = M.kicker  'tkicker'     { kind='tkicker' } 
 
+-- collimators
+M.rcollimator = M.collimator 'rcollimator'  { kind='rcollimator' }
+
 -- monitors
 M.bpm         = M.monitor 'bpm'         { kind='bpm' }
 M.blm         = M.monitor 'blm'         { kind='blm' }
