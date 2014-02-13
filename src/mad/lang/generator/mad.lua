@@ -249,7 +249,11 @@ end
 function dict:expr(node)
     for i,v in ipairs(node) do
         if type(v) =="string" then
-            self:write(" "..v.." ")
+            if v == "-" or v == "#" then
+                self:write(v)
+            else
+                self:write(" "..v.." ")
+            end
         else
             self:render(v)
         end
