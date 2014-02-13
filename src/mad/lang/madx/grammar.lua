@@ -40,6 +40,12 @@ M.grammar = [=[
     attr        <- (assign / defassign / exp                                        sp) -> attr
     attrlist    <- (attr (s','sp attr)*)
     
+    lineattr    <- (line s'='sp linector                                            sp) --> line
+    linector    <- (s'('sp linedef s')'                                             sp) --> linector
+    linedef     <- (linepart (s','sp linepart)*)
+    linepart    <- (invert / times / name / linector)
+    invert      <- (s'-'sp linepart)
+    times       <- ((number->literal) s'*'sp linepart)
 
 -- expressions
 
@@ -68,11 +74,12 @@ M.grammar = [=[
     
 -- keywords
 
-    keyword     <- (real / const / return)
+    keyword     <- (real / const / return / line)
     
     return      <- s[rR][eE][tT][uU][rR][nN]sp
     real        <- s[rR][eE][aA][lL]sp
     const       <- s[cC][oO][nN][sS][tT]sp
+    line        <- s[lL][iI][nN][eE]sp
     
 -- lexems
 
