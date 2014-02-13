@@ -40,11 +40,11 @@ local parsers = {
 
 local currentKey
 
-M.getParser = function (key, line, errors)
+M.getParser = function (key, line, ...)
     line = line or 0
 	if not options then error("Options haven't been set for lang.lua") end
 	if not parsers[key] then error("There's no parser mapped to key: "..key) end
-	local p = parsers[key](errors)
+	local p = parsers[key](...)
 	local parse = p.parse
 	local modifiedParse = function(self, inputStream, fileName, pos)
 	    pos = pos or 1
