@@ -309,6 +309,12 @@ function M:insert(a, at, count) -- TODO
   insert_element(self, a, at)
 end
 
+function M:add(a, at) -- TODO
+end
+
+function M:done(a) -- TODO
+end
+
 -- metamethods -----------------------------------------------------------------
 
 -- constructor of sequences, can be anonymous

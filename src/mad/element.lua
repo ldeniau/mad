@@ -145,13 +145,19 @@ end
 
 -- element famillies
 M.drift       = M.element 'drift'       { kind='drift' }
+M.cavity      = M.element 'cavity'      { kind='cavity' }
 M.magnet      = M.element 'magnet'      { kind='magnet' }
+M.kicker      = M.element 'kicker'      { kind='kicker' }
 M.marker      = M.element 'marker'      { kind='marker' }
 M.patch       = M.element 'patch'       { kind='patch' }
 
 -- drifts
 M.monitor     = M.drift   'monitor'     { kind='monitor' }
+M.collimator  = M.drift   'collimator'  { kind='collimator' }
 M.placeholder = M.drift   'placeholder' { kind='placeholder' }
+
+-- cavities
+M.rfcavity    = M.cavity  'rfcavity'    { kind='rfcavity' }
 
 -- magnets
 M.sbend       = M.magnet  'sbend'       { kind='sbend' }
@@ -161,11 +167,22 @@ M.sextupole   = M.magnet  'sextupole'   { kind='sextupole' }
 M.octupole    = M.magnet  'octupole'    { kind='octupole' }
 M.decapole    = M.magnet  'decapole'    { kind='decapole' }
 M.dodecapole  = M.magnet  'dodecapole'  { kind='dodecapole' }
+M.multipole   = M.magnet  'multipole'   { kind='multipole' }
 M.elseparator = M.magnet  'elseparator' { kind='elseparator' }
+M.solenoid    = M.magnet  'solenoid'    { kind='solenoid' }
+
+-- kickers
+M.hkicker     = M.kicker  'hkicker'     { kind='hkicker' } 
+M.vkicker     = M.kicker  'vkicker'     { kind='vkicker' } 
+M.tkicker     = M.kicker  'tkicker'     { kind='tkicker' } 
 
 -- monitors
 M.bpm         = M.monitor 'bpm'         { kind='bpm' }
 M.blm         = M.monitor 'blm'         { kind='blm' }
+
+-- others
+M.instrument  = M.placeholder 'instrument' { kind='instrument' }
+
 
 -- end -------------------------------------------------------------------------
 return M
