@@ -121,25 +121,27 @@ function defs.stmt( str, pos, st1, st2 )
         table.insert(ch,st2)
         table.insert(st,st2)
     end
-    if statnum % 1000 == 0 or not string.find(str, "([^;%s])", pos) then
-        defs._errors:setCurrentChunkName('chunkno'..chunknum)
-        local gen = defs.genctor.getGenerator('lua',defs._errors)
-        local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', table.unpack(st) }, fileName = defs._fileName }
-        local loadedCode, err = load(code, '@chunkno'..chunknum)
-        if loadedCode then
-	        local status, result = xpcall(loadedCode, function(_err)
-		        err = _err
-		        trace = debug.traceback("",2)
-            end)
-	        if not status then
-		        io.stderr:write(defs._errors:handleError(err,trace)..'\n')
-		        os.exit(-1)
-	        end
-        else
-	        error(err)
+    if defs._run then
+        if statnum % 1000 == 0 or not string.find(str, "([^;%s])", pos) then
+            defs._errors:setCurrentChunkName('chunkno'..chunknum)
+            local gen = defs.genctor.getGenerator('lua',defs._errors)
+            local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', table.unpack(st) }, fileName = defs._fileName }
+            local loadedCode, err = load(code, '@chunkno'..chunknum)
+            if loadedCode then
+	            local status, result = xpcall(loadedCode, function(_err)
+		            err = _err
+		            trace = debug.traceback("",2)
+                end)
+	            if not status then
+		            io.stderr:write(defs._errors:handleError(err,trace)..'\n')
+		            os.exit(-1)
+	            end
+            else
+	            error(err)
+            end
+            chunknum = chunknum+1
+            st = {}
         end
-        chunknum = chunknum+1
-        st = {}
     end
     return true
 end
@@ -252,6 +254,27 @@ end
 
 function defs.retstmt( _, ... )
     return { ast_id = 'ret_stmt', line = defs._line, ... }
+end
+
+-- line
+function defs.linestmt(lbl, line)
+    return { ast_id = 'funcall', name = lbl, kind = ':', selfname = { ast_id = 'name', name = 'set' }, arg = {line} }
+end
+
+function defs.linector(...)
+    return { ast_id = 'funcall', name = { ast_id = 'name', name = 'sequence' }, arg = { {ast_id = 'tbldef', ... } } }
+end
+
+function defs.linepart(line)
+    return { ast_id = 'tblfld', value = line }
+end
+
+function defs.invertline(line)
+    return { ast_id = 'expr', '-', line }
+end
+
+function defs.timesline(num, line)
+    return { ast_id = 'expr', num, '*', line }
 end
 
 -- expressions

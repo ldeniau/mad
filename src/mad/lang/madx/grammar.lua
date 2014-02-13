@@ -28,11 +28,12 @@ M.grammar = [=[
 
 -- statement
     
-    stmt        <- (s( assignstmt / defassign / lblstmt / cmdstmt / retstmt )       sp) => stmt
+    stmt        <- (s( assignstmt / defassign / linestmt / lblstmt / cmdstmt / retstmt ) sp) => stmt
     assignstmt  <- (real? const? assign)
     lblstmt     <- (name s':'sp name (s','?sp attrlist)?                            sp) -> lblstmt
     cmdstmt     <- (name s','?sp attrlist?                                          sp) -> cmdstmt
     retstmt     <- (return explist?                                                 sp) -> retstmt
+    linestmt    <- (name ls':'sp line ls'='sp linector                              sp) -> linestmt
     
     assign      <- (name s'='sp exp                                                 sp) -> assign
     defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
@@ -40,12 +41,12 @@ M.grammar = [=[
     attr        <- (assign / defassign / exp                                        sp) -> attr
     attrlist    <- (attr (s','sp attr)*)
     
-    lineattr    <- (line s'='sp linector                                            sp) --> line
-    linector    <- (s'('sp linedef s')'                                             sp) --> linector
-    linedef     <- (linepart (s','sp linepart)*)
-    linepart    <- (invert / times / name / linector)
-    invert      <- (s'-'sp linepart)
-    times       <- ((number->literal) s'*'sp linepart)
+    linector    <- (ls'('sp linedef ls')'                                           sp) -> linector
+    linedef     <- (linepart (ls','sp linepart)*)
+    linepart    <- (ls(invert / times / ls name / linector)                         sp) -> linepart
+    invert      <- (ls'-'sp linepart                                                sp) -> invertline
+    times       <- (ls((number->literal)sp ls'*'sp linepart)                        sp) -> timesline
+    ls          <- s'&'?
 
 -- expressions
 
