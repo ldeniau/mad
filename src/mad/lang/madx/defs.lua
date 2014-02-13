@@ -104,45 +104,6 @@ end
 
 -- block and chunk
 function defs.chunk( )
-    --[[table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'env'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.madxenv'"} }
-        }
-        },
-    })
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'seq'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.sequence'"} }
-        }
-        },
-    })
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'elem'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.element'"} }
-        }
-        }
-    })]]
     ch.ast_id = 'block_stmt'
     return { ast_id = 'chunk', block = ch }
 end
@@ -211,8 +172,6 @@ local function sequenceAddition( name, class, ... )
         elseif v.kind and v.kind == 'name' and v.key.name == 'from' then
             from = v
             from.value = { ast_id = "literal", value = "'"..v.value.strname.."'" }
-        --elseif v.kind and v.kind == 'name' and (v.key.name == 'assembly__id' or v.key.name == 'slot__id') then
-            --do nothing
         else
             attrtbl[#attrtbl+1] = v
         end
