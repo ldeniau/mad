@@ -47,15 +47,19 @@ end
 
 function dict:block_stmt(node)
     if node.kind == "do" then self:write("do ") end
-    self.writer:indent()
-    self.writer:writeln()
-    for i=1, #node do
-        self:render(node[i])
-        if i ~= #node then 
-            self.writer:writeln()
+    if #node == 1 then
+        self:render(node[1])
+    else
+        self.writer:indent()
+        self.writer:writeln()
+        for i=1, #node do
+            self:render(node[i])
+            if i ~= #node then 
+                self.writer:writeln()
+            end
         end
+        self.writer:undent()
     end
-    self.writer:undent()
     if node.kind == "do" then
         self.writer:writeln()
         self:write("end ")
@@ -89,16 +93,20 @@ function dict:funcall(node)
         self:write(":")
         self:render(node.selfname)
     end
-    self:write("( ")
-    if node.arg then
-        for i,v in ipairs(node.arg) do
-            self:render(v)
-            if i ~= #node.arg then
-                self:write(", ")
+    if #node.arg == 1 and (node.arg[1].ast_id == "literal" and string.find(node.arg[1].value, [=[["'%[]]=]) or node.arg[1].ast_id == "tbldef") then
+        self:render(node.arg[1])
+    else
+        self:write("(")
+        if node.arg then
+            for i,v in ipairs(node.arg) do
+                self:render(v)
+                if i ~= #node.arg then
+                    self:write(", ")
+                end
             end
         end
+        self:write(")")
     end
-    self:write(" )")
 end
 
 function dict:label_stmt(node)
@@ -126,7 +134,7 @@ end
 function dict:for_stmt(node)
     self:write("for ")
     self:render(node.name)
-    self:write(" = ")
+    self:write("=")
     self:render(node.first)
     self:write(", ")
     self:render(node.last)
@@ -162,14 +170,14 @@ function dict:genfor_stmt(node)
     for i,v in ipairs(node.name) do
         self:render(v)
         if i < #node.name then
-            self:write", "
+            self:write","
         end
     end
     self:write(" in ")
     for i,v in ipairs(node.expr) do
         self:render(v)
         if i < #node.expr then
-            self:write", "
+            self:write","
         end
     end
     self:write(" do")
@@ -179,19 +187,19 @@ function dict:genfor_stmt(node)
 end
 
 local function lambda(self, node)
-    self:write([[require"mad.lang.lambda"( function ( ]])
+    self:write([[require"mad.lang.lambda"(function(]])
     if node.param then
         for i,v in ipairs(node.param) do
             self:render(v)
             if i ~= #node.param then
-                self:write(", ")
+                self:write(",")
             end
         end
     end
-    self:write(" )")
+    self:write(")")
     self:render(node.block)
     self.writer:writeln()
-    self:write("end )")
+    self:write("end)")
 end
 
 function dict:fundef(node)
@@ -200,7 +208,7 @@ function dict:fundef(node)
         return
     end
     if node.kind == "local" then
-        self:write("local ")
+        self:write'local '
     end
     self:write("function ")
     if node.name then
@@ -210,16 +218,16 @@ function dict:fundef(node)
         self:write(":")
         self:render(node.selfname)
     end
-    self:write("( ")
+    self:write("(")
     if node.param then
         for i,v in ipairs(node.param) do
             self:render(v)
             if i ~= #node.param then
-                self:write(", ")
+                self:write(",")
             end
         end
     end
-    self:write(" )")
+    self:write(")")
     self:render(node.block)
     self.writer:writeln()
     self:write("end")
@@ -238,7 +246,11 @@ end
 function dict:expr(node)
     for i,v in ipairs(node) do
         if type(v) =="string" then
-            self:write(" "..v.." ")
+            if v == 'and' or v == 'or' then
+                self:write(" "..v.." ")
+            else
+                self:write(v)
+            end
         else
             self:render(v)
         end
@@ -246,9 +258,9 @@ function dict:expr(node)
 end
 
 function dict:grpexpr(node)
-    self:write("( ")
+    self:write("(")
     self:render(node.expr)
-    self:write(" )")
+    self:write(")")
 end
 
 function dict:name(node)
@@ -260,24 +272,24 @@ function dict:literal(node)
 end
 
 function dict:tbldef(node)
-    self:write("{ ")
+    self:write("{")
     for i,v in ipairs(node) do
         self:render(v)
         if i < #node then
             self:write(", ")
         end
     end
-    self:write(" }")
+    self:write("}")
 end
 
 function dict:tblfld(node)
     if node.kind == "expr" then
         self:write("[")
         self:render(node.key)
-        self:write("] = ")
+        self:write("]=")
     elseif node.kind == "name" then
         self:render(node.key)
-        self:write(" = ")
+        self:write("=")
     end
     self:render(node.value)
 end
