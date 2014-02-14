@@ -127,8 +127,8 @@ end
 function dict:do_stmt(node)
     self:write("do")
     self:render(node.block)
-    self.writer:writeln()
-    self:write("end")
+    if #node.block > 1 then self.writer:writeln() end
+    self:write(" end")
 end
 
 function dict:for_stmt(node)
@@ -144,8 +144,8 @@ function dict:for_stmt(node)
     end
     self:write(" do")
     self:render(node.block)
-    self.writer:writeln()
-    self:write("end")
+    if #node.block > 1 then self.writer:writeln() end
+    self:write(" end")
 end
 
 function dict:while_stmt(node)
@@ -153,8 +153,8 @@ function dict:while_stmt(node)
     self:render(node.expr)
     self:write(" do")
     self:render(node.block)
-    self.writer:writeln()
-    self:write("end")
+    if #node.block > 1 then self.writer:writeln() end
+    self:write(" end")
 end
 
 function dict:repeat_stmt(node)
@@ -182,8 +182,8 @@ function dict:genfor_stmt(node)
     end
     self:write(" do")
     self:render(node.block)
-    self.writer:writeln()
-    self:write("end")
+    if #node.block > 1 then self.writer:writeln() end
+    self:write(" end")
 end
 
 local function lambda(self, node)
@@ -210,8 +210,9 @@ function dict:fundef(node)
     if node.kind == "local" then
         self:write'local '
     end
-    self:write("function ")
+    self:write("function")
     if node.name then
+        self:write' '
         self:render(node.name)
     end
     if node.selfname then
@@ -229,8 +230,8 @@ function dict:fundef(node)
     end
     self:write(")")
     self:render(node.block)
-    self.writer:writeln()
-    self:write("end")
+    if #node.block > 1 then self.writer:writeln() end
+    self:write(" end")
 end
 
 function dict:ret_stmt(node)
