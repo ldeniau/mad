@@ -317,8 +317,8 @@ end
 
 -- basic lexem
 
-function defs.literal(val)
-    return { ast_id = 'literal', value = val, line = defs._line }
+function defs.literal(val, val2)
+    return { ast_id = 'literal', value = val2 or val, line = defs._line }
 end
 
 function defs.name(name)

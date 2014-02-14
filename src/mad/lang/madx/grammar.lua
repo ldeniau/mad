@@ -95,7 +95,7 @@ M.grammar = [=[
     sstring     <- '"' ssclose
     ssclose     <- '"' / ch ssclose
 
-    decnum      <- ((num ('.' num / '.')?) / ('.' num)) ([eE] sign? num)?
+    decnum      <- {~((num ('.' num / '.'->'.0')?) / (('.'->'0.') num)) ([eE] sign? num)?~}
 
     ident       <- [A-Za-z_][A-Za-z0-9_.$]*
     e           <- ![A-Za-z0-9_]
