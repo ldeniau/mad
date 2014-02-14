@@ -93,7 +93,7 @@ function dict:funcall(node)
         self:write(":")
         self:render(node.selfname)
     end
-    if #node.arg == 1 and (node.arg[1].ast_id == "literal" and string.find(node.arg[1].value, [=[["'%[]]=]) or node.arg[1].ast_id == "tbldef") then
+    if #node.arg == 1 and (node.arg[1].ast_id == "literal" and string.find(node.arg[1].value, [=[["'[]]=]) or node.arg[1].ast_id == "tbldef") then
         self:render(node.arg[1])
     else
         self:write("(")
