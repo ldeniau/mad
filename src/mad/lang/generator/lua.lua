@@ -124,13 +124,6 @@ function dict:goto_stmt(node)
     self:render(node.name)
 end
 
-function dict:do_stmt(node)
-    self:write("do")
-    self:render(node.block)
-    if #node.block > 1 then self.writer:writeln() end
-    self:write(" end")
-end
-
 function dict:for_stmt(node)
     self:write("for ")
     self:render(node.name)
@@ -142,7 +135,7 @@ function dict:for_stmt(node)
         self:write(", ")
         self:render(node.step)
     end
-    self:write(" do")
+    self:write(" do ")
     self:render(node.block)
     if #node.block > 1 then self.writer:writeln() end
     self:write(" end")
@@ -151,14 +144,14 @@ end
 function dict:while_stmt(node)
     self:write("while ")
     self:render(node.expr)
-    self:write(" do")
+    self:write(" do ")
     self:render(node.block)
     if #node.block > 1 then self.writer:writeln() end
     self:write(" end")
 end
 
 function dict:repeat_stmt(node)
-    self:write("repeat")
+    self:write("repeat ")
     self:render(node.block)
     self.writer:writeln()
     self:write("until ")
@@ -180,7 +173,7 @@ function dict:genfor_stmt(node)
             self:write","
         end
     end
-    self:write(" do")
+    self:write(" do ")
     self:render(node.block)
     if #node.block > 1 then self.writer:writeln() end
     self:write(" end")
@@ -311,19 +304,19 @@ end
 function dict:if_stmt(node)
     self:write("if ")
     self:render(node[1])
-    self:write(" then")
+    self:write(" then ")
     self:render(node[2])
     self.writer:writeln()
     for i=3, #node, 2 do
         if node[i].ast_id == "block_stmt" then
-            self:write("else")
+            self:write("else ")
             self:render(node[i])
             self.writer:writeln()
             break
         end
         self:write("elseif ")
         self:render(node[i])
-        self:write(" then")
+        self:write(" then ")
         self:render(node[i+1])
         self.writer:writeln()
     end
@@ -349,7 +342,7 @@ local function render(self, node, ...)
         self.currentFileName = node.fileName
     end
     if node.line then
-        self.errors:addToLineMap(node.line, self.writer.line, self.currentFileName)
+        self.errors.addToLineMap(node.line, self.writer.line, self.currentFileName)
     end
     local ret = dict[node.ast_id](self, node, ...)
     if node.fileName then
@@ -367,10 +360,10 @@ local function generate (self, tree)
     return tostring(self.writer)
 end
 
-call = function (_, errors, lambda, ...)
+call = function (_, lambda, ...)
     local self = {
         lambda = lambda or nil,
-        errors = errors,
+        errors = require"mad.lang.errors",
         writer = writer:new(),
         render = render,
         write = write,
