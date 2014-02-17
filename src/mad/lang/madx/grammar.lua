@@ -26,7 +26,7 @@ M.grammar = [=[
 
     chunk       <- ((''=>setup) (stmtnum)* s(!./''=>error))                             -> chunk
     stmtnum     <- ((stmt s';'sp)^1000 / (stmt s';'sp)+)                                => stmtnum
-    block       <- (s'{'sp (stmt s';'sp)* s'}'                                          sp) -> block
+    block       <- (s'{'sp (stmt s';'sp)* s'}'                                      sp) -> block
 
 -- statement
     
@@ -52,7 +52,10 @@ M.grammar = [=[
     
     macrocall   <- (exec s','sp name (s'('sp macroarg s')')?                        sp) -> macrocall
     macroarg    <- (s{'$'?(number? ident / number)} sp (s','sp s{'$'?(number? ident / number)} sp )*)
-    macrodef    <- (name parlist? s':'sp macro s'='sp s'{'sp {(!'}' any)*} '}'      sp) -> macrodef
+    macrodef    <- (name parlist? s':'sp macro s'='sp macroblock                    sp) -> macrodef
+    macroblock  <- s'{'sp {((!('{'/'}') any) / balanced)*} '}'sp
+    
+    balanced    <- '{' ((!('{'/'}') any) / balanced)* '}'
     parlist     <- (s'('sp name (s','sp name)* s')'                                 sp) -> parlist
     
     assign      <- (name s'='sp exp                                                 sp) -> assign
@@ -91,9 +94,9 @@ M.grammar = [=[
 
 -- operators
 
-    andop       <- s{~ '&&'->'and' ~} sp
-    orop        <- s{~ '||'->'or' ~} sp
-    logop       <- s{~ '==' / '<>'->'~=' / '<=' / '>=' / '<' / '>' ~} sp
+    andop       <- s{~ '&&'->'and' ~} sp -> substCap
+    orop        <- s{~ '||'->'or' ~} sp -> substCap
+    logop       <- s{ '==' / ({~'<>'->'~='~} -> substCap) / '<=' / '>=' / '<' / '>' } sp
     sumop       <- s{'+' / '-'} sp
     prodop      <- s{'*' / '/'} sp
     unop        <- s({'-'} / '+') sp -- Implicit + if - isn't present.

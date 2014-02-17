@@ -358,6 +358,12 @@ function defs.funcall(name, arguments)
     return { ast_id = 'funcall', line = defs._line, name = name, arg = arguments }
 end
 
+function defs.substCap(str, cap)
+    print("str", str)
+    print("cap", cap)
+    return cap
+end
+
 -- basic lexem
 
 function defs.literal(val, val2)
