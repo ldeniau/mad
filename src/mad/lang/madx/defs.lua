@@ -273,9 +273,13 @@ function defs.macrodef(label, parlist, str)
     if not str then str = parlist parlist = {} end
     local par = {ast_id = "tbldef"}
     for i,v in ipairs(parlist) do
-        par[i] = {}
-        par[i].value = "'"..v.name.."'"
-        par[i].ast_id = "literal"
+        if not v.ast_id then
+            par[i] = {}
+            par[i].value = "'"..v.."'"
+            par[i].ast_id = "literal"
+        else
+            par[i] = v
+        end
     end
     return { ast_id = 'assign', lhs = { label }, rhs = { { ast_id = 'tbldef', { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'str'}, value = { ast_id = 'literal', value = "[===["..str.."]===]" } }, { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'par'}, value = par } } } }
 end

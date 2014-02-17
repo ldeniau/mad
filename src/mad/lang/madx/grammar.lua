@@ -52,11 +52,12 @@ M.grammar = [=[
     
     macrocall   <- (exec s','sp name (s'('sp macroarg s')')?                        sp) -> macrocall
     macroarg    <- (s{'$'?(number? ident / number)} sp (s','sp s{'$'?(number? ident / number)} sp )*)
+    
     macrodef    <- (name parlist? s':'sp macro s'='sp macroblock                    sp) -> macrodef
     macroblock  <- s'{'sp {((!('{'/'}') any) / balanced)*} '}'sp
-    
     balanced    <- '{' ((!('{'/'}') any) / balanced)* '}'
-    parlist     <- (s'('sp name (s','sp name)* s')'                                 sp) -> parlist
+    parlist     <- (s'('sp macrostr (s','sp macrostr )* s')'                        sp) -> parlist
+    macrostr    <- s(string->literal / {[^%s),]+}) sp
     
     assign      <- (name s'='sp exp                                                 sp) -> assign
     defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
@@ -69,7 +70,7 @@ M.grammar = [=[
     linepart    <- (ls(invert / times / ls name / linector)                         sp) -> linepart
     invert      <- (ls'-'sp linepart                                                sp) -> invertline
     times       <- (ls((number->literal)sp ls'*'sp linepart)                        sp) -> timesline
-    ls          <- s'&'? -- In MAD8/9, one needed & for line-continuation.
+    ls          <- s'&'? -- In MAD8/9, & means line-continuation.
 
 -- expressions
 
