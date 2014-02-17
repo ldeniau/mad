@@ -37,6 +37,7 @@ call = function (_, options)
 	for _, fileName in ipairs(options.files) do
 		errors.setCurrentChunkName(fileName)
 		local path, name, ext = fn.split(fileName)
+        if ext == 'seq' then ext = 'madx' end
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')
 		file:close()
