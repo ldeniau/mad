@@ -35,41 +35,44 @@ SEE ALSO
 
 -- modules ---------------------------------------------------------------------
 
-local setCurrentChunkName = function(self, name)
-	self.currentChunkName = name
-	if not self._lineMap[self.currentChunkName] then
-		self._lineMap[self.currentChunkName] = {}
+local _lineMap = {}
+local currentChunkName
+
+M.setCurrentChunkName = function( name)
+	currentChunkName = name
+	if not _lineMap[currentChunkName] then
+		_lineMap[currentChunkName] = {}
 	end
 end
 
-local addToLineMap = function(self, lineIn, lineOut, fileName)
-	if not self._lineMap[self.currentChunkName][lineOut] then
-		self._lineMap[self.currentChunkName][lineOut] = {}
+M.addToLineMap = function( lineIn, lineOut, fileName)
+	if not _lineMap[currentChunkName][lineOut] then
+		_lineMap[currentChunkName][lineOut] = {}
 	end
-	self._lineMap[self.currentChunkName][lineOut].fileName = fileName
-	if not self._lineMap[self.currentChunkName][lineOut].line or lineIn and self._lineMap[self.currentChunkName][lineOut].line > lineIn then
-		self._lineMap[self.currentChunkName][lineOut].line = lineIn
+	_lineMap[currentChunkName][lineOut].fileName = fileName
+	if not _lineMap[currentChunkName][lineOut].line or lineIn and _lineMap[currentChunkName][lineOut].line > lineIn then
+		_lineMap[currentChunkName][lineOut].line = lineIn
 	end
 end
 
-local function searchForLineMatch(self, line, chunkName)
-	if self._lineMap[chunkName][line+1] then
+local function searchForLineMatch( line, chunkName)
+	if _lineMap[chunkName][line+1] then
 		line = line+1
 	else
-		while line > 1 and not self._lineMap[chunkName][line] do
+		while line > 1 and not _lineMap[chunkName][line] do
 			line = line - 1
 		end
 	end
 	return line
 end
 
-local function getNameAndLine(self, err, chunkName)
+local function getNameAndLine( err, chunkName)
 	local line = tonumber(string.match(err, ":(%d+):"))
-	if not self._lineMap[chunkName][line] then
-		line = searchForLineMatch(self, line, chunkName)
+	if not _lineMap[chunkName][line] then
+		line = searchForLineMatch( line, chunkName)
 	end
-	local name = self._lineMap[chunkName][line].fileName
-	local realLine = self._lineMap[chunkName][line].line
+	local name = _lineMap[chunkName][line].fileName
+	local realLine = _lineMap[chunkName][line].line
 	return name, realLine
 end
 
@@ -78,14 +81,14 @@ local function getErrorMessage(err)
 end
 
 local function getStackTraceBack(err)
-	return string.match(err, ".*stack traceback:%s*(.*)%s*%[C%]: in function 'xpcall'")
+	return string.match(err, ".*stack traceback:%s*(.-)%s*%[C%]: in function 'xpcall'")
 end
 
-local function createStackTable(self, stack)
+local function createStackTable( stack)
 	local stacktable = {}
 	for s in string.gmatch(stack,"(.-)\n%s*") do
 	    local chunkName = string.match(s,"(.-):%d+:")
-		local name, line = getNameAndLine(self, s, chunkName)
+		local name, line = getNameAndLine( s, chunkName)
 		stacktable[#stacktable+1] = "\t"..name..":"..line..":"..string.match(s,":%d+:(.*)")
 	end
 	return stacktable
@@ -103,40 +106,27 @@ local function getChunkName(err)
 	return string.match(err, "(.-):%d+:")
 end
 
-local function translateLuaErrToMadErr(self, err, trace)
+local function translateLuaErrToMadErr( err, trace)
 	local chunkName = getChunkName(err)
-	local name, realLine = getNameAndLine(self, err, chunkName)
+	local name, realLine = getNameAndLine( err, chunkName)
 	local errmess = getErrorMessage(err)
 	errmess = name..":"..realLine..": "..errmess
 	local stack = getStackTraceBack(trace)
-	local stacktable = createStackTable(self, stack)
+	local stacktable = createStackTable( stack)
 	errmess = errmess..createStackErrorMessage(stacktable)
 	return errmess
 end
 
-local function handleError (self, err, trace)
-	local errmess = translateLuaErrToMadErr(self, err, trace)
+function M.handleError (err, trace)
+	local errmess = translateLuaErrToMadErr(err, trace)
 	return errmess
-end
-
--- metamethods ----------------------------------------------------------------
-local mt = {}; setmetatable(M, mt)
-mt.__call = function (_, ...)
-	local self = {
-		_lineMap = {},
-		currentChunkName,
-		setCurrentChunkName = setCurrentChunkName,
-		addToLineMap = addToLineMap,
-		handleError = handleError
-	}
-	return self
 end
 
 -- tests ----------------------------------------------------------------------
 
 function M.test:setUp()
-    self.errors = M()
-    self.errors._lineMap = { chunk = { 
+    self.errors = M
+    _lineMap = { chunk = { 
         { fileName = 'fn',  line = 1 },  --1
         { fileName = 'fn',  line = 2 },  --2
         { fileName = 'fn',  line = 3 },  --3
@@ -148,61 +138,61 @@ function M.test:setUp()
 end
 
 function M.test:tearDown()
-    self.errors._lineMap = nil
+    _lineMap = {}
     self.errors = nil
 end
 
 function M.test:setCurrentChunkName(ut)
-    ut:succeeds(self.errors.setCurrentChunkName, self.errors, 'Hallaien')
-    ut:equals(self.errors.currentChunkName, 'Hallaien')
-    ut:succeeds(self.errors.setCurrentChunkName, self.errors, 'Eg likar banan')
-    ut:equals(self.errors.currentChunkName, 'Eg likar banan')
+    ut:succeeds(self.errors.setCurrentChunkName, 'Hallaien')
+    ut:equals(currentChunkName, 'Hallaien')
+    ut:succeeds(self.errors.setCurrentChunkName, 'Eg likar banan')
+    ut:equals(currentChunkName, 'Eg likar banan')
 end
 
 function M.test:addToLineMap(ut)
-    self.errors:setCurrentChunkName'chunk'
-    ut:succeeds(self.errors.addToLineMap, self.errors, 9, 10, 'fn3')
-    ut:equals(self.errors._lineMap.chunk[10].line, 9)
-    ut:equals(self.errors._lineMap.chunk[10].fileName, 'fn3')
-    ut:succeeds(self.errors.addToLineMap, self.errors, 10, 1, 'fn')
-    ut:equals(self.errors._lineMap.chunk[1].line, 1)
-    ut:equals(self.errors._lineMap.chunk[1].fileName, 'fn')
+    self.errors.setCurrentChunkName'chunk'
+    ut:succeeds(self.errors.addToLineMap, 9, 10, 'fn3')
+    ut:equals(_lineMap.chunk[10].line, 9)
+    ut:equals(_lineMap.chunk[10].fileName, 'fn3')
+    ut:succeeds(self.errors.addToLineMap, 10, 1, 'fn')
+    ut:equals(lineMap.chunk[1].line, 1)
+    ut:equals(lineMap.chunk[1].fileName, 'fn')
     self.errors:setCurrentChunkName'chunk2'
-    ut:succeeds(self.errors.addToLineMap, self.errors, 9, 10, 'fn3')
-    ut:equals(self.errors._lineMap.chunk2[10].line, 9)
-    ut:equals(self.errors._lineMap.chunk2[10].fileName, 'fn3')
-    ut:succeeds(self.errors.addToLineMap, self.errors, 10, 1, 'fn')
-    ut:equals(self.errors._lineMap.chunk2[1].line, 10)
-    ut:equals(self.errors._lineMap.chunk2[1].fileName, 'fn')
+    ut:succeeds(self.errors.addToLineMap, 9, 10, 'fn3')
+    ut:equals(lineMap.chunk2[10].line, 9)
+    ut:equals(lineMap.chunk2[10].fileName, 'fn3')
+    ut:succeeds(self.errors.addToLineMap, 10, 1, 'fn')
+    ut:equals(lineMap.chunk2[1].line, 10)
+    ut:equals(lineMap.chunk2[1].fileName, 'fn')
 end
 
 function M.test:searchForLineMatch(ut)
-    self.errors:setCurrentChunkName'chunk'
-    self.errors:addToLineMap(14, 14, 'fn')
-    self.errors:addToLineMap(12, 12, 'fn')
-    self.errors:addToLineMap(15, 15, 'fn')
-    local line = ut:succeeds(searchForLineMatch, self.errors, 9, 'chunk')
+    self.errors.setCurrentChunkName'chunk'
+    self.errors.addToLineMap(14, 14, 'fn')
+    self.errors.addToLineMap(12, 12, 'fn')
+    self.errors.addToLineMap(15, 15, 'fn')
+    local line = ut:succeeds(searchForLineMatch, 9, 'chunk')
     ut:equals(line, 8)
-    line = ut:succeeds(searchForLineMatch, self.errors, 2, 'chunk')
+    line = ut:succeeds(searchForLineMatch, 2, 'chunk')
     ut:equals(line, 3)
-    line = ut:succeeds(searchForLineMatch, self.errors, 11, 'chunk')
+    line = ut:succeeds(searchForLineMatch, 11, 'chunk')
     ut:equals(line, 12)
-    line = ut:succeeds(searchForLineMatch, self.errors, 10, 'chunk')
+    line = ut:succeeds(searchForLineMatch, 10, 'chunk')
     ut:equals(line, 8)
-    line = ut:succeeds(searchForLineMatch, self.errors, 13, 'chunk')
+    line = ut:succeeds(searchForLineMatch, 13, 'chunk')
     ut:equals(line, 14)
-    line = ut:succeeds(searchForLineMatch, self.errors, 100, 'chunk')
+    line = ut:succeeds(searchForLineMatch, 100, 'chunk')
     ut:equals(line, 15)
 end
 
 function M.test:getNameAndLine(ut)
-    local name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:1:Some kind of error", 'chunk')
+    local name, line = ut:succeeds(getNameAndLine, "chunk:1:Some kind of error", 'chunk')
     ut:equals(name, "fn")
     ut:equals(line, 1)
-    name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:12:Some kind of error", 'chunk')
+    name, line = ut:succeeds(getNameAndLine, "chunk:12:Some kind of error", 'chunk')
     ut:equals(name, "fn")
     ut:equals(line, 8)
-    name, line = ut:succeeds(getNameAndLine, self.errors, "chunk:5:Some kind of error", 'chunk')
+    name, line = ut:succeeds(getNameAndLine, "chunk:5:Some kind of error", 'chunk')
     ut:equals(name, "fn2")
     ut:equals(line, 1)
 end
@@ -273,7 +263,7 @@ stack traceback:
 end
 
 function M.test:createStackTable(ut)
-    local stbl = ut:succeeds(createStackTable, self.errors, [[chunk:1:error
+    local stbl = ut:succeeds(createStackTable, [[chunk:1:error
 chunk:2:error2
 chunk:5:error5
 chunk:9:error9
@@ -310,7 +300,7 @@ stack traceback:
 end
 
 function M.test:translateLuaErrToMadErr(ut)
-    local transmess = ut:succeeds(translateLuaErrToMadErr, self.errors, "chunk:1:error1", 
+    local transmess = ut:succeeds(translateLuaErrToMadErr, "chunk:1:error1", 
 [[stack traceback:
 	chunk:2:error2
 	chunk:5:error5
@@ -325,7 +315,7 @@ stack traceback:
 end
 
 function M.test:handleError (ut)
-    local transmess = ut:succeeds(self.errors.handleError, self.errors, "chunk:1:error1", 
+    local transmess = ut:succeeds(self.errors.handleError, "chunk:1:error1", 
 [[stack traceback:
 	chunk:2:error2
 	chunk:5:error5

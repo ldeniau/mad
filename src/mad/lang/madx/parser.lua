@@ -43,7 +43,6 @@ local parse = function (self, str, fileName, pos, line)
     require"mad.madxenv"
 	defs._line = line or 0
 	defs._fileName = fileName
-	defs._errors = self.errors
 	defs._run = self.run
     --[[NOTE-DEV: It was attempted to call grammar:match in a while, getting one and
         one statement, but it was 10% slower than the current approach.]]
@@ -52,11 +51,10 @@ local parse = function (self, str, fileName, pos, line)
 	return ast
 end
 
-call = function (_, errors, run)
+call = function (_, run)
 	local self = {}
 	self.run = run
 	self.parse = parse
-	self.errors = errors
 	self.grammar = re.compile(grammar, defs)
 	return self
 end

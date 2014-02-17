@@ -110,43 +110,48 @@ end
 
 -- stmt
 
-local statnum = 0
 local chunknum = 1
-local st = {}
-function defs.stmt( str, pos, st1, st2 )
-    table.insert(ch, st1)
-    table.insert(st, st1)
-    statnum = statnum+1
-    if st2 then
-        table.insert(ch,st2)
-        table.insert(st,st2)
+function defs.stmtnum( str, pos, ... )
+    local errors = require"mad.lang.errors"
+    for _,v in ipairs{...} do
+        table.insert(ch, v)
     end
     if defs._run then
-        if statnum % 1000 == 0 or not string.find(str, "([^;%s])", pos) then
-            defs._errors:setCurrentChunkName('chunkno'..chunknum)
-            local gen = defs.genctor.getGenerator('lua',defs._errors)
-            local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', table.unpack(st) }, fileName = defs._fileName }
-            local loadedCode, err = load(code, '@chunkno'..chunknum)
-            if loadedCode then
-	            local status, result = xpcall(loadedCode, function(_err)
-		            err = _err
-		            trace = debug.traceback("",2)
-                end)
-	            if not status then
-		            io.stderr:write(defs._errors:handleError(err,trace)..'\n')
-		            os.exit(-1)
-	            end
-            else
-	            error(err)
+        errors.setCurrentChunkName('chunkno'..chunknum)
+        local gen = defs.genctor.getGenerator('lua')
+        local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', ... }, fileName = 'chunkno'..chunknum }
+        local loadedCode, err = load(code, '@chunkno'..chunknum)
+        if loadedCode then
+            local status, result = xpcall(loadedCode, function(_err)
+	            err = _err
+	            trace = debug.traceback('',2)
+            end)
+            if not status then
+	            io.stderr:write(errors.handleError(err,trace)..'\n')
+	            os.exit(-1)
             end
-            chunknum = chunknum+1
-            st = {}
+        else
+            error(err)
         end
+        chunknum = chunknum+1
     end
     return true
 end
 
-local seqedit = nil
+local seqedit
+
+
+function defs.block( _, ... )
+    return { ast_id = "block_stmt", line = defs._line, ... }
+end
+
+function defs.ifstmt( _, ...)
+    return { ast_id = "if_stmt", line = defs._line, ... }
+end
+
+function defs.whilestmt( exp, block)
+    return { ast_id = "while_stmt", line = defs._line, expr = exp, block = block }
+end
 
 function defs.assign( lhs, rhs )
     __name[lhs.name] = 'const'
@@ -178,22 +183,16 @@ local function sequenceAddition( name, class, ... )
             attrtbl[#attrtbl+1] = v
         end
     end
-    return { ast_id = 'assign',
-            lhs = 
-                {name},
-            rhs = 
-                {{ ast_id = 'funcall', arg = {attrtbl},
-                name = 
-                    { ast_id = 'funcall', arg = { { ast_id = 'literal', value = "'"..name.strname.."'" } }, name = class }
-                }}
-            },
-            { ast_id = 'funcall', kind = ':', selfname = { ast_id = 'name', name = 'add' },
+    return { ast_id = 'funcall', kind = ':', selfname = { ast_id = 'name', name = 'add' },
             name = seqedit,
             arg = {
                 { ast_id = 'tbldef', 
                     { ast_id = 'tblfld', 
                     value = 
-                        name
+                        { ast_id = 'funcall', arg = {attrtbl},
+                        name = 
+                            { ast_id = 'funcall', arg = { { ast_id = 'literal', value = "'"..name.strname.."'" } }, name = class }
+                        }
                     },
                     at,
                     at and from
@@ -256,6 +255,35 @@ function defs.retstmt( _, ... )
     return { ast_id = 'ret_stmt', line = defs._line, ... }
 end
 
+function defs.macrocall(name, ...)
+    local arg = { ast_id = 'tbldef' }
+    for i,v in ipairs{...} do
+        local nam
+        if string.find(v,"$") == 1 then
+            nam = { ast_id = 'name', name = string.sub(v,2) }
+        else
+            nam = { ast_id = 'literal', value = "[["..v.."]]" }
+        end
+        arg[i] = { ast_id = 'tblfld', value = { ast_id = 'funcall', name = { ast_id = 'name', name = 'tostring' }, arg = { nam } } }
+    end
+    return { ast_id = 'funcall', name = { ast_id = 'name', name = 'execmacro' }, arg = { { ast_id = 'name', name = name.name }, arg } }
+end
+
+function defs.macrodef(label, parlist, str)
+    if not str then str = parlist parlist = {} end
+    local par = {ast_id = "tbldef"}
+    for i,v in ipairs(parlist) do
+        par[i] = {}
+        par[i].value = "'"..v.name.."'"
+        par[i].ast_id = "literal"
+    end
+    return { ast_id = 'assign', lhs = { label }, rhs = { { ast_id = 'tbldef', { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'str'}, value = { ast_id = 'literal', value = "[===["..str.."]===]" } }, { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'par'}, value = par } } } }
+end
+
+function defs.parlist(...)
+    return {...}
+end
+
 -- line
 function defs.linestmt(lbl, line)
     return { ast_id = 'funcall', name = lbl, kind = ':', selfname = { ast_id = 'name', name = 'set' }, arg = {line} }
@@ -281,6 +309,21 @@ end
 function defs.exp ( _, exp )
     exp.line = defs._line
     return exp
+end
+
+function defs.orexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
+end
+
+function defs.andexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
+end
+
+function defs.logexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.sumexp( _, first, ... )

@@ -30,7 +30,8 @@ local sourcector = require"mad.lang.generator.lua"
 
 
 
-function M.interactive(errors)
+function M.interactive()
+    local errors = require"mad.lang.errors"
     local lineNo, chunkNo = 0, 0
     local chunkname, source, parser, eof
     

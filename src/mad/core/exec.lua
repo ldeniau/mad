@@ -22,7 +22,7 @@ local fn = require"mad.core.fileName"
 local lang = require"mad.lang"
 local tableUtil = require"lua.tableUtil"
 local generator = require"mad.lang.generator"
-local errors = require"mad.lang.errors"()
+local errors = require"mad.lang.errors"
 
 -- metamethods ----------------------------------------------------------------
 local mt = {}; setmetatable(M, mt)
@@ -35,12 +35,12 @@ end
 
 call = function (_, options)
 	for _, fileName in ipairs(options.files) do
-		errors:setCurrentChunkName(fileName)
+		errors.setCurrentChunkName(fileName)
 		local path, name, ext = fn.split(fileName)
 		local file = assert(io.open(fileName, 'r'))
 		local inputStream = file:read('*a')
 		file:close()
-		local parser = lang.getParser(ext, 0, errors, run)
+		local parser = lang.getParser(ext, 0, not options.dump)
         if options.dump and options.dump == 'ast' then
             io.write(tableUtil.stringTable(parser:parse(inputStream, fileName)))
             io.write'\n'
@@ -50,7 +50,7 @@ call = function (_, options)
         if not options.dump and (ext == 'madx' or options.bunchEvaluate) then
             local ast = parser:parse(inputStream, fileName)
         else
-            local gen = generator.getGenerator(options.generator, errors, options.lambdatable)
+            local gen = generator.getGenerator(options.generator, options.lambdatable)
             local source = gen:generate(parser:parse(inputStream, fileName))
 		    if options.dump and options.dump ~= 'ast' then
 		        io.write(source)
@@ -63,7 +63,7 @@ call = function (_, options)
 				        trace = debug.traceback("",2)
                     end)
 			        if not status then
-				        io.stderr:write(errors:handleError(err,trace).."\n")
+				        io.stderr:write(errors.handleError(err,trace).."\n")
 				        os.exit(-1)
 			        end
 		        else
@@ -72,10 +72,10 @@ call = function (_, options)
 	        end
 	    end
         local endtime = os.clock()
-        print("Total time:", endtime-starttime)
+        if not options.dump then print("Total time:", endtime-starttime) end
 	end
 	if options.interactive then
-	    require'mad.lang.interactive'.interactive(errors)
+	    require'mad.lang.interactive'.interactive()
 	end
 end
 
