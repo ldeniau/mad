@@ -24,13 +24,14 @@ SEE ALSO
 
 -- require --------------------------------------------------------------------
 local lang       = require"mad.lang"
-local sourcector = require"mad.lang.generator.source"
+local sourcector = require"mad.lang.generator.lua"
 
 -- module ---------------------------------------------------------------------
 
 
 
-function M.interactive(errors)
+function M.interactive()
+    local errors = require"mad.lang.errors"
     local lineNo, chunkNo = 0, 0
     local chunkname, source, parser, eof
     
@@ -75,7 +76,7 @@ function M.interactive(errors)
                 line = line..newline
                 status, ast = pcall(parser.parse, parser, line, "stdin")
             else
-                io.stderr:write(ast..'\n')
+                io.stderr:write(ast..'\n') -- pcalls 2nd return is return val or error message.
                 break
             end
         end

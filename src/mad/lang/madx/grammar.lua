@@ -24,15 +24,40 @@ SEE ALSO
 M.grammar = [=[
 -- top level rules
 
-    chunk       <- ((''=>setup) (stmt s';'sp)* s(!./''=>error))                         -> chunk
+    chunk       <- ((''=>setup) (stmtnum)* s(!./''=>error))                             -> chunk
+    stmtnum     <- ((stmt s';'sp)^1000 / (stmt s';'sp)+)                                => stmtnum
+    block       <- (s'{'sp (stmt s';'sp)* s'}'                                      sp) -> block
 
 -- statement
     
-    stmt        <- (s( assignstmt / defassign / lblstmt / cmdstmt / retstmt )       sp) => stmt
+    stmt        <- (s( assignstmt 
+                    / macrodef
+                    / macrocall
+                    / defassign 
+                    / linestmt 
+                    / lblstmt 
+                    / cmdstmt 
+                    / retstmt
+                    / ifstmt
+                    / whilestmt ) sp)
     assignstmt  <- (real? const? assign)
     lblstmt     <- (name s':'sp name (s','?sp attrlist)?                            sp) -> lblstmt
     cmdstmt     <- (name s','?sp attrlist?                                          sp) -> cmdstmt
     retstmt     <- (return explist?                                                 sp) -> retstmt
+    linestmt    <- (name ls':'sp line ls'='sp linector                              sp) -> linestmt
+    ifstmt      <- ({if s'('sp exp s')'sp block
+                    (elseif s'('sp exp s')'sp block)*
+                    (else block)?}                                                  sp) -> ifstmt
+    whilestmt   <- (while s'('sp exp s')'sp block                                   sp) -> whilestmt
+    
+    macrocall   <- (exec s','sp name (s'('sp macroarg s')')?                        sp) -> macrocall
+    macroarg    <- (s{'$'?(number? ident / number)} sp (s','sp s{'$'?(number? ident / number)} sp )*)
+    
+    macrodef    <- (name parlist? s':'sp macro s'='sp macroblock                    sp) -> macrodef
+    macroblock  <- s'{'sp {((!('{'/'}') any) / balanced)*} '}'sp
+    balanced    <- '{' ((!('{'/'}') any) / balanced)* '}'
+    parlist     <- (s'('sp macrostr (s','sp macrostr )* s')'                        sp) -> parlist
+    macrostr    <- s(string->literal / {[^%s),]+}) sp
     
     assign      <- (name s'='sp exp                                                 sp) -> assign
     defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
@@ -40,10 +65,19 @@ M.grammar = [=[
     attr        <- (assign / defassign / exp                                        sp) -> attr
     attrlist    <- (attr (s','sp attr)*)
     
+    linector    <- (ls'('sp linedef ls')'                                           sp) -> linector
+    linedef     <- (linepart (ls','sp linepart)*)
+    linepart    <- (ls(invert / times / ls name / linector)                         sp) -> linepart
+    invert      <- (ls'-'sp linepart                                                sp) -> invertline
+    times       <- (ls((number->literal)sp ls'*'sp linepart)                        sp) -> timesline
+    ls          <- s'&'? -- In MAD8/9, & means line-continuation.
 
 -- expressions
 
     exp         <- ({ sumexp }                                                      sp) -> exp
+    orexp       <- ({ andexp   ( orop    andexp  )* }                               sp) -> orexp
+    andexp      <- ({ logexp   ( andop   logexp  )* }                               sp) -> andexp
+    logexp      <- ({ sumexp   ( logop   sumexp  )* }                               sp) -> logexp
     sumexp      <- ({ prodexp  ( sumop   prodexp )* }                               sp) -> sumexp
     prodexp     <- ({ unexp    ( prodop  unexp   )* }                               sp) -> prodexp
     unexp       <- ({          ( unop*   powexp  )  }                               sp) -> unexp
@@ -61,18 +95,30 @@ M.grammar = [=[
 
 -- operators
 
+    andop       <- s{~ '&&'->'and' ~} sp -> substCap
+    orop        <- s{~ '||'->'or' ~} sp -> substCap
+    logop       <- s{ '==' / ({~'<>'->'~='~} -> substCap) / '<=' / '>=' / '<' / '>' } sp
     sumop       <- s{'+' / '-'} sp
     prodop      <- s{'*' / '/'} sp
     unop        <- s({'-'} / '+') sp -- Implicit + if - isn't present.
     powop       <- s{'^'} sp
     
+    
+    
 -- keywords
 
-    keyword     <- (real / const / return)
+    keyword     <- (real / const / return / line / if / elseif / else / while / macro / exec)
     
     return      <- s[rR][eE][tT][uU][rR][nN]sp
     real        <- s[rR][eE][aA][lL]sp
     const       <- s[cC][oO][nN][sS][tT]sp
+    line        <- s[lL][iI][nN][eE]sp
+    if          <- s[iI][fF]sp
+    elseif      <- s[eE][lL][sS][eE][iI][fF]sp
+    else        <- s[eE][lL][sS][eE]sp
+    while       <- s[wW][hH][iI][lL][eE]sp
+    macro       <- s[mM][aA][cC][rR][oO]sp
+    exec        <- s[eE][xX][eE][cC]sp
     
 -- lexems
 
@@ -87,7 +133,7 @@ M.grammar = [=[
     sstring     <- '"' ssclose
     ssclose     <- '"' / ch ssclose
 
-    decnum      <- ((num ('.' num / '.')?) / ('.' num)) ([eE] sign? num)?
+    decnum      <- {~((num ('.' num / '.'->'.0')?) / (('.'->'0.') num)) ([eE] sign? num)?~}
 
     ident       <- [A-Za-z_][A-Za-z0-9_.$]*
     e           <- ![A-Za-z0-9_]
