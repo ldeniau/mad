@@ -309,7 +309,7 @@ function M:insert(a, at, count) -- TODO
   insert_element(self, a, at)
 end
 
-function M:add(a, at) -- TODO
+function M:add(a, at, from) -- TODO
 end
 
 function M:done(a) -- TODO
