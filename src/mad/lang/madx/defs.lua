@@ -23,7 +23,7 @@ SEE ALSO
 local tableUtil = require('lua.tableUtil')
 local lower     = string.lower
                   require"mad.madxenv"
-_M.__name = _M.__name or {}
+__name = __name or {}
 
 -- defs -----------------------------------------------------------------------
 
@@ -104,70 +104,62 @@ end
 
 -- block and chunk
 function defs.chunk( )
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'env'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.madxenv'"} }
-        }
-        },
-    })
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'seq'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.sequence'"} }
-        }
-        },
-    })
-    table.insert(ch,1, { ast_id = 'assign', kind = 'local',
-    lhs = {
-        { ast_id = 'name', name = 'elem'},
-        },
-    rhs = {
-        { ast_id = 'funcall', 
-        name = 
-            { ast_id = 'name', name = 'require' },
-        arg =
-            { { ast_id = 'literal', value = "'mad.element'"} }
-        }
-        }
-    })
     ch.ast_id = 'block_stmt'
     return { ast_id = 'chunk', block = ch }
 end
 
 -- stmt
 
-function defs.safe( val, pos )
-    return val, pos
-end
-
-function defs.stmt(_,_, st1, st2 )
-    table.insert(ch, st1)
-    if st2 then table.insert(ch,st2) end
+local chunknum = 1
+function defs.stmtnum( str, pos, ... )
+    local errors = require"mad.lang.errors"
+    for _,v in ipairs{...} do
+        table.insert(ch, v)
+    end
+    if defs._run then
+        errors.setCurrentChunkName('chunkno'..chunknum)
+        local gen = defs.genctor.getGenerator('lua')
+        local code = gen:generate{ast_id = 'chunk', block = { ast_id = 'block_stmt', ... }, fileName = 'chunkno'..chunknum }
+        local loadedCode, err = load(code, '@chunkno'..chunknum)
+        if loadedCode then
+            local status, result = xpcall(loadedCode, function(_err)
+	            err = _err
+	            trace = debug.traceback('',2)
+            end)
+            if not status then
+	            io.stderr:write(errors.handleError(err,trace)..'\n')
+	            os.exit(-1)
+            end
+        else
+            error(err)
+        end
+        chunknum = chunknum+1
+    end
     return true
 end
 
-local seqedit = nil
+local seqedit
+
+
+function defs.block( _, ... )
+    return { ast_id = "block_stmt", line = defs._line, ... }
+end
+
+function defs.ifstmt( _, ...)
+    return { ast_id = "if_stmt", line = defs._line, ... }
+end
+
+function defs.whilestmt( exp, block)
+    return { ast_id = "while_stmt", line = defs._line, expr = exp, block = block }
+end
 
 function defs.assign( lhs, rhs )
-    _M.__name[lhs.name] = 'const'
+    __name[lhs.name] = 'const'
     return { ast_id = 'assign', line = defs._line, lhs = {lhs}, rhs = {rhs} }
 end
 
 function defs.defassign( lhs, rhs )
-    _M.__name[lhs.name] = 'lambda'
+    __name[lhs.name] = 'lambda'
     return { ast_id = 'assign', line = defs._line, lhs = {lhs}, 
             rhs = {
                 { ast_id = 'fundef', kind = 'lambda', line = defs._line, param = {}, 
@@ -191,22 +183,16 @@ local function sequenceAddition( name, class, ... )
             attrtbl[#attrtbl+1] = v
         end
     end
-    return { ast_id = 'assign',
-            lhs = 
-                {name},
-            rhs = 
-                {{ ast_id = 'funcall', arg = {attrtbl},
-                name = 
-                    { ast_id = 'funcall', arg = { { ast_id = 'literal', value = "'"..name.strname.."'" } }, name = class }
-                }}
-            },
-            { ast_id = 'funcall', kind = ':', selfname = { ast_id = 'name', name = 'add' },
+    return { ast_id = 'funcall', kind = ':', selfname = { ast_id = 'name', name = 'add' },
             name = seqedit,
             arg = {
                 { ast_id = 'tbldef', 
                     { ast_id = 'tblfld', 
                     value = 
-                        name
+                        { ast_id = 'funcall', arg = {attrtbl},
+                        name = 
+                            { ast_id = 'funcall', arg = { { ast_id = 'literal', value = "'"..name.strname.."'" } }, name = class }
+                        }
                     },
                     at,
                     at and from
@@ -216,7 +202,7 @@ local function sequenceAddition( name, class, ... )
 end
 
 function defs.lblstmt ( name, class, ... ) -- ... = attrlist
-    _M.__name[name.name] = 'label'
+    __name[name.name] = 'label'
     if seqedit then
         return sequenceAddition(name, class, ...) 
     end
@@ -239,7 +225,7 @@ function defs.lblstmt ( name, class, ... ) -- ... = attrlist
 end
 
 function defs.cmdstmt ( class, ... )
-    if _M.__name[class.name] == 'label' then -- it's an update
+    if __name[class.name] == 'label' then -- it's an update
         return { ast_id = 'funcall', kind = ':',
                 selfname = { ast_id = 'name', name = "set" },
                 name = class, arg = { { ast_id = 'tbldef', ... } } }
@@ -269,10 +255,79 @@ function defs.retstmt( _, ... )
     return { ast_id = 'ret_stmt', line = defs._line, ... }
 end
 
+function defs.macrocall(name, ...)
+    local arg = { ast_id = 'tbldef' }
+    for i,v in ipairs{...} do
+        local nam
+        if string.find(v,"$") == 1 then
+            nam = { ast_id = 'name', name = string.sub(v,2) }
+        else
+            nam = { ast_id = 'literal', value = "[["..v.."]]" }
+        end
+        arg[i] = { ast_id = 'tblfld', value = { ast_id = 'funcall', name = { ast_id = 'name', name = 'tostring' }, arg = { nam } } }
+    end
+    return { ast_id = 'funcall', name = { ast_id = 'name', name = 'execmacro' }, arg = { { ast_id = 'name', name = name.name }, arg } }
+end
+
+function defs.macrodef(label, parlist, str)
+    if not str then str = parlist parlist = {} end
+    local par = {ast_id = "tbldef"}
+    for i,v in ipairs(parlist) do
+        if not v.ast_id then
+            par[i] = {}
+            par[i].value = "'"..v.."'"
+            par[i].ast_id = "literal"
+        else
+            par[i] = v
+        end
+    end
+    return { ast_id = 'assign', lhs = { label }, rhs = { { ast_id = 'tbldef', { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'str'}, value = { ast_id = 'literal', value = "[===["..str.."]===]" } }, { ast_id = 'tblfld', kind = 'name', key = { ast_id = 'name', name = 'par'}, value = par } } } }
+end
+
+function defs.parlist(...)
+    return {...}
+end
+
+-- line
+function defs.linestmt(lbl, line)
+    return { ast_id = 'funcall', name = lbl, kind = ':', selfname = { ast_id = 'name', name = 'set' }, arg = {line} }
+end
+
+function defs.linector(...)
+    return { ast_id = 'funcall', name = { ast_id = 'name', name = 'sequence' }, arg = { {ast_id = 'tbldef', ... } } }
+end
+
+function defs.linepart(line)
+    return { ast_id = 'tblfld', value = line }
+end
+
+function defs.invertline(line)
+    return { ast_id = 'expr', '-', line }
+end
+
+function defs.timesline(num, line)
+    return { ast_id = 'expr', num, '*', line }
+end
+
 -- expressions
 function defs.exp ( _, exp )
     exp.line = defs._line
     return exp
+end
+
+function defs.orexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
+end
+
+function defs.andexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
+end
+
+function defs.logexp( _, first, ... )
+    if ... == nil then return first end
+    return { ast_id = "expr", line = defs._line, first, ... }
 end
 
 function defs.sumexp( _, first, ... )
@@ -307,10 +362,16 @@ function defs.funcall(name, arguments)
     return { ast_id = 'funcall', line = defs._line, name = name, arg = arguments }
 end
 
+function defs.substCap(str, cap)
+    print("str", str)
+    print("cap", cap)
+    return cap
+end
+
 -- basic lexem
 
-function defs.literal(val)
-    return { ast_id = 'literal', value = val, line = defs._line }
+function defs.literal(val, val2)
+    return { ast_id = 'literal', value = val2 or val, line = defs._line }
 end
 
 function defs.name(name)
