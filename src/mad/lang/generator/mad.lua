@@ -367,10 +367,10 @@ local function generate (self, tree)
     return tostring(self.writer)
 end
 
-call = function (_, errors, lambda, ...)
+call = function (_, lambda, ...)
     local self = {
         lambda = lambda or nil,
-        errors = errors,
+        errors = require"mad.lang.errors",
         writer = writer:new(),
         render = render,
         write = write,
