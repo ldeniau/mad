@@ -229,8 +229,8 @@ function dict:fundef(node)
         end
         self:write(")")
         self:render(node.block)
-        self.writer:writeln()
-        self:write("end")
+        if #node.block > 1 then self.writer:writeln() end
+        self:write(" end")
     end
 end
 
@@ -316,7 +316,7 @@ function dict:if_stmt(node)
     self.writer:writeln()
     for i=3, #node, 2 do
         if node[i].ast_id == "block_stmt" then
-            self:write("else")
+            self:write("else ")
             self:render(node[i])
             self.writer:writeln()
             break
@@ -380,7 +380,7 @@ call = function (_, lambda, ...)
 end
 
 -- test -----------------------------------------------------------------------
-M.test = require"mad.lang.generator.test.mad"
+M.test = load_test and require"mad.lang.generator.test.mad" or {}
 
 -- end  -----------------------------------------------------------------------
 return M

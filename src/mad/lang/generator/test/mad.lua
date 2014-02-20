@@ -1,7 +1,7 @@
 local test = {}
     
 function test:setUp()
-    self.errors = require"mad.lang.errors"()
+    self.errors = require"mad.lang.errors"
     self.errors:setCurrentChunkName("test")
     self.module = require"mad.lang.generator.mad"
     self.mod = self.module(self.errors)
@@ -48,7 +48,6 @@ function test:goto_stmt(ut)
 [[goto name]])
 end
 
-
 function test:label_stmt(ut)
     self.mod:render{ ast_id = "label_stmt", name = { ast_id = "name", name = "name" } }
     ut:equals(tostring(self.mod.writer),
@@ -59,8 +58,7 @@ function test:repeat_stmt(ut)
     self.mod:render{ ast_id = "repeat_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
                         expr = { ast_id = "literal", value = "1" } }
     ut:equals(tostring(self.mod.writer),
-[[repeat
-    break
+[[repeat break
 until 1]])
 end
 
@@ -68,9 +66,7 @@ function test:while_stmt(ut)
     self.mod:render{ ast_id = "while_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
                         expr = { ast_id = "literal", value = "1" } }
     ut:equals(tostring(self.mod.writer),
-[[while 1 do
-    break
-end]])
+[[while 1 do break end]])
 end
 
 function test:for_stmtStep(ut)
@@ -80,9 +76,7 @@ function test:for_stmtStep(ut)
                         last  = { ast_id = "literal", value = "2" },
                         step  = { ast_id = "literal", value = "3" } }
     ut:equals(tostring(self.mod.writer),
-[[for a = 1, 2, 3 do
-    break
-end]])
+[[for a=1,2,3 do break end]])
 end
 function test:for_stmt(ut)
     self.mod:render{ ast_id = "for_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
@@ -90,9 +84,7 @@ function test:for_stmt(ut)
                         first = { ast_id = "literal", value = "1" },
                         last  = { ast_id = "literal", value = "2" } }
     ut:equals(tostring(self.mod.writer),
-[[for a = 1, 2 do
-    break
-end]])
+[[for a=1,2 do break end]])
 end
 
 function test:genfor_stmtMltpl(ut)
@@ -100,18 +92,14 @@ function test:genfor_stmtMltpl(ut)
                         name = { { ast_id = "name",    name  = "a" }, { ast_id = "name",    name  = "b" } },
                         expr = { { ast_id = "literal", value = "1" }, { ast_id = "literal", value = "2" } } }
     ut:equals(tostring(self.mod.writer), 
-[[for a, b in 1, 2 do
-    break
-end]])
+[[for a,b in 1,2 do break end]])
 end
 function test:genfor_stmt(ut)
     self.mod:render{ ast_id = "genfor_stmt", block = { ast_id = "block_stmt", { ast_id = "break_stmt" } },
                         name = { { ast_id = "name",    name  = "a" } },
                         expr = { { ast_id = "literal", value = "1" } } }
     ut:equals(tostring(self.mod.writer), 
-[[for a in 1 do
-    break
-end]])
+[[for a in 1 do break end]])
 end
 
 function test:ifstmt(ut)
@@ -124,14 +112,10 @@ function test:ifstmt(ut)
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } },
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), 
-[[if true then
-    break
-elseif false then
-    break
-elseif true then
-    break
-else
-    break
+[[if true then break
+elseif false then break
+elseif true then break
+else break
 end]])
 end
 function test:ifstmtNoElseif(ut)
@@ -140,10 +124,8 @@ function test:ifstmtNoElseif(ut)
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } },
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), 
-[[if true then
-    break
-else
-    break
+[[if true then break
+else break
 end]])
 end
 function test:ifstmtNoElse(ut)
@@ -155,12 +137,9 @@ function test:ifstmtNoElse(ut)
                         { ast_id = "literal", value = "true" },
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), 
-[[if true then
-    break
-elseif false then
-    break
-elseif true then
-    break
+[[if true then break
+elseif false then break
+elseif true then break
 end]])
 end
 function test:ifstmt(ut)
@@ -168,8 +147,7 @@ function test:ifstmt(ut)
                         { ast_id = "literal", value = "true" },
                         { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), 
-[[if true then
-    break
+[[if true then break
 end]])
 end
 
@@ -206,7 +184,7 @@ self.mod:render{ ast_id = "expr",
                    { ast_id = "name", name = "a"},
                    "+",
                    { ast_id = "name", name = "b" } }
-    ut:equals(tostring(self.mod.writer),  [[a + b]])
+    ut:equals(tostring(self.mod.writer),  [[a+b]])
 end
 function test:exprTree(ut)
     self.mod:render{ ast_id = "expr",
@@ -218,7 +196,7 @@ function test:exprTree(ut)
                            { ast_id = "name", name = "c" },
                            "*",
                            { ast_id = "name", name = "d" }} }
-    ut:equals(tostring(self.mod.writer),  [[a + b + c * d]])
+    ut:equals(tostring(self.mod.writer),  [[a+b+c*d]])
 end
 
 function test:tblaccessDot(ut)
@@ -239,14 +217,14 @@ function test:funcall(ut)
                          name = { ast_id = "name", name = "a"},
                          arg = {},
                          kind = nil}
-    ut:equals(tostring(self.mod.writer),  [[a(  )]])
+    ut:equals(tostring(self.mod.writer),  [[a()]])
 end
 function test:funcallTwoArg(ut)
     self.mod:render{ ast_id = "funcall",
                          name = { ast_id = "name", name = "a"},
                          arg = { { ast_id = "literal", value = "1" }, { ast_id = "literal", value = "..." }},
                          kind = nil}
-    ut:equals(tostring(self.mod.writer),  [[a( 1, ... )]])
+    ut:equals(tostring(self.mod.writer),  [[a(1, ...)]])
 end
 function test:funcallMultiname(ut)
     self.mod:render{ ast_id = "funcall",
@@ -255,7 +233,7 @@ function test:funcallMultiname(ut)
                             rhs = { ast_id = "name", name = "b" } },
                          arg = {},
                          kind = nil}
-    ut:equals(tostring(self.mod.writer),  [[a.b(  )]])
+    ut:equals(tostring(self.mod.writer),  [[a.b()]])
 end
 function test:funcallSelfname(ut)
     self.mod:render{ ast_id = "funcall",
@@ -265,12 +243,12 @@ function test:funcallSelfname(ut)
                          selfname = { ast_id = "name", name = "c" },
                          arg = {},
                          kind = ":"}
-    ut:equals(tostring(self.mod.writer),  [[a.b:c(  )]])
+    ut:equals(tostring(self.mod.writer),  [[a.b:c()]])
 end
 
 function test:grpexpr(ut)
     self.mod:render{ ast_id = "grpexpr", expr = { ast_id = "literal", value = "1" } }
-    ut:equals(tostring(self.mod.writer), [[( 1 )]])
+    ut:equals(tostring(self.mod.writer), [[(1)]])
 end
 
 function test:lambda_noarg(ut)
@@ -285,61 +263,46 @@ function test:lambda(ut)
 end
 function test:fundef_a(ut)
     self.mod:render{ ast_id = "fundef", param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
-    ut:equals(tostring(self.mod.writer), [[
-function ( a, b )
-    break
-end]])
+    ut:equals(tostring(self.mod.writer), [[function(a,b)break end]])
 end
 function test:fundef_n(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[
-function funname( a, b )
-    break
-end]])
+function funname(a,b)break end]])
 end
 function test:fundef_nEllipsis(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" }, { ast_id = "literal", value = "..." } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[
-function funname( a, b, ... )
-    break
-end]])
+function funname(a,b,...)break end]])
 end
 function test:fundef_nOnlyEllipsis(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "literal", value = "..." } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[
-function funname( ... )
-    break
-end]])
+function funname(...)break end]])
 end
 function test:fundef_nEmpty(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = {}, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[
-function funname(  )
-    break
-end]])
+function funname()break end]])
 end
 function test:fundef_nDotName(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "tblaccess", lhs = { ast_id = "name", name = "a"}, rhs = { ast_id = "name", name = "b" }, kind = "." }, param = {}, selfname = { ast_id = "name", name = "c" }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } } }
     ut:equals(tostring(self.mod.writer), [[
-function a.b:c(  )
-    break
-end]])
+function a.b:c()break end]])
 end
 function test:fundef_l(ut)
     self.mod:render{ ast_id = "fundef", name = { ast_id = "name", name = "funname" }, param = { { ast_id = "name", name = "a" }, { ast_id = "name", name = "b" } }, block = { ast_id = "block_stmt", { ast_id = "break_stmt" } }, kind = "local" }
     ut:equals(tostring(self.mod.writer), [[
-local function funname( a, b )
-    break
-end]])
+local function funname(a,b)break end]])
 end
 
 function test:tbldef(ut)
     self.mod:render{ ast_id = "tbldef", { ast_id = "tblfld", value = { ast_id = "literal", value = "1" } }}
-    ut:equals(tostring(self.mod.writer), [[{ 1 }]])
+    ut:equals(tostring(self.mod.writer), [[{1}]])
 end
 function test:tbldefEmpty(ut)
     self.mod:render{ ast_id = "tbldef" }
-    ut:equals(tostring(self.mod.writer), [[{  }]])
+    ut:equals(tostring(self.mod.writer), [[{}]])
 end
 
 function test:tblfldNoKey(ut)
@@ -348,11 +311,11 @@ function test:tblfldNoKey(ut)
 end
 function test:tblfldKeySqrBrckt(ut)
     self.mod:render{ ast_id = "tblfld", value = { ast_id = "literal", value = "1" }, key = { ast_id = "literal", value = "1" }, kind = "expr" }
-    ut:equals(tostring(self.mod.writer), [=[[1] = 1]=])
+    ut:equals(tostring(self.mod.writer), [=[[1]=1]=])
 end
 function test:tblfldKeyDot(ut)
     self.mod:render{ ast_id = "tblfld", value = { ast_id = "literal", value = "1" }, key = { ast_id = "name", name = "hello" }, kind = "name" }
-    ut:equals(tostring(self.mod.writer), [[hello = 1]])
+    ut:equals(tostring(self.mod.writer), [[hello=1]])
 end
 
 function test:literal(ut)

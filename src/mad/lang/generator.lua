@@ -44,7 +44,7 @@ end
 
 -- test -----------------------------------------------------------------------
 function M.test:setUp()
-    self.errors = require"mad.lang.errors"()
+    self.errors = require"mad.lang.errors"
 end
 
 function M.test:tearDown()

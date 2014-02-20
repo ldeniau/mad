@@ -129,10 +129,10 @@ function dict:for_stmt(node)
     self:render(node.name)
     self:write("=")
     self:render(node.first)
-    self:write(", ")
+    self:write(",")
     self:render(node.last)
     if node.step then
-        self:write(", ")
+        self:write(",")
         self:render(node.step)
     end
     self:write(" do ")
@@ -373,7 +373,7 @@ call = function (_, lambda, ...)
 end
 
 -- test -----------------------------------------------------------------------
-M.test = require"mad.lang.generator.test.lua"
+M.test = load_test and require"mad.lang.generator.test.lua" or {}
 
 -- end  -----------------------------------------------------------------------
 return M
