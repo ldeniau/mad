@@ -91,9 +91,9 @@ local function equals(ut, actual,expected)
     error(errorMsg,2)
 end
 
-local function differs(ut, actual,expected)
+local function differs(ut, actual, expected)
     ut.startedCounter = ut.startedCounter+1
-    local function differsRec(actual,expected,key)
+    local function differsRec(actual, expected, key)
         if type(actual) == 'table' and type(expected) == 'table' then
             for k,v in pairs(expected) do
                 if actual[k] == nil or differsRec(actual[k],v,k) then return true end

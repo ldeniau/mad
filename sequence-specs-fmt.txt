@@ -37,14 +37,16 @@ seq[elem.name]=seq[i]
 -- method for adding elements|lists|subsequences incrementally
 
 :add{ ... }
-:add{[at=pos, [from='name',]] [element=]elem|list|sequ}    -- named params
-:add(elem|list|sequ [, pos [, 'name']])                    -- positional params
+:add{[at=pos, [from='name', [refer='refer' | refpos='name']]] [element=]elem|list|sequ}	-- named params
+:add(elem|list|sequ [, pos [, 'name'[, 'refer' | 'name']]])                    		-- positional params
 
-+  elem|list|sequ                                 -- equivalent to :add(elem|list|sequ)
-+  { [at=pos, [from='name',]] elem|list|sequ }    -- equivalent to :add(elem|list|sequ)
++  elem|list|sequ
++  { [at=pos, [from='name', [refer='center',]]] elem|list|sequ }
 
-.. elem|list|sequ                                 -- equivalent to :add(elem|list|sequ)
-.. { [at=pos, [from='name',]] elem|list|sequ }    -- equivalent to :add(elem|list|sequ)
+where
+- 'from' in {'uniq_name_in_seq', 'previous', 'next', 'start', 'end'} (default is 'start')
+- 'refer' in {'entry', 'center', 'exit'} (default is 'center')
+- 'refpos' is 'uniq_name_in_subseq'
 
 -- method for closing sequence and computing s_pos, i_pos
 

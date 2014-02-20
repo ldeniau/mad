@@ -17,7 +17,7 @@ DESCRIPTION
   The module mad.element is a front-end to the factory of all MAD elements.
 
 RETURN VALUES
-  The table of supported elements.
+  The list of supported elements.
 
 SEE ALSO
   mad.sequence, mad.beam, mad.object
@@ -46,15 +46,15 @@ local function init(self)
     error("classes must be named")
   end
   if rawget(self, 'kind') then
-    self['is_'..self.kind] = true   -- kind shortcut
+    self['is_'..self.kind] = true   -- identification
   end
   self.__index  = self              -- inheritance
   self.__call   = MT.__call         -- constructor
   self.__mul    = MT.__mul          -- repetition
 end
 
-local special_field = {  name=true,  s_pos=true,   i_pos=true,
-                        __mul=true, __call=true, __index=true }
+local special_fields = {  name=true,  s_pos=true,   i_pos=true,
+                         __mul=true, __call=true, __index=true  }
 
 local function show_list(t, list, sep)
   local a
@@ -64,23 +64,23 @@ local function show_list(t, list, sep)
   end
 end
 
-local function show_tree(self, depth, sep)
+local function show_inheritance(self, depth, sep)
   for k,v in pairs(self) do
     if type(k) == 'number' then
       io.write(', ', tostring(v))
-    elseif not special_field[k] then
+    elseif not special_fields[k] then
       io.write(', ', k, sep, tostring(v))
     end
   end
   if depth > 0 and not rawget(self:class(), 'kind') then
-    show_tree(self:class(), depth-1)
+    show_inheritance(self:class(), depth-1)
   end
 end
 
 local function show_properties(self, disp, sep)
   disp = disp or 0
   if type(disp) == 'number' then
-    show_tree(self, disp, sep)
+    show_inheritance(self, disp, sep)
   elseif type(disp) == 'table' then
     show_list(self, disp, sep)
   else
@@ -121,7 +121,7 @@ function MT:__call(a)
         if not self:is_class() then init(self) end
         return setmetatable(t, self)
       end
-      error ("invalid constructor argument, table expected")
+      error ("invalid constructor argument, list expected")
     end
   end
 
