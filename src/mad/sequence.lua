@@ -34,6 +34,7 @@ local element = require"mad.element"
 
 local getmetatable, setmetatable = getmetatable, setmetatable
 local type, ipairs = type, ipairs
+local is_list = object.is_list
 
 -- metatable for the root of all sequences
 local MT = object {} 
@@ -49,10 +50,6 @@ local marker = element.marker
 -- functions -------------------------------------------------------------------
 
 -- utils
-local function is_list(a)
-  return type(a) == 'table' and getmetatable(a) == nil
-end
-
 local function test_membership(seq, a)
   if seq[a.i_pos] ~= a then
     error('invalid sequence element '..a.name)
@@ -65,17 +62,6 @@ local function show_list(t, list)
     a = t[v]
     if a then io.write(', ', v, '= ', tostring(a)) end
   end
-end
-
--- shadow elements (special inheritance)
-local function shadow_class(elem)
-  return getmetatable(elem).__index:class()
-end
-
-local function shadow_element(elem, i)
-  return setmetatable(
-    {i_pos=i, s_pos=1e100, class=shadow_class},
-    {__index=elem, __newindex=elem})
 end
 
 -- search
@@ -198,16 +184,27 @@ local function swap_elements(self, elem1, elem2, update_key)
   end
 end
 
+-- shadow elements (special inheritance)
+local function shadow_class(elem)
+  return getmetatable(elem).__index:class()
+end
+
+local function shadow_element(elem, at, from, i)
+  return setmetatable(
+    {i_pos=i, s_pos=1e100, at=at, from=from, class=shadow_class},
+    {__index=elem, __newindex=elem})
+end
+
 -- construction
-local function add_element(self, elem)
+local function add_element(self, elem, at, from)
   local i = #self+1
-  self[i] = shadow_element(elem, i)
+  self[i] = shadow_element(elem, at, from, i)
   add_element_key(self, self[i])
 end
 
-local function add_sequence(self, seq, rev)
+local function add_sequence(self, seq, at, from, rev)
   if rev and rev<0 then
-    for i=#seq,1,-1 do -- TODO: reorder reversed markers
+    for i=#seq,1,-1 do
       add_element(self, seq[i])
     end
   else
@@ -217,7 +214,7 @@ local function add_sequence(self, seq, rev)
   end
 end
 
-local function add_list(self, lst, rev)
+local function add_list(self, lst, at, from, rev)
   local n = (lst._rep or 1) * (rev or 1)
   local j_start, j_end, j_step, count
 
@@ -231,12 +228,12 @@ local function add_list(self, lst, rev)
     for j=j_start,j_end,j_step do
       local v = lst[j]
       if type(v) == 'function' then v = v() end
-      if v.is_sequence then
-        add_sequence(self, v, j_step)
-      elseif v.is_element then
-        add_element(self, v)
+      if v.is_element then
+        add_element(self, v, at, from)
+      elseif v.is_sequence then
+        add_sequence(self, v, at, from, j_step)
       elseif is_list(v) then
-        add_list(self, v, j_step) -- lists can be recursive
+        add_list(self, v, at, from, j_step) -- lists can be recursive
       else
         error('invalid list element at slot '..j..' at sequence slot '..(#self+1))
       end
@@ -244,12 +241,21 @@ local function add_list(self, lst, rev)
   end
 end
 
+local function add_it(self, a, at, from)
+      if a.is_element  then add_element  (self, a, at, from)
+  elseif a.is_sequence then add_sequence (self, a, at, from)
+  elseif is_list(a)    then add_list     (self, a, at, from)
+  else error('invalid item in construction of sequence '..(self.name or ''))
+  end
+end
+
+--[[
 local function flatten(self, name)
   local t = { name=name or self.name }
 
-  if t.name then
-    add_element(t, marker ('start$'..t.name) { length=self.length })
-  end
+--  if t.name then
+--    add_element(t, marker ('start$'..t.name) { length=self.length })
+--  end
 
   for i,v in ipairs(self) do
     if type(v) == 'function' then v = v() end
@@ -264,14 +270,15 @@ local function flatten(self, name)
     end
   end
 
-  if t.name then
-    add_element(t, marker ('end$'..t.name) { length=self.length })
-    t[ 1].seq_size = #t
-    t[#t].seq_size = -#t 
-  end
+--  if t.name then
+--    add_element(t, marker ('end$'..t.name) { length=self.length })
+--    t[ 1].seq_size = #t
+--    t[#t].seq_size = -#t 
+--  end
 
   return localise(t)
 end
+--]]
 
 -- methods ---------------------------------------------------------------------
 
@@ -309,10 +316,25 @@ function M:insert(a, at, count) -- TODO
   insert_element(self, a, at)
 end
 
-function M:add(a, at, from) -- TODO
+-- :add(elem|list|sequ [, pos [, 'name']])                  -- positional params
+-- :add{[element=]elem|list|sequ, at=pos[, from='name']}    -- named params
+function M:add(a, at, from)
+  if at or not a.at then    -- positional params
+    add_it(self, a, at, from)
+  elseif is_list(a) then    -- named params
+    add_it(self, a.element or a[1], a.at, a.from)
+  else
+    error("invalid set of parameters in incremental sequence construction")
+  end
+  return self
 end
 
-function M:done(a) -- TODO
+function M:done() -- TODO
+  return self
+end
+
+function M:set(a)
+  return self:add(a):done()
 end
 
 -- metamethods -----------------------------------------------------------------
@@ -321,26 +343,31 @@ end
 function MT:__call(a)
   if type(a) == 'string' then
     return function(t)
-      if type(t) == 'table' then
+      if is_list(t) then
         self.__index = self         -- inheritance
-        return setmetatable(flatten(t, a), self)
+        return setmetatable({name=a}, self):set(t)
       end
-      error ("invalid constructor argument, table expected")
+      error ("invalid constructor argument, list expected")
     end
   end
 
-  if type(a) == 'table' then
+  if is_list(a) then
     self.__index = self             -- inheritance
-    return setmetatable(flatten(a), self)
+    return setmetatable({}, self):set(a)
   end
 
   error ("invalid constructor argument, string expected")
 end
 
+-- construction
+function M.__add(seq, a)
+  return seq:add(a)
+end
+
 -- repetition
 function M.__mul(n, seq)
   if type(seq) == 'number' then
-    n, seq = seq, n
+    n, seq = seq, n -- swap
   end
   return { _rep=n, seq }
 end

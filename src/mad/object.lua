@@ -12,8 +12,9 @@ SYNOPSIS
   obj2 = object { ... }          -- create a new object with values
 
 DESCRIPTION
-  The module mad.object creates new objects from tables that become instances
-  of their parent, with callable semantic (i.e. constructor).
+  The module mad.object creates new objects from lists that become instances
+  of their parent, with callable semantic (i.e. constructor). A 'list' is a
+  table without metatable.
   
   The returned object has its parent (its constructor) set as metatable and
   inherits all properties of it automatically, hence implementing a prototype
@@ -23,11 +24,15 @@ DESCRIPTION
   to create new instances of itself, an object (a table) or a class/parent
   (a metatable).
 
+  The module provides some utilities like :spr, :isa, and .is_object for type
+  identification, :set and :cpy for data manipulation, and .is_list to check
+  for lists, that is 'virgin' tables.
+
 RETURN VALUES
-  The new object
+  The input list properly setup to be an object.
 
 ERRORS
-  If the object does not receive a table, an invalid argument error is raised.
+  If the object does not receive a list, an invalid argument error is raised.
 
 EXAMPLES
   Object = require"mad.object"
@@ -37,6 +42,8 @@ EXAMPLES
   p2 = p1:cpy()                         -- p2 is a copy of p1
   p1:set { x=-1, y=-2 }                 -- set p1.x and p1.y (slow)
   p1.x, p1.y = 1, 2                     -- set p1.x and p1.y (faster)
+  Object.is_list { x=0, y=0 }           -- return true
+  Object.is_list(p0)                    -- return false
 
 SEE ALSO
   mad.module, mad.element, mad.sequence, mad.beam
@@ -44,8 +51,8 @@ SEE ALSO
 
 -- locals ----------------------------------------------------------------------
 
-local type, getmetatable, setmetatable = type, getmetatable, setmetatable
-local pairs = pairs
+local getmetatable, setmetatable = getmetatable, setmetatable
+local type, pairs = type, pairs
 
 local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 
@@ -54,7 +61,16 @@ local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 M.is_object = true
 M.name = 'object'
 
+-- functions -------------------------------------------------------------------
+
+local function is_list(a)
+  return type(a) == 'table' and getmetatable(a) == nil
+end
+
 -- methods ---------------------------------------------------------------------
+
+-- check for non object
+M.is_list = is_list
 
 -- return the next parent
 function M:spr()
@@ -83,14 +99,14 @@ end
 
 -- constructor
 function MT:__call(a)
-  if type(a) == 'table' then
+  if is_list(a) then
     if not rawget(self, '__call') then
       self.__index = self         -- inheritance
       self.__call  = MT.__call    -- constructor
     end
     return setmetatable(a, self)
   end
-  error ("invalid constructor argument, table expected")
+  error ("invalid constructor argument, list expected")
 end
 
 -- tests -----------------------------------------------------------------------
