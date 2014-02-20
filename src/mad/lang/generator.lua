@@ -43,6 +43,9 @@ end
 
 
 -- test -----------------------------------------------------------------------
+
+if not load_test then return M end
+
 function M.test:setUp()
     self.errors = require"mad.lang.errors"
 end

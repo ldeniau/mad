@@ -62,6 +62,9 @@ function M.getCurrentKey()
 end
 
 -- test -----------------------------------------------------------------------
+
+if not load_test then return M end
+
 function M.test:getParser(ut)
 	ut:succeeds(M.getParser, "lua")
 	ut:succeeds(M.getParser, "madx")

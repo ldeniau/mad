@@ -61,6 +61,8 @@ end
 
 -- test -----------------------------------------------------------------------
 
+if not load_test then return M end
+
 function M.test:setUp()
 	self.parser = M()
 end
@@ -72,8 +74,8 @@ end
 function M.test:parse(ut)
 	local ast = ut:succeeds(self.parser.parse, self.parser, [[a = 1;]])
 	ut:equals(ast.ast_id, 'chunk')
-	ut:equals(#ast.block, 4)
-	ut:equals(ast.block[4].ast_id, 'assign')
+	ut:equals(#ast.block, 1)
+	ut:equals(ast.block[1].ast_id, 'assign')
 end
 
 function M.test:self(ut)

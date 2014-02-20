@@ -84,7 +84,7 @@ local function getStackTraceBack(err)
 	return string.match(err, ".*stack traceback:%s*(.-)%s*%[C%]: in function 'xpcall'")
 end
 
-local function createStackTable( stack)
+local function createStackTable(stack)
 	local stacktable = {}
 	for s in string.gmatch(stack,"(.-)\n%s*") do
 	    local chunkName = string.match(s,"(.-):%d+:")
@@ -124,6 +124,8 @@ end
 
 -- tests ----------------------------------------------------------------------
 
+if not load_test then return M end
+
 function M.test:setUp()
     self.errors = M
     _lineMap = { chunk = { 
@@ -155,15 +157,15 @@ function M.test:addToLineMap(ut)
     ut:equals(_lineMap.chunk[10].line, 9)
     ut:equals(_lineMap.chunk[10].fileName, 'fn3')
     ut:succeeds(self.errors.addToLineMap, 10, 1, 'fn')
-    ut:equals(lineMap.chunk[1].line, 1)
-    ut:equals(lineMap.chunk[1].fileName, 'fn')
-    self.errors:setCurrentChunkName'chunk2'
+    ut:equals(_lineMap.chunk[1].line, 1)
+    ut:equals(_lineMap.chunk[1].fileName, 'fn')
+    self.errors.setCurrentChunkName'chunk2'
     ut:succeeds(self.errors.addToLineMap, 9, 10, 'fn3')
-    ut:equals(lineMap.chunk2[10].line, 9)
-    ut:equals(lineMap.chunk2[10].fileName, 'fn3')
+    ut:equals(_lineMap.chunk2[10].line, 9)
+    ut:equals(_lineMap.chunk2[10].fileName, 'fn3')
     ut:succeeds(self.errors.addToLineMap, 10, 1, 'fn')
-    ut:equals(lineMap.chunk2[1].line, 10)
-    ut:equals(lineMap.chunk2[1].fileName, 'fn')
+    ut:equals(_lineMap.chunk2[1].line, 10)
+    ut:equals(_lineMap.chunk2[1].fileName, 'fn')
 end
 
 function M.test:searchForLineMatch(ut)
@@ -245,8 +247,7 @@ stack traceback:
 	h
 	grte
 	
-	few
-	]])
+	few]])
     stb = ut:succeeds(getStackTraceBack, [[./mad/lang/errors.lua:184: '=' expected near '+'
 stack traceback:
 	[C]: at 0x004504e0

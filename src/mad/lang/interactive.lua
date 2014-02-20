@@ -89,6 +89,9 @@ function M.interactive()
 end
 
 -- test suite -----------------------------------------------------------------
+
+if not load_test then return M end
+
 function M.test:setUp()
 end
 
