@@ -23,6 +23,7 @@ SEE ALSO
 local tableUtil = require('lua.tableUtil')
 local lower     = string.lower
                   require"mad.madxenv"
+local dict      = require"mad.lang.madx.mad_dict"
 __name = __name or {}
 
 -- defs -----------------------------------------------------------------------
@@ -244,11 +245,44 @@ function defs.cmdstmt ( class, ... )
             arg = {{ ast_id = 'tbldef', ... }} }
 end
 
+local preclasspos, class
+
+function defs.saveclasspre(str,pos)
+    class = string.sub(str,string.find(str, "[%w_$%.]+", pos) or 0)
+    return true
+end
+
+function defs.chkeystr(_,_,name)
+    if dict[class] and dict[class][name.name] and dict[class][name.name].type == 's' and not dict[class][name.name].isarray then
+        return true, name
+    end
+    return false
+end
+
+function defs.chkeystrtbl(_,_,name)
+    if dict[class] and dict[class][name.name] and dict[class][name.name].type == 's' and dict[class][name.name].isarray then
+        return true, name
+    end
+    return false
+end
+
 function defs.attr ( val )
     if val.ast_id == 'assign' then
         return { ast_id = 'tblfld', kind = 'name', key = val.lhs[1], value = val.rhs[1] }
     end
     return { ast_id = 'tblfld', value = val }
+end
+
+function defs.keystr( lhs, rhs )
+    return { ast_id = 'assign', lhs = {lhs}, rhs = {rhs} }
+end
+
+function defs.keystrtbl( lhs, ... )
+    local val = {}
+    for i,v in ipairs{...} do
+        val[i] = { ast_id = 'tblfld', value = v }
+    end
+    return { ast_id = 'assign', lhs = {lhs}, rhs = {{ ast_id = 'tbldef', table.unpack(val) }} }
 end
 
 function defs.retstmt( _, ... )

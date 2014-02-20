@@ -30,47 +30,52 @@ M.grammar = [=[
 
 -- statement
     
-    stmt        <- (s( assignstmt 
-                    / macrodef
-                    / macrocall
-                    / defassign 
-                    / linestmt 
-                    / lblstmt 
-                    / cmdstmt 
-                    / retstmt
-                    / ifstmt
-                    / whilestmt ) sp)
+    stmt        <- (s( assignstmt / macrodef / macrocall / defassign / linestmt 
+                    / lblstmt / cmdstmt / retstmt / ifstmt / whilestmt )sp)
+                    
     assignstmt  <- (real? const? assign)
-    lblstmt     <- (name s':'sp name (s','?sp attrlist)?                            sp) -> lblstmt
-    cmdstmt     <- (name s','?sp attrlist?                                          sp) -> cmdstmt
+    lblstmt     <- (name s':'sp sc name (s','?sp attrlist)?               sp) -> lblstmt
+    cmdstmt     <- (sc name s','?sp attrlist?                             sp) -> cmdstmt
     retstmt     <- (return explist?                                                 sp) -> retstmt
     linestmt    <- (name ls':'sp line ls'='sp linector                              sp) -> linestmt
     ifstmt      <- ({if s'('sp exp s')'sp block
                     (elseif s'('sp exp s')'sp block)*
                     (else block)?}                                                  sp) -> ifstmt
     whilestmt   <- (while s'('sp exp s')'sp block                                   sp) -> whilestmt
-    
-    macrocall   <- (exec s','sp name (s'('sp macroarg s')')?                        sp) -> macrocall
-    macroarg    <- (s{'$'?(number? ident / number)} sp (s','sp s{'$'?(number? ident / number)} sp )*)
-    
-    macrodef    <- (name parlist? s':'sp macro s'='sp macroblock                    sp) -> macrodef
-    macroblock  <- s'{'sp {((!('{'/'}') any) / balanced)*} '}'sp
-    balanced    <- '{' ((!('{'/'}') any) / balanced)* '}'
-    parlist     <- (s'('sp macrostr (s','sp macrostr )* s')'                        sp) -> parlist
-    macrostr    <- s(string->literal / {[^%s),]+}) sp
-    
+
+-- attributes
+
     assign      <- (name s'='sp exp                                                 sp) -> assign
     defassign   <- (name s':'s'='sp exp                                             sp) -> defassign
     
-    attr        <- (assign / defassign / exp                                        sp) -> attr
+    attr        <- (attrassign / defassign / exp                                    sp) -> attr
     attrlist    <- (attr (s','sp attr)*)
     
+    attrassign  <- ( ((name=>chkeystr) s'='sp madstr)                                          -> keystr
+                   / ((name=>chkeystrtbl) s'='sp s'{'?sp (madstr (s','sp madstr)*)? s'}'?sp)   -> keystrtbl
+                   / assign)
+                   
+   sc           <- (''=>saveclasspre)
+
+-- macro
+
+    macrocall   <- (exec s','sp name (s'('sp macroarg s')')?                        sp) -> macrocall
+    macrodef    <- (name parlist? s':'sp macro s'='?sp macroblock                   sp) -> macrodef
+    
+    macroarg    <- (s{'$'?(number? ident / number)} sp (s','sp s{'$'?(number? ident / number)} sp )*)
+    
+    macroblock  <- s'{'sp {((!('{'/'}') any) / balanced)*} '}'sp
+    parlist     <- (s'('sp macrostr (s','sp macrostr )* s')'                        sp) -> parlist
+    macrostr    <- s(string->literal / {[^%s),]+}) sp
+    balanced    <- '{' ((!('{'/'}') any) / balanced)* '}'
+    
+-- line
+
     linector    <- (ls'('sp linedef ls')'                                           sp) -> linector
     linedef     <- (linepart (ls','sp linepart)*)
     linepart    <- (ls(invert / times / ls name / linector)                         sp) -> linepart
     invert      <- (ls'-'sp linepart                                                sp) -> invertline
     times       <- (ls((number->literal)sp ls'*'sp linepart)                        sp) -> timesline
-    ls          <- s'&'? -- In MAD8/9, & means line-continuation.
 
 -- expressions
 
@@ -125,6 +130,7 @@ M.grammar = [=[
     literal     <- (s{number / string}                                              sp) -> literal
     
     name        <- ((s !keyword {ident})                                            sp) -> name
+    madstr      <- s(string / ((''->'"') {(!(','/';') any)+} (''->'"'))             sp) -> literal
     string      <- s(sstring)
     number      <- s( decnum )
 
@@ -141,6 +147,7 @@ M.grammar = [=[
     sign        <- [-+]
     any         <- ch / nl
     s           <- (ws / nl / cmt)*
+    ls          <- s'&'? -- In MAD8/9, & means line-continuation.
 
     
 -- comments
