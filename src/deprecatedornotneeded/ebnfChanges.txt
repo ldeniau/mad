@@ -1,0 +1,22 @@
+
+
+
+infix_exp       ::= unar_exp { binop unar_exp }
+
+unar_exp        ::= unop unar_exp | postfix_exp
+
+postfix_exp     ::= nil | literal | '...' | funcexpr | prefix_exp | tablector
+
+prefix_exp      ::= varOrExp { call }
+
+funccall        ::= varOrExp call { call }
+
+varOrExp        ::= var | '(' exp ')'
+
+call            ::= [ ':' name ] args
+
+var             ::= ( name | '(' exp ')' varsuffix ) { varsuffix }
+
+varsuffix       ::= { call } ( '[' exp ']' | '.' name )
+
+
