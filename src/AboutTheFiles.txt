@@ -1,0 +1,60 @@
+Short intro to files:
+
+mad-e -- Runs the application
+lib:
+  lpeg.lua -- Wrapper for lpeg. This is what to require if you want to use it.
+  howtoaddnewwrapper.txt -- Short readme
+  lpeg:
+    re.lua -- Wrapper for re. This is what to require if you want to use it.
+    lpeg-0.12 -- lpegs real folder, no need to touch for other things than updating.
+lua:
+  tableUtil.lua -- Contains functions for printing tables mostly. Useful for debugging and for dumping ast
+  process.lua -- Wrapper for io.open and that ilk, for running processes.
+mad:
+  lang.lua -- Contains functions for getting a parserctor
+  madxenv.lua -- Contains the special madxenvironment
+  tester.lua -- Contains functions for running tests.
+  core:
+    exec.lua -- Parses and runs the files
+    fileName.lua -- Utility to split a filename into path/name.ext
+    fini.lua -- Finalizes the application
+    init.lua -- Initializes the application
+    options.lua -- Reads the command line args and sets up different options
+  lang:
+    errors.lua -- Mainly contain the functions addToLineMap for use in the generators and handleError to be used if  your xpcalled code fails.
+    generator.lua -- Similar to lang.lua, has functions for retrieving generatorctors.
+    interactive.lua -- Runs lua in interactive mode.
+    lambda.lua -- Makes lambdas become lazily evaluated
+    ast:
+      ast-nodes.txt -- The nodes of the ast
+    generator:
+      lua.lua -- Creates lua source code.
+      mad.lua -- Creates mad source code.
+      writer.lua -- Utility used by all the generators. Is what the generators write to.
+      test: -- Contain the test-tables.
+    lambda:
+      math/string/table.lua -- Makes lambdas be lazily evaluated in most functions in these libraries. (see doc for which)
+      test: -- Test tables
+    lua:
+      defs.lua -- Functions for building the ast
+      grammar.lua -- Contains the grammar for lua
+      parser.lua -- The parser
+      test: -- Test tables
+    mad:
+      defs.lua -- Functions for building the ast
+      grammar.lua -- Contains the grammar for mad
+      parser.lua -- The parser
+      test: -- Test tables
+    madx:
+      defs.lua -- Functions for building the ast
+      grammar.lua -- Contains the grammar of MAD-X
+      parser.lua -- The parser
+      mad_dict.lua -- The table of what argument which command expects
+      translateMad_dict -- Application for translating mad_dict.c to mad_dict.lua. Usage: translateMad_dict mad_dict.c mad_dict.lua
+      test: -- Test tables
+    test: -- Test tables
+  utest:
+    luaUnit.lua -- Unit test framework. Keeps the main control over the unit testing.
+    testObject.lua -- The api to be used in the functions. Contain functions succeeds/fails/equals/differs, which keep track of amount of tests and amount of successes
+    UnitResult.lua -- Keeps track of successes and failures and prints them
+
