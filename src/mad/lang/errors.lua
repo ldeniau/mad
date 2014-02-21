@@ -81,7 +81,9 @@ local function getErrorMessage(err)
 end
 
 local function getStackTraceBack(err)
-	return string.match(err, ".*stack traceback:%s*(.-)%s*%[C%]: in function 'xpcall'")
+	local str = string.match(err, ".*stack traceback:%s*(.-)%s*%[C%]: in function 'xpcall'")
+	if str then return str.."\n" end
+	return nil
 end
 
 local function createStackTable(stack)
@@ -96,7 +98,7 @@ end
 
 local function createStackErrorMessage(stacktable)
 	local errmess = "\nstack traceback:"
-	for i,v in ipairs(stacktable) do
+	for _,v in pairs(stacktable) do
 		errmess = errmess..'\n'..v
 	end
 	return errmess
@@ -112,7 +114,7 @@ local function translateLuaErrToMadErr( err, trace)
 	local errmess = getErrorMessage(err)
 	errmess = name..":"..realLine..": "..errmess
 	local stack = getStackTraceBack(trace)
-	local stacktable = createStackTable( stack)
+	local stacktable = createStackTable(stack)
 	errmess = errmess..createStackErrorMessage(stacktable)
 	return errmess
 end
@@ -247,7 +249,8 @@ stack traceback:
 	h
 	grte
 	
-	few]])
+	few
+]])
     stb = ut:succeeds(getStackTraceBack, [[./mad/lang/errors.lua:184: '=' expected near '+'
 stack traceback:
 	[C]: at 0x004504e0
