@@ -1,0 +1,4 @@
+simple(xx,yy): macro = { xx = yy^2 + xx; value, xx;};
+a = 3;
+b = 5;
+exec, simple(a,b);
