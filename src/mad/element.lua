@@ -31,6 +31,7 @@ local object = require"mad.object"
 
 local type, setmetatable = type, setmetatable
 local rawget, pairs = rawget, pairs
+local is_list = object.is_list
 
 -- metatable for the root class of all elements
 local MT = object { name='meta_element' }
@@ -81,7 +82,7 @@ local function show_properties(self, disp, sep)
   disp = disp or 0
   if type(disp) == 'number' then
     show_inheritance(self, disp, sep)
-  elseif type(disp) == 'table' then
+  elseif is_list(disp) then
     show_list(self, disp, sep)
   else
     error("invalid show argument, depth level or list of fields expected")
@@ -116,7 +117,7 @@ end
 function MT:__call(a)
   if type(a) == 'string' then   -- class 'name' { ... }
     return function(t)
-      if type(t) == 'table' then
+      if is_list(t) then
         t.name = a
         if not self:is_class() then init(self) end
         return setmetatable(t, self)
@@ -125,7 +126,7 @@ function MT:__call(a)
     end
   end
 
-  if type(a) == 'table' then    -- class { ... }
+  if is_list(a) then    -- class { ... }
     if not self:is_class() then init(self) end
     return setmetatable(a, self)
   end
@@ -135,10 +136,8 @@ end
 
 -- repetition
 function MT.__mul(n, elem)
-  if type(elem) == 'number' then
-    n, elem = elem, n
-  end
-  return { _rep=n<0 and -n or n, elem } -- return a list
+  if type(elem) == 'number' then n, elem = elem, n end
+  return { _rep=n, elem } -- return a list
 end
 
 -- members ---------------------------------------------------------------------
