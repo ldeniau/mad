@@ -66,7 +66,7 @@ function execmacro(macro, arg)
 end
 
 pi      = math.pi
-twopi   = 2*math.pi
+twopi   = 2*pi
 degrad  = 180/pi
 raddeg  = pi/180
 e       = math.e
@@ -76,6 +76,7 @@ mumass  = 0.1056583715
 clight  = 2.99792458*10^8
 qelect  = 1.602176565*10^-19
 
+abs     = math.abs
 sqrt    = math.sqrt
 log     = math.log
 log10   = function(x) return math.log(x,10) end
@@ -89,10 +90,7 @@ atan    = math.atan
 sinh    = math.sinh
 cosh    = math.cosh
 tanh    = math.tanh
-abs     = math.abs
-
-ranf = math.random
-
+ranf    = math.random
 
 -- end -------------------------------------------------------------------------
 return M

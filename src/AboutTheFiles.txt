@@ -11,8 +11,8 @@ lua:
   tableUtil.lua -- Contains functions for printing tables mostly. Useful for debugging and for dumping ast
   process.lua -- Wrapper for io.open and that ilk, for running processes.
 mad:
-  lang.lua -- Contains functions for getting a parserctor
-  madxenv.lua -- Contains the special madxenvironment
+  lang.lua -- Contains functions for getting a parser ctor
+  madxenv.lua -- Contains the special madx environment
   tester.lua -- Contains functions for running tests.
   core:
     exec.lua -- Parses and runs the files
