@@ -12,7 +12,7 @@ DESCRIPTION
   Parses a string that contains a chunk of mad code and creates an AST.
 
   parser:parse(stringToParse, chunkName, startPosInFile, [startingLine])
-    -Creates an AST from the given stringToParse, which must be valid mad code.
+  Creates an AST from the given stringToParse, which must be valid mad code.
 
 RETURN VALUES
   None
@@ -29,27 +29,19 @@ local defs    = require"mad.lang.mad.defs".defs
 local utest   = require"mad.tester"
 
 
+-- module ---------------------------------------------------------------------
+
+local function parse(self, str, chunkName, pos, line)
+	defs._line = line or 0
+	return self.grammar:match(str, pos)
+end
+
 -- metamethods ----------------------------------------------------------------
 
 local mt = {}; setmetatable(M, mt)
-local call
-mt.__call = function (...)
-	return call(...)
-end
 
--- module ---------------------------------------------------------------------
-
-local parse = function (self, str, fileName, pos, line)
-	defs._line = line or 0
-	local ast = self.grammar:match(str, position)
-	return ast
-end
-
-call = function (_, ...)
-	local self = {}
-	self.parse = parse
-	self.grammar = re.compile(grammar, defs)
-	return self
+mt.__call = function ()
+	return { parse=parse, grammar=re.compile(grammar, defs) }
 end
 
 -- test -----------------------------------------------------------------------

@@ -37,7 +37,7 @@ local is_list = object.is_list
 local MT = object { name='meta_element' }
 
  -- root of all elements
-M.element = MT { name='element', kind='element', is_element=true }
+M.element = MT { name='element', l=0, kind='element', is_element=true }
 
 -- functions -------------------------------------------------------------------
 
@@ -100,13 +100,13 @@ function MT:is_class()
 end
 
 function MT:show(disp)
-  io.write('  ', self:class().name, " '", self.name, "' { at= ", self.s_pos)
+  io.write('  ', string.format('%-25s',self:class().name.." '"..self.name.."'"), ' { at= ', self.s_pos)
   show_properties(self, disp, '= ')
-  io.write(' }\n')
+  io.write(' },\n')
 end
 
 function MT:show_madx(disp)
-  io.write('  ', self.name, ': ', self:class().name, ',\t\t at:= ', self.s_pos)
+  io.write('  ', string.format('%-25s',self.name..': '..self:class().name..','), ' at:= ', self.s_pos)
   show_properties(self, disp, ':= ')
   io.write(';\n')
 end

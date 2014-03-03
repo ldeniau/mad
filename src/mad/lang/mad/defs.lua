@@ -24,11 +24,11 @@ local tableUtil = require'lua.tableUtil'
 
 -- defs -----------------------------------------------------------------------
 
-local defs = { }
+local defs = {}
 
-defs._line = 0
+defs._line    = 0
 defs._lastPos = 0
-defs._maxPos = 0
+defs._maxPos  = 0
 
 function defs.savePos(_, pos)
     defs._lastPos = pos
@@ -67,9 +67,7 @@ function defs.error(str, pos)
         for val in string.gmatch(str,"([^\n]*)\n") do
             strtbl[#strtbl+1] = val
         end
-        local line = 0
-        local col = 0
-        local ofs = 0
+        local line, col, ofs = 0, 0, 0
         for i = 1, #strtbl do
             col = defs._maxPos - ofs
             ofs = ofs + string.len(strtbl[i]) + 1

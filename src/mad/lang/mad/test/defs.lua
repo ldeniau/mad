@@ -8,7 +8,7 @@ function M:tearDown()
     self.defs = nil
 end
 
-function M:error( ut )
+function M:error(ut)
     ut:fails(self.defs.error,[[a = 1]], 0)
 end
 
