@@ -26,18 +26,23 @@ SEE ALSO
 -- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
+local utils = require"mad.utils"
 
 -- locals ----------------------------------------------------------------------
 
 local type, setmetatable = type, setmetatable
 local rawget, pairs = rawget, pairs
-local is_list = object.is_list
+local is_list, show_list = utils.is_list, utils.show_list
 
 -- metatable for the root class of all elements
 local MT = object { name='meta_element' }
 
  -- root of all elements
-M.element = MT { name='element', l=0, kind='element', is_element=true }
+M.element = MT { name='element', length=0, kind='element', is_element=true }
+
+-- element fields
+local element_fields = {  name=true, s_pos=true,
+                          _not=true, __mul=true, __call=true, __index=true  }
 
 -- functions -------------------------------------------------------------------
 
@@ -54,39 +59,16 @@ local function init(self)
   self.__mul    = MT.__mul          -- repetition
 end
 
-local special_fields = {  name=true,  s_pos=true,   i_pos=true,
-                         __mul=true, __call=true, __index=true  }
-
-local function show_list(t, list, sep)
-  local a
-  for _,v in ipairs(list) do
-    a = t[v]
-    if a then io.write(', ', v, sep, tostring(a)) end
-  end
-end
-
 local function show_inheritance(self, depth, sep)
-  for k,v in pairs(self) do
-    if type(k) == 'number' then
-      io.write(', ', tostring(v))
-    elseif not special_fields[k] then
-      io.write(', ', k, sep, tostring(v))
-    end
-  end
+  show_list(self, element_fields, sep)
   if depth > 0 and not rawget(self:class(), 'kind') then
     show_inheritance(self:class(), depth-1)
   end
 end
 
 local function show_properties(self, disp, sep)
-  disp = disp or 0
-  if type(disp) == 'number' then
-    show_inheritance(self, disp, sep)
-  elseif is_list(disp) then
-    show_list(self, disp, sep)
-  else
-    error("invalid show argument, depth level or list of fields expected")
-  end
+  local show = type(disp) == 'number' and show_inheritance or show_list
+  show(self, disp, sep)
 end
 
 -- methods ---------------------------------------------------------------------
@@ -100,14 +82,14 @@ function MT:is_class()
 end
 
 function MT:show(disp)
-  io.write('  ', string.format('%-25s',self:class().name.." '"..self.name.."'"), ' { at= ', self.s_pos)
-  show_properties(self, disp, '= ')
+  io.write('  ', string.format('%-25s',self:class().name.." '"..self.name.."' "), '{ at= ', self.s_pos, ', ')
+  show_properties(self, disp)
   io.write(' },\n')
 end
 
 function MT:show_madx(disp)
-  io.write('  ', string.format('%-25s',self.name..': '..self:class().name..','), ' at:= ', self.s_pos)
-  show_properties(self, disp, ':= ')
+  io.write('  ', string.format('%-25s',self.name..': '..self:class().name..', '), 'at:= ', self.s_pos, ', ')
+  show_properties(self, disp, {':= ', ', '})
   io.write(';\n')
 end
 

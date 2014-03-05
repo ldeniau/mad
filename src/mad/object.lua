@@ -42,17 +42,20 @@ EXAMPLES
   p2 = p1:cpy()                         -- p2 is a copy of p1
   p1:set { x=-1, y=-2 }                 -- set p1.x and p1.y (slow)
   p1.x, p1.y = 1, 2                     -- set p1.x and p1.y (faster)
-  Object.is_list { x=0, y=0 }           -- return true
-  Object.is_list(p0)                    -- return false
+
+  is_list = require"mad.utils".is_list
+  is_list { x=0, y=0 }                  -- return true
+  is_list (p0)                          -- return false
 
 SEE ALSO
-  mad.module, mad.element, mad.sequence, mad.beam
+  None
 ]]
 
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
 local type, pairs = type, pairs
+local is_list = require"mad.utils".is_list
 
 local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 
@@ -61,16 +64,7 @@ local MT = {}; setmetatable(M, MT) -- make this module the root of all objects
 M.is_object = true
 M.name = 'object'
 
--- functions -------------------------------------------------------------------
-
-local function is_list(a)
-  return type(a) == 'table' and getmetatable(a) == nil
-end
-
 -- methods ---------------------------------------------------------------------
-
--- check for non object
-M.is_list = is_list
 
 -- return the next parent
 function M:spr()
@@ -221,7 +215,6 @@ function M.test:set(ut)
     ut:fails(obj11.set,obj11)
     ut:fails(obj12.set,obj12)
 end
-
 
 -- end -------------------------------------------------------------------------
 return M

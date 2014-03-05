@@ -40,13 +40,14 @@ M.help.add = [=[
 -- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
+local utils  = require"mad.utils"
 local marker = require"mad.element".marker
 
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
 local type, ipairs = type, ipairs
-local is_list = object.is_list
+local is_list, show_list = utils.is_list, utils.show_list
 
 -- metatable for the root of all sequences
 local MT = object {} 
@@ -57,7 +58,7 @@ M.name = 'sequence'
 M.is_sequence = true
 
 -- sequence fields
-local sequence_fields = { 'l', 'refer' }
+local sequence_fields = { 'length', 'refer' }
 
 -- sequence markers (unique instances)
 local start_marker = marker '$start' {}
@@ -73,9 +74,12 @@ local function copy_fields(t, a, lst)
 end
 
 local function show_fields(t, lst)
+  local a, k, s
+  lst = lst or sequence_fields
   for _,v in ipairs(lst) do
-    local a = t[v]
-    if a then io.write(', ', v, '= ', tostring(a)) end
+    if is_list(v) then k, s = v[1], v[2] else k, s = v, v end
+    a = t[k]
+    if a then io.write(', ', s, '= ', tostring(a)) end
   end
 end
 
@@ -145,13 +149,13 @@ local function add_sequence(self, seq, at, from, refer, rev)
   if rev and rev<0 then -- reverse, store seq info in end_marker
     add_element(self, shadow_get(seq[#seq]), at, from, refer, seq)
     for j=#seq-1,1,-1 do 
-      at = seq[j+1].s_pos - seq[j].s_pos - seq[j].l
+      at = seq[j+1].s_pos - seq[j].s_pos - seq[j].length
       add_element(self, shadow_get(seq[j]), at, 'prev', 'entry')
     end
   else                  -- direct, store seq info in start_marker
     add_element(self, shadow_get(seq[1]), at, from, refer, seq)
     for j=2,#seq do
-      at = seq[j].s_pos - seq[j-1].s_pos - seq[j-1].l
+      at = seq[j].s_pos - seq[j-1].s_pos - seq[j-1].length
       add_element(self, shadow_get(seq[j]), at, 'prev', 'entry')
     end
   end
@@ -191,11 +195,12 @@ local function element_spos(self, elem)
   local s_pos = elem.s_pos
   if type(s_pos) == 'number'  then return s_pos
   elseif  s_pos  == 'ongoing' then error('cycling dependencies detected in sequence '..self.name..' for element '..elem.name)
-  elseif  s_pos  ~= 'todo'    then error('invalid element state in sequence '..self.name..' for element '..elem.name)
+  elseif  s_pos  ~= 'todo'    then error('invalid element detected in sequence '..self.name..' for element '..elem.name)
   end
 
   elem.s_pos = 'ongoing'
 
+  local len   = self.length
   local idx   = elem._idx
   local seq   = elem._seq
   local pos   = elem._at    or 0
@@ -203,17 +208,17 @@ local function element_spos(self, elem)
   local refer = elem._refer or self.refer           or 'entry'
 
       if refer == 'entry'   then ;
-  elseif refer == 'centre'  then pos = pos - (seq and seq.l/2 or elem.l/2)
-  elseif refer == 'exit'    then pos = pos - (seq and seq.l   or elem.l)
+  elseif refer == 'centre'  then pos = pos - (seq and seq.length/2 or elem.length/2)
+  elseif refer == 'exit'    then pos = pos - (seq and seq.length   or elem.length)
   elseif seq and seq[refer] then pos = pos - seq[refer].s_pos
   else error("invalid refer: "..elem._refer)
   end
 
-      if from == 'start'          then ;
-  elseif from == 'end' and self.l then pos = self.l - pos
-  elseif from == 'prev'           then pos = pos + self[idx-1].s_pos + self[idx-1].l
-  elseif from == 'next'           then pos = pos + element_spos(self, self[idx+1])
-  elseif self[from]               then pos = pos + element_spos(self, self[from])
+      if from == 'start'       then ;
+  elseif from == 'end' and len then pos = len - pos
+  elseif from == 'prev'        then pos = pos + self[idx-1].s_pos + self[idx-1].length
+  elseif from == 'next'        then pos = pos + element_spos(self, self[idx+1])
+  elseif self[from]            then pos = pos + element_spos(self, self[from])
   else error("invalid from: "..elem._from)
   end
 
@@ -228,10 +233,10 @@ local function sequence_spos(self)
 end
 
 local function adjust_length(self)
-  local em = self[#self] -- end_marker
-  if not self.l
-      or self.l < em.s_pos then self.l = em.s_pos
-  elseif self.l > em.s_pos then em.s_pos = self.l
+  local em  = self[#self] -- end_marker
+  local len = self.length
+  if not len or len < em.s_pos then self.length = em.s_pos
+  elseif        len > em.s_pos then em.s_pos = len
   end
 end
 
@@ -251,44 +256,41 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:show(disp)
-  io.write('sequence: ', self.name)
-  show_fields(self, sequence_fields)
-  io.write('\n')
-  for i,v in ipairs(self) do v:show(disp) end
+  io.write("sequence '", self.name,"' { ")
+  show_list(self, disp)
+  io.write(' }\n')
+  for _,v in ipairs(self) do v:show(disp) end
   io.write('endsequence\n')
 end
 
 function M:show_madx(disp)
-  io.write(self.name, ': sequence')
-  show_fields(self, sequence_fields)
+  io.write("'", self.name, "': sequence, ")
+  show_list(self, disp)
   io.write(';\n')
-  for i,v in ipairs(self) do v:show_madx(disp) end
+  for _,v in ipairs(self) do v:show_madx(disp) end
   io.write('endsequence;\n')
 end
 
 function M:add(a, at, from, refer)
-  if at or not a.at then    -- positional params
-    add_item(self, a, at, from, refer)
-  elseif is_list(a) then    -- named params
-    add_item(self, a.item or a[1], a.at, a.from, a.refer)
-  else
-    error("invalid set of parameters in incremental sequence construction")
+  if at or not a.at then add_item(self, a, at, from, refer)                 -- positional params
+  elseif is_list(a) then add_item(self, a.item or a[1], a.at, a.from, a.refer)   -- named params
+  else error("invalid set of parameters in incremental sequence construction")
   end
   return self
 end
 
+function M:set(a)
+  copy_fields   (self, a, sequence_fields)
+  add_element   (self, start_marker, 0)
+  return self:add(a):done()
+end
+
 function M:done()
-  add_element   (self, end_marker, self.l)
+  add_element   (self, end_marker, self.length)
   sequence_spos (self)
   adjust_length (self)
   clean_sequence(self)
   return self
-end
-
-function M:set(a)
-  copy_fields(self, a, sequence_fields)
-  add_element(self, start_marker, 0)
-  return self:add(a):done()
 end
 
 -- metamethods -----------------------------------------------------------------
@@ -368,7 +370,7 @@ local function localise(self, start)
   local s_pos = start and v[start].s_pos or 0
   for i=start or 1,#self do
     self[i].s_pos = s_pos
-    if self[i].l then s_pos = s_pos + self[i].l end
+    if self[i].length then s_pos = s_pos + self[i].length end
   end
   if not self.length then self.length = s_pos end
   return self
@@ -397,7 +399,7 @@ local function remove_element_key(self, elem)
   end
 end
 
--- edition -- TODO: check s_pos and l
+-- edition -- TODO: check s_pos and length
 local function insert_element(self, elem, before)
   test_membership(self, before)
   local i = before.i_pos

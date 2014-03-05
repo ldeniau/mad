@@ -5,6 +5,10 @@
   and to make on linux, run  
        make linux  [ LUADIR=/path/to/luajit/include ]
   
+###Reinstalling:
+  Clean first the object and librarie files
+  make clean
+
 ###Using re:  
   To use re, require it using the wrapper in this directory.
   ``` lua
