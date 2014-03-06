@@ -7,8 +7,8 @@ NAME
   mad.element -- build MAD element
 
 SYNOPSIS
-  elm = require"mad.element"
-  drift, sbend, rbend, quad = elm.drift, elm.sbend, elm.rbend, elm.quadrupole
+  elem = require"mad.element"
+  drift, sbend, rbend, quad = elem.drift, elem.sbend, elem.rbend, elem.quadrupole
   mq = quad 'mq' {}
   qf = mq { k1= 0.1 } -- focusing quadrupole
   qd = mq { k1=-0.1 } -- defocusing quadrupole
@@ -120,7 +120,7 @@ end
 -- repetition
 function MT.__mul(n, elem)
   if type(elem) == 'number' then n, elem = elem, n end
-  return line { _rep=n, name=n..'*'..elem.name, elem }
+  return line { _rep=n, elem }
 end
 
 -- members ---------------------------------------------------------------------

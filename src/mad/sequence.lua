@@ -149,8 +149,7 @@ local function add_element(self, elem, at, from, refer, seq)
 end
 
 local function add_sequence(self, sequ, at, from, refer, rev)
--- io.write('add_sequ: \'', sequ.name, '\' at slot ', #self+1, '\n')
-
+--  io.write('add_sequ: \'', sequ.name, '\' at slot ', #self+1, '\n')
   if rev and rev<0 then -- reverse, store sequ info with end_marker
     add_element(self, shadow_get(sequ[#sequ]), at, from, refer, sequ)
     for j=#sequ-1,1,-1 do 
@@ -166,7 +165,7 @@ local function add_sequence(self, sequ, at, from, refer, rev)
   end
 end
 
-local add_line -- forward declaration
+local add_line -- forward declaration (x-ref in this order lets add_item to be inlined)
 
 local function add_item(self, item, at, from, refer, rev)
       if item.is_element  then add_element (self, item, at, from, refer)
@@ -178,8 +177,7 @@ local function add_item(self, item, at, from, refer, rev)
 end
 
 add_line = function(self, line, at, from, refer, rev)
--- io.write('add_line: \'', line.name, '\' at slot ', #self+1, '\n')
-
+--  io.write('add_line: \'', line:mangled_name(), '\' at slot ', #self+1, '\n')
   local j_beg, j_end, j_step
   local n = (line._rep or 1) * (rev or 1)
 
@@ -336,12 +334,12 @@ end
 -- repetition
 function M.__mul(n, sequ)
   if type(sequ) == 'number' then n, sequ = sequ, n end
-  return line { _rep=n, name=n..'*'..sequ.name, sequ }
+  return line { _rep=n, sequ }
 end
 
 -- reflection
 function M.__unm(sequ, _)
-  return line { _rep=-1, name='-'..sequ.name, sequ }
+  return line { _rep=-1, sequ }
 end 
 
 -- test suite -----------------------------------------------------------------------

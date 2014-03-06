@@ -49,7 +49,20 @@ M.name = 'line'
 M.kind = 'line'
 M.is_line = true
 
--- functions -------------------------------------------------------------------
+-- methods ---------------------------------------------------------------------
+
+function M:mangled_name()
+  local rep  = self._rep
+  local name = rep and self[1].name or self.name
+
+  if rep then
+        if rep == -1 then name = '-'..name
+    elseif rep ~=  1 then name = rep..'*'..name
+    end
+  end
+  
+  return name
+end
 
 -- metamethods -----------------------------------------------------------------
 
@@ -77,12 +90,12 @@ end
 -- repetition
 function M.__mul(n, line)
   if type(line) == 'number' then n, line = line, n end
-  return M { _rep=n, name=n..'*'..line.name, line }
+  return M { _rep=n, line }
 end
 
 -- reflection
 function M.__unm(line, _)
-  return M { _rep=-1, name='-'..line.name, line }
+  return M { _rep=-1, line }
 end 
 
 -- test suite -----------------------------------------------------------------------
