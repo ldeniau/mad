@@ -7,8 +7,8 @@ NAME
   mad.sequence -- build sequences
 
 SYNOPSIS
-  seq = require"mad.sequence"
-  my_seq = seq ['name'] { element_list... }
+  sequ = require"mad.sequence"
+  my_seq = sequ ['name'] { element_list... }
 
 DESCRIPTION
   The module mad.sequence creates new sequences and lines supported by MAD.
@@ -18,15 +18,15 @@ RETURN VALUE
   The object (table) that represents the flat sequence.
 
 EXAMPLE
-  seq = require"mad.sequence"
-  elm = require"mad.element"
-  MB, MQ = elm.sbend, elm.quadrupole
-  my_seq = seq 'name' {
+  sequ = require"mad.sequence"
+  elem = require"mad.element"
+  MB, MQ = elem.sbend, elem.quadrupole
+  my_seq = sequ 'name' {
     MQ 'QF', MB 'MB', MQ 'QD', MB 'MB',
   }
 
 SEE ALSO
-  mad.sequence, mad.element, mad.beam
+  mad.line, mad.element, mad.beam
 ]]
 
 M.help.add = [=[
@@ -41,6 +41,7 @@ M.help.add = [=[
 
 local object = require"mad.object"
 local utils  = require"mad.utils"
+local line   = require"mad.line"
 local marker = require"mad.element".marker
 
 -- locals ----------------------------------------------------------------------
@@ -55,6 +56,7 @@ local MT = object {}
  -- make the module the root of all sequences
 MT (M)
 M.name = 'sequence'
+M.kind = 'sequence'
 M.is_sequence = true
 
 -- sequence fields
@@ -130,6 +132,7 @@ end
 local function add_element_key(self, elem)
   if elem.kind == 'drift' then return end     -- drifts are never registered
 
+-- io.write('add_elem: \'', elem.name, '\' at slot ', #self+1, '\n')
   local name = elem.name
   local ref = self[name]
 
@@ -145,52 +148,60 @@ local function add_element(self, elem, at, from, refer, seq)
   add_element_key(self, self[i])
 end
 
-local function add_sequence(self, seq, at, from, refer, rev)
-  if rev and rev<0 then -- reverse, store seq info in end_marker
-    add_element(self, shadow_get(seq[#seq]), at, from, refer, seq)
-    for j=#seq-1,1,-1 do 
-      at = seq[j+1].s_pos - seq[j].s_pos - seq[j].length
-      add_element(self, shadow_get(seq[j]), at, 'prev', 'entry')
+local function add_sequence(self, sequ, at, from, refer, rev)
+-- io.write('add_sequ: \'', sequ.name, '\' at slot ', #self+1, '\n')
+
+  if rev and rev<0 then -- reverse, store sequ info with end_marker
+    add_element(self, shadow_get(sequ[#sequ]), at, from, refer, sequ)
+    for j=#sequ-1,1,-1 do 
+      at = sequ[j+1].s_pos - sequ[j].s_pos - sequ[j].length
+      add_element(self, shadow_get(sequ[j]), at, 'prev', 'entry')
     end
-  else                  -- direct, store seq info in start_marker
-    add_element(self, shadow_get(seq[1]), at, from, refer, seq)
-    for j=2,#seq do
-      at = seq[j].s_pos - seq[j-1].s_pos - seq[j-1].length
-      add_element(self, shadow_get(seq[j]), at, 'prev', 'entry')
+  else                  -- direct, store sequ info with start_marker
+    add_element(self, shadow_get(sequ[1]), at, from, refer, sequ)
+    for j=2,#sequ do
+      at = sequ[j].s_pos - sequ[j-1].s_pos - sequ[j-1].length
+      add_element(self, shadow_get(sequ[j]), at, 'prev', 'entry')
     end
   end
 end
 
-local function add_list(self, lst, at, from, refer, rev)
-  local j_start, j_end, j_step
-  local n = (lst._rep or 1) * (rev or 1)
+local add_line -- forward declaration
+
+local function add_item(self, item, at, from, refer, rev)
+      if item.is_element  then add_element (self, item, at, from, refer)
+  elseif item.is_line     then add_line    (self, item, at, from, refer, rev)
+  elseif item.is_sequence then add_sequence(self, item, at, from, refer, rev)
+  else error("invalid item '"..(item.name or '').."' at slot "..(#self+1).." in sequence '"..
+       self.name.."'".." right after element '"..self[#self].name.."'")
+  end
+end
+
+add_line = function(self, line, at, from, refer, rev)
+-- io.write('add_line: \'', line.name, '\' at slot ', #self+1, '\n')
+
+  local j_beg, j_end, j_step
+  local n = (line._rep or 1) * (rev or 1)
 
   if n<0
-  then n, j_start, j_end, j_step = -n, #lst, 1, -1
-  else    j_start, j_end, j_step =     1, #lst,  1
+  then n, j_beg, j_end, j_step = -n, #line, 1, -1
+  else    j_beg, j_end, j_step =     1, #line,  1
   end
 
   for i=1,n do
-    for j=j_start,j_end,j_step do
-      local a = lst[j]
-          if a.is_element  then add_element (self, a, at, from, refer)
-      elseif a.is_sequence then add_sequence(self, a, at, from, refer, j_step)
-      elseif is_list(a)    then add_list    (self, a, at, from, refer, j_step)
-      else error('invalid list element at slot '..j..' at sequence slot '..(#self+1))
-      end
+    for j=j_beg,j_end,j_step do
+      add_item(self, line[j], at, from, refer, j_step)
     end
   end
 end
 
-local function add_item(self, a, at, from, refer)
-      if a.is_element  then add_element (self, a, at, from, refer)
-  elseif a.is_sequence then add_sequence(self, a, at, from, refer)
-  elseif is_list(a)    then add_list    (self, a, at, from, refer)
-  else error('invalid item in construction of sequence '..(self.name or ''))
+local function add_list(self, lst)
+  for _,a in ipairs(lst) do
+    add_item(self, a)
   end
 end
 
--- compute s positions
+-- compute s positions (this function is too long but does a lot)
 local function element_spos(self, elem)
   local s_pos = elem.s_pos
   if type(s_pos) == 'number'  then return s_pos
@@ -274,15 +285,17 @@ end
 function M:add(a, at, from, refer)
   if at or not a.at then add_item(self, a, at, from, refer)                 -- positional params
   elseif is_list(a) then add_item(self, a.item or a[1], a.at, a.from, a.refer)   -- named params
-  else error("invalid set of parameters in incremental sequence construction")
+  else error("invalid set of parameters in incremental construction of sequence '"..self.name.."'")
   end
   return self
 end
 
 function M:set(a)
-  copy_fields   (self, a, sequence_fields)
-  add_element   (self, start_marker, 0)
-  return self:add(a):done()
+  self[1] = nil -- clear sequence
+  copy_fields(self, a, sequence_fields)
+  add_element(self, start_marker, 0)
+  add_list   (self, a)
+  return self:done()
 end
 
 function M:done()
@@ -303,7 +316,7 @@ function MT:__call(a)
         self.__index = self         -- inheritance
         return setmetatable({name=a}, self):set(t)
       end
-      error ("invalid constructor argument, list expected")
+      error ("invalid sequence constructor argument, list expected")
     end
   end
 
@@ -312,23 +325,23 @@ function MT:__call(a)
     return setmetatable({}, self):set(a)
   end
 
-  error ("invalid constructor argument, string expected")
+  error ("invalid sequence constructor argument, string expected")
 end
 
 -- construction
-function M.__add(seq, a)
-  return seq:add(a)
+function M.__add(sequ, a)
+  return sequ:add(a)
 end
 
 -- repetition
-function M.__mul(n, seq)
-  if type(seq) == 'number' then n, seq = seq, n end
-  return { _rep=n, seq }
+function M.__mul(n, sequ)
+  if type(sequ) == 'number' then n, sequ = sequ, n end
+  return line { _rep=n, name=n..'*'..sequ.name, sequ }
 end
 
 -- reflection
-function M.__unm(seq, _)
-  return { _rep=-1, seq }
+function M.__unm(sequ, _)
+  return line { _rep=-1, name='-'..sequ.name, sequ }
 end 
 
 -- test suite -----------------------------------------------------------------------
@@ -354,8 +367,8 @@ local function flatten(self, name)
       add_sequence(t, v)
     elseif v.is_element then
       add_element(t, v)
-    elseif is_list(v) then
-      add_list(t, v)
+    elseif v.is_line then
+      add_line(t, v)
     else
       error('invalid sequence element at slot '..i)
     end

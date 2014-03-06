@@ -20,13 +20,14 @@ RETURN VALUES
   The list of supported elements.
 
 SEE ALSO
-  mad.sequence, mad.beam, mad.object
+  mad.sequence, mad.line, mad.beam, mad.object
 ]]
 
 -- requires --------------------------------------------------------------------
 
 local object = require"mad.object"
 local utils = require"mad.utils"
+local line = require"mad.line"
 
 -- locals ----------------------------------------------------------------------
 
@@ -38,7 +39,7 @@ local is_list, show_list = utils.is_list, utils.show_list
 local MT = object { name='meta_element' }
 
  -- root of all elements
-M.element = MT { name='element', length=0, kind='element', is_element=true }
+M.element = MT { name='element', kind='element', is_element=true, length=0 }
 
 -- element fields
 local element_fields = {  name=true, s_pos=true,
@@ -104,7 +105,7 @@ function MT:__call(a)
         if not self:is_class() then init(self) end
         return setmetatable(t, self)
       end
-      error ("invalid constructor argument, list expected")
+      error ("invalid element constructor argument, list expected")
     end
   end
 
@@ -113,13 +114,13 @@ function MT:__call(a)
     return setmetatable(a, self)
   end
 
-  error ("invalid constructor argument, string expected")
+  error ("invalid element constructor argument, string expected")
 end
 
 -- repetition
 function MT.__mul(n, elem)
   if type(elem) == 'number' then n, elem = elem, n end
-  return { _rep=n, elem } -- return a list
+  return line { _rep=n, name=n..'*'..elem.name, elem }
 end
 
 -- members ---------------------------------------------------------------------
