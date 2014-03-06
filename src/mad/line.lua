@@ -66,7 +66,7 @@ end
 
 -- metamethods -----------------------------------------------------------------
 
--- constructor of lines, can be anonymous
+-- constructor of lines, can be unamed (inherit its name)
 function MT:__call(a)
   if type(a) == 'string' then
     return function(t)

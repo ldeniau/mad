@@ -167,12 +167,15 @@ end
 
 local add_line -- forward declaration (x-ref in this order lets add_item to be inlined)
 
+local function add_error(self, item)
+  error("invalid item '"..(item.name or '?').."' at slot "..(#self+1).." in sequence '"..self.name.."'")
+end
+
 local function add_item(self, item, at, from, refer, rev)
       if item.is_element  then add_element (self, item, at, from, refer)
   elseif item.is_line     then add_line    (self, item, at, from, refer, rev)
   elseif item.is_sequence then add_sequence(self, item, at, from, refer, rev)
-  else error("invalid item '"..(item.name or '').."' at slot "..(#self+1).." in sequence '"..
-       self.name.."'".." right after element '"..self[#self].name.."'")
+  else                         add_error   (self, item)
   end
 end
 
@@ -194,18 +197,27 @@ add_line = function(self, line, at, from, refer, rev)
 end
 
 local function add_list(self, lst)
-  for _,a in ipairs(lst) do
-    add_item(self, a)
+  if is_list(lst) then
+    for _,v in ipairs(lst) do
+      add_item(self, v)
+    end
+  else add_item(self, lst)
   end
 end
 
--- compute s positions (this function is too long but does a lot)
+-- compute s positions of sequence elements
+local function spos_error(self, elem)
+  if elem.s_pos == 'ongoing' then
+    error('cycling dependencies detected in sequence '..self.name..' for element '..elem.name)
+  else
+    error('invalid element detected in sequence '..self.name..' for element '..elem.name)
+  end
+end
+
 local function element_spos(self, elem)
   local s_pos = elem.s_pos
-  if type(s_pos) == 'number'  then return s_pos
-  elseif  s_pos  == 'ongoing' then error('cycling dependencies detected in sequence '..self.name..' for element '..elem.name)
-  elseif  s_pos  ~= 'todo'    then error('invalid element detected in sequence '..self.name..' for element '..elem.name)
-  end
+  if type(s_pos) == 'number' then return s_pos end
+  if s_pos ~= 'todo' then spos_error(self, elem) end
 
   elem.s_pos = 'ongoing'
 
@@ -306,7 +318,7 @@ end
 
 -- metamethods -----------------------------------------------------------------
 
--- constructor of sequences, can be anonymous
+-- constructor of sequences, can be unamed (inherit its name)
 function MT:__call(a)
   if type(a) == 'string' then
     return function(t)
