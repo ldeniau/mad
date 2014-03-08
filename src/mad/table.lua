@@ -62,8 +62,11 @@ function M:set_columns(a)
   self._header = {}
   self._column = a
   for i,v in ipairs(a) do
-    self[i] = {} ; self[v] = self[i]
+    self[i] = {}
+    if is_list(v) then self._refcol = self[i] ; v = v[1] end
+    self[v] = self[i]
   end
+  self._refcol = self._refcol or self[1] -- take 1st column if not specified
   return self
 end
 
@@ -74,11 +77,13 @@ function M:add_header(a)
 end
 
 function M:add(a)
-  local n = #self+1
+  local n = #self._refcol+1
   if #a == #self then
     for i,v in ipairs(a) do self[i][n] = v end
-  else
+  elseif #a == 0 then
     for k,v in  pairs(a) do self[k][n] = v end
+  else
+    error("invalid table 'add' parameters")
   end
   return self
 end
