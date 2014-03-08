@@ -83,7 +83,6 @@ function MT:__call(a)
     self.__index = self             -- inheritance
     return setmetatable(a, self)
   end
-
   error ("invalid line constructor argument, string expected")
 end
 

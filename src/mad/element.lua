@@ -113,7 +113,6 @@ function MT:__call(a)
     if not self:is_class() then init(self) end
     return setmetatable(a, self)
   end
-
   error ("invalid element constructor argument, string expected")
 end
 
@@ -171,6 +170,9 @@ M.blm         = M.monitor     'blm'         { kind='blm' }
 -- others
 M.instrument  = M.placeholder 'instrument'  { kind='instrument' }
 
+-- test suite -----------------------------------------------------------------------
+
+M.test = require"mad.test.element"
 
 -- end -------------------------------------------------------------------------
 return M
