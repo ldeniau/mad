@@ -1,5 +1,5 @@
 LIBNAME = lpeg
-LUADIR = /usr/local/include/luajit-2.0/
+LUADIR = /usr/local/include/luajit-2.1/
 
 COPT = -O2
 # COPT = -DLPEG_DEBUG -g
