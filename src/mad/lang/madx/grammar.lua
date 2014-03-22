@@ -25,7 +25,7 @@ M.grammar = [=[
 -- top level rules
 
     chunk       <- ((''=>setup) (stmtnum)* s(!./''=>error))                             -> chunk
-    stmtnum     <- ((stmt s';'sp)^1000 / (stmt s';'sp)+)                                => stmtnum
+    stmtnum     <- (stmt s';'sp (stmt s';'sp)^-1000)                                    => stmtnum
     block       <- (s'{'sp (stmt s';'sp)* s'}'                                      sp) -> block
 
 -- statement
