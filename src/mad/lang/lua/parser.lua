@@ -71,6 +71,7 @@ end
 
 function M.test:self(ut)
     utest.addModuleToTest("mad.lang.lua.grammar")
+    utest.addModuleToTest("mad.lang.lua.defs")
 end
 
 -- end ------------------------------------------------------------------------
