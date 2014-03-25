@@ -34,14 +34,14 @@ end
 -- module ---------------------------------------------------------------------
 
 call = function (_, options)
-	for _, fileName in ipairs(options.files) do
-		errors.setCurrentChunkName(fileName)
-		local path, name, ext = fn.split(fileName)
+    for _, fileName in ipairs(options.files) do
+        errors.setCurrentChunkName(fileName)
+        local path, name, ext = fn.split(fileName)
         if ext == 'seq' then ext = 'madx' end
-		local file = assert(io.open(fileName, 'r'))
-		local inputStream = file:read('*a')
-		file:close()
-		local parser = lang.getParser(ext, 0, not options.dump)
+        local file = assert(io.open(fileName, 'r'))
+        local inputStream = file:read('*a')
+        file:close()
+        local parser = lang.getParser(ext, 0, not options.dump)
         if options.dump and options.dump == 'ast' then
             io.write(tableUtil.stringTable(parser:parse(inputStream, fileName)))
             io.write'\n'
