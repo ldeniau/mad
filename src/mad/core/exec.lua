@@ -53,31 +53,31 @@ call = function (_, options)
         else
             local gen = generator.getGenerator(options.generator, options.lambdatable)
             local source = gen:generate(parser:parse(inputStream, fileName))
-		    if options.dump and options.dump ~= 'ast' then
-		        io.write(source)
+            if options.dump and options.dump ~= 'ast' then
+                io.write(source)
                 io.write'\n'
-	        else
-		        local loadedCode, err = load(source,'@'..fileName)
-		        if loadedCode then
-			        local status, result = xpcall(loadedCode, function(_err)
-				        err = _err
-				        trace = debug.traceback("",2)
+            else
+                local loadedCode, err = load(source,'@'..fileName)
+                if loadedCode then
+                    local status, result = xpcall(loadedCode, function(_err)
+                        err = _err
+                        trace = debug.traceback("",2)
                     end)
-			        if not status then
-				        io.stderr:write(errors.handleError(err,trace).."\n")
-				        os.exit(-1)
-			        end
-		        else
-			        error(err)
-		        end
-	        end
-	    end
+                    if not status then
+                        io.stderr:write(errors.handleError(err,trace).."\n")
+                        os.exit(-1)
+                    end
+                else
+                    error(err)
+                end
+            end
+        end
         local endtime = os.clock()
         if not options.dump then print("Total time:", endtime-starttime) end
-	end
-	if options.interactive then
-	    require'mad.lang.interactive'.interactive()
-	end
+    end
+    if options.interactive then
+        require'mad.lang.interactive'.interactive()
+    end
 end
 
 -- end ------------------------------------------------------------------------
