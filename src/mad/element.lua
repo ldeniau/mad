@@ -32,7 +32,7 @@ local line = require"mad.line"
 -- locals ----------------------------------------------------------------------
 
 local type, setmetatable = type, setmetatable
-local rawget, pairs = rawget, pairs
+local rawget = rawget
 local is_list, show_list = utils.is_list, utils.show_list
 
 -- metatable for the root class of all elements
@@ -57,6 +57,7 @@ local function init(self)
   end
   self.__index  = self              -- inheritance
   self.__call   = MT.__call         -- constructor
+  self.__add    = MT.__add          -- concatenation
   self.__mul    = MT.__mul          -- repetition
 end
 
@@ -98,7 +99,7 @@ end
 
 -- constructor of elements, can be unamed (inherit its name)
 function MT:__call(a)
-  if type(a) == 'string' then   -- class 'name' { ... }
+  if type(a) == 'string' then -- class 'name' { ... }
     return function(t)
       if is_list(t) then
         t.name = a
@@ -109,28 +110,33 @@ function MT:__call(a)
     end
   end
 
-  if is_list(a) then    -- class { ... }
+  if is_list(a) then  -- class { ... }
     if not self:is_class() then init(self) end
     return setmetatable(a, self)
   end
   error ("invalid element constructor argument, string expected")
 end
 
+-- concatenation
+function MT.__add(a, b)
+  return line { a, b }
+end
+
 -- repetition
-function MT.__mul(n, elem)
-  if type(elem) == 'number' then n, elem = elem, n end
-  return line { _rep=n, elem }
+function MT.__mul(n, a)
+  if type(a) == 'number' then n, a = a, n end
+  return line { _rep=n, a }
 end
 
 -- members ---------------------------------------------------------------------
 
 -- element famillies
-M.drift       = M.element     'drift'       { kind='drift' }
+M.drift       = M.element     'drift'       { kind='drift'  }
 M.cavity      = M.element     'cavity'      { kind='cavity' }
 M.magnet      = M.element     'magnet'      { kind='magnet' }
 M.kicker      = M.element     'kicker'      { kind='kicker' }
 M.marker      = M.element     'marker'      { kind='marker' }
-M.patch       = M.element     'patch'       { kind='patch' }
+M.patch       = M.element     'patch'       { kind='patch'  }
 
 -- drifts
 M.monitor     = M.drift       'monitor'     { kind='monitor' }
@@ -159,9 +165,6 @@ M.tkicker     = M.kicker      'tkicker'     { kind='tkicker' }
 
 -- collimators
 M.rcollimator = M.collimator  'rcollimator' { kind='rcollimator' }
-
--- collimators
-M.rcollimator = M.collimator 'rcollimator'  { kind='rcollimator' }
 
 -- monitors
 M.bpm         = M.monitor     'bpm'         { kind='bpm' }

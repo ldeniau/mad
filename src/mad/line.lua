@@ -86,15 +86,20 @@ function MT:__call(a)
   error ("invalid line constructor argument, string expected")
 end
 
+-- concatenation
+function M.__add(a, b)
+  return M { a, b }
+end
+
 -- repetition
-function M.__mul(n, line)
-  if type(line) == 'number' then n, line = line, n end
-  return M { _rep=n, line }
+function M.__mul(n, a)
+  if type(a) == 'number' then n, a = a, n end
+  return M { _rep=n, a }
 end
 
 -- reflection
-function M.__unm(line, _)
-  return M { _rep=-1, line }
+function M.__unm(a, _)
+  return M { _rep=-1, a }
 end 
 
 -- test suite -----------------------------------------------------------------------

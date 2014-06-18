@@ -63,8 +63,8 @@ M.is_sequence = true
 local sequence_fields = { 'length', 'refer' }
 
 -- sequence markers (unique instances)
-local start_marker = marker '$start' { readonly=true }
-local end_marker   = marker '$end'   { readonly=true }
+local start_marker = marker '$start' {}
+local end_marker   = marker '$end'   {}
 
 -- functions -------------------------------------------------------------------
 
@@ -107,7 +107,7 @@ local function find_index_by_pos(t, s_pos, start)
 end
 
 -- dictionnary
--- shadow elements (special inheritance)
+-- shadow elements (special inheritance for shared elements)
 local function shadow_get(elem)
   return getmetatable(elem).__index
 end
@@ -117,9 +117,14 @@ local function shadow_class(elem)
 end
 
 local function shadow_element(elem, idx, at, from, refer, seq)
-  return setmetatable(
-    {s_pos='todo', _idx=idx, _at=at, _from=from, _refer=refer, _seq=seq, class=shadow_class},
-    {__index=elem, __newindex=elem.readonly and nil or elem})
+  local states = {s_pos='todo', _idx=idx, _at=at, _from=from, _refer=refer, _seq=seq,
+                  element=shadow_get, class=shadow_class}
+
+  if elem.shared then -- read-write element
+    return setmetatable(states, {__index=elem, __newindex=elem})
+  else                -- read-only element
+    return elem(states)
+  end
 end
 
 local function clean_shadow(self)
@@ -334,7 +339,7 @@ function MT:__call(a)
     self.__index = self             -- inheritance
     return setmetatable({}, self):set(a)
   end
-  error ("invalid sequence constructor argument, string expected")
+  error ("invalid sequence constructor argument, string or list expected")
 end
 
 -- construction
