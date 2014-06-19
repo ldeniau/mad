@@ -46,7 +46,8 @@ local D = {}
 
 -- functions -------------------------------------------------------------------
 
--- monomials
+--------------
+-- M monomials
 
 local function mono_val(l, n)
   local a = {}
@@ -92,7 +93,8 @@ local function mono_leq(a,b)
   return true
 end
 
--- tables
+------------------
+-- T lookup tables
 
 local function find_index(T, a, start, stop)
   local s1, s2 = start or 1, stop or #T
@@ -166,9 +168,17 @@ local function table_check(D)
   return 0
 end
 
--- H matrix
+local function set_T(D)
+  D.Tv = table_by_vars(D.O, D.A)
+  D.To = table_by_ords(D.O, D.Tv)
+  D.N  = #D.Tv+1
+  -- D.check_table = table_check
+end
 
-local function index_Tv(H)
+--------------------
+-- H indexing matrix
+
+local function index_H(H)
   return function (a)
     local s, I = 0, 0
     for i=#a,1,-1 do
@@ -254,7 +264,7 @@ local function build_H(D)
 
 
   -- update D
-  D.H, D.index = H, index_Tv(H)
+  D.H, D.index = H, index_H(H)
   solve_H(D)
   clear_H(D)
 end
@@ -273,15 +283,7 @@ local function set_H(D)
   end
 end
 
--- T lookup tables
-
-local function set_T(D)
-  D.Tv = table_by_vars(D.O, D.A)
-  D.To = table_by_ords(D.O, D.Tv)
-  D.N  = #D.Tv+1
-  -- D.check_table = table_check
-end
-
+--------------------
 -- D tpsa descriptor
 
 local function add_desc(s, o, a)
