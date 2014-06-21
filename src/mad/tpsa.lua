@@ -287,13 +287,16 @@ end
 -- D tpsa descriptor
 
 local function add_desc(s, o, a)
+  if M.trace then
+    io.write("creating descriptor for TPSA { ", s, " }\n")
+  end
   D[s] = { A=a, O=o }
   set_T(D[s])
   set_H(D[s]) -- require Tv
 end
 
 local function get_desc(o, a)
-  local s = concat(a)
+  local s = concat(a,',')
   if not D[s] then add_desc(s, o, a) end
   if not M.benchmark then
     return D[s]
