@@ -29,7 +29,7 @@ local utils  = require"mad.utils"
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
-local type, ipairs, concat = type, ipairs, table.concat
+local type, ipairs, concat, min = type, ipairs, table.concat, math.min
 local is_list = utils.is_list
 
 -- metatable for the root of all tpsa
@@ -42,7 +42,8 @@ M.kind = 'tpsa'
 M.is_tpsa = true
 
 -- descriptors of all tpsa
-local D = {}
+M.D = {} -- descriptor
+M.T = {} -- descriptor with named vars
 
 -- functions -------------------------------------------------------------------
 
@@ -73,7 +74,7 @@ local function mono_sum(a)
   return s
 end
 
-local function mono_accR(a)
+local function mono_acc(a)
   local s = mono_cpy(a)
   for i=#s-1,1,-1 do s[i] = s[i] + s[i+1] end
   return s
@@ -93,6 +94,30 @@ local function mono_leq(a,b)
   return true
 end
 
+local function mono_add(a,b)
+  local c = {}
+  for i=1,#a do c[i] = a[i]+b[i] end
+  return c
+end
+
+----------------
+-- P polynomials
+
+-- slow but simple version
+local function poly_mul(a,b,c, start,stop,D)
+  local T, A, O, index,   o, m, idx = D.To, D.A, D.O, D.index
+  for i1=start,stop do
+    for i2=start,i1 do
+      m = mono_add(T[i1],T[i2])
+      o = mono_sum(m)
+      if o > O or not mono_leq(m,A) then break end
+      idx = index(m)
+      c[idx] = c[idx] + a[i1]*b[i2]
+      if i1 ~= i2 then c[idx] = c[idx] + a[i2]*b[i1] end
+    end
+  end
+end
+
 ------------------
 -- T lookup tables
 
@@ -103,8 +128,8 @@ local function find_index(T, a, start, stop)
     if mono_equ(a, T[i]) then return i end
   end
 
-  io.write("\n")
-  M.print_mono(a)
+  io.write('\n')
+  M.print_mono(a,'\n')
   M.print_table(T)
   error("monomial not found in table")
 end
@@ -146,7 +171,7 @@ local function table_by_ords(o,a)
       end
     end
   end
-  v.p[#v.p+1] = #v+1
+  v.p[o+1] = #v+1
   return v
 end
 
@@ -154,16 +179,16 @@ end
 local function table_check(D)
   local a, H, Tv, To= D.A, D.H, D.Tv, D.To
 
-  if D.N ~= #Tv+1                         then return 1e6+0 end
+  if D.N ~= #Tv                        then return 1e6+0 end
   for i=2,#a do
     if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
-                                          then return 1e6+i end
+                                       then return 1e6+i end
   end
   for i=1,#D.Tv do
-    if To.i[Tv.i[i]]  ~= i                then return 2e6+i end
-    if D.index(Tv[i]) ~= i                then return 3e6+i end
-    if not mono_equ(To[Tv.i[i]],Tv[i])    then return 4e6+i end
-    if not mono_equ(To[Tv.i[i]],Tv[i])    then return 5e6+i end
+    if To.i[Tv.i[i]]  ~= i             then return 2e6+i end
+    if D.index(To[i]) ~= i             then return 3e6+i end
+    if not mono_equ(To[Tv.i[i]],Tv[i]) then return 4e6+i end
+    if not mono_equ(To[Tv.i[i]],Tv[i]) then return 5e6+i end
   end
   return 0
 end
@@ -171,43 +196,45 @@ end
 local function set_T(D)
   D.Tv = table_by_vars(D.O, D.A)
   D.To = table_by_ords(D.O, D.Tv)
-  D.N  = #D.Tv+1
+  D.N  = #D.Tv
   -- D.check_table = table_check
 end
 
 --------------------
 -- H indexing matrix
 
-local function index_H(H)
-  return function (a)
-    local s, I = 0, 0
-    for i=#a,1,-1 do
-      I = I + H[i][s + a[i]] - H[i][s]
-      s = s + a[i]
-    end
-    return I
+local function index_H(H, a)
+  local s, I = 0, 0
+  for i=#a,1,-1 do
+    I = I + H[i][s + a[i]] - H[i][s]
+    s = s + a[i]
   end
+  return I
+end
+
+local function index_T(D)
+  local H, T = D.H, D.Tv.i
+  return function (a) return T[ index_H(H,a) ] end
 end
 
 local function clear_H(D)
   local a, o, H = D.A, D.O, D.H
-  local sa = mono_accR(a)
+  local sa = mono_acc(a)
 
---  io.write(string.format("o=%3d, sa= ", o)) M.print_mono(sa)
   for i=1,#a do -- variables
-    for j=math.min(sa[i],o)+1,#H[i] do
+    for j=min(sa[i],o)+1,#H[i] do
       H[i][j] = nil
     end
   end
 end
 
 local function solve_H(D)
-  local a, o, Tv, H, index = D.A, D.O, D.Tv, D.H, D.index
-  local sa = mono_accR(a)
+  local a, o, Tv, H = D.A, D.O, D.Tv, D.H
+  local sa = mono_acc(a)
 
   -- solve system of equations
   for i=#a-1,2,-1 do -- variables
-    for j=a[i]+2,math.min(sa[i],o) do -- orders (unknown)
+    for j=a[i]+2,min(sa[i],o) do -- orders (unknown)
 
       -- build the special monomial that makes the equation linear
       local b, jj = mono_val(#a, 0), j
@@ -220,14 +247,10 @@ local function solve_H(D)
         end
       end
 
---      io.write(string.format("i,j= %3d, %3d, sa=%3d,   b= ", i, j, sa[i])) M.print_mono(b)
-
       -- solve the linear (!) equation of one unknown
-      local idx0 = index(b)
+      local idx0 = index_H(H,b)
       local idx1 = find_index(Tv,b,idx0)
       H[i][j] = idx1 - idx0
-
---      io.write(string.format(" idx0=%3d, idx1=%3d\n", idx0, idx1))
     end
   end
 end
@@ -264,7 +287,8 @@ local function build_H(D)
 
 
   -- update D
-  D.H, D.index = H, index_H(H)
+  D.H = H
+  D.index = index_T(D)
   solve_H(D)
   clear_H(D)
 end
@@ -276,40 +300,58 @@ local function set_H(D)
   -- debugging -- check consistency
   local chk = table_check(D)
   if chk ~= 0 then
-    io.write(string.format("A= ")) M.print_mono(D.A)
-    print("H=")  ;  t.print_table(D.H)
-    print("Tv= ");  t.print_table(D.Tv);
-    io.write(string.format("Checking tables consistency... %d\n", chk))
+    io.write("A= ")   M.print_mono (D.A,'\n')
+    io.write("H=")    t.print_table(D.H)
+    io.write("Tv= ")  t.print_table(D.Tv);
+    io.write("Checking tables consistency... ", chk, '\n')
   end
 end
 
 --------------------
 -- D tpsa descriptor
 
-local function add_desc(s, o, a)
+ -- get_desc(key, {var_names}, {var_orders}, max_order)
+local function add_desc(s, n, a, o)
   if M.trace then
     io.write("creating descriptor for TPSA { ", s, " }\n")
   end
-  D[s] = { A=a, O=o }
-  set_T(D[s])
-  set_H(D[s]) -- require Tv
+  local ds = concat(a,',')
+  local d = M.D[ds]
+  if not d then -- build the descriptor
+    d = { A=a, O=o } -- alphas and order
+    set_T(d)
+    set_H(d) -- require Tv
+    -- do not register the descriptor during benchmark
+    if not M.benchmark then M.D[ds] = d end
+  end
+  M.T[s] = { V=n, D=d }
 end
 
-local function get_desc(o, a)
-  local s = concat(a,',')
-  if not D[s] then add_desc(s, o, a) end
-  if not M.benchmark then
-    return D[s]
-  end
-  -- for benchmark only: does not register the descriptor
-  local d = D[s]
-  D[s] = nil
-  return d
+ -- get_desc({var_names}, {var_orders}, max_order)
+local function get_desc(n, o, m)
+  -- build the key (string) from var_names and var_orders
+  local s = concat(n,',') .. ':' .. concat(o,',')
+  if not M.T[s] then add_desc(s, n, o, m) end
+  local t = M.T[s]
+  -- do not register the descriptor during benchmark
+  if M.benchmark then M.T[s] = nil end
+  return t
 end
 
 -- methods ---------------------------------------------------------------------
 
-function M.print_vect(a)
+function M.print_vect(a, term)
+  local s = not a[0] and 1 or 0
+
+  io.write(string.format("[ %5g ",a[s]))
+  for i=s+1,#a do
+    io.write(string.format("%5g ",a[i]))
+  end
+  io.write(" ]")
+  if term then io.write(term) end
+end
+
+function M.print_mono(a, term)
   local s = not a[0] and 1 or 0
 
   io.write(string.format("[ %2d ",a[s]))
@@ -317,42 +359,137 @@ function M.print_vect(a)
     io.write(string.format("%3d ",a[i]))
   end
   io.write(" ]")
-end
-
-function M.print_mono(a)
-  M.print_vect(a)
-  io.write("\n")
+  if term then io.write(term) end
 end
 
 function M.print_table(a)
   local s = not a[0] and 1 or 0
   for i=s,#a do
     io.write(string.format("%3d: ",i))
-    M.print_vect(a[i])
+    M.print_mono(a[i])
     if a.o then io.write(string.format("%3d ",a.o[i])) end
     if a.i then io.write(string.format("->%3d ",a.i[i])) end
-    if a.index then io.write(string.format(":%3d ",a.index(a[i]))) end
+--    if a.index then io.write(string.format(":%3d ",a.index(a[i]))) end
     io.write("\n")
   end
-  if a.p then M.print_list(a.p) end
+  if a.p then M.print_mono(a.p,'\n') end
+end
+
+function M.__add(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = { _T = b._T }
+    for i=0,#b do c[i] = a+b[i] end
+  elseif type(b) == "number" then
+    c = { _T = a._T }
+    for i=0,#a do c[i] = a[i]+b end
+  elseif a._T == b._T then
+    c = { _T = a._T }
+    if #a > #b then a, b = b, a end -- swap
+    for i=0,   #a do c[i] = a[i]+b[i] end
+    for i=#a+1,#b do c[i] =      b[i] end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__sub(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = { _T = b._T }
+    for i=0,#b do c[i] = a-b[i] end
+  elseif type(b) == "number" then
+    c = { _T = a._T }
+    for i=0,#a do c[i] = a[i]-b end
+  elseif a._T == b._T then
+    c = { _T = a._T }
+    if #a <= #b then
+      for i=0,   #a do c[i] = a[i]-b[i] end
+      for i=#a+1,#b do c[i] =     -b[i] end
+    else
+      for i=0,   #b do c[i] = a[i]-b[i] end
+      for i=#b+1,#a do c[i] = a[i]      end
+    end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__mul(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = { _T = b._T }
+    for i=0,#b do c[i] = a*b[i] end    
+  elseif type(b) == "number" then
+    c = { _T = a._T }
+    for i=0,#a do c[i] = a[i]*b end    
+  elseif a._T == b._T then
+    c = { _T = a._T }
+    if #a > #b then a, b = b, a end -- swap
+    local a0, b0 = a[0], b[0]
+    -- order 0
+    c[0] = a0*b0
+    -- order 1
+    local n = c._T.D.N
+    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end
+    for i=#a+1,#b do c[i] = a0*b[i]           end
+    for i=#b+1, n do c[i] = 0                 end
+    -- order >= 2
+    local o = c._T.D.O
+    if o >= 2 then
+      local p = a._T.D.To.p -- starting index of orders
+      poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)
+    end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__div(a, b)
+  local c
+
+  if type(a) == "number" then
+    error("TPSA division not yet implemented")
+  elseif type(b) == "number" then
+    c = { _T = a._T }
+    for i=1,#a do c[i] = a[i]/b end    
+  elseif a._T == b._T then
+    error("TPSA division not yet implemented")
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
 end
 
 -- metamethods -----------------------------------------------------------------
 
--- constructor of tpsa([max_order,] #vars or {var_orders})
-function MT:__call(o,a)
-  if not a and is_list(o) then                              -- ({var_orders})
-    a, o = o, mono_max(o)
-  elseif type(o) == "number" and type(a) == "number" then   -- (max_order, #vars)
-    a = mono_val(a,o)
+-- constructor of tpsa:
+--   tpsa({var_names}, max_order)
+--   tpsa({var_names}, {var_orders} [, max_order])
+
+function MT:__call(n,o,m)
+  if type(o) == "number" then                          -- ({var_names}, max_order)
+    o, m = mono_val(o), o
+  elseif is_list(o) and not m then                     -- ({var_names}, {var_orders})
+       m = mono_max(o)
   end
 
-  if type(o) == "number" and is_list(a) then                -- (max_order, {var_orders})
-    self.__index = self         -- inheritance
-    return setmetatable({ _D=get_desc(o,a) }, self);
+  if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
+    self.__index = self  -- inheritance
+    return setmetatable({ _T=get_desc(n,o,m) }, self); -- _T is {var_names, descriptor}
   end
 
-  error ("invalid tpsa constructor argument, tpsa([max_order,] #vars or {var_orders}) expected")
+  error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, max_order) expected")
 end
 
 -- tests -----------------------------------------------------------------------
