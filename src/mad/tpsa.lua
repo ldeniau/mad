@@ -103,15 +103,15 @@ end
 ----------------
 -- P polynomials
 
--- slow but simple version
+-- slow but simple...
 local function poly_mul(a,b,c, start,stop,D)
-  local T, A, O, index,   o, m, idx = D.To, D.A, D.O, D.index
+  local T, O, A, o, index = D.To, D.To.o, D.A, D.O, D.index
   for i1=start,stop do
     for i2=start,i1 do
-      m = mono_add(T[i1],T[i2])
-      o = mono_sum(m)
-      if o > O or not mono_leq(m,A) then break end
-      idx = index(m)
+      if O[i1]+O[i2] > o then break end
+      local m = mono_add(T[i1],T[i2])
+      if not mono_leq(m,A) then break end
+      local idx = index(m)
       c[idx] = c[idx] + a[i1]*b[i2]
       if i1 ~= i2 then c[idx] = c[idx] + a[i2]*b[i1] end
     end
@@ -379,11 +379,11 @@ function M.__add(a, b)
   local c
 
   if type(a) == "number" then
-    c = { _T = b._T }
-    for i=0,#b do c[i] = a+b[i] end
+    c = { _T = b._T, [0] = a+b[0] }
+    for i=1,#b do c[i] = a+b[i] end
   elseif type(b) == "number" then
-    c = { _T = a._T }
-    for i=0,#a do c[i] = a[i]+b end
+    c = { _T = a._T, [0] = a[0]+b }
+    for i=1,#a do c[i] = a[i]+b end
   elseif a._T == b._T then
     c = { _T = a._T }
     if #a > #b then a, b = b, a end -- swap
@@ -400,11 +400,11 @@ function M.__sub(a, b)
   local c
 
   if type(a) == "number" then
-    c = { _T = b._T }
-    for i=0,#b do c[i] = a-b[i] end
+    c = { _T = b._T, [0] = a-b[0] }
+    for i=1,#b do c[i] = -b[i] end
   elseif type(b) == "number" then
-    c = { _T = a._T }
-    for i=0,#a do c[i] = a[i]-b end
+    c = { _T = a._T, [0] = a[0]-b }
+    for i=1,#a do c[i] =  a[i] end
   elseif a._T == b._T then
     c = { _T = a._T }
     if #a <= #b then
@@ -461,7 +461,7 @@ function M.__div(a, b)
     error("TPSA division not yet implemented")
   elseif type(b) == "number" then
     c = { _T = a._T }
-    for i=1,#a do c[i] = a[i]/b end    
+    for i=1,#a do c[i] = a[i]/b end
   elseif a._T == b._T then
     error("TPSA division not yet implemented")
   else
