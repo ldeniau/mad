@@ -103,19 +103,38 @@ end
 ----------------
 -- P polynomials
 
--- slow but simple...
+-- slow but simple... (could be much faster using SSE/AVX intrinsics)
 local function poly_mul(a,b,c, start,stop,D)
   local T, O, A, o, index = D.To, D.To.o, D.A, D.O, D.index
-  for i1=start,stop do
-    for i2=start,i1 do
-      if O[i1]+O[i2] > o then break end
-      local m = mono_add(T[i1],T[i2])
-      if not mono_leq(m,A) then break end
-      local idx = index(m)
-      c[idx] = c[idx] + a[i1]*b[i2]
-      if i1 ~= i2 then c[idx] = c[idx] + a[i2]*b[i1] end
+  for ia=start,stop do
+    for ib=start,ia do
+      if O[ia]+O[ib] > o then break end
+      local m = mono_add(T[ia],T[ib]) -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
+      if mono_leq(m,A) then           -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
+        local ic = index(m)
+        c[ic] = c[ic] + a[ia]*b[ib]
+        if ia ~= ib then c[ic] = c[ic] + a[ia]*b[ib] end
+      end
     end
   end
+end
+
+local function poly_mul2(a,b,c, oa, ob, D)
+  if oa > ob then a, b, oa, ob = b, a, ob, oa end -- swap
+
+  for oc=2,D.O do -- orders of c (// loop)
+    local PM = D.PM[oc] -- table of homo-poly to multiply
+    for j =1,#PM do
+      local oa, ob = PM[j][1], PM[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
+      local L = D.L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+      for i=1,#L do
+        local ia, ib, ic = L[i][1], L[i][2], L[i][3]
+        c[ic] = c[ic] + a[ia]*b[ib]
+        if ia ~= ib then c[ic] = c[ic] + a[ia]*b[ib] end
+      end
+    end
+  end
+-- TODO: build D.PM (sequence of homo poly mul), D.L (indexes)
 end
 
 ------------------
@@ -375,20 +394,26 @@ function M.print_table(a)
   if a.p then M.print_mono(a.p,'\n') end
 end
 
+function M:cpy()
+  local a = setmetatable({ _T=self._T }, getmetatable(self))
+  for i=1,#self do a[i] = self[i] end -- // loop
+  return a
+end
+
 function M.__add(a, b)
   local c
 
   if type(a) == "number" then
     c = { _T = b._T, [0] = a+b[0] }
-    for i=1,#b do c[i] = a+b[i] end
+    for i=1,#b do c[i] = a+b[i] end -- // loop
   elseif type(b) == "number" then
     c = { _T = a._T, [0] = a[0]+b }
-    for i=1,#a do c[i] = a[i]+b end
+    for i=1,#a do c[i] = a[i]+b end -- // loop
   elseif a._T == b._T then
     c = { _T = a._T }
     if #a > #b then a, b = b, a end -- swap
-    for i=0,   #a do c[i] = a[i]+b[i] end
-    for i=#a+1,#b do c[i] =      b[i] end
+    for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
+    for i=#a+1,#b do c[i] =      b[i] end -- // loop
   else
     error("invalid or incompatible TPSA")
   end
@@ -401,18 +426,18 @@ function M.__sub(a, b)
 
   if type(a) == "number" then
     c = { _T = b._T, [0] = a-b[0] }
-    for i=1,#b do c[i] = -b[i] end
+    for i=1,#b do c[i] = -b[i] end -- // loop
   elseif type(b) == "number" then
     c = { _T = a._T, [0] = a[0]-b }
-    for i=1,#a do c[i] =  a[i] end
+    for i=1,#a do c[i] =  a[i] end -- // loop
   elseif a._T == b._T then
     c = { _T = a._T }
     if #a <= #b then
-      for i=0,   #a do c[i] = a[i]-b[i] end
-      for i=#a+1,#b do c[i] =     -b[i] end
+      for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
+      for i=#a+1,#b do c[i] =     -b[i] end -- // loop
     else
-      for i=0,   #b do c[i] = a[i]-b[i] end
-      for i=#b+1,#a do c[i] = a[i]      end
+      for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
+      for i=#b+1,#a do c[i] = a[i]      end -- // loop
     end
   else
     error("invalid or incompatible TPSA")
@@ -426,26 +451,26 @@ function M.__mul(a, b)
 
   if type(a) == "number" then
     c = { _T = b._T }
-    for i=0,#b do c[i] = a*b[i] end    
+    for i=0,#b do c[i] = a*b[i] end -- // loop
   elseif type(b) == "number" then
     c = { _T = a._T }
-    for i=0,#a do c[i] = a[i]*b end    
+    for i=0,#a do c[i] = a[i]*b end -- // loop
   elseif a._T == b._T then
     c = { _T = a._T }
     if #a > #b then a, b = b, a end -- swap
-    local a0, b0 = a[0], b[0]
     -- order 0
+    local a0, b0 = a[0], b[0]
     c[0] = a0*b0
     -- order 1
     local n = c._T.D.N
-    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end
-    for i=#a+1,#b do c[i] = a0*b[i]           end
-    for i=#b+1, n do c[i] = 0                 end
+    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
+    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
+    for i=#b+1, n do c[i] = 0                 end -- // loop
     -- order >= 2
     local o = c._T.D.O
     if o >= 2 then
       local p = a._T.D.To.p -- starting index of orders
-      poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)
+      poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D) -- // loops
     end
   else
     error("invalid or incompatible TPSA")
@@ -461,7 +486,7 @@ function M.__div(a, b)
     error("TPSA division not yet implemented")
   elseif type(b) == "number" then
     c = { _T = a._T }
-    for i=1,#a do c[i] = a[i]/b end
+    for i=1,#a do c[i] = a[i]/b end -- // loop
   elseif a._T == b._T then
     error("TPSA division not yet implemented")
   else
@@ -479,7 +504,7 @@ end
 
 function MT:__call(n,o,m)
   if type(o) == "number" then                          -- ({var_names}, max_order)
-    o, m = mono_val(o), o
+    o, m = mono_val(#n,o), o
   elseif is_list(o) and not m then                     -- ({var_names}, {var_orders})
        m = mono_max(o)
   end
