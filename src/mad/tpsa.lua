@@ -48,6 +48,11 @@ M.T = {} -- descriptor with named vars
 -- functions -------------------------------------------------------------------
 
 --------------
+-- U utils
+
+local function fun_true() return true end
+
+--------------
 -- M monomials
 
 local function mono_val(l, n)
@@ -59,6 +64,15 @@ end
 local function mono_cpy(a)
   local b = {}
   for i=1,#a do b[i] = a[i] end
+  return b
+end
+
+local function mono_cat(a)
+  local b = {}
+  for i=1,#a do
+    local ai = a[i]
+    for j=1,#ai do b[i] = ai[j] end
+  end
   return b
 end
 
@@ -105,15 +119,15 @@ end
 
 -- slow but simple... (could be much faster using SSE/AVX intrinsics)
 local function poly_mul(a,b,c, start,stop,D)
-  local T, O, A, o, index = D.To, D.To.o, D.A, D.O, D.index
+  local T, O, A, o, f, index = D.To, D.To.o, D.A, D.O, D.F, D.index
   for ia=start,stop do
     for ib=start,ia do
       if O[ia]+O[ib] > o then break end
-      local m = mono_add(T[ia],T[ib]) -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
-      if mono_leq(m,A) then           -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
+      local m = mono_add(T[ia],T[ib])  -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
+      if mono_leq(m,A) and f(m,A) then -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
         local ic = index(m)
         c[ic] = c[ic] + a[ia]*b[ib]
-        if ia ~= ib then c[ic] = c[ic] + a[ia]*b[ib] end
+        if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
       end
     end
   end
@@ -122,6 +136,7 @@ end
 local function poly_mul2(a,b,c, oa, ob, D)
   if oa > ob then a, b, oa, ob = b, a, ob, oa end -- swap
 
+-- TODO: build D.PM (sequence of homo poly mul), D.L (indexes)
   for oc=2,D.O do -- orders of c (// loop)
     local PM = D.PM[oc] -- table of homo-poly to multiply
     for j =1,#PM do
@@ -130,11 +145,10 @@ local function poly_mul2(a,b,c, oa, ob, D)
       for i=1,#L do
         local ia, ib, ic = L[i][1], L[i][2], L[i][3]
         c[ic] = c[ic] + a[ia]*b[ib]
-        if ia ~= ib then c[ic] = c[ic] + a[ia]*b[ib] end
+        if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
       end
     end
   end
--- TODO: build D.PM (sequence of homo poly mul), D.L (indexes)
 end
 
 ------------------
@@ -153,10 +167,10 @@ local function find_index(T, a, start, stop)
   error("monomial not found in table")
 end
 
-local function nxt_by_var(a,m,o)
+local function nxt_by_var(a,m,o,f)
   for i=1,#a do
     a[i] = a[i]+1
-    if mono_sum(a) <= o and mono_leq(a,m) then
+    if mono_sum(a) <= o and mono_leq(a,m) and f(a,m) then
       return true
     end
     a[i] = 0
@@ -166,10 +180,10 @@ end
 
 -- TODO: nxt_by_ord, use iterative monomial product
 
-local function table_by_vars(o,m)
+local function table_by_vars(o,m,f)
   local a = mono_val(#m, 0)
   local v = { o={ [0]=0 }, i={ [0]=0 }, [0]=mono_cpy(a) }
-  while nxt_by_var(a,m,o) do
+  while nxt_by_var(a,m,o,f) do
     v[#v+1] = mono_cpy(a)
     v.o[#v] = mono_sum(a)
   end
@@ -196,7 +210,7 @@ end
 
 -- unit test
 local function table_check(D)
-  local a, H, Tv, To= D.A, D.H, D.Tv, D.To
+  local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
 
   if D.N ~= #Tv                        then return 1e6+0 end
   for i=2,#a do
@@ -204,8 +218,8 @@ local function table_check(D)
                                        then return 1e6+i end
   end
   for i=1,#D.Tv do
-    if To.i[Tv.i[i]]  ~= i             then return 2e6+i end
-    if D.index(To[i]) ~= i             then return 3e6+i end
+    if To.i[Tv.i[i]] ~= i              then return 2e6+i end
+    if index(To[i])  ~= i              then return 3e6+i end
     if not mono_equ(To[Tv.i[i]],Tv[i]) then return 4e6+i end
     if not mono_equ(To[Tv.i[i]],Tv[i]) then return 5e6+i end
   end
@@ -213,10 +227,9 @@ local function table_check(D)
 end
 
 local function set_T(D)
-  D.Tv = table_by_vars(D.O, D.A)
+  D.Tv = table_by_vars(D.O, D.A, D.F)
   D.To = table_by_ords(D.O, D.Tv)
   D.N  = #D.Tv
-  -- D.check_table = table_check
 end
 
 --------------------
@@ -304,7 +317,6 @@ local function build_H(D)
   -- close congruence of last var
   H[#a][a[#a]+1] = #Tv+1
 
-
   -- update D
   D.H = H
   D.index = index_T(D)
@@ -314,30 +326,30 @@ end
 
 local function set_H(D)
   build_H(D)
-  D.set_H = set_H
 
-  -- debugging -- check consistency
+  -- check consistency (debugging)
   local chk = table_check(D)
   if chk ~= 0 then
     io.write("A= ")   M.print_mono (D.A,'\n')
-    io.write("H=")    t.print_table(D.H)
-    io.write("Tv= ")  t.print_table(D.Tv);
+    io.write("H=")    M.print_table(D.H)
+    io.write("Tv= ")  M.print_table(D.Tv);
     io.write("Checking tables consistency... ", chk, '\n')
+    error("invalid TPSA descriptor")
   end
 end
 
 --------------------
 -- D tpsa descriptor
 
- -- get_desc(key, {var_names}, {var_orders}, max_order)
-local function add_desc(s, n, a, o)
+ -- get_desc(key, {var_names}, {var_orders}, max_order, predicate)
+local function add_desc(s, n, a, o, f)
   if M.trace then
     io.write("creating descriptor for TPSA { ", s, " }\n")
   end
   local ds = concat(a,',')
   local d = M.D[ds]
   if not d then -- build the descriptor
-    d = { A=a, O=o } -- alphas and order
+    d = { A=a, O=o, F=f or fun_true } -- alphas, order and predicate
     set_T(d)
     set_H(d) -- require Tv
     -- do not register the descriptor during benchmark
@@ -346,11 +358,11 @@ local function add_desc(s, n, a, o)
   M.T[s] = { V=n, D=d }
 end
 
- -- get_desc({var_names}, {var_orders}, max_order)
-local function get_desc(n, o, m)
+ -- get_desc({var_names}, {var_orders}, max_order, predicate)
+local function get_desc(n, o, m, f)
   -- build the key (string) from var_names and var_orders
   local s = concat(n,',') .. ':' .. concat(o,',')
-  if not M.T[s] then add_desc(s, n, o, m) end
+  if not M.T[s] then add_desc(s, n, o, m, f) end
   local t = M.T[s]
   -- do not register the descriptor during benchmark
   if M.benchmark then M.T[s] = nil end
@@ -391,7 +403,7 @@ function M.print_table(a)
 --    if a.index then io.write(string.format(":%3d ",a.index(a[i]))) end
     io.write("\n")
   end
-  if a.p then M.print_mono(a.p,'\n') end
+  if a.p then io.write(" Pi: ") M.print_mono(a.p,'\n') end
 end
 
 function M:cpy()
@@ -498,11 +510,13 @@ end
 
 -- metamethods -----------------------------------------------------------------
 
--- constructor of tpsa:
+-- constructors of tpsa:
 --   tpsa({var_names}, max_order)
---   tpsa({var_names}, {var_orders} [, max_order])
+--   tpsa({var_names}, {var_orders})
+--   tpsa({var_names}, {var_orders}, max_order)
+--   tpsa({var_names}, {var_orders}, {{partial_max_orders}})
 
-function MT:__call(n,o,m)
+function MT:__call(n,o,m,f)
   if type(o) == "number" then                          -- ({var_names}, max_order)
     o, m = mono_val(#n,o), o
   elseif is_list(o) and not m then                     -- ({var_names}, {var_orders})
@@ -511,10 +525,10 @@ function MT:__call(n,o,m)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m) }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f) }, self); -- _T is {var_names, descriptor}
   end
 
-  error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, max_order) expected")
+  error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
 end
 
 -- tests -----------------------------------------------------------------------
