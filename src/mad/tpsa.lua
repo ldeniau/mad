@@ -133,23 +133,28 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
-local function poly_mul2(a,b,c, oa, ob, D)
-  if oa > ob then a, b, oa, ob = b, a, ob, oa end -- swap
-
--- TODO: build D.PM (sequence of homo poly mul), D.L (indexes)
-  for oc=2,D.O do -- orders of c (// loop)
-    local PM = D.PM[oc] -- table of homo-poly to multiply
-    for j =1,#PM do
-      local oa, ob = PM[j][1], PM[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
-      local L = D.L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-      for i=1,#L do
-        local ia, ib, ic = L[i][1], L[i][2], L[i][3]
-        c[ic] = c[ic] + a[ia]*b[ib]
-        if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
+local function poly_mul2(a, b, c, D)
+  local O, L, M = D.O, D.L, D.M
+  for oc=2,O do -- orders of c (// loop)
+    local m = M[oc] -- table of homo-poly to multiply
+    for j =1,#m do
+      local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
+      local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+      if oa ~= ob then
+        for i=1,#l do
+          local ia, ib, ic = l[i][1], l[i][2], l[i][3]
+          c[ic] = c[ic] + a[ia]*b[ib]
+        end
+      else
+        for i=1,#l do
+          local ia, ib, ic = l[i][1], l[i][2], l[i][3]
+          c[ic] = c[ic] + a[ia]*b[ib]
+          if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
+        end
       end
     end
   end
-end
+end -- poly_mul
 
 ------------------
 -- T lookup tables
@@ -338,6 +343,47 @@ local function set_H(D)
   end
 end
 
+-- build sequence of homogeneous polynomials
+local function set_M(D)
+  local M = {}
+  for o = 2, D.O do
+    M[o] = {}
+    for j = 1, o / 2 do             -- only go to o / 2 because the symmetric is solved in the mul
+      M[o][j] = {j, o - j}
+    end
+  end
+
+  D.M = M
+end
+
+-- build the table of indexes in polynomials
+local function set_L(D)
+  local L, To, p, index = {}, D.To, D.To.p, D.index
+  for oc = 2, D.O do
+    local M = D.M[oc]
+    for j = 1, #M do
+      local oa, ob = M[j][1], M[j][2]
+
+      local idxs = {}               -- array of {ia, ib, ic}
+      -- take all mons of order oa and all of order ob
+      for ma = p[oa], p[oa + 1] - 1 do
+        for mb = p[ob], p[ob + 1] - 1 do
+          if not (mb < ma) then     -- symmetry is solved in mul
+            local ia, ib, ic = index(To[ma]), index(To[mb]),
+                               index(mono_add(To[ma], To[mb]))
+            idxs[#idxs + 1] = {ia, ib, ic}
+            end
+        end -- for mb
+      end -- for ma
+
+      L[oa] = L[oa] or {}
+      L[oa][ob] = idxs
+    end -- for j
+  end -- for oc
+
+  D.L = L
+end
+
 --------------------
 -- D tpsa descriptor
 
@@ -351,7 +397,10 @@ local function add_desc(s, n, a, o, f)
   if not d then -- build the descriptor
     d = { A=a, O=o, F=f or fun_true } -- alphas, order and predicate
     set_T(d)
-    set_H(d) -- require Tv
+    set_H(d) -- requires Tv
+    set_M(d)
+    set_L(d) -- requires M
+    
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
   end
@@ -369,7 +418,7 @@ local function get_desc(n, o, m, f)
   return t
 end
 
--- methods ---------------------------------------------------------------------
+-- debugging -------------------------------------------------------------------
 
 function M.print_vect(a, term)
   local s = not a[0] and 1 or 0
@@ -378,7 +427,7 @@ function M.print_vect(a, term)
   for i=s+1,#a do
     io.write(string.format("%5g ",a[i]))
   end
-  io.write(" ]")
+  io.write(" ]\n")
   if term then io.write(term) end
 end
 
@@ -406,24 +455,50 @@ function M.print_table(a)
   if a.p then io.write(" Pi: ") M.print_mono(a.p,'\n') end
 end
 
+function M.print_L(L, D)
+  local insp, printf = require "utils.inspect", require "utils.printf"
+
+  local To = D.To
+  for oa = 1, #L do
+    for ob = oa, #L[oa] do
+      printf("L[%d][%d] = {\n", oa, ob)
+      local l = L[oa][ob]
+      for j = 1, #l do
+        printf("  { (%s, %d), (%s, %d), (%s, %d) }\n",
+               insp(To[l[j][1]]), l[j][1],
+               insp(To[l[j][2]]), l[j][2],
+               insp(To[l[j][3]]), l[j][3])
+      end
+    end
+  end
+end
+
+-- methods ---------------------------------------------------------------------
+
+function M:new()
+  return setmetatable({ _T=self._T }, getmetatable(self))
+end
+
 function M:cpy()
-  local a = setmetatable({ _T=self._T }, getmetatable(self))
-  for i=1,#self do a[i] = self[i] end -- // loop
+  local a = self:new()
+  for i=0,#self do a[i] = self[i] end -- // loop
   return a
 end
+
+-- metamethods -----------------------------------------------------------------
 
 function M.__add(a, b)
   local c
 
   if type(a) == "number" then
-    c = { _T = b._T, [0] = a+b[0] }
+    c = b:new(); c[0] = a+b[0]
     for i=1,#b do c[i] = a+b[i] end -- // loop
   elseif type(b) == "number" then
-    c = { _T = a._T, [0] = a[0]+b }
+    c = a:new(); c[0] = a[0]+b
     for i=1,#a do c[i] = a[i]+b end -- // loop
   elseif a._T == b._T then
-    c = { _T = a._T }
     if #a > #b then a, b = b, a end -- swap
+    c = b:new();
     for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
     for i=#a+1,#b do c[i] =      b[i] end -- // loop
   else
@@ -437,17 +512,18 @@ function M.__sub(a, b)
   local c
 
   if type(a) == "number" then
-    c = { _T = b._T, [0] = a-b[0] }
+    c = b:new(); c[0] = a-b[0]
     for i=1,#b do c[i] = -b[i] end -- // loop
   elseif type(b) == "number" then
-    c = { _T = a._T, [0] = a[0]-b }
+    c = a:new(); c[0] = a[0]-b
     for i=1,#a do c[i] =  a[i] end -- // loop
   elseif a._T == b._T then
-    c = { _T = a._T }
     if #a <= #b then
+      c = b:new()
       for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
       for i=#a+1,#b do c[i] =     -b[i] end -- // loop
     else
+      c = a:new()
       for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
       for i=#b+1,#a do c[i] = a[i]      end -- // loop
     end
@@ -462,14 +538,14 @@ function M.__mul(a, b)
   local c
 
   if type(a) == "number" then
-    c = { _T = b._T }
+    c = b:new()
     for i=0,#b do c[i] = a*b[i] end -- // loop
   elseif type(b) == "number" then
-    c = { _T = a._T }
-    for i=0,#a do c[i] = a[i]*b end -- // loop
+    c = a:new()
+    for i=0,#a do c[i] = b*a[i] end -- // loop
   elseif a._T == b._T then
-    c = { _T = a._T }
     if #a > #b then a, b = b, a end -- swap
+    c = b:new()
     -- order 0
     local a0, b0 = a[0], b[0]
     c[0] = a0*b0
@@ -482,7 +558,8 @@ function M.__mul(a, b)
     local o = c._T.D.O
     if o >= 2 then
       local p = a._T.D.To.p -- starting index of orders
-      poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D) -- // loops
+      -- poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)  -- // loops
+      poly_mul2(a,b,c, c._T.D) -- // loops
     end
   else
     error("invalid or incompatible TPSA")
@@ -497,8 +574,8 @@ function M.__div(a, b)
   if type(a) == "number" then
     error("TPSA division not yet implemented")
   elseif type(b) == "number" then
-    c = { _T = a._T }
-    for i=1,#a do c[i] = a[i]/b end -- // loop
+    c = a:new(); b = 1/b
+    for i=1,#a do c[i] = b*a[i] end -- // loop
   elseif a._T == b._T then
     error("TPSA division not yet implemented")
   else
@@ -507,8 +584,6 @@ function M.__div(a, b)
 
   return c
 end
-
--- metamethods -----------------------------------------------------------------
 
 -- constructors of tpsa:
 --   tpsa({var_names}, max_order)
