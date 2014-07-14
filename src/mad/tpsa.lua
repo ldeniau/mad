@@ -145,15 +145,26 @@ local function poly_mul2(a, b, c, D)
       local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
       local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
 
-      for ib = 1, #l do
-        for ia = 1, #l[ib] do
-          local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
-          c[ic] = c[ic] + a[ian] * b[ibn]
-          if ian ~= ibn then
+      -- oa ~= ob ==> ia ~= ib so it is safe to swap them
+      if oa ~= ob then
+        for ib = 1, #l do
+          for ia = 1, #l[ib] do
+            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
+            c[ic] = c[ic] + a[ian] * b[ibn]
             c[ic] = c[ic] + a[ibn] * b[ian]
-          end
-        end -- ia
-      end -- ib
+          end -- ia
+        end -- ib
+      else -- oa == ob
+        for ib = 1, #l do
+          for ia = 1, #l[ib] do
+            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
+            c[ic] = c[ic] + a[ian] * b[ibn]
+            if ian ~= ibn then
+              c[ic] = c[ic] + a[ibn] * b[ian]
+            end
+          end -- ia
+        end -- ib
+      end -- oa ~= ob
     end -- j
   end -- oc
 end -- poly_mul
@@ -351,7 +362,7 @@ local function set_M(D)
   for o = 2, D.O do
     M[o] = {}
     for j = 1, o / 2 do
-      -- to keep L compact, make only the indexes beneath main diagonal
+      -- to keep L compact, make only the indexes under main diagonal
       -- the symmetric is solved in the mul
       M[o][j] = {j, o - j}
     end
