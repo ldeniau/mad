@@ -114,6 +114,10 @@ local function mono_add(a,b)
   return c
 end
 
+local function mono_isValid(m, D)
+  return mono_leq(m, D.A) and D.F(m, A)
+end
+
 ----------------
 -- P polynomials
 
@@ -134,26 +138,24 @@ local function poly_mul(a,b,c, start,stop,D)
 end
 
 local function poly_mul2(a, b, c, D)
-  local O, L, M = D.O, D.L, D.M
+  local O, L, M, p = D.O, D.L, D.M, D.To.p
   for oc=2,O do -- orders of c (// loop)
     local m = M[oc] -- table of homo-poly to multiply
     for j =1,#m do
       local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
       local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-      if oa ~= ob then
-        for i=1,#l do
-          local ia, ib, ic = l[i][1], l[i][2], l[i][3]
-          c[ic] = c[ic] + a[ia]*b[ib]
-        end
-      else
-        for i=1,#l do
-          local ia, ib, ic = l[i][1], l[i][2], l[i][3]
-          c[ic] = c[ic] + a[ia]*b[ib]
-          if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
-        end
-      end
-    end
-  end
+
+      for ib = 1, #l do
+        for ia = 1, #l[ib] do
+          local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
+          c[ic] = c[ic] + a[ian] * b[ibn]
+          if ian ~= ibn then
+            c[ic] = c[ic] + a[ibn] * b[ian]
+          end
+        end -- ia
+      end -- ib
+    end -- j
+  end -- oc
 end -- poly_mul
 
 ------------------
@@ -348,7 +350,9 @@ local function set_M(D)
   local M = {}
   for o = 2, D.O do
     M[o] = {}
-    for j = 1, o / 2 do             -- only go to o / 2 because the symmetric is solved in the mul
+    for j = 1, o / 2 do
+      -- to keep L compact, make only the indexes beneath main diagonal
+      -- the symmetric is solved in the mul
       M[o][j] = {j, o - j}
     end
   end
@@ -359,25 +363,33 @@ end
 -- build the table of indexes in polynomials
 local function set_L(D)
   local L, To, p, index = {}, D.To, D.To.p, D.index
+  
   for oc = 2, D.O do
     local M = D.M[oc]
     for j = 1, #M do
       local oa, ob = M[j][1], M[j][2]
-
-      local idxs = {}               -- array of {ia, ib, ic}
-      -- take all mons of order oa and all of order ob
-      for ma = p[oa], p[oa + 1] - 1 do
-        for mb = p[ob], p[ob + 1] - 1 do
-          if not (mb < ma) then     -- symmetry is solved in mul
-            local ia, ib, ic = index(To[ma]), index(To[mb]),
-                               index(mono_add(To[ma], To[mb]))
-            idxs[#idxs + 1] = {ia, ib, ic}
+      local lc = {}
+      -- get each unique pair of monomials of order oa and ob
+      for ib = p[ob], p[ob + 1] - 1 do
+        local ibn = ib - p[ob] + 1 -- normalize indexes to start from 1
+        
+        -- oa <= ob (for compactness) ==> ia  <= ib
+        -- therefore, to keep L[oa][ob] compact, use ib for rows and ia for col
+        lc[ibn] = {}                  -- init this row
+        
+        for ia = p[oa], p[oa + 1] - 1 do
+          local ian = ia - p[oa] + 1  -- normalize to start from 1
+          
+          if ia <= ib then
+            local m = mono_add(To[ia], To[ib])
+            if mono_isValid(m, D) then
+              lc[ibn][ian] = index(m)
             end
-        end -- for mb
-      end -- for ma
-
-      L[oa] = L[oa] or {}
-      L[oa][ob] = idxs
+          end
+        end -- for ia
+      end -- for ib
+      L[oa] = L[oa] or {}          -- init this row if needed
+      L[oa][ob] = lc
     end -- for j
   end -- for oc
 
@@ -455,19 +467,16 @@ function M.print_table(a)
   if a.p then io.write(" Pi: ") M.print_mono(a.p,'\n') end
 end
 
-function M.print_L(L, D)
+function M.print_L(D)
   local insp, printf = require "utils.inspect", require "utils.printf"
 
-  local To = D.To
+  local To, L, p = D.To, D.L, D.p
   for oa = 1, #L do
     for ob = oa, #L[oa] do
       printf("L[%d][%d] = {\n", oa, ob)
       local l = L[oa][ob]
-      for j = 1, #l do
-        printf("  { (%s, %d), (%s, %d), (%s, %d) }\n",
-               insp(To[l[j][1]]), l[j][1],
-               insp(To[l[j][2]]), l[j][2],
-               insp(To[l[j][3]]), l[j][3])
+      for ia = 1, #l do
+        printf("  %s\n", insp(l[ia]))
       end
     end
   end
