@@ -1,4 +1,3 @@
-
 local M = { help={}, test={} }
 
 -- module ----------------------------------------------------------------------
@@ -114,7 +113,7 @@ local function mono_add(a,b)
   return c
 end
 
-local function mono_isValid(m, D)
+local function mono_isvalid(m, D)
   return mono_leq(m, D.A) and D.F(m, A)
 end
 
@@ -143,28 +142,31 @@ local function poly_mul2(a, b, c, D)
     local m = M[oc] -- table of homo-poly to multiply
     for j =1,#m do
       local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
-      local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
 
-      -- oa ~= ob ==> ia ~= ib so it is safe to swap them
-      if oa ~= ob then
-        for ib = 1, #l do
-          for ia = 1, #l[ib] do
-            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
-            c[ic] = c[ic] + a[ian] * b[ibn]
-            c[ic] = c[ic] + a[ibn] * b[ian]
-          end -- ia
-        end -- ib
-      else -- oa == ob
-        for ib = 1, #l do
-          for ia = 1, #l[ib] do
-            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
-            c[ic] = c[ic] + a[ian] * b[ibn]
-            if ian ~= ibn then
-              c[ic] = c[ic] + a[ibn] * b[ian]
-            end
-          end -- ia
-        end -- ib
-      end -- oa ~= ob
+      if a.NZ[oa] and b.NZ[ob] then
+        local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+        c.NZ[oc] = true
+
+        -- oa ~= ob ==> ia ~= ib so it is safe to swap them
+        if oa ~= ob then
+          for ibl = 1, #l do
+            for ial = 1, #l[ibl] do
+              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+              c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+            end -- ia
+          end -- ib
+        else -- oa == ob
+          for ibl = 1, #l do
+            for ial = 1, #l[ibl] do
+              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+              c[ic] = c[ic] + a[ia]*b[ib]
+              if ia ~= ib then
+                c[ic] = c[ic] + a[ib]*b[ia]
+              end
+            end -- ia
+          end -- ib
+        end -- oa ~= ob
+      end -- not zero
     end -- j
   end -- oc
 end -- poly_mul
@@ -393,7 +395,7 @@ local function set_L(D)
           
           if ia <= ib then
             local m = mono_add(To[ia], To[ib])
-            if mono_isValid(m, D) then
+            if mono_isvalid(m, D) then
               lc[ibn][ian] = index(m)
             end
           end
@@ -496,7 +498,10 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:new()
-  return setmetatable({ _T=self._T }, getmetatable(self))
+  -- when creating from an existing tpsa, you get all its properties i.e. NZ
+  local nz = {}
+  for o = 1, self._T.D.O do nz[o] = self.NZ[o] end
+  return setmetatable({ _T=self._T, NZ=nz }, getmetatable(self))
 end
 
 function M:cpy()
@@ -508,24 +513,26 @@ end
 -- metamethods -----------------------------------------------------------------
 
 function M.__add(a, b)
-  local c
-
   if type(a) == "number" then
-    c = b:new(); c[0] = a+b[0]
+    local c = b:new(); c[0] = a+b[0]
     for i=1,#b do c[i] = a+b[i] end -- // loop
+    return c
   elseif type(b) == "number" then
-    c = a:new(); c[0] = a[0]+b
+    local c = a:new(); c[0] = a[0]+b
     for i=1,#a do c[i] = a[i]+b end -- // loop
+    return c
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
-    c = b:new();
+    local c, oa = b:new(), a._T.D.O
     for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
     for i=#a+1,#b do c[i] =      b[i] end -- // loop
+    
+    -- c.NZ = a.NZ or b.NZ; c is already filled with b, add a
+    for o = 1, oa do c.NZ[o] = c.NZ[o] or a.NZ[o] end
+    return c
   else
     error("invalid or incompatible TPSA")
   end
-
-  return c
 end
 
 function M.__sub(a, b)
@@ -538,6 +545,7 @@ function M.__sub(a, b)
     c = a:new(); c[0] = a[0]-b
     for i=1,#a do c[i] =  a[i] end -- // loop
   elseif a._T == b._T then
+    -- TODO: treat c.NZ; is it the same as add, a or b ?
     if #a <= #b then
       c = b:new()
       for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
@@ -574,10 +582,13 @@ function M.__mul(a, b)
     for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
     for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
     for i=#b+1, n do c[i] = 0                 end -- // loop
+    
+    c.NZ[1] = a.NZ[1] or b.NZ[1] or nil
+
     -- order >= 2
     local o = c._T.D.O
     if o >= 2 then
-      local p = a._T.D.To.p -- starting index of orders
+      -- local p = a._T.D.To.p -- starting index of orders
       -- poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)  -- // loops
       poly_mul2(a,b,c, c._T.D) -- // loops
     end
@@ -611,6 +622,7 @@ end
 --   tpsa({var_names}, {var_orders}, max_order)
 --   tpsa({var_names}, {var_orders}, {{partial_max_orders}})
 
+
 function MT:__call(n,o,m,f)
   if type(o) == "number" then                          -- ({var_names}, max_order)
     o, m = mono_val(#n,o), o
@@ -620,7 +632,7 @@ function MT:__call(n,o,m,f)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m,f) }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f), NZ={} }, self); -- _T is {var_names, descriptor}
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
