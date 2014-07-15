@@ -143,19 +143,11 @@ local function poly_mul2(a, b, c, D)
     for j =1,#m do
       local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
 
-      if a.NZ[oa] and b.NZ[ob] then
-        local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-        c.NZ[oc] = true
+      if oa == ob then
+        if a.NZ[oa] and b.NZ[ob] then
+          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+          c.NZ[oc] = true
 
-        -- oa ~= ob ==> ia ~= ib so it is safe to swap them
-        if oa ~= ob then
-          for ibl = 1, #l do
-            for ial = 1, #l[ibl] do
-              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
-              c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
-            end -- ia
-          end -- ib
-        else -- oa == ob
           for ibl = 1, #l do
             for ial = 1, #l[ibl] do
               local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
@@ -165,8 +157,35 @@ local function poly_mul2(a, b, c, D)
               end
             end -- ia
           end -- ib
-        end -- oa ~= ob
-      end -- not zero
+        end -- not zero
+
+      else -- oa ~= ob
+        if a.NZ[oa] and b.NZ[ob] then
+          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+          c.NZ[oc] = true
+
+          for ibl = 1, #l do
+            for ial = 1, #l[ibl] do
+              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+              c[ic] = c[ic] + a[ia]*b[ib]
+            end -- ia
+          end -- ib
+        end -- not zero
+
+        -- check symmetry
+        if a.NZ[ob] and b.NZ[oa] then
+          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
+          c.NZ[oc] = true
+
+          for ibl = 1, #l do
+            for ial = 1, #l[ibl] do
+              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+              c[ic] = c[ic] + a[ib]*b[ia]
+            end -- ia
+          end -- ib
+        end -- not zero
+
+      end -- oa == ob
     end -- j
   end -- oc
 end -- poly_mul
