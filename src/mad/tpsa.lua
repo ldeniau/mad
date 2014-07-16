@@ -28,7 +28,7 @@ local utils  = require"mad.utils"
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
-local type, ipairs, concat, min = type, ipairs, table.concat, math.min
+local type, ipairs, concat, min, floor = type, ipairs, table.concat, math.min, math.floor
 local is_list = utils.is_list
 
 -- metatable for the root of all tpsa
@@ -377,54 +377,38 @@ local function set_H(D)
   end
 end
 
--- build sequence of homogeneous polynomials
-local function set_M(D)
-  local M = {}
-  for o = 2, D.O do
-    M[o] = {}
-    for j = 1, o / 2 do
-      -- to keep L compact, make only the indexes under main diagonal
-      -- the symmetric is solved in the mul
-      M[o][j] = {j, o - j}
+local function build_L(oa, ob, D)
+  local lc, p, To, index = {}, D.To.p, D.To, D.index
+  for ia=p[oa],p[oa+1]-1 do
+    local ial = ia-p[oa]+1 -- shift to 1
+    lc[ial] = {}
+    for ib=p[ob],min(ia,p[ob+1]-1) do
+      local m = mono_add(To[ia], To[ib])
+      if mono_isvalid(m, D) then
+        local ibl = ib-p[ob]+1 -- shift to 1
+        if ia ~= ib then
+          lc[ial][ibl] = index(m)
+        else                   -- symmetric indexes
+          lc.si = lc.si or {}
+          lc.si[#lc.si+1] = index(m)
+        end
+      end
     end
   end
-
-  D.M = M
+  return lc
 end
+
 
 -- build the table of indexes in polynomials
 local function set_L(D)
-  local L, To, p, index = {}, D.To, D.To.p, D.index
-  
-  for oc = 2, D.O do
-    local M = D.M[oc]
-    for j = 1, #M do
-      local oa, ob = M[j][1], M[j][2]
-      local lc = {}
-      -- get each unique pair of monomials of order oa and ob
-      for ib = p[ob], p[ob + 1] - 1 do
-        local ibn = ib - p[ob] + 1 -- normalize indexes to start from 1
-        
-        -- oa <= ob (for compactness) ==> ia  <= ib
-        -- therefore, to keep L[oa][ob] compact, use ib for rows and ia for col
-        lc[ibn] = {}                  -- init this row
-        
-        for ia = p[oa], p[oa + 1] - 1 do
-          local ian = ia - p[oa] + 1  -- normalize to start from 1
-          
-          if ia <= ib then
-            local m = mono_add(To[ia], To[ib])
-            if mono_isvalid(m, D) then
-              lc[ibn][ian] = index(m)
-            end
-          end
-        end -- for ia
-      end -- for ib
-      L[oa] = L[oa] or {}          -- init this row if needed
-      L[oa][ob] = lc
-    end -- for j
-  end -- for oc
-
+  local L = {}
+  for oc=2,D.O do
+    for j=1,oc/2 do -- foreach pair of oa, ob=oc-oa
+      local oa, ob = oc-j, j
+      L[oa] = L[oa] or {}
+      L[oa][ob] = build_L(oa, ob, D)
+    end
+  end
   D.L = L
 end
 
@@ -442,8 +426,7 @@ local function add_desc(s, n, a, o, f)
     d = { A=a, O=o, F=f or fun_true } -- alphas, order and predicate
     set_T(d)
     set_H(d) -- requires Tv
-    set_M(d)
-    set_L(d) -- requires M
+    set_L(d)
     
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
@@ -503,12 +486,12 @@ function M.print_L(D)
   local insp, printf = require "utils.inspect", require "utils.printf"
 
   local To, L, p = D.To, D.L, D.p
-  for oa = 1, #L do
-    for ob = oa, #L[oa] do
+  for oa,_ in pairs(L) do
+    for ob,_ in pairs(L[oa]) do
       printf("L[%d][%d] = {\n", oa, ob)
       local l = L[oa][ob]
-      for ia = 1, #l do
-        printf("  %s\n", insp(l[ia]))
+      for k,v in pairs(l) do
+        printf(" [%s] %s\n", k, insp(v))
       end
     end
   end
