@@ -114,7 +114,7 @@ local function mono_add(a,b)
   return c
 end
 
-local function mono_isValid(m, D)
+local function mono_isvalid(m, D)
   return mono_leq(m, D.A) and D.F(m, A)
 end
 
@@ -143,24 +143,21 @@ local function poly_mul2(a, b, c, D)
     local m = M[oc] -- table of homo-poly to multiply
     for j =1,#m do
       local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
-      local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-
       -- oa ~= ob ==> ia ~= ib so it is safe to swap them
       if oa ~= ob then
-        for ib = 1, #l do
-          for ia = 1, #l[ib] do
-            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
-            c[ic] = c[ic] + a[ian] * b[ibn]
-            c[ic] = c[ic] + a[ibn] * b[ian]
+        for ibl = 1, #l do
+          for ial = 1, #l[ibl] do
+            local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+            c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
           end -- ia
         end -- ib
       else -- oa == ob
-        for ib = 1, #l do
-          for ia = 1, #l[ib] do
-            local ic, ibn, ian = l[ib][ia], ib + p[ob] - 1, ia + p[oa] - 1
-            c[ic] = c[ic] + a[ian] * b[ibn]
-            if ian ~= ibn then
-              c[ic] = c[ic] + a[ibn] * b[ian]
+        for ibl = 1, #l do
+          for ial = 1, #l[ibl] do
+            local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
+            c[ic] = c[ic] + a[ia]*b[ib]
+            if ia ~= ib then
+              c[ic] = c[ic] + a[ib]*b[ia]
             end
           end -- ia
         end -- ib
@@ -183,6 +180,19 @@ local function find_index(T, a, start, stop)
   M.print_mono(a,'\n')
   M.print_table(T)
   error("monomial not found in table")
+end
+
+local function nxt_by_unk(a, i, j)
+  local b, jj = mono_val(#a, 0), j
+  for k=i,#a do
+    b[k] = a[k]
+    jj = jj - a[k]
+    if jj <= 0 then
+      if jj < 0 then b[k] = b[k] + jj end
+      break
+    end
+  end
+  return b
 end
 
 local function nxt_by_var(a,m,o,f)
@@ -285,21 +295,10 @@ local function solve_H(D)
   -- solve system of equations
   for i=#a-1,2,-1 do -- variables
     for j=a[i]+2,min(sa[i],o) do -- orders (unknown)
-
-      -- build the special monomial that makes the equation linear
-      local b, jj = mono_val(#a, 0), j
-      for k=i,#a do
-        b[k] = a[k]
-        jj = jj - a[k]
-        if jj <= 0 then
-          if jj < 0 then b[k] = b[k] + jj end
-          break
-        end
-      end
-
       -- solve the linear (!) equation of one unknown
-      local idx0 = index_H(H,b)
-      local idx1 = find_index(Tv,b,idx0)
+      local b    = nxt_by_unk(a,i,j)      -- build monomial from a for last unkown of H
+      local idx0 = index_H(H,b)           -- this makes the indexing equation linear
+      local idx1 = find_index(Tv,b,idx0)  -- is linear search slow?
       H[i][j] = idx1 - idx0
     end
   end
@@ -393,7 +392,7 @@ local function set_L(D)
           
           if ia <= ib then
             local m = mono_add(To[ia], To[ib])
-            if mono_isValid(m, D) then
+            if mono_isvalid(m, D) then
               lc[ibn][ian] = index(m)
             end
           end
@@ -509,7 +508,6 @@ end
 
 function M.__add(a, b)
   local c
-
   if type(a) == "number" then
     c = b:new(); c[0] = a+b[0]
     for i=1,#b do c[i] = a+b[i] end -- // loop
@@ -519,18 +517,17 @@ function M.__add(a, b)
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
     c = b:new();
+--    print("c=", c, "c._T=", c._T, "c_mt=", getmetatable(c), "b=", b, "b._T=", b._T, "b_mt=", getmetatable(b))
     for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
     for i=#a+1,#b do c[i] =      b[i] end -- // loop
   else
     error("invalid or incompatible TPSA")
   end
-
   return c
 end
 
 function M.__sub(a, b)
   local c
-
   if type(a) == "number" then
     c = b:new(); c[0] = a-b[0]
     for i=1,#b do c[i] = -b[i] end -- // loop
@@ -550,13 +547,11 @@ function M.__sub(a, b)
   else
     error("invalid or incompatible TPSA")
   end
-
   return c
 end
 
 function M.__mul(a, b)
   local c
-
   if type(a) == "number" then
     c = b:new()
     for i=0,#b do c[i] = a*b[i] end -- // loop
@@ -584,13 +579,11 @@ function M.__mul(a, b)
   else
     error("invalid or incompatible TPSA")
   end
-
   return c
 end
 
 function M.__div(a, b)
   local c
-
   if type(a) == "number" then
     error("TPSA division not yet implemented")
   elseif type(b) == "number" then
@@ -601,7 +594,6 @@ function M.__div(a, b)
   else
     error("invalid or incompatible TPSA")
   end
-
   return c
 end
 

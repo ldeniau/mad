@@ -157,6 +157,7 @@ M.dodecapole  = M.magnet      'dodecapole'  { kind='dodecapole' }
 M.multipole   = M.magnet      'multipole'   { kind='multipole' }
 M.elseparator = M.magnet      'elseparator' { kind='elseparator' }
 M.solenoid    = M.magnet      'solenoid'    { kind='solenoid' }
+M.wiggler     = M.magnet      'wiggler'     { kind='wiggler' }
 
 -- kickers
 M.hkicker     = M.kicker      'hkicker'     { kind='hkicker' } 
