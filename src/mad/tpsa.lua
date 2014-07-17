@@ -200,6 +200,19 @@ local function find_index(T, a, start, stop)
   error("monomial not found in table")
 end
 
+local function nxt_by_unk(a, i, j)
+  local b, jj = mono_val(#a, 0), j
+  for k=i,#a do
+    b[k] = a[k]
+    jj = jj - a[k]
+    if jj <= 0 then
+      if jj < 0 then b[k] = b[k] + jj end
+      break
+    end
+  end
+  return b
+end
+
 local function nxt_by_var(a,m,o,f)
   for i=1,#a do
     a[i] = a[i]+1
@@ -300,21 +313,10 @@ local function solve_H(D)
   -- solve system of equations
   for i=#a-1,2,-1 do -- variables
     for j=a[i]+2,min(sa[i],o) do -- orders (unknown)
-
-      -- build the special monomial that makes the equation linear
-      local b, jj = mono_val(#a, 0), j
-      for k=i,#a do
-        b[k] = a[k]
-        jj = jj - a[k]
-        if jj <= 0 then
-          if jj < 0 then b[k] = b[k] + jj end
-          break
-        end
-      end
-
       -- solve the linear (!) equation of one unknown
-      local idx0 = index_H(H,b)
-      local idx1 = find_index(Tv,b,idx0)
+      local b    = nxt_by_unk(a,i,j)      -- build monomial for last unkown of H
+      local idx0 = index_H(H,b)           -- this makes the indexing equation linear
+      local idx1 = find_index(Tv,b,idx0)  -- is linear search slow?
       H[i][j] = idx1 - idx0
     end
   end
