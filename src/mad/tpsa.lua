@@ -136,59 +136,53 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
+
+local function hpoly_sym_mul(a, b, c, l, iao, ibo)
+  for ial = 1, #l do -- row
+    for ibl = 1, #l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
+      c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+    end
+  end
+end
+
+local function hpoly_asym_mul(a, b, c, l, iao, ibo)
+  for ial = 1, #l do -- row
+    for ibl = 1, #l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
+      c[ic] = c[ic] + a[ia]*b[ib]
+    end
+  end
+end
+
 local function poly_mul2(a, b, c, D)
-  local O, L, M, p = D.O, D.L, D.M, D.To.p
+  local O, L, p = D.O, D.L, D.To.p
   for oc=2,O do -- orders of c (// loop)
-    local m = M[oc] -- table of homo-poly to multiply
-    for j =1,#m do
-      local oa, ob = m[j][1], m[j][2] -- P_oa x P_ob -> P_oc (oc = oa+ob)
-
-      if oa == ob then
-        if a.NZ[oa] and b.NZ[ob] then
-          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-          c.NZ[oc] = true
-
-          for ibl = 1, #l do
-            for ial = 1, #l[ibl] do
-              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
-              c[ic] = c[ic] + a[ia]*b[ib]
-              if ia ~= ib then
-                c[ic] = c[ic] + a[ib]*b[ia]
-              end
-            end -- ia
-          end -- ib
-        end -- not zero
-
-      else -- oa ~= ob
-        if a.NZ[oa] and b.NZ[ob] then
-          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-          c.NZ[oc] = true
-
-          for ibl = 1, #l do
-            for ial = 1, #l[ibl] do
-              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
-              c[ic] = c[ic] + a[ia]*b[ib]
-            end -- ia
-          end -- ib
-        end -- not zero
-
-        -- check symmetry
-        if a.NZ[ob] and b.NZ[oa] then
-          local l = L[oa][ob] -- lookup from homo-poly orders to indexes, i.e. {ia,ib,ic}
-          c.NZ[oc] = true
-
-          for ibl = 1, #l do
-            for ial = 1, #l[ibl] do
-              local ic, ib, ia = l[ibl][ial], ibl + p[ob] - 1, ial + p[oa] - 1
-              c[ic] = c[ic] + a[ib]*b[ia]
-            end -- ia
-          end -- ib
-        end -- not zero
-
-      end -- oa == ob
-    end -- j
-  end -- oc
-end -- poly_mul
+    for j=1,oc/2 do
+      local oa, ob = oc-j, j
+      
+      if a.NZ[oa] and b.NZ[ob] and 
+         a.NZ[ob] and b.NZ[oa] then
+        c.NZ[oc] = true
+        hpoly_sym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
+      elseif a.NZ[oa] and b.NZ[ob] then
+        hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
+      elseif a.NZ[ob] and b.NZ[oa] then
+        hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
+      end
+    end
+    
+    -- TODO: find a more suitable place for this
+    if oc % 2 == 0 then
+      local ho = floor(oc/2)
+      local offset, si = p[ho]-1, L[ho][ho].si
+      for j=1,#si do
+        local ia, ib, ic = j+offset, j+offset, si[j]
+        c[ic] = c[ic] + a[ia]*b[ib]
+      end
+    end
+  end
+end
 
 ------------------
 -- T lookup tables
