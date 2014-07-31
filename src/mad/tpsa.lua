@@ -136,10 +136,9 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
-
 local function hpoly_sym_mul(a, b, c, l, iao, ibo)
-  for ial = 1, #l do -- row
-    for ibl = 1, #l[ial] do -- col
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
       c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
     end
@@ -147,39 +146,41 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
 end
 
 local function hpoly_asym_mul(a, b, c, l, iao, ibo)
-  for ial = 1, #l do -- row
-    for ibl = 1, #l[ial] do -- col
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
       c[ic] = c[ic] + a[ia]*b[ib]
     end
   end
 end
 
+local function hpoly_diag_mul(a, b, c, l, iao, ibo)
+  local si = l.si
+  for j=1,#si do
+    local ia, ib, ic = j+iao, j+ibo, si[j]
+    c[ic] = c[ic] + a[ia]*b[ib]
+  end
+end
+
 local function poly_mul2(a, b, c, D)
-  local O, L, p = D.O, D.L, D.To.p
+  local O, L, p = c._mo, D.L, D.To.p
   for oc=2,O do -- orders of c (// loop)
-    for j=1,oc/2 do
+    local ho = oc/2
+    for j=1,ho do
       local oa, ob = oc-j, j
-      
-      if a.NZ[oa] and b.NZ[ob] and 
-         a.NZ[ob] and b.NZ[oa] then
-        c.NZ[oc] = true
+      if a._NZ[oa] and b._NZ[ob] and
+         a._NZ[ob] and b._NZ[oa] then
+        c._NZ[oc] = true
         hpoly_sym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a.NZ[oa] and b.NZ[ob] then
+      elseif a._NZ[oa] and b._NZ[ob] then
         hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a.NZ[ob] and b.NZ[oa] then
+      elseif a._NZ[ob] and b._NZ[oa] then
         hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
     end
-    
-    -- TODO: find a more suitable place for this
-    if oc % 2 == 0 then
-      local ho = floor(oc/2)
-      local offset, si = p[ho]-1, L[ho][ho].si
-      for j=1,#si do
-        local ia, ib, ic = j+offset, j+offset, si[j]
-        c[ic] = c[ic] + a[ia]*b[ib]
-      end
+
+    if a._NZ[ho] and b._NZ[ho] then
+      hpoly_diag_mul(a, b, c, L[ho][ho], p[ho]-1, p[ho]-1)
     end
   end
 end
@@ -496,54 +497,52 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:new()
-  -- when creating from an existing tpsa, you get all its properties i.e. NZ
+  -- new tpsa has same properties (NZ, mo)
   local nz = {}
-  for o = 1, self._T.D.O do nz[o] = self.NZ[o] end
-  return setmetatable({ _T=self._T, NZ=nz }, getmetatable(self))
+  for o=1,self._mo do nz[o] = self._NZ[o] end
+  return setmetatable({ _T=self._T, _NZ=nz, _mo=self._mo }, getmetatable(self))
 end
 
 function M:cpy()
-  local a = self:new()
-  for i=0,#self do a[i] = self[i] end -- // loop
+  local a, p = self:new(), self._T.D.To.p
+  for i=0,p[self._mo+1]-1 do a[i] = self[i] end -- // loop
   return a
 end
 
 -- metamethods -----------------------------------------------------------------
 
 function M.__add(a, b)
+  local c
+
   if type(a) == "number" then
-    local c = b:new(); c[0] = a+b[0]
-    for i=1,#b do c[i] = a+b[i] end -- // loop
-    return c
+    c = b:cpy(); c[0] = a+b[0]
   elseif type(b) == "number" then
-    local c = a:new(); c[0] = a[0]+b
-    for i=1,#a do c[i] = a[i]+b end -- // loop
-    return c
+    c = a:cpy(); c[0] = a[0]+b
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
-    local c, oa = b:new(), a._T.D.O
-    for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
-    for i=#a+1,#b do c[i] =      b[i] end -- // loop
-    
-    -- c.NZ = a.NZ or b.NZ; c is already filled with b, add a
-    for o = 1, oa do c.NZ[o] = c.NZ[o] or a.NZ[o] end
-    return c
+    c = b:new()
+    local p = a._T.D.To.p
+    for i=0,p[a._mo+1]-1 do          c[i] = a[i]+b[i] end -- // loop
+    for i=p[a._mo+1],p[b._mo+1]-1 do c[i] =      b[i] end -- // loop
+
+    -- c._NZ = a._NZ or b._NZ; c is already filled with b, add a
+    for o=1,a._mo do c._NZ[o] = c._NZ[o] or a._NZ[o] end
   else
     error("invalid or incompatible TPSA")
   end
+
+  return c
 end
 
 function M.__sub(a, b)
   local c
 
   if type(a) == "number" then
-    c = b:new(); c[0] = a-b[0]
-    for i=1,#b do c[i] = -b[i] end -- // loop
+    c = b:cpy(); c[0] = a-b[0]
   elseif type(b) == "number" then
-    c = a:new(); c[0] = a[0]-b
-    for i=1,#a do c[i] =  a[i] end -- // loop
+    c = a:cpy(); c[0] = a[0]-b
   elseif a._T == b._T then
-    -- TODO: treat c.NZ; is it the same as add, a or b ?
+    -- TODO: treat c._NZ; is it the same as add, a or b ?
     if #a <= #b then
       c = b:new()
       for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
@@ -579,17 +578,13 @@ function M.__mul(a, b)
     local n = c._T.D.N
     for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
     for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
-    for i=#b+1, n do c[i] = 0                 end -- // loop
+    for i=#b+1,n  do c[i] = 0                 end -- // loop
+
     
-    c.NZ[1] = a.NZ[1] or b.NZ[1] or nil
+    c._NZ[1] = a._NZ[1] or b._NZ[1] or nil
 
     -- order >= 2
-    local o = c._T.D.O
-    if o >= 2 then
-      -- local p = a._T.D.To.p -- starting index of orders
-      -- poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)  -- // loops
-      poly_mul2(a,b,c, c._T.D) -- // loops
-    end
+    poly_mul2(a,b,c, c._T.D) -- // loops
   else
     error("invalid or incompatible TPSA")
   end
@@ -630,7 +625,7 @@ function MT:__call(n,o,m,f)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m,f), NZ={} }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={}, _mo=m }, self); -- _T is {var_names, descriptor}
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
