@@ -113,8 +113,8 @@ local function mono_add(a,b)
   return c
 end
 
-local function mono_isvalid(m, D)
-  return mono_leq(m, D.A) and D.F(m, A)
+local function mono_isvalid(m, a, o, f)
+  return mono_sum(m) <= o and mono_leq(m,a) and f(m,a)
 end
 
 ----------------
@@ -127,7 +127,7 @@ local function poly_mul(a,b,c, start,stop,D)
     for ib=start,ia do
       if O[ia]+O[ib] > o then break end
       local m = mono_add(T[ia],T[ib])  -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
-      if mono_leq(m,A) and f(m,A) then -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
+      if mono_isvalid(m,A,O,f) then    -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
         local ic = index(m)
         c[ic] = c[ic] + a[ia]*b[ib]
         if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
@@ -139,7 +139,7 @@ end
 local function hpoly_sym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
     end
   end
@@ -148,7 +148,7 @@ end
 local function hpoly_asym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       c[ic] = c[ic] + a[ia]*b[ib]
     end
   end
@@ -217,7 +217,7 @@ end
 local function nxt_by_var(a,m,o,f)
   for i=1,#a do
     a[i] = a[i]+1
-    if mono_sum(a) <= o and mono_leq(a,m) and f(a,m) then
+    if mono_isvalid(a,m,o,f) then
       return true
     end
     a[i] = 0
@@ -346,7 +346,7 @@ local function build_H(D)
 
     -- complete row with zeros
     for j=#H[i]+1,o+1 do -- orders
-      H[i][j] = 0 
+      H[i][j] = 0
     end
   end
 
@@ -381,7 +381,7 @@ local function build_L(oa, ob, D)
     lc[ial] = {}
     for ib=p[ob],min(ia,p[ob+1]-1) do
       local m = mono_add(To[ia], To[ib])
-      if mono_isvalid(m, D) then
+      if mono_isvalid(m, D.A, D.O, D.F) then
         local ibl = ib-p[ob]+1 -- shift to 1
         if ia ~= ib then
           lc[ial][ibl] = index(m)
@@ -424,7 +424,7 @@ local function add_desc(s, n, a, o, f)
     set_T(d)
     set_H(d) -- requires Tv
     set_L(d)
-    
+
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
   end
@@ -580,7 +580,7 @@ function M.__mul(a, b)
     for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
     for i=#b+1,n  do c[i] = 0                 end -- // loop
 
-    
+
     c._NZ[1] = a._NZ[1] or b._NZ[1] or nil
 
     -- order >= 2
