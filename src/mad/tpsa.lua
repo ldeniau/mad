@@ -101,6 +101,16 @@ local function mono_equ(a,b)
 end
 
 local function mono_leq(a,b)
+  -- partial order relation ({3,0,0} <= {1,1,0})
+  for i=#a,1,-1 do
+    if     a[i] < b[i] then return true
+    elseif a[i] > b[i] then return false
+    end
+  end
+  return true
+end
+
+local function melem_leq(a,b)
   for i=1,#a do
     if a[i] > b[i] then return false end
   end
@@ -114,7 +124,7 @@ local function mono_add(a,b)
 end
 
 local function mono_isvalid(m, a, o, f)
-  return mono_sum(m) <= o and mono_leq(m,a) and f(m,a)
+  return mono_sum(m) <= o and melem_leq(m,a) and f(m,a)
 end
 
 ----------------
@@ -199,6 +209,31 @@ local function find_index(T, a, start, stop)
   M.print_mono(a,'\n')
   M.print_table(T)
   error("monomial not found in table")
+end
+
+local function find_index_bin(T, m, start, stop)
+  local s1, s2 = start or 1, stop or #T
+  local count, i, step = s2-s1+1, 0, 0
+
+  while count > 1 do
+    step = math.floor(count*0.5)
+    i = s1+step
+    if not mono_leq(T[i], m) then
+      count = step
+    else
+      s1 = i
+      count = count-step
+    end
+  end
+
+  if mono_equ(T[s1], m) then
+    return s1
+  else
+    io.write('\n')
+    M.print_mono(m,'\n')
+    M.print_table(T)
+    error("monomial not found in table, BS")
+  end
 end
 
 local function nxt_by_unk(a, i, j)
@@ -287,6 +322,11 @@ function M.table_by_ords2(o, a, tv, f)
 
     end
     t.p[ord] = j
+  end
+
+  for mi=0,#t do
+    local i = find_index_bin(tv, t[mi], 0)
+    tv.i[i] = mi
   end
 
   return t
