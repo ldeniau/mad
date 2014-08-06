@@ -255,6 +255,43 @@ local function table_by_ords(o,a)
   return v
 end
 
+local function makeFirstOrder(t)
+  local nv = #t[0]
+  t.p[1] = 1
+  for i=1,nv do
+     t[i], t.o[i] = {}, 1
+     for j=1,nv do
+        if i==j then t[i][j] = 1
+        else         t[i][j] = 0 end
+     end
+  end
+end
+
+function M.table_by_ords2(o, a, tv, f)
+  local t = { o={[0]=0}, i={[0]=0}, p={[0]=0}, [0]=tv[0] }
+  makeFirstOrder(t)
+
+  local j
+  for ord=2,o do
+    for i=1,#a do
+      j = t.p[ord-1]
+
+      repeat
+        local m = mono_add(t[i], t[j])
+        if mono_isvalid(m, a, o, f) then
+          t[#t+1] = m
+          t.o[#t] = ord
+        end
+        j = j+1
+      until m[i] > a[i] or m[i] >= ord
+
+    end
+    t.p[ord] = j
+  end
+
+  return t
+end
+
 -- unit test
 local function table_check(D)
   local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
