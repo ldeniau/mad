@@ -28,7 +28,8 @@ local utils  = require"mad.utils"
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
-local type, ipairs, concat, min, floor = type, ipairs, table.concat, math.min, math.floor
+local type, ipairs, concat = type, ipairs, table.concat
+local min, max, floor = math.min, math.max, math.floor
 local is_list = utils.is_list
 
 -- metatable for the root of all tpsa
@@ -150,7 +151,10 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 and
+         a[ib] and a[ib]~=0 and b[ia] and b[ia]~=0 then
+        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      end
     end
   end
 end
@@ -159,7 +163,9 @@ local function hpoly_asym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      c[ic] = c[ic] + a[ia]*b[ib]
+      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
+        c[ic] = c[ic] + a[ia]*b[ib]
+      end
     end
   end
 end
@@ -168,13 +174,16 @@ local function hpoly_diag_mul(a, b, c, l, iao, ibo)
   local si = l.si
   for j=1,#si do
     local ia, ib, ic = j+iao, j+ibo, si[j]
-    c[ic] = c[ic] + a[ia]*b[ib]
+    if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
+      c[ic] = c[ic] + a[ia]*b[ib]
+    end
   end
 end
 
 local function poly_mul2(a, b, c, D)
-  local O, L, p = c._mo, D.L, D.To.p
-  for oc=2,O do -- orders of c (// loop)
+  local L, p = D.L, D.To.p
+  c._mo = min(a._mo+b._mo, D.O)
+  for oc=2,c._mo do -- orders of c (// loop)
     local ho = oc/2
     for j=1,ho do
       local oa, ob = oc-j, j
@@ -183,8 +192,10 @@ local function poly_mul2(a, b, c, D)
         c._NZ[oc] = true
         hpoly_sym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
       elseif a._NZ[oa] and b._NZ[ob] then
+        c._NZ[oc] = true
         hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
       elseif a._NZ[ob] and b._NZ[oa] then
+        c._NZ[oc] = true
         hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
     end
@@ -216,7 +227,7 @@ local function find_index_bin(T, m, start, stop)
   local count, i, step = s2-s1+1, 0, 0
 
   while count > 1 do
-    step = math.floor(count*0.5)
+    step = floor(count*0.5)
     i = s1+step
     if not mono_leq(T[i], m) then
       count = step
@@ -574,15 +585,14 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:new()
-  -- new tpsa has same properties (NZ, mo)
-  local nz = {}
-  for o=1,self._mo do nz[o] = self._NZ[o] end
-  return setmetatable({ _T=self._T, _NZ=nz, _mo=self._mo }, getmetatable(self))
+  return setmetatable({ _T=self._T, _NZ={true}, _mo=1 }, getmetatable(self));
 end
 
 function M:cpy()
   local a, p = self:new(), self._T.D.To.p
-  for i=0,p[self._mo+1]-1 do a[i] = self[i] end -- // loop
+  a._mo = self._mo
+  for o=1,self._mo        do a._NZ[o] = self._NZ[o] end
+  for i=0,p[self._mo+1]-1 do a[i]     = self[i]     end -- // loop
   return a
 end
 
@@ -598,12 +608,12 @@ function M.__add(a, b)
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
     c = b:new()
+    c[0] = a[0] and b[0] and a[0]+b[0] or 0
     local p = a._T.D.To.p
-    for i=0,p[a._mo+1]-1 do          c[i] = a[i]+b[i] end -- // loop
-    for i=p[a._mo+1],p[b._mo+1]-1 do c[i] =      b[i] end -- // loop
+    for i=1,min(p[a._mo+1]-1,#a) do                    c[i] = a[i]+b[i] end -- // loop
+    for i=min(p[a._mo+1],#a+1),min(p[b._mo+1]-1,#b) do c[i] =      b[i] end -- // loop
 
-    -- c._NZ = a._NZ or b._NZ; c is already filled with b, add a
-    for o=1,a._mo do c._NZ[o] = c._NZ[o] or a._NZ[o] end
+    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
   else
     error("invalid or incompatible TPSA")
   end
@@ -619,7 +629,6 @@ function M.__sub(a, b)
   elseif type(b) == "number" then
     c = a:cpy(); c[0] = a[0]-b
   elseif a._T == b._T then
-    -- TODO: treat c._NZ; is it the same as add, a or b ?
     if #a <= #b then
       c = b:new()
       for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
@@ -629,6 +638,7 @@ function M.__sub(a, b)
       for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
       for i=#b+1,#a do c[i] = a[i]      end -- // loop
     end
+    for o=1,a._mo do c._NZ[o] = c._NZ[o] or a._NZ[o] end
   else
     error("invalid or incompatible TPSA")
   end
@@ -657,11 +667,10 @@ function M.__mul(a, b)
     for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
     for i=#b+1,n  do c[i] = 0                 end -- // loop
 
-
-    c._NZ[1] = a._NZ[1] or b._NZ[1] or nil
-
     -- order >= 2
-    poly_mul2(a,b,c, c._T.D) -- // loops
+    if c._T.D.O >=2 then
+      poly_mul2(a,b,c, c._T.D) -- // loops
+    end
   else
     error("invalid or incompatible TPSA")
   end
@@ -686,6 +695,39 @@ function M.__div(a, b)
   return c
 end
 
+function M.pow(a, p)
+  local b, r = a:cpy(), a:new()
+  r[0] = 1
+
+  while p>0 do
+    if p%2==1 then r = r*b end
+    b = b*b
+    p = floor(p/2)
+  end
+  return r
+end
+
+function M.concat(a, b)
+  local c, To = {}, b[1]._T.D.To
+  for i=1,#b do
+    c[i] = b[i]:new()
+    local t = b[i]:new()
+    t[0] = 1
+    for m=0,#To do
+      if b[i][m] and b[i][m] ~= 0 then
+        for v=1,#To[m] do
+          t = a[v]:pow(To[m][v]) * t
+        end
+        t = b[i][m] * t
+      end
+    end
+    c[i] = c[i] + t
+  end
+  return c
+end
+
+
+
 -- constructors of tpsa:
 --   tpsa({var_names}, max_order)
 --   tpsa({var_names}, {var_orders})
@@ -702,7 +744,7 @@ function MT:__call(n,o,m,f)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={}, _mo=m }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={true}, _mo=1 }, self); -- _T is {var_names, descriptor}
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
