@@ -153,7 +153,7 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 and
          a[ib] and a[ib]~=0 and b[ia] and b[ia]~=0 then
-        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+        c[ic] = (c[ic] or 0) + a[ia]*b[ib] + a[ib]*b[ia]
       end
     end
   end
@@ -164,7 +164,7 @@ local function hpoly_asym_mul(a, b, c, l, iao, ibo)
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-        c[ic] = c[ic] + a[ia]*b[ib]
+        c[ic] = (c[ic] or 0) + a[ia]*b[ib]
       end
     end
   end
@@ -175,13 +175,13 @@ local function hpoly_diag_mul(a, b, c, l, iao, ibo)
   for j=1,#si do
     local ia, ib, ic = j+iao, j+ibo, si[j]
     if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-      c[ic] = c[ic] + a[ia]*b[ib]
+      c[ic] = (c[ic] or 0) + a[ia]*b[ib]
     end
   end
 end
 
 local function poly_mul2(a, b, c, D)
-  local L, p = D.L, D.To.p
+  local L, p = D.L, D.To.ps
   c._mo = min(a._mo+b._mo, D.O)
   for oc=2,c._mo do -- orders of c (// loop)
     local ho = oc/2
@@ -285,9 +285,10 @@ end
 
 -- TODO: build monomials by product instead Tv lookup
 local function table_by_ords(o,a)
-  local v = { o={[0]=0}, i={[0]=0}, p={[0]=0}, [0]=a[0] }
+  local v = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=a[0] }
   for i=1,o do
-    v.p[i] = #v+1
+    v.ps[i]   = #v+1
+    v.pe[i-1] = #v
     for j=1,#a do
       if a.o[j] == i then
         v[#v+1] = a[j]
@@ -297,13 +298,13 @@ local function table_by_ords(o,a)
       end
     end
   end
-  v.p[o+1] = #v+1
+  v.pe[o] = #v
   return v
 end
 
 local function makeFirstOrder(t)
   local nv = #t[0]
-  t.p[1] = 1
+  t.ps[1], t.pe[1] = 1, nv
   for i=1,nv do
      t[i], t.o[i] = {}, 1
      for j=1,nv do
@@ -314,13 +315,13 @@ local function makeFirstOrder(t)
 end
 
 function M.table_by_ords2(o, a, tv, f)
-  local t = { o={[0]=0}, i={[0]=0}, p={[0]=0}, [0]=tv[0] }
+  local t = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=tv[0] }
   makeFirstOrder(t)
 
   local j
   for ord=2,o do
     for i=1,#a do
-      j = t.p[ord-1]
+      j = t.ps[ord-1]
 
       repeat
         local m = mono_add(t[i], t[j])
@@ -332,7 +333,8 @@ function M.table_by_ords2(o, a, tv, f)
       until m[i] > a[i] or m[i] >= ord
 
     end
-    t.p[ord] = j
+    t.ps[ord]   = j
+    t.pe[ord-1] = j-1
   end
 
   for mi=0,#t do
@@ -463,14 +465,15 @@ local function set_H(D)
 end
 
 local function build_L(oa, ob, D)
-  local lc, p, To, index = {}, D.To.p, D.To, D.index
-  for ia=p[oa],p[oa+1]-1 do
-    local ial = ia-p[oa]+1 -- shift to 1
+  local lc, To, index = {}, D.To, D.index
+  local ps, pe = To.ps, To.pe
+  for ia=ps[oa],pe[oa] do
+    local ial = ia-ps[oa]+1 -- shift to 1
     lc[ial] = {}
-    for ib=p[ob],min(ia,p[ob+1]-1) do
+    for ib=ps[ob],min(ia,pe[ob]) do
       local m = mono_add(To[ia], To[ib])
       if mono_isvalid(m, D.A, D.O, D.F) then
-        local ibl = ib-p[ob]+1 -- shift to 1
+        local ibl = ib-ps[ob]+1 -- shift to 1
         if ia ~= ib then
           lc[ial][ibl] = index(m)
         else                   -- symmetric indexes
@@ -570,7 +573,7 @@ end
 function M.print_L(D)
   local insp, printf = require "utils.inspect", require "utils.printf"
 
-  local To, L, p = D.To, D.L, D.p
+  local To, L = D.To, D.L
   for oa,_ in pairs(L) do
     for ob,_ in pairs(L[oa]) do
       printf("L[%d][%d] = {\n", oa, ob)
@@ -589,10 +592,10 @@ function M:new()
 end
 
 function M:cpy()
-  local a, p = self:new(), self._T.D.To.p
+  local a, pe = self:new(), self._T.D.To.pe
   a._mo = self._mo
-  for o=1,self._mo        do a._NZ[o] = self._NZ[o] end
-  for i=0,p[self._mo+1]-1 do a[i]     = self[i]     end -- // loop
+  for o=1,self._mo     do a._NZ[o] = self._NZ[o] end
+  for i=0,pe[self._mo] do a[i]     = self[i]     end -- // loop
   return a
 end
 
@@ -620,8 +623,7 @@ function M.setCoeff(t, m, v)
 end
 
 function M.pow(a, p)
-  local b, r = a:cpy(), a:new()
-  r[0] = 1
+  local b, r = a:cpy(), 1
 
   while p>0 do
     if p%2==1 then r = r*b end
@@ -665,9 +667,9 @@ function M.__add(a, b)
     if #a > #b then a, b = b, a end -- swap
     c = b:new()
     c[0] = a[0]+b[0]
-    local p = a._T.D.To.p
-    for i=1,min(p[a._mo+1]-1,#a) do                    c[i] = a[i]+b[i] end -- // loop
-    for i=min(p[a._mo+1],#a+1),min(p[b._mo+1]-1,#b) do c[i] =      b[i] end -- // loop
+    local pe = a._T.D.To.pe
+    for i=1                    ,min(pe[a._mo],#a) do c[i] = a[i]+b[i] end -- // loop
+    for i=min(pe[a._mo]+1,#a+1),min(pe[b._mo],#b) do c[i] =      b[i] end -- // loop
 
     for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
   else
@@ -691,7 +693,7 @@ function M.__sub(a, b)
       for i=#a+1,#b do c[i] =     -b[i] end -- // loop
     else
       c = a:new()
-      for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
+      for i=0   ,#b do c[i] = a[i]-b[i] end -- // loop
       for i=#b+1,#a do c[i] = a[i]      end -- // loop
     end
     for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
@@ -708,12 +710,12 @@ function M.__mul(a, b)
   if type(a) == "number" then
     c = b:new()
     for i=0,#b do c[i] = a*b[i] end -- // loop
-    for o=1,b._mo do c._NZ[o] = b.NZ[o] end
+    for o=1,b._mo do c._NZ[o] = b._NZ[o] end
     c._mo = b._mo
   elseif type(b) == "number" then
     c = a:new()
     for i=0,#a do c[i] = b*a[i] end -- // loop
-    for o=1,b._mo do c._NZ[o] = a.NZ[o] end
+    for o=1,a._mo do c._NZ[o] = a._NZ[o] end
     c._mo = a._mo
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
@@ -723,10 +725,10 @@ function M.__mul(a, b)
     c[0] = a0*b0
     -- order 1
     local n = c._T.D.N
-    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
-    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
+    for i=1   ,min(#a,n) do c[i] = a0*b[i] + b0*a[i] end -- // loop
+    for i=#a+1,min(#b,n) do c[i] = a0*b[i]           end -- // loop
     c._NZ[1] = true
-    c._mo    = 1
+    c._mo = b._mo
 
     -- order >= 2
     if c._T.D.O >=2 then
