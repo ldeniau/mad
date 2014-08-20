@@ -585,7 +585,7 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:new()
-  return setmetatable({ _T=self._T, _NZ={true}, _mo=1 }, getmetatable(self));
+  return setmetatable({ _T=self._T, _NZ={}, _mo=0, [0]=0 }, getmetatable(self));
 end
 
 function M:cpy()
@@ -596,103 +596,27 @@ function M:cpy()
   return a
 end
 
--- metamethods -----------------------------------------------------------------
-
-function M.__add(a, b)
-  local c
-
-  if type(a) == "number" then
-    c = b:cpy(); c[0] = a+b[0]
-  elseif type(b) == "number" then
-    c = a:cpy(); c[0] = a[0]+b
-  elseif a._T == b._T then
-    if #a > #b then a, b = b, a end -- swap
-    c = b:new()
-    c[0] = a[0] and b[0] and a[0]+b[0] or 0
-    local p = a._T.D.To.p
-    for i=1,min(p[a._mo+1]-1,#a) do                    c[i] = a[i]+b[i] end -- // loop
-    for i=min(p[a._mo+1],#a+1),min(p[b._mo+1]-1,#b) do c[i] =      b[i] end -- // loop
-
-    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
+function M.getCoeff(t, m)
+  if type(m) == "number" then
+    return t[m] or 0
   else
-    error("invalid or incompatible TPSA")
+    return t[t._T.D.index(m)] or 0
   end
-
-  return c
 end
 
-function M.__sub(a, b)
-  local c
-
-  if type(a) == "number" then
-    c = b:cpy(); c[0] = a-b[0]
-  elseif type(b) == "number" then
-    c = a:cpy(); c[0] = a[0]-b
-  elseif a._T == b._T then
-    if #a <= #b then
-      c = b:new()
-      for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
-      for i=#a+1,#b do c[i] =     -b[i] end -- // loop
-    else
-      c = a:new()
-      for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
-      for i=#b+1,#a do c[i] = a[i]      end -- // loop
+function M.setCoeff(t, m, v)
+  if type(m) == "number" then
+    t[m] = v
+    t._NZ[1] = true
+  else
+    local D = t._T.D
+    local o, i = D.To.o, D.index(m)
+    t[i] = v
+    if not t._NZ[o[i]] and v~=0 then
+      t._NZ[o[i]] = true
+      t._mo = max(t._mo, o[i])
     end
-    for o=1,a._mo do c._NZ[o] = c._NZ[o] or a._NZ[o] end
-  else
-    error("invalid or incompatible TPSA")
   end
-
-  return c
-end
-
-function M.__mul(a, b)
-  local c
-
-  if type(a) == "number" then
-    c = b:new()
-    for i=0,#b do c[i] = a*b[i] end -- // loop
-  elseif type(b) == "number" then
-    c = a:new()
-    for i=0,#a do c[i] = b*a[i] end -- // loop
-  elseif a._T == b._T then
-    if #a > #b then a, b = b, a end -- swap
-    c = b:new()
-    -- order 0
-    local a0, b0 = a[0], b[0]
-    c[0] = a0*b0
-    -- order 1
-    local n = c._T.D.N
-    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
-    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
-    for i=#b+1,n  do c[i] = 0                 end -- // loop
-
-    -- order >= 2
-    if c._T.D.O >=2 then
-      poly_mul2(a,b,c, c._T.D) -- // loops
-    end
-  else
-    error("invalid or incompatible TPSA")
-  end
-
-  return c
-end
-
-function M.__div(a, b)
-  local c
-
-  if type(a) == "number" then
-    error("TPSA division not yet implemented")
-  elseif type(b) == "number" then
-    c = a:new(); b = 1/b
-    for i=1,#a do c[i] = b*a[i] end -- // loop
-  elseif a._T == b._T then
-    error("TPSA division not yet implemented")
-  else
-    error("invalid or incompatible TPSA")
-  end
-
-  return c
 end
 
 function M.pow(a, p)
@@ -728,6 +652,111 @@ end
 
 
 
+-- metamethods -----------------------------------------------------------------
+
+function M.__add(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = b:cpy(); c[0] = a+b[0]
+  elseif type(b) == "number" then
+    c = a:cpy(); c[0] = a[0]+b
+  elseif a._T == b._T then
+    if #a > #b then a, b = b, a end -- swap
+    c = b:new()
+    c[0] = a[0]+b[0]
+    local p = a._T.D.To.p
+    for i=1,min(p[a._mo+1]-1,#a) do                    c[i] = a[i]+b[i] end -- // loop
+    for i=min(p[a._mo+1],#a+1),min(p[b._mo+1]-1,#b) do c[i] =      b[i] end -- // loop
+
+    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__sub(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = b:cpy(); c[0] = a-b[0]
+  elseif type(b) == "number" then
+    c = a:cpy(); c[0] = a[0]-b
+  elseif a._T == b._T then
+    if #a <= #b then
+      c = b:new()
+      for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
+      for i=#a+1,#b do c[i] =     -b[i] end -- // loop
+    else
+      c = a:new()
+      for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
+      for i=#b+1,#a do c[i] = a[i]      end -- // loop
+    end
+    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__mul(a, b)
+  local c
+
+  if type(a) == "number" then
+    c = b:new()
+    for i=0,#b do c[i] = a*b[i] end -- // loop
+    for o=1,b._mo do c._NZ[o] = b.NZ[o] end
+    c._mo = b._mo
+  elseif type(b) == "number" then
+    c = a:new()
+    for i=0,#a do c[i] = b*a[i] end -- // loop
+    for o=1,b._mo do c._NZ[o] = a.NZ[o] end
+    c._mo = a._mo
+  elseif a._T == b._T then
+    if #a > #b then a, b = b, a end -- swap
+    c = b:new()
+    -- order 0
+    local a0, b0 = a[0], b[0]
+    c[0] = a0*b0
+    -- order 1
+    local n = c._T.D.N
+    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
+    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
+    c._NZ[1] = true
+    c._mo    = 1
+
+    -- order >= 2
+    if c._T.D.O >=2 then
+      poly_mul2(a,b,c, c._T.D) -- // loops
+    end
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+function M.__div(a, b)
+  local c
+
+  if type(a) == "number" then
+    error("TPSA division not yet implemented")
+  elseif type(b) == "number" then
+    c = a:new(); b = 1/b
+    for i=1,#a do c[i] = b*a[i] end -- // loop
+  elseif a._T == b._T then
+    error("TPSA division not yet implemented")
+  else
+    error("invalid or incompatible TPSA")
+  end
+
+  return c
+end
+
+
 -- constructors of tpsa:
 --   tpsa({var_names}, max_order)
 --   tpsa({var_names}, {var_orders})
@@ -744,7 +773,7 @@ function MT:__call(n,o,m,f)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={true}, _mo=1 }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={}, _mo=0, [0]=0 }, self); -- _T is {var_names, descriptor}
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
