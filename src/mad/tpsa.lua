@@ -153,7 +153,7 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 and
          a[ib] and a[ib]~=0 and b[ia] and b[ia]~=0 then
-        c[ic] = (c[ic] or 0) + a[ia]*b[ib] + a[ib]*b[ia]
+        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
       end
     end
   end
@@ -164,7 +164,7 @@ local function hpoly_asym_mul(a, b, c, l, iao, ibo)
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
       if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-        c[ic] = (c[ic] or 0) + a[ia]*b[ib]
+        c[ic] = c[ic] + a[ia]*b[ib]
       end
     end
   end
@@ -175,14 +175,13 @@ local function hpoly_diag_mul(a, b, c, l, iao, ibo)
   for j=1,#si do
     local ia, ib, ic = j+iao, j+ibo, si[j]
     if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-      c[ic] = (c[ic] or 0) + a[ia]*b[ib]
+      c[ic] = c[ic] + a[ia]*b[ib]
     end
   end
 end
 
 local function poly_mul2(a, b, c, D)
   local L, p = D.L, D.To.ps
-  c._mo = min(a._mo+b._mo, D.O)
   for oc=2,c._mo do -- orders of c (// loop)
     local ho = oc/2
     for j=1,ho do
@@ -724,14 +723,16 @@ function M.__mul(a, b)
     local a0, b0 = a[0], b[0]
     c[0] = a0*b0
     -- order 1
-    local n = c._T.D.N
+    local D = c._T.D
+    local n, O, pe = D.N, D.O, D.To.pe
     for i=1   ,min(#a,n) do c[i] = a0*b[i] + b0*a[i] end -- // loop
     for i=#a+1,min(#b,n) do c[i] = a0*b[i]           end -- // loop
     c._NZ[1] = true
-    c._mo = b._mo
+    c._mo = min(a._mo+b._mo, c._T.D.O)
 
     -- order >= 2
     if c._T.D.O >=2 then
+      for i=#c+1,pe[c._mo] do c[i] = 0 end
       poly_mul2(a,b,c, c._T.D) -- // loops
     end
   else
