@@ -28,7 +28,8 @@ local utils  = require"mad.utils"
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
-local type, ipairs, concat, min, floor = type, ipairs, table.concat, math.min, math.floor
+local type, ipairs, concat = type, ipairs, table.concat
+local min, max, floor = math.min, math.max, math.floor
 local is_list = utils.is_list
 
 -- metatable for the root of all tpsa
@@ -101,6 +102,16 @@ local function mono_equ(a,b)
 end
 
 local function mono_leq(a,b)
+  -- partial order relation ({3,0,0} <= {1,1,0})
+  for i=#a,1,-1 do
+    if     a[i] < b[i] then return true
+    elseif a[i] > b[i] then return false
+    end
+  end
+  return true
+end
+
+local function melem_leq(a,b)
   for i=1,#a do
     if a[i] > b[i] then return false end
   end
@@ -113,8 +124,8 @@ local function mono_add(a,b)
   return c
 end
 
-local function mono_isvalid(a, m, o, f)
-  return mono_sum(a) <= o and mono_leq(a,m) and f(a,m)
+local function mono_isvalid(m, a, o, f)
+  return mono_sum(m) <= o and melem_leq(m,a) and f(m,a)
 end
 
 ----------------
@@ -127,7 +138,7 @@ local function poly_mul(a,b,c, start,stop,D)
     for ib=start,ia do
       if O[ia]+O[ib] > o then break end
       local m = mono_add(T[ia],T[ib])  -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
-      if mono_isvalid(m,A,O,f) then -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
+      if mono_isvalid(m,A,O,f) then    -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
         local ic = index(m)
         c[ic] = c[ic] + a[ia]*b[ib]
         if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
@@ -136,50 +147,60 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
-
 local function hpoly_sym_mul(a, b, c, l, iao, ibo)
-  for ial = 1, #l do -- row
-    for ibl = 1, #l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
-      c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
+      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 and
+         a[ib] and a[ib]~=0 and b[ia] and b[ia]~=0 then
+        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      end
     end
   end
 end
 
 local function hpoly_asym_mul(a, b, c, l, iao, ibo)
-  for ial = 1, #l do -- row
-    for ibl = 1, #l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl] 
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
+      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
+        c[ic] = c[ic] + a[ia]*b[ib]
+      end
+    end
+  end
+end
+
+local function hpoly_diag_mul(a, b, c, l, iao, ibo)
+  local si = l.si
+  for j=1,#si do
+    local ia, ib, ic = j+iao, j+ibo, si[j]
+    if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
       c[ic] = c[ic] + a[ia]*b[ib]
     end
   end
 end
 
 local function poly_mul2(a, b, c, D)
-  local O, L, p = D.O, D.L, D.To.p
-  for oc=2,O do -- orders of c (// loop)
-    for j=1,oc/2 do
+  local L, p = D.L, D.To.ps
+  for oc=2,c._mo do -- orders of c (// loop)
+    local ho = oc/2
+    for j=1,ho do
       local oa, ob = oc-j, j
-      
-      if a.NZ[oa] and b.NZ[ob] and 
-         a.NZ[ob] and b.NZ[oa] then
-        c.NZ[oc] = true
+      if a._NZ[oa] and b._NZ[ob] and
+         a._NZ[ob] and b._NZ[oa] then
+        c._NZ[oc] = true
         hpoly_sym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a.NZ[oa] and b.NZ[ob] then
+      elseif a._NZ[oa] and b._NZ[ob] then
+        c._NZ[oc] = true
         hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a.NZ[ob] and b.NZ[oa] then
+      elseif a._NZ[ob] and b._NZ[oa] then
+        c._NZ[oc] = true
         hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
     end
-    
-    -- TODO: find a more suitable place for this
-    if oc % 2 == 0 then
-      local ho = floor(oc/2)
-      local offset, si = p[ho]-1, L[ho][ho].si
-      for j=1,#si do
-        local ia, ib, ic = j+offset, j+offset, si[j]
-        c[ic] = c[ic] + a[ia]*b[ib]
-      end
+
+    if a._NZ[ho] and b._NZ[ho] then
+      hpoly_diag_mul(a, b, c, L[ho][ho], p[ho]-1, p[ho]-1)
     end
   end
 end
@@ -198,6 +219,31 @@ local function find_index(T, a, start, stop)
   M.print_mono(a,'\n')
   M.print_table(T)
   error("monomial not found in table")
+end
+
+local function find_index_bin(T, m, start, stop)
+  local s1, s2 = start or 1, stop or #T
+  local count, i, step = s2-s1+1, 0, 0
+
+  while count > 1 do
+    step = floor(count*0.5)
+    i = s1+step
+    if not mono_leq(T[i], m) then
+      count = step
+    else
+      s1 = i
+      count = count-step
+    end
+  end
+
+  if mono_equ(T[s1], m) then
+    return s1
+  else
+    io.write('\n')
+    M.print_mono(m,'\n')
+    M.print_table(T)
+    error("monomial not found in table, BS")
+  end
 end
 
 local function nxt_by_unk(a, i, j)
@@ -238,9 +284,10 @@ end
 
 -- TODO: build monomials by product instead Tv lookup
 local function table_by_ords(o,a)
-  local v = { o={[0]=0}, i={[0]=0}, p={[0]=0}, [0]=a[0] }
+  local v = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=a[0] }
   for i=1,o do
-    v.p[i] = #v+1
+    v.ps[i]   = #v+1
+    v.pe[i-1] = #v
     for j=1,#a do
       if a.o[j] == i then
         v[#v+1] = a[j]
@@ -250,8 +297,51 @@ local function table_by_ords(o,a)
       end
     end
   end
-  v.p[o+1] = #v+1
+  v.pe[o] = #v
   return v
+end
+
+local function makeFirstOrder(t)
+  local nv = #t[0]
+  t.ps[1], t.pe[1] = 1, nv
+  for i=1,nv do
+     t[i], t.o[i] = {}, 1
+     for j=1,nv do
+        if i==j then t[i][j] = 1
+        else         t[i][j] = 0 end
+     end
+  end
+end
+
+function M.table_by_ords2(o, a, tv, f)
+  local t = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=tv[0] }
+  makeFirstOrder(t)
+
+  local j
+  for ord=2,o do
+    for i=1,#a do
+      j = t.ps[ord-1]
+
+      repeat
+        local m = mono_add(t[i], t[j])
+        if mono_isvalid(m, a, o, f) then
+          t[#t+1] = m
+          t.o[#t] = ord
+        end
+        j = j+1
+      until m[i] > a[i] or m[i] >= ord
+
+    end
+    t.ps[ord]   = j
+    t.pe[ord-1] = j-1
+  end
+
+  for mi=0,#t do
+    local i = find_index_bin(tv, t[mi], 0)
+    tv.i[i] = mi
+  end
+
+  return t
 end
 
 -- unit test
@@ -345,7 +435,7 @@ local function build_H(D)
 
     -- complete row with zeros
     for j=#H[i]+1,o+1 do -- orders
-      H[i][j] = 0 
+      H[i][j] = 0
     end
   end
 
@@ -374,14 +464,15 @@ local function set_H(D)
 end
 
 local function build_L(oa, ob, D)
-  local lc, p, To, index = {}, D.To.p, D.To, D.index
-  for ia=p[oa],p[oa+1]-1 do
-    local ial = ia-p[oa]+1 -- shift to 1
+  local lc, To, index = {}, D.To, D.index
+  local ps, pe = To.ps, To.pe
+  for ia=ps[oa],pe[oa] do
+    local ial = ia-ps[oa]+1 -- shift to 1
     lc[ial] = {}
-    for ib=p[ob],min(ia,p[ob+1]-1) do
+    for ib=ps[ob],min(ia,pe[ob]) do
       local m = mono_add(To[ia], To[ib])
-      if mono_isvalid(m, D.A, D.O. D.F) then
-        local ibl = ib-p[ob]+1 -- shift to 1
+      if mono_isvalid(m, D.A, D.O, D.F) then
+        local ibl = ib-ps[ob]+1 -- shift to 1
         if ia ~= ib then
           lc[ial][ibl] = index(m)
         else                   -- symmetric indexes
@@ -423,7 +514,7 @@ local function add_desc(s, n, a, o, f)
     set_T(d)
     set_H(d) -- requires Tv
     set_L(d)
-    
+
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
   end
@@ -481,7 +572,7 @@ end
 function M.print_L(D)
   local insp, printf = require "utils.inspect", require "utils.printf"
 
-  local To, L, p = D.To, D.L, D.p
+  local To, L = D.To, D.L
   for oa,_ in pairs(L) do
     for ob,_ in pairs(L[oa]) do
       printf("L[%d][%d] = {\n", oa, ob)
@@ -496,63 +587,115 @@ end
 -- methods ---------------------------------------------------------------------
 
 function M:new()
-  -- when creating from an existing tpsa, you get all its properties i.e. NZ
-  local nz = {}
-  for o = 1, self._T.D.O do nz[o] = self.NZ[o] end
-  return setmetatable({ _T=self._T, NZ=nz }, getmetatable(self))
+  return setmetatable({ _T=self._T, _NZ={}, _mo=0, [0]=0 }, getmetatable(self));
 end
 
 function M:cpy()
-  local a = self:new()
-  for i=0,#self do a[i] = self[i] end -- // loop
+  local a, pe = self:new(), self._T.D.To.pe
+  a._mo = self._mo
+  for o=1,self._mo     do a._NZ[o] = self._NZ[o] end
+  for i=0,pe[self._mo] do a[i]     = self[i]     end -- // loop
   return a
 end
+
+function M.getCoeff(t, m)
+  if type(m) == "number" then
+    return t[m] or 0
+  else
+    return t[t._T.D.index(m)] or 0
+  end
+end
+
+function M.setCoeff(t, m, v)
+  if type(m) == "number" then
+    t[m] = v
+    t._NZ[1] = true
+  else
+    local D = t._T.D
+    local o, i = D.To.o, D.index(m)
+    t[i] = v
+    if not t._NZ[o[i]] and v~=0 then
+      t._NZ[o[i]] = true
+      t._mo = max(t._mo, o[i])
+    end
+  end
+end
+
+function M.pow(a, p)
+  local b, r = a:cpy(), 1
+
+  while p>0 do
+    if p%2==1 then r = r*b end
+    b = b*b
+    p = floor(p/2)
+  end
+  return r
+end
+
+function M.concat(a, b)
+  local c, To = {}, b[1]._T.D.To
+  for i=1,#b do
+    c[i] = b[i]:new()
+    local t = b[i]:new()
+    t[0] = 1
+    for m=0,#To do
+      if b[i][m] and b[i][m] ~= 0 then
+        for v=1,#To[m] do
+          t = a[v]:pow(To[m][v]) * t
+        end
+        t = b[i][m] * t
+      end
+    end
+    c[i] = c[i] + t
+  end
+  return c
+end
+
+
 
 -- metamethods -----------------------------------------------------------------
 
 function M.__add(a, b)
+  local c
+
   if type(a) == "number" then
-    local c = b:new(); c[0] = a+b[0]
-    for i=1,#b do c[i] = a+b[i] end -- // loop
-    return c
+    c = b:cpy(); c[0] = a+b[0]
   elseif type(b) == "number" then
-    local c = a:new(); c[0] = a[0]+b
-    for i=1,#a do c[i] = a[i]+b end -- // loop
-    return c
+    c = a:cpy(); c[0] = a[0]+b
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
-    local c, oa = b:new(), a._T.D.O
-    for i=0,   #a do c[i] = a[i]+b[i] end -- // loop
-    for i=#a+1,#b do c[i] =      b[i] end -- // loop
-    
-    -- c.NZ = a.NZ or b.NZ; c is already filled with b, add a
-    for o = 1, oa do c.NZ[o] = c.NZ[o] or a.NZ[o] end
-    return c
+    c = b:new()
+    c[0] = a[0]+b[0]
+    local pe = a._T.D.To.pe
+    for i=1                    ,min(pe[a._mo],#a) do c[i] = a[i]+b[i] end -- // loop
+    for i=min(pe[a._mo]+1,#a+1),min(pe[b._mo],#b) do c[i] =      b[i] end -- // loop
+
+    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
   else
     error("invalid or incompatible TPSA")
   end
+
+  return c
 end
 
 function M.__sub(a, b)
   local c
 
   if type(a) == "number" then
-    c = b:new(); c[0] = a-b[0]
-    for i=1,#b do c[i] = -b[i] end -- // loop
+    c = b:cpy(); c[0] = a-b[0]
   elseif type(b) == "number" then
-    c = a:new(); c[0] = a[0]-b
-    for i=1,#a do c[i] =  a[i] end -- // loop
+    c = a:cpy(); c[0] = a[0]-b
   elseif a._T == b._T then
-    -- TODO: treat c.NZ; is it the same as add, a or b ?
     if #a <= #b then
       c = b:new()
       for i=0,   #a do c[i] = a[i]-b[i] end -- // loop
       for i=#a+1,#b do c[i] =     -b[i] end -- // loop
     else
       c = a:new()
-      for i=0,   #b do c[i] = a[i]-b[i] end -- // loop
+      for i=0   ,#b do c[i] = a[i]-b[i] end -- // loop
       for i=#b+1,#a do c[i] = a[i]      end -- // loop
     end
+    for o=1,max(a._mo,b._mo) do c._NZ[o] = a._NZ[o] or b._NZ[o] end
   else
     error("invalid or incompatible TPSA")
   end
@@ -566,9 +709,13 @@ function M.__mul(a, b)
   if type(a) == "number" then
     c = b:new()
     for i=0,#b do c[i] = a*b[i] end -- // loop
+    for o=1,b._mo do c._NZ[o] = b._NZ[o] end
+    c._mo = b._mo
   elseif type(b) == "number" then
     c = a:new()
     for i=0,#a do c[i] = b*a[i] end -- // loop
+    for o=1,a._mo do c._NZ[o] = a._NZ[o] end
+    c._mo = a._mo
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
     c = b:new()
@@ -576,18 +723,16 @@ function M.__mul(a, b)
     local a0, b0 = a[0], b[0]
     c[0] = a0*b0
     -- order 1
-    local n = c._T.D.N
-    for i=1,   #a do c[i] = a0*b[i] + b0*a[i] end -- // loop
-    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
-    for i=#b+1, n do c[i] = 0                 end -- // loop
-    
-    c.NZ[1] = a.NZ[1] or b.NZ[1] or nil
+    local D = c._T.D
+    local n, O, pe = D.N, D.O, D.To.pe
+    for i=1   ,min(#a,n) do c[i] = a0*b[i] + b0*a[i] end -- // loop
+    for i=#a+1,min(#b,n) do c[i] = a0*b[i]           end -- // loop
+    c._NZ[1] = true
+    c._mo = min(a._mo+b._mo, c._T.D.O)
 
     -- order >= 2
-    local o = c._T.D.O
-    if o >= 2 then
-      -- local p = a._T.D.To.p -- starting index of orders
-      -- poly_mul(a,b,c, p[1], p[o+1]-1, c._T.D)  -- // loops
+    if c._T.D.O >=2 then
+      for i=#c+1,pe[c._mo] do c[i] = 0 end
       poly_mul2(a,b,c, c._T.D) -- // loops
     end
   else
@@ -614,6 +759,7 @@ function M.__div(a, b)
   return c
 end
 
+
 -- constructors of tpsa:
 --   tpsa({var_names}, max_order)
 --   tpsa({var_names}, {var_orders})
@@ -630,7 +776,7 @@ function MT:__call(n,o,m,f)
 
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
-    return setmetatable({ _T=get_desc(n,o,m,f), NZ={} }, self); -- _T is {var_names, descriptor}
+    return setmetatable({ _T=get_desc(n,o,m,f), _NZ={}, _mo=0, [0]=0 }, self); -- _T is {var_names, descriptor}
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
