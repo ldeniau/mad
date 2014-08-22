@@ -151,10 +151,7 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 and
-         a[ib] and a[ib]~=0 and b[ia] and b[ia]~=0 then
-        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
-      end
+      c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
     end
   end
 end
@@ -163,9 +160,7 @@ local function hpoly_asym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-        c[ic] = c[ic] + a[ia]*b[ib]
-      end
+      c[ic] = c[ic] + a[ia]*b[ib]
     end
   end
 end
@@ -174,14 +169,17 @@ local function hpoly_diag_mul(a, b, c, l, iao, ibo)
   local si = l.si
   for j=1,#si do
     local ia, ib, ic = j+iao, j+ibo, si[j]
-    if a[ia] and a[ia]~=0 and b[ib] and b[ib]~=0 then
-      c[ic] = c[ic] + a[ia]*b[ib]
-    end
+    c[ic] = c[ic] + a[ia]*b[ib]
   end
 end
 
 local function poly_mul2(a, b, c, D)
   local L, p = D.L, D.To.ps
+
+  -- init remaining coefs
+  local pe = c._T.D.To.pe
+  for i=#c+1,pe[c._mo] do c[i] = 0 end
+
   for oc=2,c._mo do -- orders of c (// loop)
     local ho = oc/2
     for j=1,ho do
@@ -193,7 +191,7 @@ local function poly_mul2(a, b, c, D)
       elseif a._NZ[oa] and b._NZ[ob] then
         c._NZ[oc] = true
         hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a._NZ[ob] and b._NZ[oa] then
+      elseif a._NZ[ob] and b._N Z[oa] then
         c._NZ[oc] = true
         hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
@@ -590,11 +588,16 @@ function M:new()
   return setmetatable({ _T=self._T, _NZ={}, _mo=0, [0]=0 }, getmetatable(self));
 end
 
-function M:cpy()
-  local a, pe = self:new(), self._T.D.To.pe
+local function same(self)
+  local a = self:new()
   a._mo = self._mo
-  for o=1,self._mo     do a._NZ[o] = self._NZ[o] end
-  for i=0,pe[self._mo] do a[i]     = self[i]     end -- // loop
+  for o=1,self._mo do a._NZ[o] = self._NZ[o] end
+  return a
+end
+
+function M:cpy()
+  local a, pe = self:same(), self._T.D.To.pe
+  for i=0,pe[self._mo] do a[i] = self[i] end
   return a
 end
 
@@ -707,32 +710,25 @@ function M.__mul(a, b)
   local c
 
   if type(a) == "number" then
-    c = b:new()
+    c = b:same()
     for i=0,#b do c[i] = a*b[i] end -- // loop
-    for o=1,b._mo do c._NZ[o] = b._NZ[o] end
-    c._mo = b._mo
   elseif type(b) == "number" then
-    c = a:new()
+    c = a:same()
     for i=0,#a do c[i] = b*a[i] end -- // loop
-    for o=1,a._mo do c._NZ[o] = a._NZ[o] end
-    c._mo = a._mo
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
     c = b:new()
-    -- order 0
+
     local a0, b0 = a[0], b[0]
     c[0] = a0*b0
-    -- order 1
-    local D = c._T.D
-    local n, O, pe = D.N, D.O, D.To.pe
-    for i=1   ,min(#a,n) do c[i] = a0*b[i] + b0*a[i] end -- // loop
-    for i=#a+1,min(#b,n) do c[i] = a0*b[i]           end -- // loop
+    for i=1   ,#a do c[i] = a0*b[i] + b0*a[i] end -- // loop
+    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
+
     c._NZ[1] = true
     c._mo = min(a._mo+b._mo, c._T.D.O)
 
     -- order >= 2
     if c._T.D.O >=2 then
-      for i=#c+1,pe[c._mo] do c[i] = 0 end
       poly_mul2(a,b,c, c._T.D) -- // loops
     end
   else
