@@ -113,8 +113,8 @@ local function mono_add(a,b)
   return c
 end
 
-local function mono_isvalid(m, D)
-  return mono_leq(m, D.A) and D.F(m, A)
+local function mono_isvalid(a, m, o, f)
+  return mono_sum(a) <= o and mono_leq(a,m) and f(a,m)
 end
 
 ----------------
@@ -127,7 +127,7 @@ local function poly_mul(a,b,c, start,stop,D)
     for ib=start,ia do
       if O[ia]+O[ib] > o then break end
       local m = mono_add(T[ia],T[ib])  -- _mm_adds_epi8  (16) or _mm256_adds_epi8  (32)
-      if mono_leq(m,A) and f(m,A) then -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
+      if mono_isvalid(m,A,O,f) then -- _mm_cmpgt_epi8 (16) or _mm256_cmpgt_epi8 (32)
         local ic = index(m)
         c[ic] = c[ic] + a[ia]*b[ib]
         if ia ~= ib then c[ic] = c[ic] + a[ib]*b[ia] end
@@ -216,7 +216,7 @@ end
 local function nxt_by_var(a,m,o,f)
   for i=1,#a do
     a[i] = a[i]+1
-    if mono_sum(a) <= o and mono_leq(a,m) and f(a,m) then
+    if mono_isvalid(a,m,o,f) then
       return true
     end
     a[i] = 0
@@ -380,7 +380,7 @@ local function build_L(oa, ob, D)
     lc[ial] = {}
     for ib=p[ob],min(ia,p[ob+1]-1) do
       local m = mono_add(To[ia], To[ib])
-      if mono_isvalid(m, D) then
+      if mono_isvalid(m, D.A, D.O. D.F) then
         local ibl = ib-p[ob]+1 -- shift to 1
         if ia ~= ib then
           lc[ial][ibl] = index(m)
