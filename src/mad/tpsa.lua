@@ -191,7 +191,7 @@ local function poly_mul2(a, b, c, D)
       elseif a._NZ[oa] and b._NZ[ob] then
         c._NZ[oc] = true
         hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
-      elseif a._NZ[ob] and b._N Z[oa] then
+      elseif a._NZ[ob] and b._NZ[oa] then
         c._NZ[oc] = true
         hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
@@ -346,7 +346,7 @@ end
 local function table_check(D)
   local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
 
-  if D.N ~= #Tv                        then return 1e6+0 end
+  if D.Nc~= #Tv                        then return 1e6+0 end
   for i=2,#a do
     if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
                                        then return 1e6+i end
@@ -363,7 +363,7 @@ end
 local function set_T(D)
   D.Tv = table_by_vars(D.O, D.A, D.F)
   D.To = table_by_ords(D.O, D.Tv)
-  D.N  = #D.Tv
+  D.Nc = #D.Tv
 end
 
 --------------------
@@ -596,7 +596,7 @@ local function same(self)
 end
 
 function M:cpy()
-  local a, pe = self:same(), self._T.D.To.pe
+  local a, pe = same(self), self._T.D.To.pe
   for i=0,pe[self._mo] do a[i] = self[i] end
   return a
 end
@@ -610,18 +610,15 @@ function M.getCoeff(t, m)
 end
 
 function M.setCoeff(t, m, v)
-  if type(m) == "number" then
-    t[m] = v
-    t._NZ[1] = true
-  else
-    local D = t._T.D
-    local o, i = D.To.o, D.index(m)
-    t[i] = v
-    if not t._NZ[o[i]] and v~=0 then
-      t._NZ[o[i]] = true
-      t._mo = max(t._mo, o[i])
-    end
+  local D = t._T.D
+  local o, i = D.To.o, D.index(m)
+  if not t._NZ[o[i]] and v~=0 then
+    t._NZ[o[i]] = true
+    t._mo = max(t._mo, o[i])
+    local ps, pe = D.To.ps, D.To.pe
+    for i=ps[t._mo],pe[t._mo] do t[i] = 0 end
   end
+  t[i] = v
 end
 
 function M.pow(a, p)
@@ -710,10 +707,10 @@ function M.__mul(a, b)
   local c
 
   if type(a) == "number" then
-    c = b:same()
+    c = same(b)
     for i=0,#b do c[i] = a*b[i] end -- // loop
   elseif type(b) == "number" then
-    c = a:same()
+    c = same(a)
     for i=0,#a do c[i] = b*a[i] end -- // loop
   elseif a._T == b._T then
     if #a > #b then a, b = b, a end -- swap
