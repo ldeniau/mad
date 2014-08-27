@@ -151,7 +151,9 @@ local function hpoly_sym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      if ic > 0 then
+        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      end
     end
   end
 end
@@ -160,7 +162,9 @@ local function hpoly_asym_mul(a, b, c, l, iao, ibo)
   for ial=1,#l do -- row
     for ibl=1,#l[ial] do -- col
       local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      c[ic] = c[ic] + a[ia]*b[ib]
+      if ic > 0 then
+        c[ic] = c[ic] + a[ia]*b[ib]
+      end
     end
   end
 end
@@ -169,7 +173,9 @@ local function hpoly_diag_mul(a, b, c, l, iao, ibo)
   local si = l.si
   for j=1,#si do
     local ia, ib, ic = j+iao, j+ibo, si[j]
-    c[ic] = c[ic] + a[ia]*b[ib]
+    if ic > 0 then
+      c[ic] = c[ic] + a[ia]*b[ib]
+    end
   end
 end
 
@@ -461,24 +467,40 @@ local function set_H(D)
   end
 end
 
-local function build_L(oa, ob, D)
-  local lc, To, index = {}, D.To, D.index
-  local ps, pe = To.ps, To.pe
+local function fill_L(oa, ob, D)
+  local lc, ps, pe = {}, D.To.ps, D.To.pe
   for ia=ps[oa],pe[oa] do
     local ial = ia-ps[oa]+1 -- shift to 1
     lc[ial] = {}
     for ib=ps[ob],min(ia,pe[ob]) do
-      local m = mono_add(To[ia], To[ib])
-      if mono_isvalid(m, D.A, D.O, D.F) then
-        local ibl = ib-ps[ob]+1 -- shift to 1
-        if ia ~= ib then
-          lc[ial][ibl] = index(m)
-        else                   -- symmetric indexes
-          lc.si = lc.si or {}
-          lc.si[#lc.si+1] = index(m)
-        end
+      local ibl = ib-ps[ob]+1 -- shift to 1
+      lc[ial][ibl] = -1
+    end
+    if oa==ob then
+      lc.si = lc.si or {}
+      lc.si[ial] = -1
+    end
+  end
+  return lc
+end
+
+
+local function build_L(oa, ob, D)
+  local lc, To, index = fill_L(oa,ob,D), D.To, D.index
+  local ps = To.ps
+  for ial=1,#lc      do
+  for ibl=1,#lc[ial] do
+    local ia, ib = ial+ps[oa]-1, ibl+ps[ob]-1
+    local m = mono_add(To[ia], To[ib])
+    if mono_isvalid(m, D.A, D.O, D.F) then
+      if ia ~= ib then
+        lc[ial][ibl] = index(m)
+      else                   -- symmetric indexes
+        lc.si = lc.si or {}
+        lc.si[ial] = index(m)
       end
     end
+  end
   end
   return lc
 end
