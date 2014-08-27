@@ -1,37 +1,89 @@
 #include <string.h>
+#include <assert.h>
 
-#define MAX_NC 1000        // varies in luajit ffi
+typedef unsigned int  bit_t
+typedef unsigned char mono_t;
+typedef coef_t        coef_t;
+typedef struct desc   desc_t;
+typedef struct tpsa   tpsa_t;
 
-typedef char mono_t;
+struct tpsa_desc;
 
-typedef struct tpsa {
-  struct tpsa_desc *desc;
-  unsigned char mo;
-  unsigned int nz;       // used as bit array
-  double coef[MAX_NC];
-} tpsa_t;
+struct tpsa { // warning: must be kept identical to LuaJit definition   
+  desc_t *desc;
+  monot_t mo;
+  bit_t   nz;
+  coef_t  coef[];
+};
 
-tpsa_t* new(const tpsa_t* a) {
-  tpsa_t* r = malloc(sizeof(*a));
-  return memcpy(r, a, sizeof(a));
+// == helpers
+
+static inline bit_t
+bset (bit_t b, int n)
+{
+  return b | (1 << n);
 }
 
-
-void mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c) {
-  double *ca = a.coef, *cb = b.coef, *cc = c.coef;
-  cc[0] = ca[0]*cb[0];
-  for (int  i=1, i<=c.desc->NC; i++)  // should stop early? Berz doesn't
-    cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
-  c.nz = a.nz&b.nz;
-  c.mo = min(a.mo+b.mo, c.desc->O);
-
-  if (c.desc->O >= 2)
-    poly_mul2(ca, cb, cc);
+static inline bit_t
+bclr (bit_t b, int n)
+{
+  return b & ~(1 << o);
 }
 
-void poly_mul2(tpsa_t a, tpsa_t b, tpsa_t c) {
+static inline int
+bget (bit_t b, int n)
+{
+  return b & (1 << o);
+}
+
+inline mono_t
+mmin (mono_t a, mono_t b)
+{
+  return a<b ? a : b;
+}
+
+// == local functions
+
+static void
+hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, int const* const* l, int iao, int ibo)
+{
+  for (int ial=1; ial <= l[ 0 ][0]; ial++)
+  for (int ibl=1; ibl <= l[ial][0]; ibl++) {
+    int ia = ial+iao;
+    int ib = ibl+ibo;
+    int ic = l[ial][ibl];
+    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  }
+}
+
+static void
+hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, int const* const* l, int iao, int ibo)
+{
+  for (int ial=1; ial<=l[ 0 ][0]; ial++)
+  for (int ibl=1; ibl<=l[ial][0]; ibl++) {
+    int ia = ial + iao;
+    int ib = ibl + ibo;
+    int ic = l[ial][ibl];
+    cc[ic] = cc[ic] + ca[ia]*cb[ib];
+  }
+}
+
+static void
+hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, int* si, int sio)
+{
+  for (int isi=1; isi<=si[0]; isi++) {
+    int isrc = isi+sio;
+    int idst = si[isi];
+    cc[idst] = cc[idst] + ca[isrc]*cb[isrc];   
+  }
+}
+
+static void
+poly_mul2 (const tpsa_t *a, const tpsa_t *b, tpsa_t *c, const desc_t *dc)
+{
   int* p = c.desc->psto;             // homo poly start index in To
-  double *ca = a.coef, *cb = b.coef, *cc = c.coef;
+  coef_t *ca = a.coef, *cb = b.coef, *cc = c.coef;
+  
   for (int oc=2; oc<=c.desc->O; oc++) {
     int ho = oc/2;
     for (int j=1; j<=ho; ++j) {
@@ -56,36 +108,9 @@ void poly_mul2(tpsa_t a, tpsa_t b, tpsa_t c) {
   }
 }
 
-void hpoly_sym_mul(double* ca, double* cb, double* cc,
-                   int** l, int iao, int ibo) {
-  int ia, ib, ic;
-  for (int ial=1; ial<=l[0][0]; ial++)
-    for (int ibl=1; ibl<=l[ial][0]; ibl++) {
-      ia = ial+iao; ib = ibl+ibo; ic = l[ial][ibl];
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    }
-}
-
-void hpoly_asym_mul(double* ca, double* cb, double* cc,
-                    int** l, int iao, int ibo) {
-  int ia, ib, ic;
-  for (int ial=1; ial<=l[0][0]; ial++)
-    for (int ibl=1; ibl<=l[ial][0]; ibl++) {
-      ia = ial+iao; ib = ibl+ibo; ic = l[ial][ibl];
-      cc[ic] = cc[ic] + ca[ia]*cb[ib];
-    }
-}
-
-void hpoly_diag_mul(double* ca, double* cb, double* cc, int* si, int sio) {
-  int isrc, idst;
-  for (int isi=1; isi<=si[0]; isi++) {
-    isrc = isi+sio;
-    idst = si[isi];
-    cc[idst] = cc[idst] + ca[isrc]*cb[isrc];   
-  }
-}
-
-void build_L(int oa, int ob, tpsa_desc* D) {
+static void
+build_L(int oa, int ob, tpsa_desc* D)
+{
   int *ps = D->psto, *pe = D->peto;
   int size_oa = pe[oa]-ps[oa], size_ob = pe[on]-ps[on];
   int** l = malloc(size_oa * sizeof(*l));
@@ -104,27 +129,50 @@ void build_L(int oa, int ob, tpsa_desc* D) {
   }
 }
 
-void set_L(tpsa_desc* D) {
+static void
+set_L(tpsa_desc* D)
+{
   
 }
 
+// == public functions
 
-// ========== HELPERS ==========
-void inline set_nz(tpsa_t t, int o) {
-  t.nz |= (1<<o);
+int // error code
+tpsa_add(const tpsa_t* a, const tpsa_t* b, tpsa_t* c)
+{
+  return 0;
 }
 
-void inline clear_nz(tpsa_t t, int o) {
-  t.nz &= ~(1<<o);
+int // error code
+tpsa_sub(const tpsa_t* a, const tpsa_t* b, tpsa_t* c)
+{
+  return 0;
 }
 
-int inline test_nz(const tpsa_t t, int o) {
-  return t.nz & (1<<o);
+int // error code
+tpsa_mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c)
+{
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+
+  struct tpsa_desc *dc = c->desc;
+  coef_t *ca = a.coef, *cb = b.coef, *cc = c.coef;
+
+  cc[0] = ca[0]*cb[0];
+
+  // TODO
+  for (int i=1; i <= dc->nc; i++)
+    cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
+
+  c->nz = a.nz & b.nz;
+  c->mo = mmin(a->mo + b->mo, dc->mo);
+
+  if (dc->mo >= 2)
+    poly_mul2(ca, cb, cc, dc); // TBC
+
+  return 0;
 }
 
-int inline min(const int a, const int b) {
-  return a<b ? a : b;
-}
 
 
 
