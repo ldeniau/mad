@@ -147,35 +147,27 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
-local function hpoly_sym_mul(a, b, c, l, iao, ibo)
-  for ial=1,#l do -- row
-    for ibl=1,#l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      if ic > 0 then
-        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
-      end
-    end
-  end
+local function hpoly_sym_mul(a,b,c, l,ico)
+  for icl=1,#l        do
+  for ip =1,#l[icl],2 do
+    local ia, ib, ic = l[icl][ip], l[icl][ip+1], icl+ico
+    c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+  end end
 end
 
-local function hpoly_asym_mul(a, b, c, l, iao, ibo)
-  for ial=1,#l do -- row
-    for ibl=1,#l[ial] do -- col
-      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
-      if ic > 0 then
-        c[ic] = c[ic] + a[ia]*b[ib]
-      end
-    end
-  end
+local function hpoly_asym_mul(a,b,c, l,ico)
+  for icl=1,#l        do
+  for ip =1,#l[icl],2 do
+    local ia, ib, ic = l[icl][ip], l[icl][ip+1], icl+ico
+    c[ic] = c[ic] + a[ia]*b[ib]
+  end end
 end
 
-local function hpoly_diag_mul(a, b, c, l, iao, ibo)
-  local si = l.si
-  for j=1,#si do
-    local ia, ib, ic = j+iao, j+ibo, si[j]
-    if ic > 0 then
-      c[ic] = c[ic] + a[ia]*b[ib]
-    end
+local function hpoly_diag_mul(a,b,c, l)
+  local di = l.di
+  for idi=1,#di,2 do
+    local ic, iab = di[idi], di[idi+1]
+    c[ic] = c[ic] + a[iab]*b[iab]
   end
 end
 
@@ -193,18 +185,18 @@ local function poly_mul2(a, b, c, D)
       if a._NZ[oa] and b._NZ[ob] and
          a._NZ[ob] and b._NZ[oa] then
         c._NZ[oc] = true
-        hpoly_sym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
+        hpoly_sym_mul(a,b,c, L[oa][ob],p[oc]-1)
       elseif a._NZ[oa] and b._NZ[ob] then
         c._NZ[oc] = true
-        hpoly_asym_mul(a, b, c, L[oa][ob], p[oa]-1, p[ob]-1)
+        hpoly_asym_mul(a,b,c, L[oa][ob],p[oc]-1)
       elseif a._NZ[ob] and b._NZ[oa] then
         c._NZ[oc] = true
-        hpoly_asym_mul(b, a, c, L[oa][ob], p[oa]-1, p[ob]-1)
+        hpoly_asym_mul(b,a,c, L[oa][ob],p[oc]-1)
       end
     end
 
     if a._NZ[ho] and b._NZ[ho] then
-      hpoly_diag_mul(a, b, c, L[ho][ho], p[ho]-1, p[ho]-1)
+      hpoly_diag_mul(a,b,c, L[ho][ho])
     end
   end
 end
@@ -467,44 +459,31 @@ local function set_H(D)
   end
 end
 
-local function fill_L(oa, ob, D)
-  local lc, ps, pe = {}, D.To.ps, D.To.pe
-  for ia=ps[oa],pe[oa] do
-    local ial = ia-ps[oa]+1 -- shift to 1
-    lc[ial] = {}
-    for ib=ps[ob],min(ia,pe[ob]) do
-      local ibl = ib-ps[ob]+1 -- shift to 1
-      lc[ial][ibl] = -1
-    end
-    if oa==ob then
-      lc.si = lc.si or {}
-      lc.si[ial] = -1
-    end
-  end
-  return lc
-end
-
-
 local function build_L(oa, ob, D)
-  local lc, To, index = fill_L(oa,ob,D), D.To, D.index
-  local ps = To.ps
-  for ial=1,#lc      do
-  for ibl=1,#lc[ial] do
-    local ia, ib = ial+ps[oa]-1, ibl+ps[ob]-1
+  local lc, di, oc, To, index, insert = {}, {}, oa+ob, D.To, D.index, table.insert
+  local ps, pe = To.ps, To.pe
+  for ia=ps[oa],   pe[oa]      do
+  for ib=ps[ob],min(ia,pe[ob]) do
     local m = mono_add(To[ia], To[ib])
     if mono_isvalid(m, D.A, D.O, D.F) then
+      local ic = index(m) - ps[oc] + 1   -- ic is index, so shift to 1
+      lc[ic] = lc[ic] or {}
       if ia ~= ib then
-        lc[ial][ibl] = index(m)
-      else                   -- symmetric indexes
-        lc.si = lc.si or {}
-        lc.si[ial] = index(m)
+        insert(lc[ic], ia)
+        insert(lc[ic], ib)
+--        or
+--        local l = #lc[ic]
+--        lc[ic][l+1] = ia
+--        lc[ic][l+2] = ib
+      else
+        di[#di+1] = ic + ps[oc] - 1      -- not an index, so not shifted
+        di[#di+1] = ia
       end
     end
-  end
-  end
+  end end
+  if oa == ob then lc.di = di end
   return lc
 end
-
 
 -- build the table of indexes in polynomials
 local function set_L(D)
