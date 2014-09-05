@@ -113,7 +113,7 @@ hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, const idx_t cons
 #ifdef TRACE
   printf("diag_mul\n");
 #endif
-  for (int il=1; il <= l[0]; il++) {
+  for (int il=1; il < l[0]; il++) {
     int isrc = il+dio;
     int idst = l[il];
     if (idst >= 0)
