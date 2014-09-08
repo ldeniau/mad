@@ -4,6 +4,7 @@
 
 typedef unsigned int  bit_t;
 typedef unsigned char mono_t;
+typedef int           idx_t;
 typedef double        coef_t;
 typedef struct desc   desc_t;
 typedef struct tpsa   tpsa_t;
@@ -17,8 +18,8 @@ struct T {  // To, Tv; not needed here yet; better to keep them in lua
 
 struct desc {
   int nc, o;
-  int l[1][1][1][1];
-  int di[1][1];
+  int l[1];
+  int *di;
 };
 
 struct tpsa { // warning: must be kept identical to LuaJit definition 
