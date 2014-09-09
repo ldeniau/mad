@@ -1,7 +1,8 @@
-local tpsa = {} -- the module's name
-tpsa.name = "berz"
+local tpsa = { name="berz", _cnt=0 }
+local MT   = { __index=tpsa }
 
-local ffi, format = require('ffi'), string.format
+local ffi = require('ffi')
+local format, setmetatable = string.format, setmetatable
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -11,12 +12,12 @@ PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
 local berzLib = ffi.load(PATH .. '/tpsa-berz/TPSALib-Berz.so')
 
 ffi.cdef[[
-  // set up the tpsa with maximum order mo, nv vars, printing it on iunit
-  void daini_(int *mo, int *nv, int *iunit);
+  // set up the tpsa with maximum order no, nv vars, printing it on iunit
+  void daini_(int *no, int *nv, int *iunit);
 
   // allocates n TPSAs, returning their indexes in idxs
-  void daall_(int *idxs, int *n, char *charName, int *mo, int *nv);
-  
+  void daall_(int *idxs, int *n, char *charName, int *no, int *nv);
+
   // deallocates n TPSAs, with indexes idxs
   void dadal_(int *idxs, int *n);
 
@@ -28,29 +29,30 @@ ffi.cdef[[
   void dacon_(int *idx, double *constant);
 
   // operations between TPSA and constant
-  void dacad(int *t, int *c, int *r);           // r = t + c
-  void dacsu(int *t, int *c, int *r);           // r = c - t
-  void dasuc(int *t, int *c, int *r);           // r = t - c
-  void dacmu(int *t, int *c, int *r);           // r = t * c
-  void dacdi(int *t, int *c, int *r);           // r = t / c
-  void dadic(int *t, int *c, int *r);           // r = c / t
-  void dacma(int *t1, int *t2, int *c, int *r); // r = t1 + c * t2
+  void dacad_(int *t,  int *c, int *r);            // r = t + c
+  void dacsu_(int *t,  int *c, int *r);            // r = c - t
+  void dasuc_(int *t,  int *c, int *r);            // r = t - c
+  void dacmu_(int *t,  int *c, int *r);            // r = t * c
+  void dacdi_(int *t,  int *c, int *r);            // r = t / c
+  void dadic_(int *t,  int *c, int *r);            // r = c / t
+  void dacma_(int *t1, int *t2, int *c, int *r);   // r = t1 + c * t2
 
   // operations between 2 TPSAs
-  void dacop_(int *source, int *dest);          // copy
-  void daadd_(int *op1, int *op2, int *res);    // add
-  void dasub_(int *op1, int *op2, int *res);    // substract
-  void damul_(int *op1, int *op2, int *res);    // multiply
-  void dadiv_(int *op1, int *op2, int *res);    // divide
-  void dasqr_(int *op , int *res);              // square (^2)
- 
-  // mc = ma o mb  -- ma, mb, mc = compatible arrays of TPSAs
-  //               -- sa, sb, sc = number of vectors in ma, mb, mc
-  void dacct_(int *ma, int *sa, int *mb, int *sb, int *mc, int *sc);
-  void dainv_(int *ma, int *sa, int *mr, int *sr);
+  void dacop_(int *src, int *dest);
+  void daadd_(int *t1, int *t2, int *r);           // r = t1 + t2
+  void dasub_(int *t1, int *t2, int *r);           // r = t1 - t2
+  void damul_(int *t1, int *t2, int *r);           // r = t1 * t2
+  void dadiv_(int *t1, int *t2, int *r);           // r = t1 / t2
+  void dasqr_(int *t , int *r);                    // r = t ^ 2
 
-  void daabs_(int *t, int *r);                   // r = |t|
-  void dapri_(int *idx, int *dest);             // print TPSA at idx on stream dest
+  // mr = m1 o m2  -- m1, m2, mr = compatible arrays of TPSAs
+  //               -- s1, s2, s4 = number of vectors in m1, m2, mr
+  void dacct_(int *m1, int *s1, int *m2, int *s2, int *mr, int *sr);
+
+  void dainv_(int *m1, int *s1, int *mr, int *sr); // mr = ma ^ -1
+
+  void daabs_(int *t, int *r);                     // r = |t|
+  void dapri_(int *idx, int *dest);                // print TPSA at idx on stream dest
 ]]
 
 
@@ -61,24 +63,33 @@ local dblPtr = ffi.typeof("double [?]")
 local chrPtr = ffi.typeof("char [?]")
 
 -- Create pointers to some useful literals
-local zero_i, one_i, six_i = intPtr(1,0), intPtr(1,1), intPtr(1,6)
-local zero_d, one_d        = dblPtr(1,0.0), dblPtr(1,1.0)
+local zero_i, one_i, six_i = intPtr(1, 0  ), intPtr(1, 1  ), intPtr(1, 6)
+local zero_d, one_d        = dblPtr(1, 0.0), dblPtr(1, 1.0)
 
 -- should be called before any other tpsa function
-function tpsa.init(nv, mo)
-  berzLib.daini_(intPtr(1,mo), intPtr(1,nv), zero_i)  
+function tpsa.init(nv, no)
+  local errStr = "Invalid Berz tpsa initializer. Use tpsa.init(nv, no) or tpsa({var_names}, no)"
+
+  if     type(nv) == "table"  then nv = #nv
+  elseif type(nv) ~= "number" then error(errStr) end
+  if     type(no) ~= "number" then error(errStr) end
+
+  berzLib.daini_(intPtr(1,no), intPtr(1,nv), zero_i)
+  return tpsa.new(nv, no)
 end
 
-function tpsa.new(nv, mo)
-  -- allocates just one TPSA and returns it
-  local t = {}                     -- the tpsa object
-  t.nv, t.mo = nv, mo
-  local name = format("T%6d", math.random(999999))
+function tpsa.same(t)
+  return t.new(t.nv, t.no)
+end
 
-  t.idx = intPtr(1)
-  berzLib.daall_(t.idx, one_i, chrPtr(#name+1, name), 
-                 intPtr(1,t.mo), intPtr(1,t.nv))
-  return t
+function tpsa.new(nv, no)
+  local r = {}
+  r.nv, r.no = nv, no
+  local name = format("Berz%6d", tpsa._cnt)
+  r.idx = intPtr(1)
+  berzLib.daall_(r.idx, one_i, chrPtr(#name+1, name), intPtr(1,no), intPtr(1,nv))
+  tpsa._cnt = tpsa._cnt + 1
+  return setmetatable(r, MT)
 end
 
 function tpsa.setConst(t, value)
@@ -100,31 +111,34 @@ function tpsa.getCoeff(t, mon)
   return tonumber(coeff[0])
 end
 
-function tpsa.cpy(source, dest)
-  berzLib.dacop_(source.idx, dest.idx)
+function tpsa.cpy(src, dst)
+  if not dst then dst = src:same() end
+  berzLib.dacop_(src.idx, dst.idx)
+  return dst
 end
 
-function tpsa.add(t1, t2, res)
-  berzlib.add_(t1.idx, t2.idx, res.idx)
+-- binary operations between TPSAs --------------------------------------------
+function tpsa.add(t1, t2, r)
+  berzLib.daadd_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.sub(t1, t2, res)
-  berzlib.sub_(t1.idx, t2.idx, res.idx)
+function tpsa.sub(t1, t2, r)
+  berzLib.dasub_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.mul(t1, t2, res)
-  berzLib.damul_(t1.idx, t2.idx, res.idx)
+function tpsa.mul(t1, t2, r)
+  berzLib.damul_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.div(t1, t2, res)
-  berzlib.div_(t1.idx, t2.idx, res.idx)
+function tpsa.div(t1, t2, r)
+  berzLib.dadiv_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.sqr(t1, t2, res)
-  berzlib.sqr_(t1.idx, t2.idx, res.idx)
+function tpsa.sqr(t1, t2, r)
+  berzLib.dasqr_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.concat(a, b, c)
+function tpsa.cct(a, b, c)
   -- a, b, c should be compatible arrays of TPSAs, starting from 1
 
   local aIdxs, bIdxs, cIdxs = intPtr(#a), intPtr(#b), intPtr(#c)
@@ -136,14 +150,48 @@ function tpsa.concat(a, b, c)
   berzLib.dacct_(aIdxs, aSize, bIdxs, bSize, cIdxs, cSize)
 end
 
+
+-- binary operations between TPSA and scalar ----------------------------------
+function tpsa.cadd(t, c, r)
+  berzLib.dacad_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.csub(t, c, r)
+  berzLib.dacsu_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.subc(t, c, r)
+  berzLib.dacad_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.cmul(t, c, r)
+  berzLib.dacmu_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.cdiv(t, c, r)
+  berzLib.dacdi_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.divc(t, c, r)
+  berzLib.dacmu_(t.idx, intPtr(1,c), r.idx)
+end
+
+function tpsa.cma(t1, t2, c, r)
+  berzLib.dacma_(t1.idx, t2,idx, intPtr(1,c), r.idx)
+end
+-- unary operations -----------------------------------------------------------
 function tpsa.inv(ma, mr)
   -- ma, mr = arrays of TPSAs
   local aIdxs, rIdxs = intPtr(#ma), intPtr(#mr)
   local aSize, rSize = intPtr(1, #ma), intPtr(1, #mr)
   for i=1,#ma do aIdxs[i-1] = ma[i].idx[0] end
   for i=1,#mr do rIdxs[i-1] = mr[i].idx[0] end
-  
+
   berzLib.dainv_(aIdxs, aSize, rIdxs, rSize)
+end
+
+function tpsa.abs(t, r)
+  berzLib.daabs_(t.idx, r.idx)
 end
 
 function tpsa.destroy(t)
