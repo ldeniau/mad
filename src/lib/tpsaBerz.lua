@@ -21,9 +21,9 @@ ffi.cdef[[
   // deallocates n TPSAs, with indexes idxs
   void dadal_(int *idxs, int *n);
 
-  // seting or getting the coefficient for the monomial with the given exponent in the TPSA at idx
-  void dapok_(int *idx, int *exp, double *coeff);
-  void dapek_(int *idx, int *exp, double *coeff);
+  // seting or getting the monomial's coefficient in the TPSA at idx
+  void dapok_(int *idx, int *mon, double *val);
+  void dapek_(int *idx, int *mon, double *val);
 
   // sets up the constant value of the TPSA at idx
   void dacon_(int *idx, double *constant);
@@ -66,23 +66,8 @@ local chrPtr = ffi.typeof("char [?]")
 local zero_i, one_i, six_i = intPtr(1, 0  ), intPtr(1, 1  ), intPtr(1, 6)
 local zero_d, one_d        = dblPtr(1, 0.0), dblPtr(1, 1.0)
 
--- should be called before any other tpsa function
-function tpsa.init(nv, no)
-  local errStr = "Invalid Berz tpsa initializer. Use tpsa.init(nv, no) or tpsa({var_names}, no)"
 
-  if     type(nv) == "table"  then nv = #nv
-  elseif type(nv) ~= "number" then error(errStr) end
-  if     type(no) ~= "number" then error(errStr) end
-
-  berzLib.daini_(intPtr(1,no), intPtr(1,nv), zero_i)
-  return tpsa.new(nv, no)
-end
-
-function tpsa.same(t)
-  return t.new(t.nv, t.no)
-end
-
-function tpsa.new(nv, no)
+local function create(nv, no)
   local r = {}
   r.nv, r.no = nv, no
   local name = format("Berz%6d", tpsa._cnt)
@@ -92,27 +77,43 @@ function tpsa.new(nv, no)
   return setmetatable(r, MT)
 end
 
-function tpsa.setConst(t, value)
-  berzLib.dacon_(t.idx, dblPtr(1,value))
+-- should be called before any other tpsa function
+function tpsa.init(nv, no)
+  local errStr = "Invalid Berz tpsa initializer. Use tpsa.init(nv, no) or tpsa({var_names}, no)"
+
+  if     type(nv) == "table"  then nv = #nv
+  elseif type(nv) ~= "number" then error(errStr) end
+  if     type(no) ~= "number" then error(errStr) end
+
+  berzLib.daini_(intPtr(1,no), intPtr(1,nv), zero_i)
+  return create(nv, no)
 end
 
-function tpsa.setCoeff(t, mon, coeff)
+function tpsa.new(t)
+  return create(t.nv, t.no)
+end
+
+function tpsa.setConst(t, val)
+  berzLib.dacon_(t.idx, dblPtr(1,val))
+end
+
+function tpsa.setCoeff(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
   local cmon = intPtr(#mon, mon)
-  berzLib.dapok_(t.idx, cmon, dblPtr(1,coeff))
+  berzLib.dapok_(t.idx, cmon, dblPtr(1,val))
 end
 
 function tpsa.getCoeff(t, mon)
   -- monomial = see setCoeff
-  local cmon, coeff = intPtr(#mon, mon), dblPtr(1)
-  berzLib.dapek_(t.idx, cmon, coeff)
-  return tonumber(coeff[0])
+  local cmon, val = intPtr(#mon, mon), dblPtr(1)
+  berzLib.dapek_(t.idx, cmon, val)
+  return tonumber(val[0])
 end
 
 function tpsa.cpy(src, dst)
-  if not dst then dst = src:same() end
+  if not dst then dst = src:new() end
   berzLib.dacop_(src.idx, dst.idx)
   return dst
 end
@@ -127,6 +128,7 @@ function tpsa.sub(t1, t2, r)
 end
 
 function tpsa.mul(t1, t2, r)
+  -- r should be different from t1 and t2 to avoid an extra alloc
   berzLib.damul_(t1.idx, t2.idx, r.idx)
 end
 

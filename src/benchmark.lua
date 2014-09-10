@@ -28,14 +28,19 @@ local function fill_ord1(t, nv)
 end
 
 local function fill_full(t, no)
-  -- t:pow(mo)
-  local b, r, floor = t:cpy(), t:same(), math.floor
+  -- t:pow(no)
+  local b, r, floor = t:cpy(), t:new(), math.floor
   r:setConst(1)
 
   while no > 0 do
-    if no%2==1 then r.mul(r, b, r) end
-    b.mul(b, b, b)
-    no = floor(no/2)
+    if no%2==1 then
+      r.mul(r, b, t)
+      r, t = t, r
+      no = no - 1
+    end
+    b.mul(b, b, t)
+    b, t = t, b
+    no = no/2
   end
   r:cpy(t)
 end
@@ -48,7 +53,7 @@ local function setup(tpsa, nv, no)
   fill_ord1(t, nv)
   fill_full(t, no)
 
-  return t, t:cpy(), t:same()
+  return t, t:cpy(), t:new()
 end
 
 -- read benchmark input parameters: NV, NO, NL

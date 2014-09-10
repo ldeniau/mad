@@ -18,36 +18,29 @@ ffi.cdef[[
   // this should be called before any other ad_* function and
   // followed by call to ad_reserve
   // nv = number of variables, no = highest order of TPSA
-  void ad_init_(const TNVND* nv, const TNVND* no);
+  void ad_init_(const TNVND *nv, const TNVND *no);
 
-  void ad_reserve_(const TVEC* n);    // reserve space for n TPSA vectors
+  void ad_reserve_(const TVEC *n);    // reserve space for n TPSA vectors
   void ad_fini_();                    // free resources
 
   // allocate / free space for 1 TPSA vector
-  void ad_alloc_(TVEC* idx);          // idx returns index of new TPSA
-  void ad_free_(const TVEC* idx);     // idx specifies which TPSA to free
+  void ad_alloc_(      TVEC *idx);     // idx returns index of new TPSA
+  void ad_free_ (const TVEC *idx);     // idx specifies which TPSA to free
 
   // copies from TPSA at isrc to the TPSA at idst
-  void ad_copy_(const TVEC* isrc, const TVEC* idst);
+  void ad_copy_(const TVEC *isrc, const TVEC *idst);
 
   // set / retrieve coefficient value x of monomial c (size n) from TPSA idx
   // c = {1, 0, 2} -> x * z ^ 2
-  void ad_pek_(const TVEC* idx, int* c, size_t* n, double* x);
-  void ad_pok_(const TVEC* idx, int* c, size_t* n, double* x);
-  void ad_const_(const TVEC* idx, const double* r);  // sets the constant
-  void ad_reset(const TVEC* idx);      // resets TPSA at idx to constant 0
+  void ad_pek_  (const TVEC *idx, int *c, size_t *n, double *x);
+  void ad_pok_  (const TVEC *idx, int *c, size_t *n, double *x);
+  void ad_const_(const TVEC *idx, const double *r);  // sets the constant term
 
+  void ad_mult_ (const TVEC *ivlhs, const TVEC *ivrhs, TVEC *ivdst);
+  void ad_subst_(const TVEC *iv, const TVEC *ibv, const TNVND *nbv,
+                 const TVEC *iret);
 
-  void ad_add_(const TVEC* i, const TVEC* j);
-  void ad_mult_(const TVEC* ivlhs, const TVEC* ivrhs, TVEC* ivdst);
-  void ad_subst_(const TVEC* iv, const TVEC* ibv, const TNVND* nbv,
-                 const TVEC* iret);
-
-  // Reset the base vectors call this before a new ad_init()
-  // with nv from ad_nvar(nv)
-  void ad_resetvars_(const TNVND* nvar);
-
-  void ad_print_(const TVEC* iv);
+  void ad_print_(const TVEC *iv);
 ]]
 
 
@@ -60,6 +53,12 @@ local zero_i, one_i = uintPtr(1, 0), uintPtr(1, 1)
 local zero_d, one_d = dblPtr(0.0),   dblPtr(1.0)
 
 local initialized = false
+
+local function create(nv, no)
+  local t = { nv=nv, no=no, idx=uintPtr(1) }
+  yangLib.ad_alloc_(t.idx)
+  return setmetatable(t, MT)
+end
 
 -- should be called before any other tpsa function
 function tpsa.init(nv, no)
@@ -80,59 +79,41 @@ function tpsa.init(nv, no)
   -- reserve should be called right after init, so we'll do it here
   local size = 30000                -- to suffice for allocations
   yangLib.ad_reserve_(uintPtr(1, size))
-  return tpsa.new(nv, no)
+  return create(nv, no)
 end
 
-function tpsa.new(nv, no)
-  local t = { nv=nv, no=no, idx=uintPtr(1) }
-
-  yangLib.ad_alloc_(t.idx)
-
-  return setmetatable(t, MT)
+function tpsa.new(t)
+  return create(t.nv, t.mo)
 end
 
-function tpsa.same(t)
-  return t.new(t.nv, t.mo)
+function tpsa.setConst(t, val)
+  yangLib.ad_const_(t.idx, dblPtr(val))
 end
 
-function tpsa.setConst(t, value)
-  yangLib.ad_const_(t.idx, dblPtr(value))
-end
-
-function tpsa.setCoeff(t, mon, coeff)
+function tpsa.setCoeff(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
-
   local indexes, size = uintPtr(#mon, mon), sizetPtr(#mon)
-
-  yangLib.ad_pok_(t.idx, indexes, size, dblPtr(coeff))
+  yangLib.ad_pok_(t.idx, indexes, size, dblPtr(val))
 end
 
 function tpsa.getCoeff(t, mon)
   -- mon = see setCoeff
-  local indexes, size, coeff = uintPtr(#mon, mon), sizetPtr(#mon), dblPtr(1)
+  local indexes, size, val = uintPtr(#mon, mon), sizetPtr(#mon), dblPtr(1)
+  yangLib.ad_pek_(t.idx, indexes, size, val)
 
-  yangLib.ad_pek_(t.idx, indexes, size, coeff)
-  return tonumber(coeff[0])
+  return tonumber(val[0])
 end
 
 function tpsa.cpy(src, dst)
-  if not dst then dst = src:same() end
+  if not dst then dst = src:new() end
   yangLib.ad_copy_(src.idx, dst.idx)
   return dst
 end
 
 function tpsa.mul(t1, t2, r)
-  if r.idx[0] == t1.idx[0] or
-     r.idx[0] == t2.idx[0] then
-    local rn = r:same()
-    yangLib.ad_mult_(t1.idx, t2.idx, rn.idx)
-
-    r.idx, rn.idx = rn.idx, r.idx -- replace r by new r
-    rn:destroy()
-  else
-    yangLib.ad_mult_(t1.idx, t2.idx, r.idx)
-  end
+  -- r should be different from t1 and t2
+  yangLib.ad_mult_(t1.idx, t2.idx, r.idx)
 end
 
 function tpsa.cct(a, b, c)

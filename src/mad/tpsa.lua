@@ -176,7 +176,7 @@ local function poly_mul2(a, b, c, D)
 
   -- init remaining coefs
   local pe = c._T.D.To.pe
-  for i=#c+1,pe[c._mo] do c[i] = 0 end
+  for i=#b+1,pe[c._mo] do c[i] = 0 end
 
   for oc=2,c._mo do -- orders of c (// loop)
     local ho = oc/2
@@ -199,6 +199,16 @@ local function poly_mul2(a, b, c, D)
       hpoly_diag_mul(a,b,c, L[ho][ho])
     end
   end
+end
+
+local function mul_init(a, b, c)
+  local a0, b0 = a[0], b[0]
+  c[0] = a0*b0
+  for i=1   ,#a do c[i] = a0*b[i] + b0*a[i] end -- // loop
+  for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
+
+  c._NZ[1] = true
+  c._mo = min(a._mo+b._mo, c._T.D.O)
 end
 
 ------------------
@@ -589,17 +599,19 @@ function M:new()
   return setmetatable({ _T=self._T, _NZ={}, _mo=0, [0]=0 }, getmetatable(self));
 end
 
-local function same(self)
-  local a = self:new()
-  a._mo = self._mo
-  for o=1,self._mo do a._NZ[o] = self._NZ[o] end
-  return a
+local function same(src, dst)
+  dst = dst or src:new()
+  dst._mo = src._mo
+  for o=1,src._mo do dst._NZ[o] = src._NZ[o] end
+  return dst
 end
 
-function M:cpy()
-  local a, pe = same(self), self._T.D.To.pe
-  for i=0,pe[self._mo] do a[i] = self[i] end
-  return a
+function M.cpy(src,dst)
+  dst = dst or src:new()
+  same(src, dst)
+  local pe = src._T.D.To.pe
+  for i=0,pe[src._mo] do dst[i] = src[i] end
+  return dst
 end
 
 function M.getCoeff(t, m)
@@ -613,13 +625,28 @@ end
 function M.setCoeff(t, m, v)
   local D = t._T.D
   local o, i = D.To.o, D.index(m)
-  if not t._NZ[o[i]] and v~=0 then
-    t._NZ[o[i]] = true
-    t._mo = max(t._mo, o[i])
+  if o[i] >= 2 then error("NYI. Poke only order 1 and use mul") end
+  local po = o[i]
+  if not t._NZ[po] and v ~= 0 then
+    t._NZ[po] = true
+    t._mo = max(t._mo, po)
     local ps, pe = D.To.ps, D.To.pe
-    for i=ps[t._mo],pe[t._mo] do t[i] = 0 end
+    for i=ps[po],pe[po] do t[i] = 0 end
   end
   t[i] = v
+end
+
+function M.setConst(t, v)
+  local m = mono_val(#t._T.V, 0)
+  t:setCoeff(m, v)
+end
+
+function M.mul(a, b, c)
+  -- c should be different from a and b
+  mul_init(a, b, c)
+  if c._mo >=2 then
+    poly_mul2(a,b,c, c._T.D) -- // loops
+  end
 end
 
 function M.pow(a, p)
@@ -652,7 +679,15 @@ function M.concat(a, b)
   return c
 end
 
+-- interface for benchmarking
+function M.init(var_names, mo)
+  return M(var_names, mo)
+end
 
+function M.print(t)
+  -- TODO: print in same format as Berz ?
+  t:print_vect()
+end
 
 -- metamethods -----------------------------------------------------------------
 
@@ -717,13 +752,7 @@ function M.__mul(a, b)
     if #a > #b then a, b = b, a end -- swap
     c = b:new()
 
-    local a0, b0 = a[0], b[0]
-    c[0] = a0*b0
-    for i=1   ,#a do c[i] = a0*b[i] + b0*a[i] end -- // loop
-    for i=#a+1,#b do c[i] = a0*b[i]           end -- // loop
-
-    c._NZ[1] = true
-    c._mo = min(a._mo+b._mo, c._T.D.O)
+    mul_init(a, b, c)
 
     -- order >= 2
     if c._T.D.O >=2 then
