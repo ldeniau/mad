@@ -1,4 +1,2 @@
-## simple make file to for building the shared library object
-
-sharedYang : tpsa.h tpsa.cpp
-	g++ -O3 -fPIC -shared tpsa.cpp -o TPSALib-Yang.so
+tpsaYang: tpsa.cpp tpsa.h
+	g++ -std=c++98 -Wall -W -pedantic -O3 -shared -fPIC tpsa.cpp -o libtpsa-yang.so

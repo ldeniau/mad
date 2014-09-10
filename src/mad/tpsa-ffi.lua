@@ -49,7 +49,7 @@ M.T = {} -- descriptor with named vars
 -- initialize FFI
 local PATH = (...):match("(.+)%.[^%.]+$") or (...) -- current path
 PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
-local clib = ffi.load(PATH .. "/../lib/tpsa-ffi/tpsa.so")
+local clib = ffi.load(PATH .. "/../lib/tpsa-ffi/libtpsa-ffi.so")
 
 local static_dcl = [[
 typedef unsigned char mono_t;

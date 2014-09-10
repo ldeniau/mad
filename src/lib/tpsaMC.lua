@@ -8,7 +8,7 @@ ffi = require('ffi')
 -- first get the directory structure: for "foo/bar/baz.lua" it is "foo.bar"
 local PATH = (...):match("(.+)%.[^%.]+$") or (...)
 PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
-local mapLib = ffi.load(PATH .. '/tpsa-mc/TPSALib-MC.so')
+local mapLib = ffi.load(PATH .. '/tpsa-mc/libtpsa-mc.so')
 
 ffi.cdef[[
 typedef struct tpsa_t tpsa_t;

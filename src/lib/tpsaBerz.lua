@@ -9,7 +9,7 @@ local format, setmetatable = string.format, setmetatable
 -- first get the directory structure: for "foo/bar/baz.lua" it is "foo.bar"
 local PATH = (...):match("(.+)%.[^%.]+$") or (...)
 PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
-local berzLib = ffi.load(PATH .. '/tpsa-berz/TPSALib-Berz.so')
+local berzLib = ffi.load(PATH .. '/tpsa-berz/libtpsa-berz.so')
 
 ffi.cdef[[
   // set up the tpsa with maximum order no, nv vars, printing it on iunit

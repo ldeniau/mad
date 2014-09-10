@@ -9,7 +9,7 @@ local format, setmetatable = string.format, setmetatable
 -- first get the directory structure: for "foo/bar/baz.lua" it is "foo.bar"
 local PATH = (...):match("(.+)%.[^%.]+$") or (...)
 PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
-local yangLib = ffi.load(PATH .. '/tpsa-yang/TPSALib-Yang.so')
+local yangLib = ffi.load(PATH .. '/tpsa-yang/libtpsa-yang.so')
 
 ffi.cdef[[
   typedef unsigned int TNVND;

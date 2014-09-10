@@ -37,7 +37,7 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
 static inline void
 print_l(const idx_t const* l)
 {
-  printf("l=%p\n", l);
+  printf("l=%p\n", (void*)l);
   int s = l[0];
   printf("s=%d\n", s);
   for (int i=1; i < s*s; i++)
@@ -189,12 +189,14 @@ tpsa_setCoeff(tpsa_t *t, idx_t i, int o, coef_t v)
 int // error code
 tpsa_add(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 {
+  (void)a; (void)b; (void)c;
   return 0;
 }
 
 int // error code
 tpsa_sub(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 {
+  (void)a; (void)b; (void)c;
   return 0;
 }
 

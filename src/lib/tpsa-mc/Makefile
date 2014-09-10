@@ -1,9 +1,2 @@
-# small make file to compile the interface to the polynom
-
-sharedTpsa: tpsa.h tpsa.cpp
-	g++ -O3 -fPIC -shared -std=c++11 -o TPSALib-MC.so tpsa.cpp
-
-
-
-
-
+tpsaMC: tpsa.cpp tpsa.h
+	g++ -std=c++98 -Wall -W -pedantic -O3 -shared -fPIC tpsa.cpp -o libtpsa-mc.so

@@ -454,14 +454,14 @@ extern "C" _declspec(dllexport) void _stdcall ad_fini()
 void ad_fini()
 #endif
 {
-    for (int i = 0; i < gnv + 1; ++i)
+    for (unsigned i = 0; i < gnv + 1; ++i)
         delete[] H[i];
     delete[] H;
     H = NULL;
 
     delete[] base;
 
-    for (int i = 0; i < order_index[gnd]; ++i)
+    for (unsigned i = 0; i < order_index[gnd]; ++i)
         delete[] prdidx[i];
     delete[] prdidx;
 
@@ -471,7 +471,7 @@ void ad_fini()
 
     // the only reference to advecpool size is the adveclen.size() which is
     //constructed at the same time, with same number of elements
-    for (int i = 0; i < adveclen.size(); ++i)
+    for (unsigned i = 0; i < adveclen.size(); ++i)
         delete[] advecpool[i];
     delete[] advecpool;
     adveclen.clear();
