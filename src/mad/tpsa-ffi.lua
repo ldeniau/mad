@@ -484,31 +484,52 @@ function M:new()
   return setmetatable({ _T=self._T, _c=new_Ctpsa(self._T) }, getmetatable(self));
 end
 
-local function same(self)
-  local a = self:new()
-  a._c.mo, a._c.nz = self._c.mo, self._c.nz
-  return a
+local function same(src, dst)
+  dst = dst or src:new()
+  dst._c.mo, dst._c.nz = src._c.mo, src._c.nz
+  return dst
 end
 
-function M:cpy()
-  local a, pe = same(self), self._T.D.To.pe
-  local mo, acoef, scoef = a._c.mo, a._c.coef, self._c.coef
+function M.cpy(src, dst)
+  dst = dst or same(src)
+  local pe = src._T.D.To.pe
+  local mo, acoef, scoef = dst._c.mo, dst._c.coef, src._c.coef
   for i=0,pe[mo] do acoef[i] = scoef[i] end
-  return a
+  return dst
 end
 
 function M.setCoeff(t, i, v)
   local d = t._T.D
   local o = d.To.o
   if type(i) == "table" then i = d.index(i) end
+  if o[i] >= 2 then error("NYI. Poke only order 1 and use mul") end
   clib.tpsa_setCoeff(t._c, i, o[i], v);
 end
+
+function M.setConst(t, v)
+  clib.tpsa_setCoeff(t._c, 0, 0, v)
+end
+
 
 function M.getCoeff(t, i)
   if type(i) == "table" then i = t._T.D.index(i) end
   return t._c.coef[i]
 end
 
+-- interface for benchmarking
+function M.init(var_names, mo)
+  return M(var_names, mo)
+end
+
+function M.mul(a, b, c)
+  -- c should be different from a and b
+  clib.tpsa_mul(a._c, b._c, c._c)
+end
+
+function M.print(t)
+  -- TODO: print in same format as Berz ?
+  t:print_vect()
+end
 
 
 -- metamethods -----------------------------------------------------------------
@@ -527,9 +548,7 @@ function M.__mul(a, b)
     rcf, scf = rc.coef, a._c.coef
     for i=0,rc.desc.nc do rcf[i] = b * scf[i] end
   elseif a._T == b._T then
-    if a._c.mo > b._c.mo then a, b = b, a end -- swap
     r = b:new()
-
     clib.tpsa_mul(a._c, b._c, r._c)
   else
     error("invalid or incompatible TPSA")
