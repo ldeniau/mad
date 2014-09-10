@@ -18,22 +18,47 @@ RETURN VALUES
 SEE ALSO
   mad.element
 ]]
-
+ 
 -- requires --------------------------------------------------------------------
-
-local object = require"mad.object"
-local utils = require"mad.utils"
 
 -- locals ----------------------------------------------------------------------
 
-local type, setmetatable = type, setmetatable
-local rawget = rawget
-local is_list, show_list = utils.is_list, utils.show_list
+local cos, sin, cosh, sinh = math.cos, math.sin, math.cosh, math.sinh
 
 -- functions -------------------------------------------------------------------
 
-local track_drift = function ()
+M.track_drift = function (L)
+  -- handbook of accelerator physics 2.2.1
+  return function (ray)
+    ray.x = ray.x + L * ray.px
+    ray.y = ray.y + L * ray.py
+  end
+end
 
+M.track_thick_dipole = function (L, angle)
+  return function (ray)
+  end
+end
+
+M.track_thick_quadrupole = function (L, k)
+  -- handbook of accelerator physics 2.2.1
+  local C , S  = cos (k*L), sin (k*L)
+  local Ch, Sh = cosh(k*L), sinh(k*L)
+  local r11, r12 =    C, S/k
+  local r21, r22 = -k*S, C
+  local r33, r34 =   Ch, Sh/k
+  local r43, r44 = k*Sh, Ch
+  return  function (ray)
+    ray. x = R11*ray.x + R12*ray.px
+    ray.px = R21*ray.x + R22*ray.px
+    ray. y = R33*ray.y + R34*ray.py
+    ray.py = R43*ray.y + R44*ray.py
+  end
+end
+
+M.track_thick_sextupole = function (L, k)
+  return function (ray)
+  end
 end
 
 -- test suite -----------------------------------------------------------------------
