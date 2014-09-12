@@ -114,18 +114,18 @@ hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, const idx_t cons
   printf("diag_mul\n");
 #endif
   for (int il=1; il < l[0]; il++) {
-    int isrc = il+dio;
-    int idst = l[il];
-    if (idst >= 0)
-      cc[idst] = cc[idst] + ca[isrc]*cb[isrc];   
+    int ia = il+dio;
+    int ic = l[il];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ia];   
   }
 }
 
 static void
-poly_mul2 (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
+hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 {
 #ifdef TRACE
-  printf("poly_mul2\n");
+  printf("poly_mul\n");
 #endif
   desc_t *dc = c->desc;
   int *p = dc->psto, dmo = dc->mo;
@@ -133,7 +133,9 @@ poly_mul2 (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   bit_t   nza = a->nz  ,  nzb = b->nz;
   coef_t *cc  = c->coef;
 
-
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for (int oc=2; oc <= c->mo; oc++) {
     int ho = oc/2;
     for (int j=1; j <= ho; ++j) {
@@ -209,20 +211,20 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
 
-  desc_t *dc = c->desc;
   const coef_t *ca = a->coef, *cb = b->coef;
-  coef_t       *cc = c->coef;
+  coef_t *cc = c->coef;
+  desc_t *dc = c->desc;
+
+  c->nz = a->nz & b->nz;
+  c->mo = imin(a->mo + b->mo, dc->mo);
 
   cc[0] = ca[0]*cb[0];
 
   for (int i=1; i <= dc->nc; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
-  c->nz = a->nz & b->nz;
-  c->mo = imin(a->mo + b->mo, dc->mo);
-
   if (c->mo >= 2)
-    poly_mul2(a, b, c); // TBC
+    hpoly_mul(a, b, c);
 
   return 0;
 }
