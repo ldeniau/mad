@@ -136,8 +136,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for (int i=2; i <= c->mo; i++) {
-    int oc = i & 1 ? c->mo - i + 2 : i;
+  for (int oc=2; oc <= c->mo; oc++) {
     int ho = oc/2;
     for (int j=1; j <= ho; ++j) {
       int oa = oc-j, ob = j;

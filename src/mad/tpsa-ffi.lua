@@ -557,7 +557,6 @@ function M.__mul(a, b)
   return r
 end
 
-
 function M.pow(a, p)
   local b, r = a:cpy(), 1
 
@@ -585,8 +584,7 @@ function MT:__call(n,o,m,f)
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
     local t = get_desc(n,o,m,f)
-    local c = new_Ctpsa(t)
-    return setmetatable({_T=t, _c=c}, self)
+    return setmetatable({_T=t, _c=new_Ctpsa(t)}, self)
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
