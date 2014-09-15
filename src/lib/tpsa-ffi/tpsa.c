@@ -155,8 +155,10 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
         c->nz = bset(c->nz,oc);
       }
     }
-    if (oc%2 == 0)
+    if (oc%2 == 0) {
       hpoly_diag_mul(ca,cb,cc, dc->l[ho*dmo + ho] ,p[ho]-1);
+      c->nz = bset(c->nz,oc);
+    }
   }
 }
 
@@ -215,7 +217,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   coef_t *cc = c->coef;
   desc_t *dc = c->desc;
 
-  c->nz = 0;
+  c->nz = a->nz | b->nz;
   c->mo = imin(a->mo + b->mo, dc->mo);
 
   cc[0] = ca[0]*cb[0];

@@ -495,10 +495,11 @@ local function same(src, dst)
 end
 
 function M.cpy(src, dst)
-  dst = dst or same(src)
+  dst = same(src, dst)
+
   local pe = src._T.D.To.pe
-  local mo, acoef, scoef = dst._c.mo, dst._c.coef, src._c.coef
-  for i=0,pe[mo] do acoef[i] = scoef[i] end
+  local dmo, dcoef, scoef = dst._c.mo, dst._c.coef, src._c.coef
+  for i=0,pe[dmo] do dcoef[i] = scoef[i] end
   return dst
 end
 
