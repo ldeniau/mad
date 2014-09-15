@@ -426,6 +426,10 @@ end
 
 -- debugging -------------------------------------------------------------------
 
+local function printf(s, ...)  -- TODO: put this somewhere and import it
+  io.write(s:format(...))
+end
+
 function M.print_mono(a, term)
   local s = not a[0] and 1 or 0
 
@@ -527,8 +531,20 @@ function M.mul(a, b, c)
 end
 
 function M.print(t)
-  -- TODO: print in same format as Berz ?
-  t:print_vect()
+  local d, nv, mo = t._T.D, #t._T.V, t._c.mo
+  local To, c = d.To, t._c.coef
+  local pe, o= To.pe, To.o
+  printf("\n%10s, NO =%5d, NV =%5d, INA =%5d\n%s\n",
+         "NONAME",d.mo, nv, 0,
+         "*********************************************")
+  printf("\n    I  COEFFICIENT          ORDER   EXPONENTS\n")
+  -- TODO: print "ALL COMPONENTS ZERO" when neccesary
+  for i=0,pe[mo] do
+    printf("%6d  %21.14E %5d   ", i, c[i], o[i])
+    local m = To[i]
+    for mi=1,#m do printf("%2d ", m[mi]) end
+    printf("\n")
+  end
 end
 
 
