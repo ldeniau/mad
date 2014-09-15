@@ -1,4 +1,5 @@
 local clock = os.clock
+local check = require "check"
 
 local function mono_val(l, n)
   local a = {}
@@ -53,6 +54,8 @@ local function setup(tpsa, nv, no)
   fill_ord1(t, nv)
   fill_full(t, no)
 
+  check.setup(tpsa, nv, no)
+
   return t, t:cpy(), t:new()
 end
 
@@ -79,6 +82,8 @@ end
 
 -- benchmark the speed of fct_name from module mod_name using parameters from filename
 local function bench(mod_name, fct_name, filename)
+  printf("Usage: luajit benchmark.lua mod_name fct_name [filename]\n")
+
   if not filename then filename = fct_name .. "-params.txt" end
   local NV, NO, NL = read_params(filename)
   assert(#NV == #NO and #NV == #NL)
@@ -87,12 +92,24 @@ local function bench(mod_name, fct_name, filename)
   printf("nv\tno\tnl\ttime (s)\n")
 
   local tpsa = require(mod_name)
+
   local Ts = {}
   for i=1,#NL do
     local t1, t2, r = setup(tpsa, NV[i], NO[i])
+    check.print(t1)
+    check.print(t2)
+    check.print(r)
+
     Ts[i] = timeit(tpsa[fct_name], NL[i], t1, t2, r)
+
+    check.print(t1)
+    check.print(t2)
+    check.print(r)
+
     printf("%d\t%d\t%d\t%.3f\n", NV[i], NO[i], NL[i], Ts[i])
   end
+
+  check.tear_down()
 end
 
 bench(arg[1], arg[2], arg[3])
