@@ -4576,7 +4576,7 @@ c      write(*,*) 'Allocating DA vector'
             ioa=1
           endif
           if(abs(cc(ipoa+i-1)).gt.eps) then
-            write(iunit,'(I6,2X,E21.14,I5,4X,18(2I2,1X))')              &
+            write(iunit,'(I6,2X,ES21.14,I5,4X,18(2I2,1X))')              &
      &            iout,cc(ipoa+i-1),ioa,(j(iii),iii=1,nvmax)
 !            write(iunit,*) cc(ipoa+i-1)
           endif
@@ -4593,7 +4593,7 @@ c      write(*,*) 'Allocating DA vector'
             if(abs(cc(ii)).gt.eps) then
 !ETIENNE
               iout = iout+1
-              write(iunit,'(I6,2X,E21.14,I5,4X,18(2I2,1X))')            &
+              write(iunit,'(I6,2X,ES21.14,I5,4X,18(2I2,1X))')            &
      &        iout,cc(ii),ioa,(j(iii),iii=1,nvmax)
 !ETIENNE
 !              write(iunit,*) cc(ii)
