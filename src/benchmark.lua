@@ -1,6 +1,8 @@
 local clock = os.clock
 local check = require "check"
 
+local header_fmt, line_fmt
+
 local function mono_val(l, n)
   local a = {}
   for i=1,l do a[i] = n end
@@ -81,15 +83,15 @@ local function read_params(filename)
 end
 
 -- benchmark the speed of fct_name from module mod_name using parameters from filename
-local function bench(mod_name, fct_name, filename)
-  printf("Usage: luajit benchmark.lua mod_name fct_name [filename]\n")
+local function bench(mod_name, fct_name, filename, print_size)
+  printf("Usage: luajit benchmark.lua mod_name fct_name [filename] [print_size?]\n")
 
   if not filename then filename = fct_name .. "-params.txt" end
   local NV, NO, NL = read_params(filename)
   assert(#NV == #NO and #NV == #NL)
 
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
-  printf("nv\tno\tnl\ttime (s)\n")
+  printf(header_fmt)
 
   local tpsa = require(mod_name)
 
@@ -106,12 +108,26 @@ local function bench(mod_name, fct_name, filename)
     check.print(t2)
     check.print(r)
 
-    printf("%d\t%d\t%d\t%.3f\n", NV[i], NO[i], NL[i], Ts[i])
+    if print_size then
+      local nc, tsize, dsize = r._T.D.nc, r.size, r._T.D.size
+      tsize, dsize = tsize / 1024, dsize / 1024
+      printf(line_fmt, NV[i], NO[i], NL[i], nc, tsize, dsize, Ts[i])
+    else
+      printf(line_fmt, NV[i], NO[i], NL[i], Ts[i])
+    end
   end
 
   check.tear_down()
 end
 
-bench(arg[1], arg[2], arg[3])
+if arg[4] then
+  header_fmt = "nv\tno\tnl\tnc\ttpsa_sz(Kb)\tdesc_sz(Kb)\ttime (s)\n"
+  line_fmt   = "%d\t%d\t%d\t%d\t%d\t%d\t%.3f\n"
+else
+  header_fmt = "nv\tno\tnl\ttime (s)\n"
+  line_fmt   = "%d\t%d\t%d\t%.3f\n"
+end
+
+bench(arg[1], arg[2], arg[3], arg[4])
 
 

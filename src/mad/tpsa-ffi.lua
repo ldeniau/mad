@@ -343,7 +343,10 @@ end
 local function build_L(oa, ob, D)
   local To, index = D.To, D.index
   local ps, pe = To.ps, To.pe
+
   local lc = fill_L(oa,ob,ps,pe)
+  D.size = D.size + lc[0] * lc[0] * 4
+
   local ias, ibs = ps[oa]-1, ps[ob]-1  -- for shifting to 1
 
   local function idx_lc(ia, ib) return (ia-ias)*lc[0] + (ib-ibs) end
@@ -370,6 +373,7 @@ end
 local function set_L(d)
   local o = d.mo
   local L = iptrArr(o*o)
+  d.size = d.size + o*o*8 -- pointers
   local ptrs = {}   -- stores lc references so they don't get GC'ed
 
   for oc=2,o do
@@ -401,11 +405,12 @@ local function add_desc(s, n, a, o, f)
   local ds = concat(a,',')
   local d = M.D[ds]
   if not d then -- build the descriptor
-    d = { A=a, mo=o, F=f or fun_true } -- alphas, order and predicate
+    d = { A=a, mo=o, size=0, F=f or fun_true } -- alphas, order, size and predicate
     set_T(d)
     set_H(d) -- requires Tv
     set_L(d)
     d.cdesc = desc_t(#d.To.ps + 1, {d.nc, d.mo, d.L, d.To.ps});
+    d.size = d.size + 4 + 4 + 8 + (#d.To.ps+1) * 4
 
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
@@ -485,7 +490,8 @@ end
 
 -- methods ---------------------------------------------------------------------
 function M:new()
-  return setmetatable({ _T=self._T, _c=new_Ctpsa(self._T) }, getmetatable(self));
+  return setmetatable({ _T=self._T, _c=new_Ctpsa(self._T), size=self.size },
+                        getmetatable(self));
 end
 
 local function same(src, dst)
@@ -514,7 +520,6 @@ end
 function M.setConst(t, v)
   clib.tpsa_setCoeff(t._c, 0, 0, v)
 end
-
 
 function M.getCoeff(t, i)
   if type(i) == "table" then i = t._T.D.index(i) end
@@ -601,7 +606,8 @@ function MT:__call(n,o,m,f)
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
     local t = get_desc(n,o,m,f)
-    return setmetatable({_T=t, _c=new_Ctpsa(t)}, self)
+    local s = 8 + 4 + 4 + (t.D.nc+1)*4
+    return setmetatable({_T=t, _c=new_Ctpsa(t), size=s}, self)
   end
 
   error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")

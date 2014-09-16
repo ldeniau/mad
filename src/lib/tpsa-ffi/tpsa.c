@@ -13,13 +13,6 @@ typedef int           idx_t;
 typedef struct desc   desc_t;
 typedef struct tpsa   tpsa_t;
 
-struct T {  // To, Tv; not needed here yet; better to keep them in lua
-  int    size;
-  mono_t mons[1];
-  mono_t o[1];
-  int    ps[1], pe[1];
-};
-
 struct desc {
   int     nc, mo;
   idx_t **l;
@@ -80,7 +73,7 @@ hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const
   printf("sym_mul\n");
 #endif
   int rs = l[0];
-  for (idx_t ial=1; ial <       rs;     ial++)
+  for (idx_t ial=1; ial <         rs  ; ial++)
   for (idx_t ibl=1; ibl <= l[ ial*rs ]; ibl++) {
     int ia = ial+iao;
     int ib = ibl+ibo;
@@ -97,7 +90,7 @@ hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t cons
   printf("asym_mul\n");
 #endif
   int rs = l[0];
-  for (int ial=1; ial <      rs;    ial++)
+  for (int ial=1; ial <         rs  ; ial++)
   for (int ibl=1; ibl <= l[ ial*rs ]; ibl++) {
     int ia = ial + iao;
     int ib = ibl + ibo;
@@ -217,7 +210,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   coef_t *cc = c->coef;
   desc_t *dc = c->desc;
 
-  c->nz = a->nz | b->nz;
+  c->nz = (a[0] ? a->nz : 0) | (b[0] ? b->nz : 0);
   c->mo = imin(a->mo + b->mo, dc->mo);
 
   cc[0] = ca[0]*cb[0];
