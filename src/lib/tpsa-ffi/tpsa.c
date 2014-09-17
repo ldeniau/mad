@@ -64,53 +64,75 @@ imin (int a, int b)
   return a<b ? a : b;
 }
 
+static inline idx_t
+hpoly_idx_diag(idx_t ia, idx_t ib)
+{
+  return (ia*(ia+1))/2 + ib;
+}
+
+static inline idx_t
+hpoly_idx_rect(idx_t ia, idx_t ib, int ib_size)
+{
+  return ia*ib_size + ib;
+}
+
 // == local functions
 
 static void
-hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int iao, int ibo)
+hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
   printf("sym_mul\n");
 #endif
-  int rs = l[0];
-  for (idx_t ial=1; ial <         rs  ; ial++)
-  for (idx_t ibl=1; ibl <= l[ ial*rs ]; ibl++) {
-    int ia = ial+iao;
-    int ib = ibl+ibo;
-    int ic = l[ ial*rs + ibl ];
-    if (ic >= 0)
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+
+  int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
+  if (oa == ob) {
+    for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
+    for (idx_t ib=ps[ob]; ib <   ia    ; ib++) {
+      int ic = l[ hpoly_idx_diag(ia-iao, ib-ibo) ];
+      if (ic >= 0)
+        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
+  }
+  else {
+    int ib_size = ps[ob+1] - ps[ob];
+    for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
+    for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
+      int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
+      if (ic >= 0)
+        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
   }
 }
 
 static void
-hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int iao, int ibo)
+hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
   printf("asym_mul\n");
 #endif
-  int rs = l[0];
-  for (int ial=1; ial <         rs  ; ial++)
-  for (int ibl=1; ibl <= l[ ial*rs ]; ibl++) {
-    int ia = ial + iao;
-    int ib = ibl + ibo;
-    int ic = l[ ial*rs + ibl ];
+
+  int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
+  int ib_size = ps[ob+1] - ps[ob];
+  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
+  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
+    int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
     if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
   }
 }
 
 static void
-hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, const idx_t const* l, int dio)
+hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, const idx_t const* l, int oa, int ps[])
 {
 #ifdef TRACE
   printf("diag_mul\n");
 #endif
-  for (int il=1; il < l[0]; il++) {
-    int ia = il+dio;
-    int ic = l[il];
+  int iao = ps[oa];
+  for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
+    int ic = l[ hpoly_idx_diag(ia-iao, ia-iao)];
     if (ic >= 0)
-      cc[ic] = cc[ic] + ca[ia]*cb[ia];   
+      cc[ic] = cc[ic] + ca[ia]*cb[ia];
   }
 }
 
@@ -121,7 +143,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   printf("poly_mul\n");
 #endif
   desc_t *dc = c->desc;
-  int *p = dc->psto, dmo = dc->mo;
+  int *ps = dc->psto, hod = dc->mo / 2;
   const coef_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
   coef_t *cc  = c->coef;
@@ -130,26 +152,26 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 #pragma omp parallel for
 #endif
   for (int oc=2; oc <= c->mo; oc++) {
-    int ho = oc/2;
-    for (int j=1; j <= ho; ++j) {
+    int hoc = oc/2;
+    for (int j=1; j <= hoc; ++j) {
       int oa = oc-j, ob = j;
-      const idx_t* l = dc->l[oa*dmo + ob];
+      const idx_t* l = dc->l[oa*hod + ob];
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_sym_mul(ca,cb,cc, l, p[oa]-1,p[ob]-1);
+        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
         c->nz = bset(c->nz,oc);
       }
       else if (bget(nza,oa) && bget(nzb,ob)) {
-        hpoly_asym_mul(ca,cb,cc, l, p[oa]-1,p[ob]-1);
+        hpoly_asym_mul(ca,cb,cc, l, oa,ob,ps);
         c->nz = bset(c->nz,oc);
       }
       else if (bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_asym_mul(cb,ca,cc, l, p[oa]-1,p[ob]-1);
+        hpoly_asym_mul(cb,ca,cc, l, oa,ob,ps);
         c->nz = bset(c->nz,oc);
       }
     }
     if (oc%2 == 0) {
-      hpoly_diag_mul(ca,cb,cc, dc->l[ho*dmo + ho] ,p[ho]-1);
+      hpoly_diag_mul(ca,cb,cc, dc->l[hoc*hod + hoc], hoc,ps);
       c->nz = bset(c->nz,oc);
     }
   }
@@ -210,7 +232,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   coef_t *cc = c->coef;
   desc_t *dc = c->desc;
 
-  c->nz = (a[0] ? a->nz : 0) | (b[0] ? b->nz : 0);
+  c->nz = (ca[0] ? a->nz : 0) | (cb[0] ? b->nz : 0);
   c->mo = imin(a->mo + b->mo, dc->mo);
 
   cc[0] = ca[0]*cb[0];
@@ -223,8 +245,6 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   return 0;
 }
-
-
 
 
 

@@ -192,7 +192,7 @@ end
 local function table_by_ords(o,a)
   local v = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=a[0] }
   for i=1,o do
-    v.ps[i]   = #v+1
+    v.ps[i]   = #v + 1
     v.pe[i-1] = #v
     for j=1,#a do
       if a.o[j] == i then
@@ -203,7 +203,8 @@ local function table_by_ords(o,a)
       end
     end
   end
-  v.pe[o] = #v
+  v.ps[o+1] = #v + 1
+  v.pe[o]   = #v
   return v
 end
 
@@ -332,48 +333,51 @@ end
 --------------------
 -- L matrix, indexing in polynomials
 
-local function fill_L(oa, ob, ps, pe)
-  local rows = pe[oa] - ps[oa] + 1
-  rows = rows + 1  -- indexing from 1
-  local lc = intArr(rows * rows, -1)
-  lc[0] = rows
-  return lc
+local function fill_L(oa, ob, D)
+  local ps, pe = D.To.ps, D.To.pe
+  local rows = pe[oa]-ps[oa]+1
+  local cols = pe[ob]-ps[ob]+1
+  local size
+
+  if   oa == ob then size = ((rows+1) * cols) / 2
+  else               size =   rows    * cols      end
+
+  D.size = D.size + size*4
+  return intArr(size, -1)
 end
+
+local function hpoly_idx_fun(oa, ob, ps, pe)
+  local iao, ibo = ps[oa], ps[ob]  -- offsets
+  if oa == ob then
+    return function (ia, ib) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
+  else
+    local cols = pe[ob] - ps[ob] + 1
+    return function (ia, ib) return (ia-iao)*cols + ib-ibo end
+  end
+end
+
 
 local function build_L(oa, ob, D)
   local To, index = D.To, D.index
   local ps, pe = To.ps, To.pe
+  local lc = fill_L(oa, ob, D)
+  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
 
-  local lc = fill_L(oa,ob,ps,pe)
-  D.size = D.size + lc[0] * lc[0] * 4
-
-  local ias, ibs = ps[oa]-1, ps[ob]-1  -- for shifting to 1
-
-  local function idx_lc(ia, ib) return (ia-ias)*lc[0] + (ib-ibs) end
-
-  for ia=ps[oa],pe[oa] do
-    local lin_s = min(ia,pe[ob])
-    lc[ idx_lc(ia,ibs) ] = lin_s - ibs    -- line size on col 0
-
-    for ib=ps[ob],lin_s do
-      local m = mono_add(To[ia], To[ib])
-      if mono_isvalid(m, D.A, D.mo, D.F) then
-        if ia ~= ib then
-          lc[ idx_lc(ia,ib) ]  = index(m)
-        else
-          lc[ idx_lc(ias,ib) ] = index(m)  -- diag indexes on row 0
-        end
-      end
+  for ia=ps[oa],       pe[oa]  do
+  for ib=ps[ob],min(ia,pe[ob]) do
+    local m = mono_add(To[ia], To[ib])
+    if mono_isvalid(m, D.A, D.mo, D.F) then
+        lc[ idx_lc(ia,ib) ] = index(m)
     end
-  end
+  end end
 
   return lc
 end
 
 local function set_L(d)
-  local o = d.mo
-  local L = iptrArr(o*o)
-  d.size = d.size + o*o*8 -- pointers
+  local o, ho = d.mo, floor(d.mo * 0.5)
+  local L = iptrArr(o*ho + 1)
+  d.size = d.size + o*ho*8 -- pointers
   local ptrs = {}   -- stores lc references so they don't get GC'ed
 
   for oc=2,o do
@@ -381,7 +385,7 @@ local function set_L(d)
       local oa, ob = oc-j, j
 
       local lc = build_L(oa, ob, d)
-      L[oa*o + ob], ptrs[#ptrs+1] = lc, lc
+      L[oa*ho + ob], ptrs[#ptrs+1] = lc, lc
     end
   end
   d.L, d._ptrs = L, ptrs
@@ -466,24 +470,27 @@ function M.print_vect(t)
   write(" ]\n")
 end
 
-local function print_lc(lc)
-  for ial=0,lc[0]-1 do
-    io.write("\n  ")
-    for ibl=0,lc[0]-1 do
-      io.write(string.format("%d ", lc[ ial*lc[0] + ibl ]))
+local function print_lc(lc, oa, ob, d)
+  local ps, pe = d.To.ps, d.To.pe
+  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
+  for ia=ps[oa],pe[oa] do
+    printf("\n  ")
+    for ib=ps[ob],min(ia,pe[ob]) do
+      printf("%d ", lc[ idx_lc(ia,ib) ])
     end
   end
-  io.write("\n  ")
+  printf("\n  ")
 end
 
-function M.print_L(d)
-  local l, o = d.L, d.mo
+function M.print_L(t)
+  local d = t._T.D
+  local l, o, ho = d.L, d.mo, floor(d.mo * 0.5)
   for oc=2,o do
     for j=1,oc/2 do -- foreach pair of oa, ob=oc-oa
       local oa, ob = oc-j, j
-      io.write(string.format("L[%d][%d] = {", oa, ob))
-      local lc = l[oa*o + ob]
-      print_lc(lc)
+      printf("L[%d][%d] = {", oa, ob)
+      local lc = l[oa*ho + ob]
+      print_lc(lc, oa, ob, d)
     end
   end
 end
