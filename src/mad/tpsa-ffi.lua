@@ -356,7 +356,6 @@ local function hpoly_idx_fun(oa, ob, ps, pe)
   end
 end
 
-
 local function build_L(oa, ob, D)
   local To, index = D.To, D.index
   local ps, pe = To.ps, To.pe
@@ -376,8 +375,8 @@ end
 
 local function set_L(d)
   local o, ho = d.mo, floor(d.mo * 0.5)
-  local L = iptrArr(o*ho + 1)
-  d.size = d.size + o*ho*8 -- pointers
+  local L =   iptrArr(o*ho + 1)
+  d.size  = d.size + (o*ho + 1)*8 -- pointers
   local ptrs = {}   -- stores lc references so they don't get GC'ed
 
   for oc=2,o do

@@ -121,11 +121,11 @@ local function bench(mod_name, fct_name, filename, print_size)
 end
 
 if arg[4] then
-  header_fmt = "nv\tno\tnl\tnc\ttpsa_sz(Kb)\tdesc_sz(Kb)\ttime (s)\n"
-  line_fmt   = "%d\t%d\t%d\t%d\t%d\t%d\t%.3f\n"
+  header_fmt = "nv\tno\tnl      \t  nc\ttpsa_sz(Kb)\tdesc_sz(Kb)\ttime (s)\n"
+  line_fmt   = "%d\t%d\t%8d\t%5d\t%10d\t%10d\t%.3f\n"
 else
-  header_fmt = "nv\tno\tnl\ttime (s)\n"
-  line_fmt   = "%d\t%d\t%d\t%.3f\n"
+  header_fmt = "nv\tno\tnl       \ttime (s)\n"
+  line_fmt   = "%d\t%d\t%8d\t%.3f\n"
 end
 
 bench(arg[1], arg[2], arg[3], arg[4])
