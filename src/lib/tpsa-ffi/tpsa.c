@@ -65,7 +65,7 @@ imin (int a, int b)
 }
 
 static inline idx_t
-hpoly_idx_diag(idx_t ia, idx_t ib)
+hpoly_idx_triang(idx_t ia, idx_t ib)
 {
   return (ia*(ia+1))/2 + ib;
 }
@@ -79,37 +79,48 @@ hpoly_idx_rect(idx_t ia, idx_t ib, int ib_size)
 // == local functions
 
 static void
+hpoly_triang_mul(const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ps[])
+{
+#ifdef TRACE
+  printf("triang_mul oa=%d ob=%d \n", oa, oa);
+#endif
+  int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
+  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
+  for (idx_t ib=ps[oa]; ib <   ia    ; ib++) {
+      int ic = l[ hpoly_idx_triang(ia-iao, ib-ibo) ];
+      if (ic >= 0)
+        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  }
+
+  for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
+    int ic = l[ hpoly_idx_triang(ia-iao, ia-iao)];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ia];
+  }
+}
+
+
+static void
 hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
-  printf("sym_mul\n");
+  printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-
   int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
-  if (oa == ob) {
-    for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
-    for (idx_t ib=ps[ob]; ib <   ia    ; ib++) {
-      int ic = l[ hpoly_idx_diag(ia-iao, ib-ibo) ];
-      if (ic >= 0)
-        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  int ib_size = ps[ob+1] - ps[ob];
+  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
+  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
+    int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
     }
-  }
-  else {
-    int ib_size = ps[ob+1] - ps[ob];
-    for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
-    for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
-      int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
-      if (ic >= 0)
-        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    }
-  }
 }
 
 static void
 hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
-  printf("asym_mul\n");
+  printf("asym_mul oa=%d ob=%d \n", oa, ob);
 #endif
 
   int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
@@ -119,20 +130,6 @@ hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t cons
     int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
     if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
-  }
-}
-
-static void
-hpoly_diag_mul (const coef_t* ca, const coef_t* cb, coef_t* cc, const idx_t const* l, int oa, int ps[])
-{
-#ifdef TRACE
-  printf("diag_mul\n");
-#endif
-  int iao = ps[oa];
-  for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
-    int ic = l[ hpoly_idx_diag(ia-iao, ia-iao)];
-    if (ic >= 0)
-      cc[ic] = cc[ic] + ca[ia]*cb[ia];
   }
 }
 
@@ -152,9 +149,8 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 #pragma omp parallel for
 #endif
   for (int oc=2; oc <= c->mo; oc++) {
-    int hoc = oc/2;
-    for (int j=1; j <= hoc; ++j) {
-      int oa = oc-j, ob = j;
+    for (int j=1; j <= (oc-1)/2; ++j) {
+      int oa = oc-j, ob = j;            // oa != ob
       const idx_t* l = dc->l[oa*hod + ob];
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
@@ -170,9 +166,12 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
         c->nz = bset(c->nz,oc);
       }
     }
-    if (oc%2 == 0) {
-      hpoly_diag_mul(ca,cb,cc, dc->l[hoc*hod + hoc], hoc,ps);
-      c->nz = bset(c->nz,oc);
+    if (! (oc&1)) {  // even oc, triang matrix
+      int hoc = oc/2;
+      if (bget(nza,hoc) && bget(nzb,hoc) ) {
+        hpoly_triang_mul(ca,cb,cc, dc->l[hoc*hod + hoc], hoc,ps);
+        c->nz = bset(c->nz,oc);
+      }
     }
   }
 }
