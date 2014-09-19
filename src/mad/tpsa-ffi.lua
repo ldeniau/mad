@@ -69,8 +69,12 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
   int     mo;
   bit_t   nz;
-  coef_t  coef[?];
+  int     id;
+  coef_t  coef[];
 };
+
+tpsa_t* tpsa_new(desc_t *d);
+void    tpsa_delete(tpsa_t *t);
 
 int tpsa_setCoeff(tpsa_t* t, idx_t i, int o, coef_t v);
 int tpsa_mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c);
@@ -80,7 +84,6 @@ int tpsa_print(tpsa_t *t);
 ffi.cdef(static_dcl)
 
 local desc_t  = ffi.typeof("desc_t    ")
-local tpsa_t  = ffi.typeof("tpsa_t    ")
 local intArr  = ffi.typeof("int    [?]")
 local iptrArr = ffi.typeof("int*   [?]")
 
@@ -214,7 +217,7 @@ end
 local function table_check(D)
   local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
 
-  if D.nc~= #Tv                        then return 1e6+0 end
+  if D.nc~= #Tv + 1                    then return 1e6+0 end
   for i=2,#a do
     if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
                                        then return 1e6+i end
@@ -231,7 +234,7 @@ end
 local function set_T(D)
   D.Tv = table_by_vars(D.mo, D.A, D.F)
   D.To = table_by_ords(D.mo, D.Tv)
-  D.nc = #D.Tv
+  D.nc = #D.Tv + 1 -- with ord 0
 end
 
 --------------------
@@ -392,9 +395,7 @@ end
 
 local function new_Ctpsa(t)
   local dp = t.D.cdesc
-  local ctpsa = tpsa_t(dp.nc+1)
-  ctpsa.desc = dp
-  return ctpsa
+  return ffi.gc(clib.tpsa_new(dp), clib.tpsa_delete)
 end
 
 --------------------
@@ -612,7 +613,7 @@ function MT:__call(n,o,m,f)
   if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
     self.__index = self  -- inheritance
     local t = get_desc(n,o,m,f)
-    local s = 8 + 4 + 4 + (t.D.nc+1)*4
+    local s = 8 + 4 + 4 + 4*t.D.nc
     return setmetatable({_T=t, _c=new_Ctpsa(t), size=s}, self)
   end
 
