@@ -23,6 +23,7 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
   int     mo;
   bit_t   nz;
+  int     id;
   coef_t  coef[];
 };
 
@@ -186,6 +187,31 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
 // == public functions
 
+static int counter = 0;
+
+tpsa_t*
+tpsa_new(desc_t *d)
+{
+  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(coef_t));
+#ifdef TRACE
+  printf("new %p #%d from %p nc=%d\n", (void*)t, counter+1, (void*)d, d->nc);
+#endif
+  t->desc = d;
+  t->id = ++counter;
+  t->mo = 0;
+  t->nz = 0;
+  return t;
+}
+
+void
+tpsa_delete(tpsa_t* t)
+{
+#ifdef TRACE
+  printf("del %p #%d\n", (void*)t, t->id);
+#endif
+  free(t);
+}
+
 int // error code
 tpsa_print(tpsa_t *t)
 {
@@ -204,7 +230,7 @@ tpsa_setCoeff(tpsa_t *t, idx_t i, int o, coef_t v)
   printf("setCoeff\n");
 #endif
   assert(o <= t->desc->mo);
-  assert(i <= t->desc->nc);
+  assert(i < t->desc->nc);
   if (o > t->mo)
     t->mo = o;
   t->nz = bset(t->nz, o);
@@ -244,10 +270,10 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i <= dc->nc; i++)
+  for (int i=1; i < dc->nc; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
-  int comps = dc->nc * 2 + 1;
+  int comps = (dc->nc-1) * 2 + 1;
 
   if (c->mo >= 2)
     comps += hpoly_mul(a, b, c);
