@@ -539,7 +539,7 @@ end
 
 function M.mul(a, b, c)
   -- c should be different from a and b
-  clib.tpsa_mul(a._c, b._c, c._c)
+  return clib.tpsa_mul(a._c, b._c, c._c)
 end
 
 function M.print(t)

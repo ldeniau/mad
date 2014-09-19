@@ -109,9 +109,10 @@ local function bench(mod_name, fct_name, filename, print_size)
     check.print(r)
 
     if print_size then
+      local ops = tpsa[fct_name](t1, t2, r)
       local nc, tsize, dsize = r._T.D.nc, r.size, r._T.D.size
       tsize, dsize = tsize / 1024, dsize / 1024
-      printf(line_fmt, NV[i], NO[i], NL[i], nc, tsize, dsize, Ts[i])
+      printf(line_fmt, NV[i], NO[i], NL[i], nc, ops, tsize, dsize, Ts[i])
     else
       printf(line_fmt, NV[i], NO[i], NL[i], Ts[i])
     end
@@ -121,8 +122,8 @@ local function bench(mod_name, fct_name, filename, print_size)
 end
 
 if arg[4] then
-  header_fmt = "nv\tno\tnl      \t  nc\ttpsa_sz(Kb)\tdesc_sz(Kb)\ttime (s)\n"
-  line_fmt   = "%d\t%d\t%8d\t%5d\t%10d\t%10d\t%.3f\n"
+  header_fmt = "nv\tno\tnl      \t  nc\top_in_mul\ttpsa_sz(Kb)\tdesc_sz(Kb)\ttime (s)\n"
+  line_fmt   = "%d\t%d\t%8d\t%5d\t%d\t%10d\t%10d\t%.3f\n"
 else
   header_fmt = "nv\tno\tnl       \ttime (s)\n"
   line_fmt   = "%d\t%d\t%8d\t%.3f\n"
