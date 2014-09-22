@@ -196,6 +196,8 @@ tpsa_new(desc_t *d)
   t->id = ++counter;
   t->mo = 0;
   t->nz = 0;
+  for (int i = 0; i < d->nc; ++i)
+    t->coef[i] = 0;
   return t;
 }
 
