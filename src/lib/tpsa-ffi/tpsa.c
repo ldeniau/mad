@@ -65,15 +65,15 @@ imin (int a, int b)
 }
 
 static inline idx_t
-hpoly_idx_triang(idx_t ia, idx_t ib)
+hpoly_idx_triang(idx_t ib, idx_t ia)
 {
-  return (ia*(ia+1))/2 + ib;
+  return (ia*(ia+1))/2 + ib;  // left triangular
 }
 
 static inline idx_t
-hpoly_idx_rect(idx_t ia, idx_t ib, int ib_size)
+hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 {
-  return ia*ib_size + ib;
+  return ib*ia_size + ia;
 }
 
 // == local functions
@@ -87,9 +87,9 @@ hpoly_triang_mul(const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t con
   int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
   int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
 
-  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
-  for (idx_t ib=ps[oa]; ib <   ia    ; ib++) {
-    int il = hpoly_idx_triang(ia-iao, ib-ibo);
+  for (idx_t ib = ps[oa]; ib < ps[oa+1]; ib++)
+  for (idx_t ia = ib + 1; ia < ps[oa+1]; ia++) {
+    int il = hpoly_idx_triang(ib-ibo, ia-iao);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
@@ -120,10 +120,10 @@ hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const
   int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
   int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
   int l_size  = ia_size*ib_size, oc = oa+ob;
-  
-  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
-  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
-    int il = hpoly_idx_rect(ia-iao, ib-ibo, ib_size);
+
+  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++)
+  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++) {
+    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
@@ -145,9 +145,9 @@ hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t cons
   int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
   int l_size  = ia_size*ib_size, oc = oa+ob;
 
-  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
-  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
-    int il = hpoly_idx_rect(ia-iao, ib-ibo, ib_size);
+  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++)
+  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++) {
+    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
@@ -294,7 +294,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i < dc->nc; i++)
+  for (int i=1; i < dc->psto[c->mo+1]; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
   int comps = (dc->nc-1) * 2 + 1;

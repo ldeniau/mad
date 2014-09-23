@@ -215,10 +215,11 @@ end
 local function hpoly_idx_fun(oa, ob, ps, pe)
   local iao, ibo = ps[oa], ps[ob]  -- offsets
   if oa == ob then
-    return function (ia, ib) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
+    -- ia commutes with ib so use ia as row to keep it left triangular
+    return function (ib, ia) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
   else
-    local cols = pe[ob] - ps[ob] + 1
-    return function (ia, ib) return (ia-iao)*cols + ib-ibo end
+    local cols = pe[oa] - ps[oa] + 1
+    return function (ib, ia) return (ib-ibo)*cols + ia-iao end
   end
 end
 
@@ -248,16 +249,16 @@ local function check_lc(lc, oa, ob, D)
   local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
   local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
 
-  for ial=0,sa-1       do
-    local ia = ial + ps[oa]
+  for ibl=0,sb-1       do
+    local ib = ibl + ps[ob]
 
-    local ib_limit
-    if   oa == ob then ib_limit = ial
-    else               ib_limit = sb - 1 end
+    local ia_start
+    if   oa == ob then ia_start = ibl
+    else               ia_start = 0 end
 
-    for ibl=0,ib_limit do
-      local ib = ibl + ps[ob]
-      local il = idx_lc(ia, ib)
+    for ial=ia_start,sa-1 do
+      local ia = ial + ps[oa]
+      local il = idx_lc(ib, ia)
       if il < 0 then                        return 1           end
       if il >= sizeof(lc) / sizeof("idx_t") then
                                             return ia*1e5 + ib  end
@@ -422,11 +423,11 @@ local function build_L(oa, ob, D)
   local lc = fill_L(oa, ob, D)
   local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
 
-  for ia=ps[oa],       pe[oa]  do
-  for ib=ps[ob],min(ia,pe[ob]) do
+  for ib=ps[ob],pe[ob]         do
+  for ia=max(ib,ps[oa]),pe[oa] do
     local m = mono_add(To[ia], To[ib])
     if mono_isvalid(m, D.A, D.mo, D.F) then
-        lc[ idx_lc(ia,ib) ] = index(m)
+        lc[ idx_lc(ib,ia) ] = index(m)
     end
   end end
 
@@ -536,13 +537,13 @@ end
 local function print_lc(lc, oa, ob, d)
   local ps, pe = d.To.ps, d.To.pe
   local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
-  for ia=ps[oa],pe[oa] do
+  for ib=ps[ob],pe[ob] do
     printf("\n  ")
-    for ib=ps[ob],min(ia,pe[ob]) do
-      printf("%d ", lc[ idx_lc(ia,ib) ])
+    for ia=max(ib,ps[oa]),pe[oa] do
+      printf("%d ", lc[ idx_lc(ib,ia) ])
     end
   end
-  printf("\n  ")
+  printf("\n")
 end
 
 function M.print_L(t)
