@@ -23,7 +23,6 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
   int     mo;
   bit_t   nz;
-  int     id;
   coef_t  coef[];
 };
 
@@ -86,15 +85,25 @@ hpoly_triang_mul(const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t con
   printf("triang_mul oa=%d ob=%d \n", oa, oa);
 #endif
   int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
+  int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
+
   for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
   for (idx_t ib=ps[oa]; ib <   ia    ; ib++) {
-      int ic = l[ hpoly_idx_triang(ia-iao, ib-ibo) ];
-      if (ic >= 0)
-        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    int il = hpoly_idx_triang(ia-iao, ib-ibo);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    assert(ps[oc] <= ic && ic < ps[oc+1]);
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
   }
 
   for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
-    int ic = l[ hpoly_idx_triang(ia-iao, ia-iao)];
+    int il = hpoly_idx_triang(ia-iao, ia-iao);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    assert(ps[oc] <= ic && ic < ps[oc+1]);
     if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ia];
   }
@@ -109,10 +118,16 @@ hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
   int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
-  int ib_size = ps[ob+1] - ps[ob];
+  int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+  
   for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
   for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
-    int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
+    int il = hpoly_idx_rect(ia-iao, ib-ibo, ib_size);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    assert(ps[oc] <= ic && ic < ps[oc+1]);
     if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
   }
@@ -127,10 +142,16 @@ hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t cons
 #endif
 
   int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
-  int ib_size = ps[ob+1] - ps[ob];
+  int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+
   for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++)
   for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++) {
-    int ic = l[ hpoly_idx_rect(ia-iao, ib-ibo, ib_size) ];
+    int il = hpoly_idx_rect(ia-iao, ib-ibo, ib_size);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    assert(ps[oc] <= ic && ic < ps[oc+1]);
     if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
   }
@@ -144,6 +165,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   printf("poly_mul\n");
 #endif
   desc_t *dc = c->desc;
+  const idx_t *l = NULL;
   int *ps = dc->psto, hod = dc->mo / 2, comps = 0;
   const coef_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
@@ -155,7 +177,8 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   for (int oc=2; oc <= c->mo; oc++) {
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa != ob
-      const idx_t* l = dc->l[oa*hod + ob];
+      l = dc->l[oa*hod + ob];
+      assert(l);
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
         comps += hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
@@ -170,10 +193,13 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
         c->nz = bset(c->nz,oc);
       }
     }
+
     if (! (oc&1)) {  // even oc, triang matrix
       int hoc = oc/2;
+      l = dc->l[hoc*hod + hoc];
+      assert(l);
       if (bget(nza,hoc) && bget(nzb,hoc) ) {
-        comps += hpoly_triang_mul(ca,cb,cc, dc->l[hoc*hod + hoc], hoc,ps);
+        comps += hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
         c->nz = bset(c->nz,oc);
       }
     }
@@ -183,17 +209,15 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
 // == public functions
 
-static int counter = 0;
-
 tpsa_t*
 tpsa_new(desc_t *d)
 {
+  assert(d);
   tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(coef_t));
 #ifdef TRACE
-  printf("new %p #%d from %p nc=%d\n", (void*)t, counter+1, (void*)d, d->nc);
+  printf("new %p from %p nc=%d\n", (void*)t, (void*)d, d->nc);
 #endif
   t->desc = d;
-  t->id = ++counter;
   t->mo = 0;
   t->nz = 0;
   for (int i = 0; i < d->nc; ++i)
@@ -205,7 +229,7 @@ void
 tpsa_delete(tpsa_t* t)
 {
 #ifdef TRACE
-  printf("del %p #%d\n", (void*)t, t->id);
+  printf("del %p\n", (void*)t);
 #endif
   free(t);
 }
@@ -225,8 +249,10 @@ int // error code
 tpsa_setCoeff(tpsa_t *t, idx_t i, int o, coef_t v)
 {
 #ifdef TRACE
-  printf("setCoeff\n");
+  printf("setCoeff %d\n", i);
 #endif
+  assert(t);
+  assert(t->desc);
   assert(o <= t->desc->mo);
   assert(i < t->desc->nc);
   if (o > t->mo)

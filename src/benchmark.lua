@@ -1,5 +1,6 @@
 local clock = os.clock
 local check = require "check"
+local fill_ord1, fill_full = check.fill_ord1, check.fill_full
 
 local header_fmt, line_fmt
 
@@ -20,34 +21,6 @@ local function timeit(fun, nl, t1, t2, r)
   return clock() - start
 end
 
-local function fill_ord1(t, nv)
-  local m = mono_val(nv, 0)
-  t:setCoeff(m, 1.1)
-  for i=1,nv do
-    m[i] = 1
-    t:setCoeff(m, 1.1 + i/10)
-    m[i] = 0
-  end
-end
-
-local function fill_full(t, no)
-  -- t:pow(no)
-  local b, r, floor = t:cpy(), t:new(), math.floor
-  r:setConst(1)
-
-  while no > 0 do
-    if no%2==1 then
-      r.mul(r, b, t)
-      r, t = t, r
-      no = no - 1
-    end
-    b.mul(b, b, t)
-    b, t = t, b
-    no = no/2
-  end
-  r:cpy(t)
-end
-
 local function setup(tpsa, nv, no)
   local vars, vname = {}, "x%d"
   for i=1,nv do vars[i] = vname:format(i) end
@@ -56,7 +29,7 @@ local function setup(tpsa, nv, no)
   fill_ord1(t, nv)
   fill_full(t, no)
 
-  check.setup(tpsa, nv, no)
+  check.setup(tpsa, vars, no)
 
   return t, t:cpy(), t:new()
 end
@@ -98,16 +71,12 @@ local function bench(mod_name, fct_name, filename, print_size)
   local Ts = {}
   for i=1,#NL do
     local t1, t2, r = setup(tpsa, NV[i], NO[i])
-    check.print(t1)
-    check.print(t2)
-    check.print(r)
+    check.print_all(t1, t2, r)
 
     Ts[i] = timeit(tpsa[fct_name], NL[i], t1, t2, r)
 
-    check.print(t1)
-    check.print(t2)
-    check.print(r)
-
+    check.print_all(t1, t2, r)
+    check.with_berz(1e-6)
     if print_size then
       local ops = tpsa[fct_name](t1, t2, r)
       local nc, tsize, dsize = r._T.D.nc, r.size, r._T.D.size
