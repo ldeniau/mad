@@ -29,6 +29,7 @@ local ffi    = require"ffi"
 -- locals ----------------------------------------------------------------------
 
 local getmetatable, setmetatable = getmetatable, setmetatable
+local sizeof, typeof = ffi.sizeof, ffi.typeof
 local type, ipairs, concat = type, ipairs, table.concat
 local min, max, floor = math.min, math.max, math.floor
 local is_list = utils.is_list
@@ -69,7 +70,6 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
   int     mo;
   bit_t   nz;
-  int     id;
   coef_t  coef[];
 };
 
@@ -83,9 +83,9 @@ int tpsa_print(tpsa_t *t);
 
 ffi.cdef(static_dcl)
 
-local desc_t  = ffi.typeof("desc_t    ")
-local intArr  = ffi.typeof("int    [?]")
-local iptrArr = ffi.typeof("int*   [?]")
+local desc_t  = typeof("desc_t    ")
+local intArr  = typeof("int    [?]")
+local iptrArr = typeof("int*   [?]")
 
 -- functions -------------------------------------------------------------------
 
@@ -211,6 +211,18 @@ local function table_by_ords(o,a)
   return v
 end
 
+
+local function hpoly_idx_fun(oa, ob, ps, pe)
+  local iao, ibo = ps[oa], ps[ob]  -- offsets
+  if oa == ob then
+    -- ia commutes with ib so use ia as row to keep it left triangular
+    return function (ib, ia) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
+  else
+    local cols = pe[oa] - ps[oa] + 1
+    return function (ib, ia) return (ib-ibo)*cols + ia-iao end
+  end
+end
+
 ------------
 -- unit test
 
@@ -228,6 +240,62 @@ local function table_check(D)
     if not mono_equ(To[Tv.i[i]],Tv[i]) then return 4e6+i end
     if not mono_equ(To[Tv.i[i]],Tv[i]) then return 5e6+i end
   end
+  return 0
+end
+
+local function check_lc(lc, oa, ob, D)
+  local oc, To = oa+ob, D.To
+  local ps, pe = To.ps, To.pe
+  local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
+  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
+
+  for ibl=0,sb-1       do
+    local ib = ibl + ps[ob]
+
+    local ia_start
+    if   oa == ob then ia_start = ibl
+    else               ia_start = 0 end
+
+    for ial=ia_start,sa-1 do
+      local ia = ial + ps[oa]
+      local il = idx_lc(ib, ia)
+      if il < 0 then                        return 1           end
+      if il >= sizeof(lc) / sizeof("idx_t") then
+                                            return ia*1e5 + ib  end
+
+      local ic = lc[il]
+      if ic >= D.nc then                    return 11          end
+      if ic >= 0 and ic < #D.A then         return 12          end
+      if ic <  0 and mono_isvalid(mono_add(To[ia], To[ib]), D.A, D.mo, D.F) then
+                                            return 13          end
+    end
+  end
+  return 0
+end
+
+local function check_L(D)
+  local L, nc, mo, ho, ps = D.L, D.nc, D.mo, floor(D.mo*0.5), D.To.ps
+  if sizeof(L) ~= (mo*ho + 1) * sizeof("void*") then
+                                            return 1e7 + 0           end
+  for oa=1,mo-1          do
+  for ob=1,min(oa,mo-oa) do
+    local il = oa*ho + ob
+    if il < 0 or il >= mo*ho + 1 then         return 1e7 + oa*1e3+ob   end
+
+
+    local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
+    local sl
+    if oa == ob then sl = sa * (sb+1) / 2
+    else             sl = sa * sb         end
+
+    local lc = D._ptrs[oa][ob]
+    if lc ~= L[oa*ho + ob] then             return 2e7 + oa*1e3+ob   end
+    if sizeof(lc) ~= sl * sizeof("idx_t") then
+                                            return 3e7 + oa*1e3+ob   end
+
+    local lc_err = check_lc(lc, oa, ob, D)
+    if lc_err ~= 0 then                     return 4e7 + lc_err      end
+  end end
   return 0
 end
 
@@ -349,27 +417,17 @@ local function fill_L(oa, ob, D)
   return intArr(size, -1)
 end
 
-local function hpoly_idx_fun(oa, ob, ps, pe)
-  local iao, ibo = ps[oa], ps[ob]  -- offsets
-  if oa == ob then
-    return function (ia, ib) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
-  else
-    local cols = pe[ob] - ps[ob] + 1
-    return function (ia, ib) return (ia-iao)*cols + ib-ibo end
-  end
-end
-
 local function build_L(oa, ob, D)
   local To, index = D.To, D.index
   local ps, pe = To.ps, To.pe
   local lc = fill_L(oa, ob, D)
   local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
 
-  for ia=ps[oa],       pe[oa]  do
-  for ib=ps[ob],min(ia,pe[ob]) do
+  for ib=ps[ob],pe[ob]         do
+  for ia=max(ib,ps[oa]),pe[oa] do
     local m = mono_add(To[ia], To[ib])
     if mono_isvalid(m, D.A, D.mo, D.F) then
-        lc[ idx_lc(ia,ib) ] = index(m)
+        lc[ idx_lc(ib,ia) ] = index(m)
     end
   end end
 
@@ -379,7 +437,7 @@ end
 local function set_L(d)
   local o, ho = d.mo, floor(d.mo * 0.5)
   local L =   iptrArr(o*ho + 1)
-  d.size  = d.size + (o*ho + 1)*8 -- pointers
+  d.size  = d.size + (o*ho + 1) * 8 -- pointers
   local ptrs = {}   -- stores lc references so they don't get GC'ed
 
   for oc=2,o do
@@ -387,7 +445,9 @@ local function set_L(d)
       local oa, ob = oc-j, j
 
       local lc = build_L(oa, ob, d)
-      L[oa*ho + ob], ptrs[#ptrs+1] = lc, lc
+      L[oa*ho + ob] = lc
+      ptrs[oa] = ptrs[oa] or {}
+      ptrs[oa][ob] = lc
     end
   end
   d.L, d._ptrs = L, ptrs
@@ -413,6 +473,10 @@ local function add_desc(s, n, a, o, f)
     set_T(d)
     set_H(d) -- requires Tv
     set_L(d)
+
+    local chk = check_L(d)
+    if chk ~= 0 then error("Invalid TPSA multiplication indexes " .. chk) end
+
     d.cdesc = desc_t(#d.To.ps + 1, {d.nc, d.mo, d.L, d.To.ps});
     d.size = d.size + 4 + 4 + 8 + (#d.To.ps+1) * 4
 
@@ -473,13 +537,13 @@ end
 local function print_lc(lc, oa, ob, d)
   local ps, pe = d.To.ps, d.To.pe
   local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
-  for ia=ps[oa],pe[oa] do
+  for ib=ps[ob],pe[ob] do
     printf("\n  ")
-    for ib=ps[ob],min(ia,pe[ob]) do
-      printf("%d ", lc[ idx_lc(ia,ib) ])
+    for ia=max(ib,ps[oa]),pe[oa] do
+      printf("%d ", lc[ idx_lc(ib,ia) ])
     end
   end
-  printf("\n  ")
+  printf("\n")
 end
 
 function M.print_L(t)
