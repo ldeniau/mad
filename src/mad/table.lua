@@ -119,7 +119,7 @@ end
 local function add_row(self, row)
   local n = #self[1]+1
 
-  if #row ~= 0 then -- vector of index-value
+  if #row > 0 then -- vector of index-value
     if #row ~= #self then invalid_len(self, n) end
     for i,v in ipairs(row) do rawset(self[i], n, v) end
 
@@ -220,8 +220,11 @@ end
 -- initialization
 
 local function init(cols, name)
-  local self = { _header = {name=name}, _colnames = {} }
+  local self = { _header = {}, _colnames = {} }
   local rcol, ridx = nil
+
+  -- create header
+  M.set_key(self, {name=name})
 
   -- create columns
   for i,v in ipairs(cols) do
@@ -237,16 +240,25 @@ end
 
 -- methods ---------------------------------------------------------------------
 
+function M:get_key(key)
+  return self._header[key]
+end
+
+function M:set_key(keys)
+  local hdr = self._header
+  for k,v in pairs(keys) do
+    if not hdr[k] then hdr[#hdr+1] = k end
+    hdr[k] = v
+  end
+  return self
+end
+
 function M:get_length()
   return #self[1]
 end
 
 function M:get_column_names()
   return self._colnames
-end
-
-function M:get_key(key)
-  return self._header[key], key
 end
 
 function M:clr_refcol()
@@ -262,9 +274,8 @@ function M:set_refcol(rcol)
   return self
 end
 
-function M:add_key(keys)
-  local hdr = self._header
-  for k,v in pairs(keys) do hdr[#hdr+1] = k ; hdr[k] = v end
+function M:add_col(name, values)
+  -- todo
   return self
 end
 
@@ -273,14 +284,56 @@ function M:add_row(row)
   return self
 end
 
-function M:add_column(name, values)
-  -- todo
-  return self
-end
-
 function M:write(filename, columns)
-  -- todo
-  -- a can be a list of named parameters or the filename
+
+  -- open file
+  local name = filename or self:get_key'name' or 'tmptable'
+  local file, err = io.open(name .. '.tfs', 'w')
+  if not file then
+    error("unable to open file '"..name.."' for writing: "..err) 
+  end
+
+  -- dump header
+  local hdr = self._header
+  for i=1,#hdr do
+    local k, v = hdr[i], hdr[hdr[i]]
+    file:write(string.format('@ %-18s %%%02ds "%s"\n', k, #v, v))
+  end
+
+  -- dump col names
+  local cols = columns or self._colnames
+  local ncol, nrow = #cols, #self[cols[1]]
+
+  file:write('*')
+  for icol=1,ncol do
+    file:write(string.format(' %-17s ', cols[icol]))
+  end
+  file:write('\n')
+
+  -- dump col types
+  file:write('$')
+  for icol=1,ncol do
+    local fmt = type(self[cols[icol]][1]) == "number" and '%le' or '%s'
+    file:write(string.format(' %-17s ', fmt))
+  end
+  file:write('\n')
+
+  -- dump rows
+  for irow=1,nrow do
+  file:write(' ')
+  for icol=1,ncol do
+    local e = self[cols[icol]][irow]
+    if type(e) == "number" then
+      file:write(string.format('% -18.10g ', e))
+    else
+      file:write(string.format('%-18s ', '"'..e..'"'))
+    end
+  end
+  file:write('\n')
+  end
+
+  -- close file
+  file:close()
   return self
 end
 
