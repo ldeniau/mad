@@ -22,6 +22,20 @@ mono_cpy(int n, const mono_t src[n], mono_t dst[n])
 }
 
 int
+mono_equ(const int n, const mono_t a[n], const mono_t b[n])
+{
+  for (int i = 0; i < n; ++i)
+    if (a[i] != b[i]) return 0;
+  return 1;
+}
+
+void
+mono_equ(const int n, const mono_t a[n], const mono_t b[n], mono_t c[n])
+{
+  for (int i = 0; i < n; ++i) c[i] = a[i] + b[i];
+}
+
+int
 mono_sum(int n, const mono_t m[n])
 {
   assert(m);

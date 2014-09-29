@@ -147,7 +147,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 #endif
   desc_t *dc = c->desc;
   const idx_t *l = NULL;
-  int *ps = dc->psto, hod = dc->mo / 2, comps = 0;
+  int *ps = dc->To->ps, hod = dc->mo / 2, comps = 0;
   const num_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
   num_t *cc  = c->coef;
@@ -279,7 +279,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i < dc->psto[c->mo+1]; i++)
+  for (int i=1; i < dc->To->ps[c->mo+1]; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
   int comps = (dc->nc-1) * 2 + 1;

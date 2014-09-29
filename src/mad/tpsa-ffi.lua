@@ -67,9 +67,10 @@ struct table {
 };
 
 struct desc {
-  int     nc, mo;
-  idx_t **l;
-  idx_t   psto[?];
+  int      nv, mo, nc;
+  table_t *Tv,
+          *To;
+  idx_t  **l;
 };
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
@@ -91,6 +92,9 @@ int tbl_by_ord(table_t *to, table_t *tv, int no, int nc);
 
 void tbl_print(table_t *t, int nv, int no, int nc);
 void mono_print(int n, mono_t *m);
+int  mono_equ(const int n, const mono_t *a, const mono_t *b);
+void mono_add(const int n, const mono_t *a, const mono_t *b, mono_t *c);
+int  mono_isvalid(int n, const mono_t *m, const mono_t *a, const int o);
 ]]
 
 ffi.cdef(static_dcl)
@@ -204,7 +208,7 @@ local function table_by_vars(D)
   local t = table_t(ord, idxs, nil, m)
   local rnc = clib.tbl_by_var(t, nv, no, nc, mono_t(nv, D.A), mons)
 
-  D._ptrs = {}
+  D.nc = rnc
   D._ptrs.Tv = { ["o"]=ord, ["idxs"]=idxs, ["mons"]=mons, ["m"]=m } -- avoid GC
   return t
 end
@@ -220,13 +224,13 @@ local function table_by_ords(D)
 end
 
 
-local function hpoly_idx_fun(oa, ob, ps, pe)
+local function hpoly_idx_fun(oa, ob, ps)
   local iao, ibo = ps[oa], ps[ob]  -- offsets
   if oa == ob then
     -- ia commutes with ib so use ia as row to keep it left triangular
     return function (ib, ia) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
   else
-    local cols = pe[oa] - ps[oa] + 1
+    local cols = ps[oa+1] - ps[oa]
     return function (ib, ia) return (ib-ibo)*cols + ia-iao end
   end
 end
@@ -237,27 +241,27 @@ end
 local function table_check(D)
   local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
 
-  if D.nc~= #Tv + 1                    then return 1e6+0 end
+  --if D.nc~= #Tv + 1                    then return 1e6+0 end
   for i=2,#a do
     if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
-                                       then return 1e6+i end
+                                            then return 1e6+i end
   end
-  for i=1,#D.Tv do
-    if To.i[Tv.i[i]] ~= i              then return 2e6+i end
-    if index(To[i])  ~= i              then return 3e6+i end
-    if not mono_equ(To[Tv.i[i]],Tv[i]) then return 4e6+i end
-    if not mono_equ(To[Tv.i[i]],Tv[i]) then return 5e6+i end
+  for i=1,D.nc-1 do
+    if To.i[Tv.i[i]]  ~= i                  then return 2e6+i end
+    if index(To.m[i]) ~= i                  then return 3e6+i end
+    if clib.mono_equ(#a,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 4e6+i end
+    if clib.mono_equ(#a,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 5e6+i end
   end
   return 0
 end
 
 local function check_lc(lc, oa, ob, D)
-  local oc, To = oa+ob, D.To
-  local ps, pe = To.ps, To.pe
+  local oc, nv, To, ps = oa+ob, #D.A, D.To.m, D.To.ps
   local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
-  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
+  local m, a = mono_t(nv), mono_t(nv, D.A)
+  local idx_lc = hpoly_idx_fun(oa, ob, ps)
 
-  for ibl=0,sb-1       do
+  for ibl=0,sb-1 do
     local ib = ibl + ps[ob]
 
     local ia_start
@@ -274,7 +278,8 @@ local function check_lc(lc, oa, ob, D)
       local ic = lc[il]
       if ic >= D.nc then                    return 11          end
       if ic >= 0 and ic < #D.A then         return 12          end
-      if ic <  0 and mono_isvalid(mono_add(To[ia], To[ib]), D.A, D.mo, D.F) then
+      clib.mono_add(nv, To[ia], To[ib], m)
+      if ic <  0 and clib.mono_isvalid(nv, m, a, D.mo) then
                                             return 13          end
     end
   end
@@ -290,13 +295,12 @@ local function check_L(D)
     local il = oa*ho + ob
     if il < 0 or il >= mo*ho + 1 then         return 1e7 + oa*1e3+ob   end
 
-
     local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
     local sl
     if oa == ob then sl = sa * (sb+1) / 2
     else             sl = sa * sb         end
 
-    local lc = D._ptrs[oa][ob]
+    local lc = D._ptrs.L[oa][ob]
     if lc ~= L[oa*ho + ob] then             return 2e7 + oa*1e3+ob   end
     if sizeof(lc) ~= sl * sizeof("idx_t") then
                                             return 3e7 + oa*1e3+ob   end
@@ -326,18 +330,18 @@ end
 --------------------
 -- H indexing matrix
 
-local function index_H(H, a)
+local function index_H(H, a, nv)
   local s, I = 0, 0
-  for i=#a,1,-1 do
-    I = I + H[i][s + a[i]] - H[i][s]
-    s = s + a[i]
+  for i=nv,1,-1 do
+    I = I + H[i][s + a[i-1]] - H[i][s]
+    s = s + a[i-1]
   end
   return I
 end
 
 local function index_T(D)
-  local H, T = D.H, D.Tv.i
-  return function (a) return T[ index_H(H,a) ] end
+  local H, T, nv = D.H, D.Tv.i, #D.A
+  return function (a) return T[ index_H(H,a,nv) ] end
 end
 
 local function clear_H(D)
@@ -368,7 +372,7 @@ local function solve_H(D)
 end
 
 local function build_H(D)
-  local a, o, Tv, H = D.A, D.mo, D.Tv, {}
+  local a, o, nc, Tv, H = D.A, D.mo, D.nc, D.Tv.m, {}
 
   -- minimal constants for first row
   H[1] = { [0]=0 }
@@ -381,10 +385,10 @@ local function build_H(D)
     H[i] = { [0]=0 }
 
     -- initial congruence from Tv
-    for j=1,#Tv do -- monomials
-      if Tv[j][i] ~= Tv[j-1][i] then
+    for j=1,nc-1 do -- monomials
+      if Tv[j][i-1] ~= Tv[j-1][i-1] then
         H[i][#H[i]+1] = j
-        if Tv[j][i] == 0 then break end
+        if Tv[j][i-1] == 0 then break end
       end
     end
 
@@ -395,7 +399,7 @@ local function build_H(D)
   end
 
   -- close congruence of last var
-  H[#a][a[#a]+1] = #Tv+1
+  H[#a][a[#a]+1] = nc
 
   -- update D
   D.H = H
@@ -423,9 +427,9 @@ end
 -- L matrix, indexing in polynomials
 
 local function fill_L(oa, ob, D)
-  local ps, pe = D.To.ps, D.To.pe
-  local rows = pe[oa]-ps[oa]+1
-  local cols = pe[ob]-ps[ob]+1
+  local ps = D.To.ps
+  local rows = ps[oa+1]-ps[oa]
+  local cols = ps[ob+1]-ps[ob]
   local size
 
   if   oa == ob then size = ((rows+1) * cols) / 2
@@ -436,15 +440,15 @@ local function fill_L(oa, ob, D)
 end
 
 local function build_L(oa, ob, D)
-  local To, index = D.To, D.index
-  local ps, pe = To.ps, To.pe
+  local ps, To, nv, index = D.To.ps, D.To.m, #D.A, D.index
   local lc = fill_L(oa, ob, D)
-  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
+  local idx_lc = hpoly_idx_fun(oa, ob, ps)
 
-  for ib=ps[ob],pe[ob]         do
-  for ia=max(ib,ps[oa]),pe[oa] do
-    local m = mono_add(To[ia], To[ib])
-    if mono_isvalid(m, D.A, D.mo, D.F) then
+  local m, a = mono_t(nv), mono_t(nv, D.A)
+  for ib=ps[ob],ps[ob+1]-1         do
+  for ia=max(ib,ps[oa]),ps[oa+1]-1 do
+    clib.mono_add(nv, To[ia], To[ib], m)
+    if clib.mono_isvalid(nv, m, a, D.mo) ~= 0 then
         lc[ idx_lc(ib,ia) ] = index(m)
     end
   end end
@@ -468,7 +472,7 @@ local function set_L(d)
       ptrs[oa][ob] = lc
     end
   end
-  d.L, d._ptrs = L, ptrs
+  d.L, d._ptrs.L = L, ptrs
 end
 
 local function new_Ctpsa(t)
@@ -488,15 +492,16 @@ local function add_desc(s, n, a, o, f)
   local d = M.D[ds]
   if not d then -- build the descriptor
     d = { A=a, mo=o, size=0, F=f or fun_true } -- alphas, order, size and predicate
+    d._ptrs = {}
     set_T(d)
     set_H(d) -- requires Tv
     set_L(d)
+    d.cdesc = desc_t({#a, d.mo, d.nc, d.Tv, d.To, d.L});
 
     local chk = check_L(d)
     if chk ~= 0 then error("Invalid TPSA multiplication indexes " .. chk) end
 
-    d.cdesc = desc_t(#d.To.ps + 1, {d.nc, d.mo, d.L, d.To.ps});
-    d.size = d.size + 4 + 4 + 8 + (#d.To.ps+1) * 4
+    d.size = d.size + 4 + 4 + 8 + (d.mo+1+1) * 4  -- mo + ord_0 + ord_(mo+1)
 
     -- do not register the descriptor during benchmark
     if not M.benchmark then M.D[ds] = d end
@@ -546,9 +551,9 @@ function M.print_table(t)
 end
 
 function M.print_vect(t)
-  local cf, pe, write, format = t._c.coef, t._T.D.To.pe, io.write, string.format
+  local cf, ps, write, format = t._c.coef, t._T.D.To.ps, io.write, string.format
   write(format("[ nz=%2d mo=%d; ", t._c.nz, t._c.mo))
-  for i=0,pe[t._c.mo] do write(format("%.2f ",cf[i])) end
+  for i=0,ps[t._c.mo+1]-1 do write(format("%.2f ",cf[i])) end
   write(" ]\n")
 end
 
@@ -592,16 +597,16 @@ end
 function M.cpy(src, dst)
   dst = same(src, dst)
 
-  local pe = src._T.D.To.pe
+  local ps = src._T.D.To.ps
   local dmo, dcoef, scoef = dst._c.mo, dst._c.coef, src._c.coef
-  for i=0,pe[dmo] do dcoef[i] = scoef[i] end
+  for i=0,ps[dmo+1]-1 do dcoef[i] = scoef[i] end
   return dst
 end
 
 function M.setCoeff(t, i, v)
   local d = t._T.D
   local o = d.To.o
-  if type(i) == "table" then i = d.index(i) end
+  if type(i) == "table" then i = d.index(mono_t(#i, i)) end
   if o[i] >= 2 then error("NYI. Poke only order 1 and use mul") end
   clib.tpsa_setCoeff(t._c, i, o[i], v);
 end
@@ -611,7 +616,7 @@ function M.setConst(t, v)
 end
 
 function M.getCoeff(t, i)
-  if type(i) == "table" then i = t._T.D.index(i) end
+  if type(i) == "table" then i = t._T.D.index(mono_t(#i, i)) end
   return t._c.coef[i]
 end
 
