@@ -53,18 +53,24 @@ PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
 local clib = ffi.load(PATH .. "/../lib/tpsa-ffi/libtpsa-ffi.so")
 
 local static_dcl = [[
+typedef unsigned int  bit_t;
 typedef unsigned char mono_t;
 typedef double        coef_t;
 typedef int           idx_t;
 typedef struct desc   desc_t;
 typedef struct tpsa   tpsa_t;
-typedef unsigned int  bit_t;
+typedef struct table  table_t;
+
+struct table {
+  int     *o, *i, *ps;
+  mono_t **m;
+};
 
 struct desc {
   int     nc, mo;
   idx_t **l;
   idx_t   psto[?];
-  };
+};
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
@@ -79,13 +85,19 @@ void    tpsa_delete(tpsa_t *t);
 int tpsa_setCoeff(tpsa_t* t, idx_t i, int o, coef_t v);
 int tpsa_mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c);
 int tpsa_print(tpsa_t *t);
+
+int tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t *a, mono_t *m);
+void mono_print(int n, mono_t *m);
 ]]
 
 ffi.cdef(static_dcl)
 
 local desc_t  = typeof("desc_t    ")
+local table_t = typeof("table_t   ")
+local mono_t  = typeof("mono_t [?]")
 local intArr  = typeof("int    [?]")
 local iptrArr = typeof("int*   [?]")
+local mptrArr = typeof("mono_t*[?]")
 
 -- functions -------------------------------------------------------------------
 
@@ -182,14 +194,16 @@ local function nxt_by_var(a,m,o,f)
   return false
 end
 
-local function table_by_vars(o,m,f)
-  local a = mono_val(#m, 0)
-  local v = { o={ [0]=0 }, i={ [0]=0 }, [0]=mono_cpy(a) }
-  while nxt_by_var(a,m,o,f) do
-    v[#v+1] = mono_cpy(a)
-    v.o[#v] = mono_sum(a)
-  end
-  return v
+local function table_by_vars(D)
+  local nv, no, nc = #D.A, D.mo, D.nc
+  local ord, ps, idxs, mons, m = intArr(nc), intArr(no+1), intArr(nc),
+                                 mono_t(nc*nv), mptrArr(D.nc)
+  local ptrs = { ["o"]=ord, ["ps"]=ps, ["idxs"]=idxs, ["m"]=m, ["mons"]=mons }
+
+  local t = table_t(ord, idxs, ps, m)
+  clib.tbl_by_var(t, nv, no, nc, mono_t(nv, D.A), mons)
+
+  return t
 end
 
 local function table_by_ords(o,a)
@@ -299,10 +313,20 @@ local function check_L(D)
   return 0
 end
 
+
+local function fact(n)
+  if n==1 then return 1 end
+  return n * fact(n-1)
+end
+
+local function max_nc(nv, no)
+  return fact(nv + no) / (fact(nv) * fact(no))
+end
+
 local function set_T(D)
-  D.Tv = table_by_vars(D.mo, D.A, D.F)
+  D.nc = max_nc(#D.A, D.mo)
+  D.Tv = table_by_vars(D)
   D.To = table_by_ords(D.mo, D.Tv)
-  D.nc = #D.Tv + 1 -- with ord 0
 end
 
 --------------------
