@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include "mem_alloc.h"
 
 //#define TRACE
 
 
 typedef unsigned int  bit_t;
 typedef unsigned char mono_t;
-typedef double        coef_t;
+typedef double        num_t;
 typedef int           idx_t;
 typedef struct desc   desc_t;
 typedef struct tpsa   tpsa_t;
@@ -23,7 +24,7 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   desc_t *desc;
   int     mo;
   bit_t   nz;
-  coef_t  coef[];
+  num_t   coef[];
 };
 
 // == debug
@@ -79,7 +80,7 @@ hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 // == local functions
 
 static int
-hpoly_triang_mul(const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ps[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int ps[])
 {
 #ifdef TRACE
   printf("triang_mul oa=%d ob=%d \n", oa, oa);
@@ -112,7 +113,7 @@ hpoly_triang_mul(const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t con
 
 
 static int
-hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
+hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
@@ -135,7 +136,7 @@ hpoly_sym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const
 }
 
 static int
-hpoly_asym_mul (const coef_t *ca, const coef_t *cb, coef_t *cc, const idx_t const* l, int oa, int ob, int ps[])
+hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
   printf("asym_mul oa=%d ob=%d \n", oa, ob);
@@ -167,14 +168,18 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   desc_t *dc = c->desc;
   const idx_t *l = NULL;
   int *ps = dc->psto, hod = dc->mo / 2, comps = 0;
-  const coef_t *ca  = a->coef, *cb  = b->coef;
+  const num_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
-  coef_t *cc  = c->coef;
+  num_t *cc  = c->coef;
 
 #ifdef _OPENMP
 #pragma omp parallel for
-#endif
+  for (int i=2; i <= c->mo; i++) {
+    int oc = !(i & 1) ? 1+i/2 : c->mo+1-i/2;
+#else
   for (int oc=2; oc <= c->mo; oc++) {
+#endif
+
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa != ob
       l = dc->l[oa*hod + ob];
@@ -213,7 +218,7 @@ tpsa_t*
 tpsa_new(desc_t *d)
 {
   assert(d);
-  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(coef_t));
+  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
 #ifdef TRACE
   printf("new %p from %p nc=%d\n", (void*)t, (void*)d, d->nc);
 #endif
@@ -246,7 +251,7 @@ tpsa_print(tpsa_t *t)
 }
 
 int // error code
-tpsa_setCoeff(tpsa_t *t, idx_t i, int o, coef_t v)
+tpsa_setCoeff(tpsa_t *t, idx_t i, int o, num_t v)
 {
 #ifdef TRACE
   printf("setCoeff %d\n", i);
@@ -285,8 +290,8 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
 
-  const coef_t *ca = a->coef, *cb = b->coef;
-  coef_t *cc = c->coef;
+  const num_t *ca = a->coef, *cb = b->coef;
+  num_t *cc = c->coef;
   desc_t *dc = c->desc;
 
   c->nz = (ca[0] ? a->nz : 0) | (cb[0] ? b->nz : 0);

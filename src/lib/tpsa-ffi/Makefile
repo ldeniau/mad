@@ -7,9 +7,9 @@ tpsaFFI: libtpsa-ffi-$(CC).so
 libtpsa-ffi-$(CC).so: tpsa.c mono.c mono.h
 ifeq ($(CC),gcc)
 ifdef OPENMP
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared -fopenmp -static-libgcc -fPIC tpsa.c -o libtpsa-ffi-$(CC).so
+	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared -fopenmp -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so
 else
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared          -static-libgcc -fPIC mono.c mono.h tpsa.c -o libtpsa-ffi-$(CC).so
+	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared          -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so
 endif
 endif
 ifeq ($(CC),icc)

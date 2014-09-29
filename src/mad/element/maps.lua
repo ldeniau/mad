@@ -21,44 +21,57 @@ SEE ALSO
  
 -- requires --------------------------------------------------------------------
 
+local elem = require"mad.element"
+
 -- locals ----------------------------------------------------------------------
 
 local cos, sin, cosh, sinh = math.cos, math.sin, math.cosh, math.sinh
 
 -- functions -------------------------------------------------------------------
 
-M.track_drift = function (L)
+-- track maps
+
+elem.drift.track = function (self, X)
   -- handbook of accelerator physics 2.2.1
-  return function (ray)
-    ray.x = ray.x + L * ray.px
-    ray.y = ray.y + L * ray.py
-  end
+  local L = self.L
+  local Y = {}
+  Y.x = X.x + L * X.px
+  Y.y = X.y + L * X.py
+  return Y
 end
 
-M.track_thick_dipole = function (L, angle)
-  return function (ray)
-  end
+elem.dipole.track = function (self, X)
+  local L, angle = self.L, self.angle
+  local Y = {}
+  -- todo
+  return Y
 end
 
-M.track_thick_quadrupole = function (L, k)
+elem.quadrupole.track = function (self, X)
   -- handbook of accelerator physics 2.2.1
-  local C , S  = cos (k*L), sin (k*L)
-  local Ch, Sh = cosh(k*L), sinh(k*L)
+  local L, k = self.L, self.k1
+  local C  ,  S  = cos (k*L), sin (k*L)
+  local Ch ,  Sh = cosh(k*L), sinh(k*L)
   local r11, r12 =    C, S/k
   local r21, r22 = -k*S, C
   local r33, r34 =   Ch, Sh/k
   local r43, r44 = k*Sh, Ch
-  return  function (ray)
-    ray. x = R11*ray.x + R12*ray.px
-    ray.px = R21*ray.x + R22*ray.px
-    ray. y = R33*ray.y + R34*ray.py
-    ray.py = R43*ray.y + R44*ray.py
-  end
+
+  -- todo QD
+  local Y = {}
+  Y. x = r11*X.x + r12*X.px
+  Y.px = r21*X.x + r22*X.px
+  Y. y = r33*X.y + r34*X.py
+  Y.py = r43*X.y + r44*X.py
+  return Y
 end
 
-M.track_thick_sextupole = function (L, k)
-  return function (ray)
-  end
+elem.sextupole.track = function (self, X)
+  -- handbook of accelerator physics 2.2.1
+  local L, k = self.L, self.k2
+  local Y = {}
+  -- todo
+  return Y
 end
 
 -- test suite -----------------------------------------------------------------------
