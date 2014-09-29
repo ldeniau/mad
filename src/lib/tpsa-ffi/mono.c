@@ -6,11 +6,6 @@
 #include <stdio.h>
 
 //typedef unsigned char mono_t;
-//typedef struct table table_t;
-struct table {
-  int     *o, *i, *ps;
-  mono_t **m;
-};
 
 void
 mono_clr(int n, mono_t m[n])
@@ -82,19 +77,4 @@ mono_add(int n, const mono_t a[n], const mono_t b[n], mono_t r[n])
   for (int i = 0; i < n; ++i) r[i] = a[i] + b[i];
 }
 
-int
-tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t a[nv], mono_t mons[nc])
-{
-  int mi = 0;
-  mono_t m[nv];
-  for (int i = 0; i < nv; ++i) m[i] = 0;
-  do {
-    mono_cpy(nv, m, mons);
-    t->m[mi] = mons;
-    t->o[mi] = mono_sum(nv, m);
-    ++mi;
-    mons += nv;
-  } while (mono_nxt_by_var(nv, m, a, no));
-  return 0;
-}
 

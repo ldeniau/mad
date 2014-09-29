@@ -2,30 +2,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include "mem_alloc.h"
+#include "tpsa.h"
+//#include "mem_alloc.h"
 
 //#define TRACE
-
-
-typedef unsigned int  bit_t;
-typedef unsigned char mono_t;
-typedef double        num_t;
-typedef int           idx_t;
-typedef struct desc   desc_t;
-typedef struct tpsa   tpsa_t;
-
-struct desc {
-  int     nc, mo;
-  idx_t **l;
-  idx_t   psto[];
-};
-
-struct tpsa { // warning: must be kept identical to LuaJit definition 
-  desc_t *desc;
-  int     mo;
-  bit_t   nz;
-  num_t   coef[];
-};
 
 // == debug
 static inline void
@@ -309,6 +289,5 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   return comps;
 }
-
 
 

@@ -87,6 +87,9 @@ int tpsa_mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c);
 int tpsa_print(tpsa_t *t);
 
 int tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t *a, mono_t *m);
+int tbl_by_ord(table_t *to, table_t *tv, int no, int nc);
+
+void tbl_print(table_t *t, int nv, int no, int nc);
 void mono_print(int n, mono_t *m);
 ]]
 
@@ -196,33 +199,24 @@ end
 
 local function table_by_vars(D)
   local nv, no, nc = #D.A, D.mo, D.nc
-  local ord, ps, idxs, mons, m = intArr(nc), intArr(no+1), intArr(nc),
-                                 mono_t(nc*nv), mptrArr(D.nc)
-  local ptrs = { ["o"]=ord, ["ps"]=ps, ["idxs"]=idxs, ["m"]=m, ["mons"]=mons }
+  local ord, idxs, mons, m = intArr(nc), intArr(nc), mono_t(nc*nv), mptrArr(nc)
 
-  local t = table_t(ord, idxs, ps, m)
-  clib.tbl_by_var(t, nv, no, nc, mono_t(nv, D.A), mons)
+  local t = table_t(ord, idxs, nil, m)
+  local rnc = clib.tbl_by_var(t, nv, no, nc, mono_t(nv, D.A), mons)
 
+  D._ptrs = {}
+  D._ptrs.Tv = { ["o"]=ord, ["idxs"]=idxs, ["mons"]=mons, ["m"]=m } -- avoid GC
   return t
 end
 
-local function table_by_ords(o,a)
-  local v = { o={[0]=0}, i={[0]=0}, ps={[0]=0}, pe={[0]=0}, [0]=a[0] }
-  for i=1,o do
-    v.ps[i]   = #v + 1
-    v.pe[i-1] = #v
-    for j=1,#a do
-      if a.o[j] == i then
-        v[#v+1] = a[j]
-        v.o[#v] = i
-        v.i[#v] = j
-        a.i[j]  = #v
-      end
-    end
-  end
-  v.ps[o+1] = #v + 1
-  v.pe[o]   = #v
-  return v
+local function table_by_ords(D)
+  local nv, mo, nc = #D.A, D.mo, D.nc
+  local ord, idxs, ps, m = intArr(nc), intArr(nc), intArr(mo+2), mptrArr(nc)
+  local t = table_t(ord, idxs, ps, m)
+  clib.tbl_by_ord(t, D.Tv, mo, nc)
+
+  D._ptrs.To = { ["o"]=ord, ["idxs"]=idxs, ["ps"]=ps, ["m"]=m }     -- avoid GC
+  return t
 end
 
 
@@ -326,7 +320,7 @@ end
 local function set_T(D)
   D.nc = max_nc(#D.A, D.mo)
   D.Tv = table_by_vars(D)
-  D.To = table_by_ords(D.mo, D.Tv)
+  D.To = table_by_ords(D)
 end
 
 --------------------
