@@ -62,11 +62,12 @@ hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 static int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int ps[])
 {
-#ifdef TRACE
-  printf("triang_mul oa=%d ob=%d \n", oa, oa);
-#endif
   int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
   int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
+
+#ifdef TRACE
+  printf("triang_mul oa=%d ob=%d | ic->[%d,%d) ", oa, oa, ps[oc], ps[oc+1]);
+#endif
 
   for (idx_t ib = ps[oa]; ib < ps[oa+1]; ib++)
   for (idx_t ia = ib + 1; ia < ps[oa+1]; ia++) {
@@ -74,9 +75,10 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    assert(ps[oc] <= ic && ic < ps[oc+1]);
-    if (ic >= 0)
+    if (ic >= 0) {
+      assert(ps[oc] <= ic && ic < ps[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
   }
 
   for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
@@ -84,9 +86,10 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    assert(ps[oc] <= ic && ic < ps[oc+1]);
-    if (ic >= 0)
+    if (ic >= 0) {
+      assert(ps[oc] <= ic && ic < ps[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ia];
+    }
   }
   return (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa]);
 }
@@ -108,9 +111,10 @@ hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int 
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    assert(ps[oc] <= ic && ic < ps[oc+1]);
-    if (ic >= 0)
+    if (ic >= 0) {
+      assert(ps[oc] <= ic && ic < ps[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
   }
   return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]) * 2;
 }
@@ -132,9 +136,10 @@ hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    assert(ps[oc] <= ic && ic < ps[oc+1]);
-    if (ic >= 0)
+    if (ic >= 0) {
+      assert(ps[oc] <= ic && ic < ps[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
+    }
   }
   return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]);
 }

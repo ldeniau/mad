@@ -68,9 +68,11 @@ struct table {
 
 struct desc {
   int      nv, mo, nc;
+  mono_t  *a;
   table_t *Tv,
           *To;
   idx_t  **l;
+  idx_t    H[?];
 };
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
@@ -90,11 +92,11 @@ int tpsa_print(tpsa_t *t);
 int tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t *a, mono_t *m);
 int tbl_by_ord(table_t *to, table_t *tv, int no, int nc);
 
-void tbl_print(table_t *t, int nv, int no, int nc);
-void mono_print(int n, mono_t *m);
 int  mono_equ(const int n, const mono_t *a, const mono_t *b);
 void mono_add(const int n, const mono_t *a, const mono_t *b, mono_t *c);
 int  mono_isvalid(int n, const mono_t *m, const mono_t *a, const int o);
+void tbl_build_H(desc_t *d);
+int  tbl_index_H(const desc_t *d, const mono_t *a);
 ]]
 
 ffi.cdef(static_dcl)
@@ -122,84 +124,15 @@ local function mono_val(l, n)
   return a
 end
 
-local function mono_cpy(a)
-  local b = {}
-  for i=1,#a do b[i] = a[i] end
-  return b
-end
-
-local function mono_cat(a)
-  local b = {}
-  for i=1,#a do
-    local ai = a[i]
-    for j=1,#ai do b[i] = ai[j] end
-  end
-  return b
-end
-
 local function mono_max(a)
   local m = 0
   for i=1,#a do if a[i]>m then m = a[i] end end
   return m
 end
 
-local function mono_sum(a)
-  local s = 0
-  for i=1,#a do s = s + a[i] end
-  return s
-end
 
-local function mono_acc(a)
-  local s = mono_cpy(a)
-  for i=#s-1,1,-1 do s[i] = s[i] + s[i+1] end
-  return s
-end
-
-local function mono_equ(a,b)
-  for i=1,#a do
-    if a[i] ~= b[i] then return false end
-  end
-  return true
-end
-
-local function mono_leq(a,b)
-  -- partial order relation ({3,0,0} <= {1,1,0})
-  for i=#a,1,-1 do
-    if     a[i] < b[i] then return true
-    elseif a[i] > b[i] then return false
-    end
-  end
-  return true
-end
-
-local function melem_leq(a,b)
-  for i=1,#a do
-    if a[i] > b[i] then return false end
-  end
-  return true
-end
-
-local function mono_add(a,b)
-  local c = {}
-  for i=1,#a do c[i] = a[i]+b[i] end
-  return c
-end
-
-local function mono_isvalid(m, a, o, f)
-  return mono_sum(m) <= o and melem_leq(m,a) and f(m,a)
-end
-
-
-local function nxt_by_var(a,m,o,f)
-  for i=1,#a do
-    a[i] = a[i]+1
-    if mono_isvalid(a,m,o,f) then
-      return true
-    end
-    a[i] = 0
-  end
-  return false
-end
+------------------
+-- T lookup tables
 
 local function table_by_vars(D)
   local nv, no, nc = #D.A, D.mo, D.nc
@@ -239,18 +172,20 @@ end
 -- unit test
 
 local function table_check(D)
-  local a, H, Tv, To, index = D.A, D.H, D.Tv, D.To, D.index
+  local cols, cdesc, Tv, To, index = D.mo + 2, D.cdesc, D.Tv, D.To, D.index
+  local a, nv, H = cdesc.a, cdesc.nv, cdesc.H
 
   --if D.nc~= #Tv + 1                    then return 1e6+0 end
-  for i=2,#a do
-    if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
+  for i=1,nv-1 do
+    if H[(i+1)*cols + 1] ~= (H[i*cols + a[i-1]+1] ~= 0 and
+                         H[i*cols + a[i-1]+1] or H[i*cols + a[i-1]]+1)
                                             then return 1e6+i end
   end
   for i=1,D.nc-1 do
     if To.i[Tv.i[i]]  ~= i                  then return 2e6+i end
     if index(To.m[i]) ~= i                  then return 3e6+i end
-    if clib.mono_equ(#a,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 4e6+i end
-    if clib.mono_equ(#a,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 5e6+i end
+    if clib.mono_equ(nv,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 4e6+i end
+    if clib.mono_equ(nv,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 5e6+i end
   end
   return 0
 end
@@ -279,7 +214,7 @@ local function check_lc(lc, oa, ob, D)
       if ic >= D.nc then                    return 11          end
       if ic >= 0 and ic < #D.A then         return 12          end
       clib.mono_add(nv, To[ia], To[ib], m)
-      if ic <  0 and clib.mono_isvalid(nv, m, a, D.mo) then
+      if ic <  0 and clib.mono_isvalid(nv, m, a, D.mo) ~= 0 then
                                             return 13          end
     end
   end
@@ -330,86 +265,14 @@ end
 --------------------
 -- H indexing matrix
 
-local function index_H(H, a, nv)
-  local s, I = 0, 0
-  for i=nv,1,-1 do
-    I = I + H[i][s + a[i-1]] - H[i][s]
-    s = s + a[i-1]
-  end
-  return I
-end
-
 local function index_T(D)
-  local H, T, nv = D.H, D.Tv.i, #D.A
-  return function (a) return T[ index_H(H,a,nv) ] end
-end
-
-local function clear_H(D)
-  local a, o, H = D.A, D.mo, D.H
-  local sa = mono_acc(a)
-
-  for i=1,#a do -- variables
-    for j=min(sa[i],o)+1,#H[i] do
-      H[i][j] = nil
-    end
-  end
-end
-
-local function solve_H(D)
-  local a, o, Tv, H = D.A, D.mo, D.Tv, D.H
-  local sa = mono_acc(a)
-
-  -- solve system of equations
-  for i=#a-1,2,-1 do -- variables
-    for j=a[i]+2,min(sa[i],o) do -- orders (unknown)
-      -- solve the linear (!) equation of one unknown
-      local b    = nxt_by_unk(a,i,j)      -- build monomial for last unkown of H
-      local idx0 = index_H(H,b)           -- this makes the indexing equation linear
-      local idx1 = find_index(Tv,b,idx0)  -- is linear search slow?
-      H[i][j] = idx1 - idx0
-    end
-  end
-end
-
-local function build_H(D)
-  local a, o, nc, Tv, H = D.A, D.mo, D.nc, D.Tv.m, {}
-
-  -- minimal constants for first row
-  H[1] = { [0]=0 }
-  for j=1,o+1 do -- orders
-    H[1][j] = j
-  end
-
-  -- remaining rows
-  for i=2,#a do -- variables
-    H[i] = { [0]=0 }
-
-    -- initial congruence from Tv
-    for j=1,nc-1 do -- monomials
-      if Tv[j][i-1] ~= Tv[j-1][i-1] then
-        H[i][#H[i]+1] = j
-        if Tv[j][i-1] == 0 then break end
-      end
-    end
-
-    -- complete row with zeros
-    for j=#H[i]+1,o+1 do -- orders
-      H[i][j] = 0
-    end
-  end
-
-  -- close congruence of last var
-  H[#a][a[#a]+1] = nc
-
-  -- update D
-  D.H = H
-  D.index = index_T(D)
-  solve_H(D)
-  clear_H(D)
+  local T, cdesc = D.Tv.i, D.cdesc
+  return function (m) return T[ clib.tbl_index_H(cdesc,m) ] end
 end
 
 local function set_H(D)
-  build_H(D)
+  clib.tbl_build_H(D.cdesc)
+  D.index = index_T(D)
 
   -- check consistency (debugging)
   local chk = table_check(D)
@@ -472,7 +335,7 @@ local function set_L(d)
       ptrs[oa][ob] = lc
     end
   end
-  d.L, d._ptrs.L = L, ptrs
+  d.L, d.cdesc.l, d._ptrs.L = L, L, ptrs
 end
 
 local function new_Ctpsa(t)
@@ -494,9 +357,11 @@ local function add_desc(s, n, a, o, f)
     d = { A=a, mo=o, size=0, F=f or fun_true } -- alphas, order, size and predicate
     d._ptrs = {}
     set_T(d)
+    local ac = mono_t(#a, a)
+    d._ptrs.a = ac
+    d.cdesc = desc_t((#a+1) * (d.mo+2), {#a, d.mo, d.nc, ac, d.Tv, d.To});
     set_H(d) -- requires Tv
     set_L(d)
-    d.cdesc = desc_t({#a, d.mo, d.nc, d.Tv, d.To, d.L});
 
     local chk = check_L(d)
     if chk ~= 0 then error("Invalid TPSA multiplication indexes " .. chk) end

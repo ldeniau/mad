@@ -6,9 +6,11 @@
 
 struct desc {
   int      nv, mo, nc;
+  mono_t  *a;
   table_t *Tv,
           *To;
   idx_t  **l;
+  idx_t    H[];
 };
 
 struct tpsa { // warning: must be kept identical to LuaJit definition 

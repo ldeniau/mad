@@ -29,12 +29,6 @@ mono_equ(const int n, const mono_t a[n], const mono_t b[n])
   return 1;
 }
 
-void
-mono_equ(const int n, const mono_t a[n], const mono_t b[n], mono_t c[n])
-{
-  for (int i = 0; i < n; ++i) c[i] = a[i] + b[i];
-}
-
 int
 mono_sum(int n, const mono_t m[n])
 {
@@ -43,6 +37,14 @@ mono_sum(int n, const mono_t m[n])
   for (int i=0; i < n; ++i)
     s += m[i];
   return s;
+}
+
+void
+mono_acc(int n, const mono_t a[n], mono_t r[n])
+{
+  mono_cpy(n,a,r);
+  for (int i = n-2; i >= 0; --i)
+    r[i] += r[i+1];
 }
 
 int
@@ -72,6 +74,21 @@ mono_nxt_by_var(int n, mono_t m[n], const mono_t a[n], const int o)
     m[i] = 0;
   }
   return 0;
+}
+
+void
+mono_nxt_by_unk(int n, const mono_t a[n], int i, int j, mono_t m[n])
+{
+  assert(a && m);
+  mono_clr(n,m);
+  for (int k=i; k < n; ++k) {
+    m[k] = a[k];
+    j -= a[k];
+    if (j <= 0) {
+      if (j < 0) m[k] += j;
+      break;
+    }
+  }
 }
 
 void
