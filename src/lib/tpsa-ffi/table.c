@@ -85,7 +85,7 @@ tbl_index_H(const desc_t *d, const mono_t a[])
   int s = 0, I = 0, cols = d->mo + 2;
   const int *H = d->H;
   for (int i = d->nv - 1; i >= 0; --i) {
-    I += H[(i+1)*cols + s+a[i]] - H[(i+1)*cols + s];
+    I += H[i*cols + s+a[i]] - H[i*cols + s];
     s += a[i];
   }
   return I;
@@ -104,7 +104,7 @@ solve_H(desc_t *d)
       mono_nxt_by_unk(nv,a,i,j,b);
       idx_t idx0 = tbl_index_H(d,b);
       idx_t idx1 = find_index(nv,d->Tv,b,idx0,d->nc);
-      d->H[(i+1)*cols + j] = idx1 - idx0;
+      d->H[i*cols + j] = idx1 - idx0;
     }
 }
 
@@ -114,24 +114,25 @@ tbl_build_H(desc_t *d)
   assert(d && d->a && d->Tv && d->To && d->H);
   assert(d->nv != 0 && d->mo != 0 && d->nc != 0);
 
-  // minimal constants for 1st row
   int nv = d->nv, mo = d->mo, cols = d->mo + 2;
   idx_t *H = d->H;
   mono_t **Tv = d->Tv->m;
+  
+  // minimal constants for 1st row
   for (int j=0; j <= mo+1; ++j)
-    H[1*cols + j] = j;
+    H[0*cols + j] = j;
 
   // remaining rows
-  for (int i = 2; i <= nv; ++i) {  // variables
+  for (int i = 1; i < nv; ++i) {  // variables
     H[i*cols + 0] = 0;
     int crtPos = 1;
 
     // initial congruence from Tv
     for (int j = 1; j < d->nc; j++) { // monomials
-      if (Tv[j][i-1] != Tv[j-1][i-1]) {
+      if (Tv[j][i] != Tv[j-1][i]) {
         H[i*cols + crtPos] = j;
         crtPos++;
-        if (Tv[j][i-1] == 0) break;
+        if (Tv[j][i] == 0) break;
       }
     }
 
@@ -140,7 +141,7 @@ tbl_build_H(desc_t *d)
   }
 
   // close congruence of the last var
-  H[nv*cols + d->a[nv-1]+1] = d->nc;
+  H[(nv-1)*cols + d->a[nv-1]+1] = d->nc;
 
   solve_H(d);
 
@@ -155,7 +156,7 @@ tbl_print_H(const desc_t *d)
 {
   assert(d && d->H);
   int cols = d->mo + 2;
-  for (int i = 0; i <= d->nv; ++i) {
+  for (int i = 0; i < d->nv; ++i) {
     for (int j = 0; j <= d->mo + 1; ++j)
       printf("%2d ", d->H[i*cols + j]);
     printf("\n");

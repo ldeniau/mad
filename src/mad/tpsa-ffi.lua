@@ -156,7 +156,6 @@ local function table_by_ords(D)
   return t
 end
 
-
 local function hpoly_idx_fun(oa, ob, ps)
   local iao, ibo = ps[oa], ps[ob]  -- offsets
   if oa == ob then
@@ -177,8 +176,8 @@ local function table_check(D)
 
   --if D.nc~= #Tv + 1                    then return 1e6+0 end
   for i=1,nv-1 do
-    if H[(i+1)*cols + 1] ~= (H[i*cols + a[i-1]+1] ~= 0 and
-                         H[i*cols + a[i-1]+1] or H[i*cols + a[i-1]]+1)
+    if H[i*cols + 1] ~= (H[(i-1)*cols + a[i-1]+1] ~= 0 and
+                         H[(i-1)*cols + a[i-1]+1] or H[(i-1)*cols + a[i-1]]+1)
                                             then return 1e6+i end
   end
   for i=1,D.nc-1 do
