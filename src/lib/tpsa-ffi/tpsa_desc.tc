@@ -1,0 +1,520 @@
+#include "tpsa_desc.h"
+
+#define TRACE
+
+struct desc {
+  int      nv, nc,// number of vars, number of coeff
+          *ps,    // poly start in To
+          *tvi;   // lookup tv -> to
+  mono_t   mo,    // maximum order
+          *a,     // alphas
+          *mons,  // 'matrix' storing the monomials (sorted by ord)
+         **To,    // Table by orders -- pointers to mons, sorted by order
+         **Tv;    // Table by vars   -- pointers to mons, sorted by vars
+  idx_t  **L;     // multiplication indexes -- l[oa][ob] = lc; lc[ia][ib] = ic
+  idx_t   *H;     // indexing matrix
+};
+
+// ========== HELPERS ============
+
+static inline int
+imin (int a, int b)
+{ return a<b ? a : b; }
+
+static inline int
+imax (int a, int b)
+{ return a>b ? a : b; }
+
+static inline mono_t
+mmin (mono_t a, mono_t b)
+{ return a<b ? a : b; }
+
+static inline int
+fact(int n)
+{ return n == 1 ? 1 : n * fact(n-1); }
+
+static inline int
+max_nc(int nv, int no)
+{ return fact(nv+no) / (fact(nv) * fact(no)); }
+
+static inline idx_t
+hpoly_idx_triang(idx_t ib, idx_t ia)
+{ return (ia*(ia+1))/2 + ib; } // left triangular
+
+static inline idx_t
+hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
+{ return ib*ia_size + ia; }
+
+// ========== MONOMIALS ============
+
+static inline void
+mono_clr(int n, mono_t m[n])
+{
+  assert(m);
+  for (int i=0; i < n; ++i) m[i] = 0;
+}
+
+static inline void
+mono_cpy(int n, const mono_t src[n], mono_t dst[n])
+{
+  assert(src && dst);
+  for (int i = 0; i < n; ++i) dst[i] = src[i];
+}
+
+static inline int
+mono_equ(const int n, const mono_t a[n], const mono_t b[n])
+{
+  for (int i = 0; i < n; ++i)
+    if (a[i] != b[i]) return 0;
+  return 1;
+}
+
+static inline mono_t
+mono_sum(int n, const mono_t m[n])
+{
+  assert(m);
+  mono_t s = 0;
+  for (int i=0; i < n; ++i)
+    s += m[i];
+  return s;
+}
+
+static inline void
+mono_acc(int n, const mono_t a[n], mono_t r[n])
+{
+  mono_cpy(n,a,r);
+  for (int i = n-2; i >= 0; --i)
+    r[i] += r[i+1];
+}
+
+static inline int
+mono_elem_leq(int n, const mono_t a[n], const mono_t b[n])
+{
+  assert(a && b);
+  for (int i=0; i < n; ++i)
+    if (a[i] > b[i])
+      return 0;
+  return 1;
+}
+
+static inline int
+mono_isvalid(int n, const mono_t m[n], const mono_t a[n], const mono_t o)
+{
+  return mono_sum(n, m) <= o && mono_elem_leq(n, m, a);
+}
+
+static inline int
+mono_nxt_by_var(int n, mono_t m[n], const mono_t a[n], const mono_t o)
+{
+  assert(m && a);
+  for (int i=0; i < n; ++i) {
+    ++m[i];
+    if (mono_isvalid(n, m, a, o))
+      return 1;
+    m[i] = 0;
+  }
+  return 0;
+}
+
+static inline void
+mono_nxt_by_unk(int n, const mono_t a[n], int i, int j, mono_t m[n])
+{
+  assert(a && m);
+  mono_clr(n,m);
+  for (int k=i; k < n; ++k) {
+    m[k] = a[k];
+    j -= a[k];
+    if (j <= 0) {
+      if (j < 0) m[k] += j;
+      break;
+    }
+  }
+}
+
+static inline void
+mono_print(int n, const mono_t m[n])
+{
+  assert(m);
+  printf("[ ");
+  for (int i=0; i < n; ++i)
+    printf("%d ", (int)m[i]);
+  printf("]");
+}
+
+static inline void
+mono_print_mat(int w, int h, const mono_t t[w*h])
+{
+  for (int i = 0; i < h; ++i) {
+    printf("(%d) ", i);
+    mono_print(w, t + i*w);
+    printf("\n");
+  }
+}
+
+static inline void
+mono_add(int n, const mono_t a[n], const mono_t b[n], mono_t r[n])
+{
+  assert(a && b && r);
+  for (int i = 0; i < n; ++i) r[i] = a[i] + b[i];
+}
+
+
+// ========== TABLES ============
+
+static inline void
+tbl_print(int w, int h, mono_t **t)
+{
+  for (int i = 0; i < h; ++i) {
+    printf("(%d) ", i);
+    mono_print(w, t[i]);
+    printf("\n");
+  }
+}
+
+static inline int  // real NC
+make_mons(desc_t *d)
+{
+#ifdef TRACE
+  printf("make_mons for %p\n", (void*)d);
+#endif
+  // builds the monomials matrix in To order
+  assert(d && d->a);
+  int nv = d->nv;
+  d->mons = malloc(nv * d->nc  * sizeof *(d->mons));
+  d->ps   = malloc((d->mo + 1) * sizeof *(d->ps));
+
+  // ord 0
+  mono_clr(nv, d->mons);
+  d->ps[0] = 0;
+  int crtMonIdx = 1;
+
+  // ord 1
+  d->ps[1] = 1;
+  for (int i = 0; i < nv; ++i, ++crtMonIdx) {
+  for (int j = 0; j <  nv; ++j)
+    if (i == j) d->mons[crtMonIdx * nv + j] = 1;
+    else        d->mons[crtMonIdx * nv + j] = 0;
+  }
+
+  // ords 2..mo
+  int j;
+  mono_t m[nv], *crtMon = d->mons + crtMonIdx*nv;
+  for (mono_t o = 2; o <= d->mo; o++) { // to build ord o:
+    d->ps[o] = crtMonIdx;
+    for (int i = 1; i <= nv; ++i) {     // i goes through ord    1  mons
+      j = d->ps[o-1];                   // j goes through ord (o-1) mons
+      do {
+        mono_add(nv, d->mons + i*nv, d->mons + j*nv, m);
+        if (mono_isvalid(nv, m, d->a, d->mo)) {
+          mono_cpy(nv, m, crtMon);
+          crtMonIdx++;
+          crtMon += nv;
+        }
+        j++;
+      } while(m[i-1] <= d->a[i-1] && m[i-1] < o );
+    }
+  }
+  d->ps[d->mo+1] = crtMonIdx;
+#ifdef TRACE
+  mono_print_mat(d->nv, imin(crtMonIdx, 50), d->mons);
+  if (crtMonIdx > 50) printf("... [ %d more rows ] ...\n", crtMonIdx - 50);
+#endif
+  return crtMonIdx;
+}
+
+static inline int
+find_index(int n, mono_t **T, const mono_t m[n], int start, int stop)
+{
+  for (int i = start; i < stop; ++i)
+    if (mono_equ(n,T[i],m)) return i;
+
+  // error
+  printf("monomial not found in table: ");
+  mono_print(n,m);
+  assert(NULL);
+}
+
+static inline void
+tbl_by_ord(desc_t *d)
+{
+#ifdef TRACE
+  printf("tbl_by_ord from %p\n", (void*)d);
+#endif
+  assert(d && d->a && d->ps && d->mons);
+  d->To = malloc(d->nc * sizeof *(d->To));
+  mono_t *mons = d->mons;
+  for (int i = 0; i < d->nc; ++i, mons += d->nv)
+    d->To[i] = mons;
+}
+
+static inline void
+tbl_by_var(desc_t *d)
+{
+#ifdef TRACE
+  printf("tbl_by_var from %p\n", (void*)d);
+#endif
+  assert(d && d->a && d->mons && d->ps);
+  d->Tv  = malloc(d->nc * sizeof *(d->Tv));
+  d->tvi = malloc(d->nc * sizeof *(d->tvi));
+  
+  int mi = 0, nv = d->nv;
+  mono_t m[nv];
+  mono_clr(nv, m);
+
+  do {
+    int o = mono_sum(nv, m);
+    int idx = find_index(nv, d->To, m, d->ps[o], d->ps[o+1]);
+    d->tvi[mi] = idx;
+    d->Tv[mi]  = d->To[idx];
+    ++mi;
+  } while (mono_nxt_by_var(nv, m, d->a, d->mo));
+#ifdef TRACE
+  tbl_print(nv, imin(mi,50), d->Tv);
+  if (mi > 50) printf("... [ %d more rows ] ...\n", mi - 50);
+  printf("tvi=[ ");
+  for (int i = 0; i < imin(mi,50); ++i) printf("%d ", d->tvi[i]);
+  printf("%s]\n", mi > 50 ? " ... " : "");
+#endif
+}
+
+static inline int  // error code
+tbl_check(desc_t *d)
+{
+  mono_t **Tv = d->Tv, **To = d->To, *mons = d->mons, *a = d->a;
+  int *tvi = d->tvi, nv = d->nv, cols = d->mo + 2;
+  idx_t *H = d->H;
+
+  // check H
+  for (int i = 1; i < nv; ++i)
+    if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] ?
+                         H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
+                                          return 1e6 + i;
+
+  for (int i = 1; i < d->nc; ++i) {
+    if (tvi[tbl_index_H(d,To[i])] != i)   return 3e6 + i;
+    if (! mono_equ(nv,To[tvi[i]],Tv[i]))  return 4e6 + i;
+    if (! mono_equ(nv,To[i],mons + nv*i)) return 5e6 + i;
+  }
+  return 0;
+}
+
+// ========== H indexing matrix ============
+
+static inline int
+tbl_index_H(const desc_t *d, const mono_t a[])
+{
+  int s = 0, I = 0, cols = d->mo + 2;
+  const int *H = d->H;
+  for (int i = d->nv - 1; i >= 0; --i) {
+    I += H[i*cols + s+a[i]] - H[i*cols + s];
+    s += a[i];
+  }
+  return I;
+}
+
+static inline void
+tbl_clear_H(desc_t *d)
+{
+  mono_t sa[d->nv];
+  mono_acc(d->nv, d->a, sa);
+  int cols = d->mo + 2;
+  for (int i = 0; i < d->nv; ++i)
+    for (int j = 1 + mmin(sa[i],d->mo); j < cols; ++j)
+      d->H[i*cols + j] = 0;
+}
+
+static inline void
+tbl_solve_H(desc_t *d)
+{
+  int nv = d->nv, cols = d->mo + 2;
+  mono_t sa[nv], b[nv], *a = d->a;
+  mono_acc(nv,a,sa);
+
+  // solve system of equations
+  for (int i = nv-2; i >= 1; --i)  // variables
+    for (int j = a[i]+2; j <= mmin(sa[i],d->mo); j++) { // orders
+      mono_nxt_by_unk(nv,a,i,j,b);
+      idx_t idx0 = tbl_index_H(d,b);
+      idx_t idx1 = find_index(nv,d->Tv,b,idx0,d->nc);
+      d->H[i*cols + j] = idx1 - idx0;
+    }
+}
+
+static inline void
+tbl_build_H(idx_t *H, int rows, int cols, mono_t a[rows], mono_t **Tv, int nc)
+{
+  // minimal constants for 1st row
+  for (int j=0; j < cols; ++j)
+    H[0*cols + j] = j;
+
+  // remaining rows
+  for (int i = 1; i < rows; ++i) {  // variables
+    H[i*cols + 0] = 0;
+    int crtPos = 1;
+
+    // initial congruence from Tv
+    for (int j = 1; j < nc; j++) { // monomials
+      if (Tv[j][i] != Tv[j-1][i]) {
+        H[i*cols + crtPos] = j;
+        crtPos++;
+        if (Tv[j][i] == 0) break;
+      }
+    }
+
+    // complete row with zeros
+    while(crtPos < cols) H[i*cols + crtPos] = 0, crtPos++;
+  }
+
+  // close congruence of the last var
+  H[(rows-1)*cols + a[rows-1] + 1] = nc;
+}
+
+static inline void
+tbl_set_H(desc_t *d)
+{
+  assert(d && d->a && d->Tv && d->To);
+  assert(d->nv != 0 && d->mo != 0 && d->nc != 0);
+
+  d->H = malloc(d->nv * (d->mo+2) * sizeof *(d->H));
+  tbl_build_H(d->H, d->nv, d->mo + 2, d->a, d->Tv, d->nc);
+  tbl_solve_H(d);
+  tbl_clear_H(d);
+
+#ifdef TRACE
+  printf("H = {\n");
+  tbl_print_H(d);
+#endif
+}
+
+static inline void
+tbl_print_H(const desc_t *d)
+{
+  assert(d && d->H);
+  int cols = d->mo + 2;
+  for (int i = 0; i < d->nv; ++i) {
+    for (int j = 0; j < cols; ++j)
+      printf("%2d ", d->H[i*cols + j]);
+    printf("\n");
+  }
+}
+
+
+// ========== L indexing matrix ============ 
+
+static inline void
+tbl_print_LC(idx_t *lc, int oa, int ob, int *ps)
+{
+  int iao = ps[oa], ibo = ps[ob], cols = ps[oa] - ps[oa+1];
+  for (int ib = ps[ob]; ib < ps[ob+1]; ++ib) {
+    printf("\n  ");
+    for (int ia = imax(ib,ps[oa]); ia < ps[oa+1]; ++ia) {
+      int ilc;
+      if (oa == ob) ilc = lc[hpoly_idx_triang(ib-ibo,ia-iao)];
+      else          ilc = lc[hpoly_idx_rect  (ib-ibo,ia-iao,cols)];
+      printf("%d ", lc[ilc]);
+    }
+  }
+  printf("\n");
+}
+
+static inline void
+tbl_print_L(desc_t *d)
+{
+  int ho = d->mo / 2;
+  for (int oc = 2; oc <= d->mo; ++oc)
+    for (int j = 1; j <= oc/2; ++j) {
+      int oa = oc - j, ob = j;
+      printf("L[%d][%d] = {", oa, ob);
+      tbl_print_LC(d->L[oa*ho + ob], oa, ob, d->ps);
+    }
+}
+
+static inline idx_t*
+tbl_build_LC(int oa, int ob, const desc_t *d)
+{
+#ifdef TRACE
+  printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
+#endif
+  assert(d && d->To && d->ps && d->tvi);
+  assert(oa < d->mo && ob < d->mo);
+  
+  mono_t **To = d->To;
+  const int *ps = d->ps, *i = d->tvi,
+             iao  = ps[oa],            ibo  = ps[ob],  // offsets
+             cols = ps[oa+1] - ps[oa], rows = ps[ob+1] - ps[ob];
+
+  int size = 0;
+  if (oa == ob) size = ((rows + 1) * cols) / 2;
+  else          size = rows * cols;
+  idx_t *lc = malloc(size * sizeof *lc);
+  for (int i = 0; i < size; ++i) lc[i] = -1;
+
+  mono_t m[d->nv];
+  for (int ib =      ps[ob]    ; ib < ps[ob+1]; ++ib)
+  for (int ia = imax(ps[oa],ib); ia < ps[oa+1]; ++ia) {
+    mono_add(d->nv, To[ia], To[ib], m);
+    if (mono_isvalid(d->nv, m, d->a, d->mo)) {
+      if (oa == ob) lc[ hpoly_idx_triang(ib-ibo, ia-iao)]       = i[tbl_index_H(d,m)];
+      else          lc[ hpoly_idx_rect  (ib-ibo, ia-iao, cols)] = i[tbl_index_H(d,m)];
+    }
+  }
+
+  return lc;
+}
+
+
+void
+tbl_set_L(desc_t *d)
+{
+#ifdef TRACE
+  printf("tbl_set_L from %p\n", (void*)d);
+#endif
+  mono_t o = d->mo, ho = d->mo / 2;
+  d->L = calloc((o*ho + 1), sizeof *(d->L));
+  printf("here\n");
+  for (int oc = 2; oc <= d->mo; ++oc)
+    for (int j = 1; j <= oc; ++j) {
+      int oa = oc - j, ob = j;
+
+      d->L[oa*ho + ob] = tbl_build_LC(oa, ob, d);
+    }
+#ifdef TRACE
+  tbl_print_L(d);
+#endif
+}
+
+// ========== DESC management ============ 
+
+desc_t* 
+tpsa_desc_new(int nv, mono_t var_ords[nv], int mvo)
+{
+#ifdef TRACE
+  printf("tpsa_desc_new nv=%d mo=%d nc=%d var_ords=", nv, mvo, max_nc(nv, mvo));
+  mono_print(nv, var_ords);
+  printf("\n");
+#endif
+  desc_t *d = malloc(sizeof *d);
+  d->nv = nv, d->mo = mvo, d->nc = max_nc(nv, mvo);
+
+  d->a = malloc(nv * sizeof *(d->a));
+  mono_cpy(nv, var_ords, d->a);
+
+  d->nc = make_mons(d);
+  tbl_by_ord(d);
+  tbl_by_var(d);  // requires To
+  tbl_set_H(d);
+  tbl_set_L(d);
+
+  int err = tbl_check(d);
+  if (err != 0) {
+    printf("\nA= "); mono_print(d->nv, d->a);
+    printf("\nH= "); tbl_print_H(d);
+    printf("\nTv= "); tbl_print(d->nv, d->nc, d->Tv);
+    printf("\nTo= "); tbl_print(d->nv, d->nc, d->To);
+    printf("\nCheking table consistency ... %d\n", err);
+    assert(NULL);
+  }
+
+  return d;
+}
+

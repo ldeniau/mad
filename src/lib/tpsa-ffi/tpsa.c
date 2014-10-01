@@ -140,7 +140,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 #endif
   desc_t *dc = c->desc;
   const idx_t *l = NULL;
-  int *ps = dc->To->ps, hod = dc->mo / 2, comps = 0;
+  int *ps = dc->ps, hod = dc->mo / 2, comps = 0;
   const num_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
   num_t *cc  = c->coef;
@@ -155,7 +155,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa != ob
-      l = dc->l[oa*hod + ob];
+      l = dc->L[oa*hod + ob];
       assert(l);
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
@@ -174,7 +174,7 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
     if (! (oc&1)) {  // even oc, triang matrix
       int hoc = oc/2;
-      l = dc->l[hoc*hod + hoc];
+      l = dc->L[hoc*hod + hoc];
       assert(l);
       if (bget(nza,hoc) && bget(nzb,hoc) ) {
         comps += hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
@@ -272,7 +272,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i < dc->To->ps[c->mo+1]; i++)
+  for (int i=1; i < dc->ps[c->mo+1]; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
   int comps = (dc->nc-1) * 2 + 1;
