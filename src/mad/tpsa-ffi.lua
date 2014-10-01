@@ -97,6 +97,10 @@ int  tbl_index_H(const desc_t *d, const mono_t *a);
 int  mono_equ(const int n, const mono_t *a, const mono_t *b);
 void mono_add(const int n, const mono_t *a, const mono_t *b, mono_t *c);
 int  mono_isvalid(int n, const mono_t *m, const mono_t *a, const int o);
+
+idx_t hpoly_idx_triang(idx_t ib, idx_t ia);
+idx_t hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size);
+void  build_lc(const desc_t *d, int oa, int ob, int n, int *lc);
 ]]
 
 ffi.cdef(static_dcl)
@@ -160,10 +164,10 @@ local function hpoly_idx_fun(oa, ob, ps)
   local iao, ibo = ps[oa], ps[ob]  -- offsets
   if oa == ob then
     -- ia commutes with ib so use ia as row to keep it left triangular
-    return function (ib, ia) return ((ia-iao) * (ia-iao+1))/2 + ib-ibo end
+    return function (ib, ia) return clib.hpoly_idx_triang(ib-ibo, ia-iao)end
   else
     local cols = ps[oa+1] - ps[oa]
-    return function (ib, ia) return (ib-ibo)*cols + ia-iao end
+    return function (ib, ia) return clib.hpoly_idx_rect(ib-ibo, ia-iao, cols) end
   end
 end
 
@@ -298,25 +302,16 @@ local function fill_L(oa, ob, D)
   else               size =   rows    * cols      end
 
   D.size = D.size + size*4
-  return intArr(size, -1)
+  return intArr(size, -1), size
 end
 
 local function build_L(oa, ob, D)
-  local ps, To, nv, index = D.To.ps, D.To.m, #D.A, D.index
-  local lc = fill_L(oa, ob, D)
-  local idx_lc = hpoly_idx_fun(oa, ob, ps)
-
-  local m, a = mono_t(nv), mono_t(nv, D.A)
-  for ib=ps[ob],ps[ob+1]-1         do
-  for ia=max(ib,ps[oa]),ps[oa+1]-1 do
-    clib.mono_add(nv, To[ia], To[ib], m)
-    if clib.mono_isvalid(nv, m, a, D.mo) ~= 0 then
-        lc[ idx_lc(ib,ia) ] = index(m)
-    end
-  end end
+  local lc, lc_size = fill_L(oa, ob, D)
+  clib.build_lc(D.cdesc, oa, ob, lc_size, lc)
 
   return lc
 end
+
 
 local function set_L(d)
   local o, ho = d.mo, floor(d.mo * 0.5)

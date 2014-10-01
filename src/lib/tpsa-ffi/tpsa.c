@@ -45,24 +45,6 @@ bget (bit_t b, int n)
   return b & (1 << n);
 }
 
-static inline int
-imin (int a, int b)
-{
-  return a<b ? a : b;
-}
-
-static inline idx_t
-hpoly_idx_triang(idx_t ib, idx_t ia)
-{
-  return (ia*(ia+1))/2 + ib;  // left triangular
-}
-
-static inline idx_t
-hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
-{
-  return ib*ia_size + ia;
-}
-
 // == local functions
 
 static int
