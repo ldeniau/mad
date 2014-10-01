@@ -91,12 +91,12 @@ int tpsa_print(tpsa_t *t);
 
 int tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t *a, mono_t *m);
 int tbl_by_ord(table_t *to, table_t *tv, int no, int nc);
+void tbl_build_H(desc_t *d);
+int  tbl_index_H(const desc_t *d, const mono_t *a);
 
 int  mono_equ(const int n, const mono_t *a, const mono_t *b);
 void mono_add(const int n, const mono_t *a, const mono_t *b, mono_t *c);
 int  mono_isvalid(int n, const mono_t *m, const mono_t *a, const int o);
-void tbl_build_H(desc_t *d);
-int  tbl_index_H(const desc_t *d, const mono_t *a);
 ]]
 
 ffi.cdef(static_dcl)

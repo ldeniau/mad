@@ -3,9 +3,21 @@
 #include <assert.h>
 #include <stdio.h>
 #include "tpsa.h"
+#include "tpsa_desc.h"
+#include "tpsa_desc.tc"
 //#include "mem_alloc.h"
 
 //#define TRACE
+
+typedef unsigned int  bit_t;
+typedef double        num_t;
+
+struct tpsa { // warning: must be kept identical to LuaJit definition 
+  desc_t *desc;
+  int     mo;
+  bit_t   nz;
+  num_t   coef[];
+};
 
 // == debug
 static inline void
@@ -25,12 +37,6 @@ static inline bit_t
 bset (bit_t b, int n)
 {
   return b | (1 << n);
-}
-
-static inline bit_t
-bclr (bit_t b, int n)
-{
-  return b & ~(1 << n);
 }
 
 static inline int
@@ -225,7 +231,7 @@ tpsa_delete(tpsa_t* t)
 }
 
 int // error code
-tpsa_print(tpsa_t *t)
+tpsa_print(const tpsa_t *t)
 {
   desc_t *d = t->desc;
   printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
