@@ -19,6 +19,7 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   num_t   coef[];
 };
 
+
 // == debug
 static inline void
 print_l(const idx_t const* l)
@@ -187,27 +188,61 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
 // == public functions
 
-tpsa_t*
-tpsa_new(desc_t *d)
+int
+tpsa_get_size(int nv, mono_t var_ords[nv], mono_t mvo)
+{ return tpsa_desc_get_nc(nv,var_ords,mvo); }
+
+void
+tpsa_init(tpsa_t *t, int nv, mono_t var_ords[nv], mono_t mvo)
 {
-  assert(d);
-  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
+  assert(t && t->coef);
+  t->desc = tpsa_desc_get(nv, var_ords, mvo);
 #ifdef TRACE
-  printf("new %p from %p nc=%d\n", (void*)t, (void*)d, d->nc);
+  printf("init %p from %p\n", (void*)t, (void*)t->desc);
 #endif
-  t->desc = d;
   t->mo = 0;
   t->nz = 0;
-  for (int i = 0; i < d->nc; ++i)
+  for (int i = 0; i < t->desc->nc; ++i)
     t->coef[i] = 0;
+}
+
+tpsa_t*
+tpsa_new(int nv, mono_t var_ords[nv], mono_t mvo)
+{
+  desc_t *d = tpsa_desc_get(nv, var_ords, mvo);
+  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
+#ifdef TRACE
+  printf("tpsa new %p\n", (void*)t);
+#endif
+  tpsa_init(t, nv, var_ords, mvo);
   return t;
+}
+
+void
+tpsa_cpy(tpsa_t *src, tpsa_t *dst)
+{
+  assert(src && dst);
+  assert(src->desc == dst->desc);
+  memcpy(src, dst, sizeof *src);
+#ifdef TRACE
+  printf("Copied %ld bytes from %p to %p\n", sizeof *src, (void*)src, (void*)dst);
+#endif
+}
+
+void
+tpsa_same(tpsa_t *src, tpsa_t *dst)
+{
+  assert(src && dst);
+  assert(src->desc == dst->desc);
+  dst->mo = src->mo;
+  dst->nz = src->nz;
 }
 
 void
 tpsa_delete(tpsa_t* t)
 {
 #ifdef TRACE
-  printf("del %p\n", (void*)t);
+  printf("tpsa del %p\n", (void*)t);
 #endif
   free(t);
 }

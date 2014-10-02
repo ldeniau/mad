@@ -1,6 +1,6 @@
 #include "tpsa_desc.h"
 
-#define TRACE
+//#define TRACE
 
 struct desc {
   int      nv, nc,// number of vars, number of coeff
@@ -181,7 +181,7 @@ make_mons(desc_t *d)
   assert(d && d->a);
   int nv = d->nv;
   d->mons = malloc(nv * d->nc  * sizeof *(d->mons));
-  d->ps   = malloc((d->mo + 1) * sizeof *(d->ps));
+  d->ps   = malloc((d->mo + 2) * sizeof *(d->ps));
 
   // ord 0
   mono_clr(nv, d->mons);
@@ -275,27 +275,6 @@ tbl_by_var(desc_t *d)
   for (int i = 0; i < imin(mi,50); ++i) printf("%d ", d->tvi[i]);
   printf("%s]\n", mi > 50 ? " ... " : "");
 #endif
-}
-
-static inline int  // error code
-tbl_check(desc_t *d)
-{
-  mono_t **Tv = d->Tv, **To = d->To, *mons = d->mons, *a = d->a;
-  int *tvi = d->tvi, nv = d->nv, cols = d->mo + 2;
-  idx_t *H = d->H;
-
-  // check H
-  for (int i = 1; i < nv; ++i)
-    if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] ?
-                         H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
-                                          return 1e6 + i;
-
-  for (int i = 1; i < d->nc; ++i) {
-    if (tvi[tbl_index_H(d,To[i])] != i)   return 3e6 + i;
-    if (! mono_equ(nv,To[tvi[i]],Tv[i]))  return 4e6 + i;
-    if (! mono_equ(nv,To[i],mons + nv*i)) return 5e6 + i;
-  }
-  return 0;
 }
 
 // ========== H indexing matrix ============
@@ -398,20 +377,23 @@ tbl_print_H(const desc_t *d)
   }
 }
 
-
 // ========== L indexing matrix ============ 
 
 static inline void
 tbl_print_LC(idx_t *lc, int oa, int ob, int *ps)
 {
-  int iao = ps[oa], ibo = ps[ob], cols = ps[oa] - ps[oa+1];
+  int iao = ps[oa], ibo = ps[ob], cols = ps[oa+1] - ps[oa];
   for (int ib = ps[ob]; ib < ps[ob+1]; ++ib) {
     printf("\n  ");
-    for (int ia = imax(ib,ps[oa]); ia < ps[oa+1]; ++ia) {
-      int ilc;
-      if (oa == ob) ilc = lc[hpoly_idx_triang(ib-ibo,ia-iao)];
-      else          ilc = lc[hpoly_idx_rect  (ib-ibo,ia-iao,cols)];
-      printf("%d ", lc[ilc]);
+    for (int ia = ps[oa]; ia < ps[oa+1]; ++ia) {
+      int ic;
+      if (oa == ob) {
+        if (ia > ib) break;
+        ic = lc[hpoly_idx_triang(ia-iao,ib-ibo)];  // swap them to print left triang
+      }
+      else
+        ic = lc[hpoly_idx_rect  (ib-ibo,ia-iao,cols)];
+      printf("%3d ", ic);
     }
   }
   printf("\n");
@@ -450,20 +432,29 @@ tbl_build_LC(int oa, int ob, const desc_t *d)
   for (int i = 0; i < size; ++i) lc[i] = -1;
 
   mono_t m[d->nv];
+  int ic, ilc;
   for (int ib =      ps[ob]    ; ib < ps[ob+1]; ++ib)
-  for (int ia = imax(ps[oa],ib); ia < ps[oa+1]; ++ia) {
+  for (int ia = imax(ps[oa],ib); ia < ps[oa+1]; ++ia) {    
     mono_add(d->nv, To[ia], To[ib], m);
     if (mono_isvalid(d->nv, m, d->a, d->mo)) {
-      if (oa == ob) lc[ hpoly_idx_triang(ib-ibo, ia-iao)]       = i[tbl_index_H(d,m)];
-      else          lc[ hpoly_idx_rect  (ib-ibo, ia-iao, cols)] = i[tbl_index_H(d,m)];
+      ic = i[tbl_index_H(d,m)];
+      if (oa == ob) ilc = hpoly_idx_triang(ib-ibo, ia-iao);
+      else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
+      lc[ilc] = ic;
+
+#ifdef TRACE
+      printf(" ib=%d ", ib); mono_print(d->nv, To[ib]);
+      printf(" ia=%d ", ia); mono_print(d->nv, To[ia]);
+      printf(" ic=%d ", ic); mono_print(d->nv, m);
+      printf(" ilc=%d\n", ilc);
+#endif
     }
   }
 
   return lc;
 }
 
-
-void
+static inline void
 tbl_set_L(desc_t *d)
 {
 #ifdef TRACE
@@ -471,9 +462,9 @@ tbl_set_L(desc_t *d)
 #endif
   mono_t o = d->mo, ho = d->mo / 2;
   d->L = calloc((o*ho + 1), sizeof *(d->L));
-  printf("here\n");
+
   for (int oc = 2; oc <= d->mo; ++oc)
-    for (int j = 1; j <= oc; ++j) {
+    for (int j = 1; j <= oc / 2; ++j) {
       int oa = oc - j, ob = j;
 
       d->L[oa*ho + ob] = tbl_build_LC(oa, ob, d);
@@ -483,10 +474,71 @@ tbl_set_L(desc_t *d)
 #endif
 }
 
-// ========== DESC management ============ 
+// ========== UNIT TEST ============
 
-desc_t* 
-tpsa_desc_new(int nv, mono_t var_ords[nv], int mvo)
+static inline int
+tbl_check_L(desc_t *d)
+{
+  assert(d && d->ps && d->L && d->a && d->To && d->H);
+  int ho = d->mo / 2, *ps = d->ps;
+  mono_t m[d->nv];
+  for (int oc = 2; oc <= d->mo; ++oc)
+    for (int j = 1; j <= oc / 2; ++j) {
+      int oa = oc - j, ob = j;
+      idx_t *lc = d->L[oa*ho + ob];
+      if (!lc)                                       return  1e7 + oa*1e3 + ob;
+
+      int sa = ps[oa+1]-ps[oa], sb = ps[ob+1]-ps[ob];
+
+      for (int ibl =                   0 ; ibl < sb; ++ibl) {
+      for (int ial = (oa == ob ? ibl : 0); ial < sa; ++ial) {
+        int ib = ibl + ps[ob], ia = ial + ps[oa];
+        int il = (oa == ob ?
+                  hpoly_idx_triang(ibl,ial) : hpoly_idx_rect(ibl,ial,sa));
+        if (il < 0)                                  return -2e7 - ia*1e5 - ib;
+        if (il >= sa * sb)                           return  2e7 + ia*1e5 + ib;
+        
+        int ic = lc[il];
+        if (ic >= ps[oc+1])                          return  3e7 + ic*1e5 + 11;
+        if (ic >= 0 && ic < d->nv)                   return  3e7 + ic*1e5 + 12;
+
+        mono_add(d->nv, d->To[ia], d->To[ib], m);
+        if (ic < 0 && mono_isvalid(d->nv, m, d->a, d->mo))
+                                                     return -3e7          - 13;
+        }
+      }
+    }
+  return 0;
+}
+
+static inline int  // error code
+tbl_check(desc_t *d)
+{
+  mono_t **Tv = d->Tv, **To = d->To, *mons = d->mons, *a = d->a;
+  int *tvi = d->tvi, nv = d->nv, cols = d->mo + 2;
+  idx_t *H = d->H;
+
+  // check H
+  for (int i = 1; i < nv; ++i)
+    if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] ?
+                          H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
+                                          return 1e6 + i;
+
+  for (int i = 1; i < d->nc; ++i) {
+    if (tvi[tbl_index_H(d,To[i])] != i)   return 3e6 + i;
+    if (! mono_equ(nv,To[tvi[i]],Tv[i]))  return 4e6 + i;
+    if (! mono_equ(nv,To[i],mons + nv*i)) return 5e6 + i;
+  }
+  return tbl_check_L(d);
+}
+
+// ========== DESC management ============
+
+static desc_t *D[_TPSA_DESC_NUM_];
+static int last_desc_idx = -1;
+
+static inline desc_t*
+tpsa_desc_new(int nv, mono_t var_ords[nv], mono_t mvo)
 {
 #ifdef TRACE
   printf("tpsa_desc_new nv=%d mo=%d nc=%d var_ords=", nv, mvo, max_nc(nv, mvo));
@@ -516,5 +568,56 @@ tpsa_desc_new(int nv, mono_t var_ords[nv], int mvo)
   }
 
   return d;
+}
+
+static inline int
+desc_equ(desc_t *d, int nv, mono_t var_ords[nv], mono_t mvo)
+{
+  assert(d && d->a);
+  return d->nv == nv && d->mo == mvo && mono_equ(nv, d->a, var_ords);
+}
+
+static inline desc_t*
+desc_search(int nv, mono_t var_ords[nv], mono_t mvo)
+{
+  for (int i = last_desc_idx; i >= 0; --i) {
+    if (desc_equ(D[i], nv, var_ords, mvo))
+      return D[i];
+  }
+  return NULL;
+}
+
+desc_t*
+tpsa_desc_get(int nv, mono_t var_ords[nv], mono_t mvo)
+{
+  desc_t *d = desc_search(nv,var_ords,mvo);
+  return d ? d : (D[++last_desc_idx] = tpsa_desc_new(nv, var_ords, mvo));
+}
+
+static inline int
+tpsa_desc_get_nc(int nv, mono_t var_ords[nv], mono_t mvo)
+{
+  desc_t *d = desc_search(nv,var_ords,mvo);
+  if (d)  return d->nc;
+  int nc = 0;
+  mono_t m[nv];
+  mono_clr(nv, m);
+  while (mono_nxt_by_var(nv,m,var_ords,mvo)) nc++;
+  return nc;
+}
+
+void
+tpsa_desc_del(desc_t *d)
+{
+  // free and set to NULL so that they cannot be accidentally reused
+  free(d->ps);    d->ps   = NULL;
+  free(d->tvi);   d->tvi  = NULL;
+  free(d->a);     d->a    = NULL;
+  free(d->mons);  d->mons = NULL;
+  free(d->To);    d->To   = NULL;
+  free(d->Tv);    d->Tv   = NULL;
+  for (int i = 0; i < d->mo*d->mo/2; ++i) free(d->L[i]);
+  free(d->L);     d->L    = NULL;
+  free(d->H);     d->H    = NULL;
 }
 
