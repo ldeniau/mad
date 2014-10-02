@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include "tpsa.h"
-#include "tpsa_desc.h"
 #include "tpsa_desc.tc"
 //#include "mem_alloc.h"
 
@@ -188,34 +187,34 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
 // == public functions
 
+tpsa_t*
+tpsa_new(desc_t *d)
+{
+#ifdef TRACE
+  printf("tpsa new %p from %p\n", (void*)t, (void*)d);
+#endif
+  assert(d);
+  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
+  tpsa_init(t,d);
+  return t;
+}
+
 int
-tpsa_get_size(int nv, mono_t var_ords[nv], mono_t mvo)
-{ return tpsa_desc_get_nc(nv,var_ords,mvo); }
+tpsa_get_size(desc_t *d)
+{ assert(d); return d->nc; }
 
 void
-tpsa_init(tpsa_t *t, int nv, mono_t var_ords[nv], mono_t mvo)
+tpsa_init(tpsa_t *t, desc_t *d)
 {
-  assert(t && t->coef);
-  t->desc = tpsa_desc_get(nv, var_ords, mvo);
 #ifdef TRACE
-  printf("init %p from %p\n", (void*)t, (void*)t->desc);
+  printf("init %p from %p\n", (void*)t, (void*)d);
 #endif
+  assert(t && t->coef && d);
+  t->desc = d;
   t->mo = 0;
   t->nz = 0;
   for (int i = 0; i < t->desc->nc; ++i)
     t->coef[i] = 0;
-}
-
-tpsa_t*
-tpsa_new(int nv, mono_t var_ords[nv], mono_t mvo)
-{
-  desc_t *d = tpsa_desc_get(nv, var_ords, mvo);
-  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
-#ifdef TRACE
-  printf("tpsa new %p\n", (void*)t);
-#endif
-  tpsa_init(t, nv, var_ords, mvo);
-  return t;
 }
 
 void
@@ -230,12 +229,11 @@ tpsa_cpy(tpsa_t *src, tpsa_t *dst)
 }
 
 void
-tpsa_same(tpsa_t *src, tpsa_t *dst)
+tpsa_clr(tpsa_t *t)
 {
-  assert(src && dst);
-  assert(src->desc == dst->desc);
-  dst->mo = src->mo;
-  dst->nz = src->nz;
+  assert(t && t->coef);
+  for (int i = 0; i < t->desc->nc; ++i) t->coef[i] = 0;
+  t->nz = t->mo = 0;
 }
 
 void
@@ -247,7 +245,7 @@ tpsa_delete(tpsa_t* t)
   free(t);
 }
 
-int // error code
+void
 tpsa_print(const tpsa_t *t)
 {
   desc_t *d = t->desc;
@@ -255,23 +253,6 @@ tpsa_print(const tpsa_t *t)
   for (int i=0; i < d->nc; ++i)
     printf("%f ", t->coef[i]);
   printf(" ]\n");
-  return 0;
-}
-
-int // error code
-tpsa_setCoeff(tpsa_t *t, idx_t i, int o, num_t v)
-{
-#ifdef TRACE
-  printf("setCoeff %d\n", i);
-#endif
-  assert(t);
-  assert(t->desc);
-  assert(o <= t->desc->mo);
-  assert(i < t->desc->nc);
-  if (o > t->mo)
-    t->mo = o;
-  t->nz = bset(t->nz, o);
-  t->coef[i] = v;
   return 0;
 }
 
