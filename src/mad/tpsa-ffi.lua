@@ -60,7 +60,8 @@ typedef unsigned int  bit_t;
 typedef double        num_t;
 
 tpsa_t* tpsa_new(desc_t *d);
-int     tpsa_get_size(desc_t *d);
+int     tpsa_get_size_fd(desc_t *d);
+int     tpsa_get_size_ft(tpsa_t *t);
 tpsa_t* tpsa_init_wd(tpsa_t *t,   desc_t *d);
 tpsa_t* tpsa_init_wt(tpsa_t *src, tpsa_t *dst);
 void    tpsa_cpy(tpsa_t *src, tpsa_t *dst);
@@ -69,7 +70,9 @@ void    tpsa_clr(tpsa_t *t);
 void    tpsa_del(tpsa_t* t);
 void    tpsa_print(const tpsa_t *t);
 
-void    tpsa_set_coeff(const tpsa_t *t, mono_t m[], num_t v);
+void    tpsa_set_coeff(tpsa_t *t, int n, mono_t *m, num_t v);
+void    tpsa_set_const(tpsa_t *t, num_t v);
+num_t   tpsa_get_coeff(tpsa_t *t, int n, mono_t *m);
 int     tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c);
 
 desc_t* tpsa_get_desc      (int nv, mono_t *var_ords, mono_t mo);
@@ -102,36 +105,42 @@ end
 
 function M:same(c_side)
   if c_side then return ffi.gc(clib.tpsa_same(self), clib.tpsa_del) end
-  local s = clib.tpsa_get_size(self.desc)
-  return clib.tpsa_init_wt(tpsa_t(s), self.desc)
+  local s = clib.tpsa_get_size_ft(self)
+  return clib.tpsa_init_wt(tpsa_t(s), self)
 end
 
 function M.cpy(src, dst)
+  if not dst then dst = src:same(false) end
   clib.tpsa_cpy(src, dst)
+  return dst
 end
 
-function M.set_coeff(t, m, v)
-  clib.tpsa_set_coeff(t, mono_t(#m, m), v)
+function M.setCoeff(t, m, v)
+  clib.tpsa_set_coeff(t, #m, mono_t(#m, m), v)
 end
 
 function M.setConst(t, v)
-  clib.tpsa_setCoeff(t._c, 0, 0, v)
+  clib.tpsa_set_const(t, v)
 end
 
-function M.getCoeff(t, i)
-  if type(i) == "table" then i = t._T.D.index(mono_t(#i, i)) end
-  return t._c.coef[i]
+function M.getCoeff(t, m)
+  return tonumber(clib.tpsa_get_coeff(t, #m, mono_t(#m,m)))
 end
+
 
 -- interface for benchmarking
 function M.init(var_names, mo)
-  return M(var_names, mo)
+  local ords = {}
+  for i=1,#var_names do ords[i] = mo end
+  return M(nil, ords, mo)
 end
 
 function M.mul(a, b, c)
   -- c should be different from a and b
-  return clib.tpsa_mul(a._c, b._c, c._c)
+  return clib.tpsa_mul(a,b,c)
 end
+
+M.new = M.same
 
 function M.print(t)
   clib.tpsa_print(t)
@@ -203,14 +212,14 @@ function MT:__call(c_side, var_ords, mvo, knb_ords, mko)
     if c_side then
       return ffi.gc(clib.tpsa_new(d), clib.tpsa_del)
     else
-      local s = clib.tpsa_get_size(d)
+      local s = clib.tpsa_get_size_fd(d)
       local t = tpsa_t(s)
       return clib.tpsa_init_wd(t, d)
     end
   end
 
   error ("invalid tpsa constructor argument, tpsa(C_side, {var_orders}, "..
-           "max_var_order, {knb_orders}, max_knb_order) expected"); 
+           "max_var_order, {knb_orders}, max_knb_order) expected");
 end
 
 -- end -------------------------------------------------------------------------

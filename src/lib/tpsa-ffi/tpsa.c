@@ -11,7 +11,6 @@
 #define TRACE
 
 typedef unsigned int  bit_t;
-typedef double        num_t;
 
 struct tpsa { // warning: must be kept identical to LuaJit definition 
   desc_t *desc;
@@ -19,7 +18,6 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   bit_t   nz;
   num_t   coef[];
 };
-
 
 // == debug
 static inline void
@@ -49,14 +47,18 @@ bget (bit_t b, int n)
 
 // == local functions
 
-static int
+static inline idx_t
+desc_get_idx(const tpsa_t *t, int n, const mono_t m[n])
+{ return t->desc->tvi[tbl_index_H(t->desc,m)]; }
+
+static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int ps[])
 {
   int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
   int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
 
 #ifdef TRACE
-  printf("triang_mul oa=%d ob=%d | ic->[%d,%d) ", oa, oa, ps[oc], ps[oc+1]);
+  printf("triang_mul oa=%d ob=%d\n", oa, oa, ps[oc], ps[oc+1]);
 #endif
 
   for (idx_t ib = ps[oa]; ib < ps[oa+1]; ib++)
@@ -84,8 +86,7 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
   return (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa]);
 }
 
-
-static int
+static inline int
 hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
@@ -109,7 +110,7 @@ hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int 
   return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]) * 2;
 }
 
-static int
+static inline int
 hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
 {
 #ifdef TRACE
@@ -134,7 +135,7 @@ hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int
   return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]);
 }
 
-static int
+static inline int
 hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 {
 #ifdef TRACE
@@ -201,8 +202,12 @@ tpsa_new(desc_t *d)
 }
 
 int
-tpsa_get_size(desc_t *d)
+tpsa_get_size_fd(desc_t *d)
 { assert(d); return sizeof(tpsa_t) + d->nc * sizeof(num_t); }
+
+int
+tpsa_get_size_ft(tpsa_t *t)
+{ return tpsa_get_size_fd(t->desc); }
 
 tpsa_t*
 tpsa_init_wd(tpsa_t *t, desc_t *d)
@@ -228,9 +233,10 @@ tpsa_cpy(tpsa_t *src, tpsa_t *dst)
 {
   assert(src && dst);
   assert(src->desc == dst->desc);
-  memcpy(src, dst, sizeof *src);
+  int size = tpsa_get_size_fd(src->desc);
+  memcpy(dst, src, size);
 #ifdef TRACE
-  printf("Copied %ld bytes from %p to %p\n", sizeof *src, (void*)src, (void*)dst);
+  printf("Copied %d bytes from %p to %p\n", size, (void*)src, (void*)dst);
 #endif
 }
 
@@ -266,15 +272,37 @@ tpsa_print(const tpsa_t *t)
 }
 
 void
-tpsa_set_coeff(const tpsa_t *t, int n, mono_t m[n], num_t v)
+tpsa_set_coeff(tpsa_t *t, int n, mono_t m[n], num_t v)
 {
   assert(t && m);
-  assert(n < t->desc->nv);
+  assert(n <= t->desc->nv);
 #ifdef TRACE
-  printf("set coeff in %p with val %d for mon ", (void*)t, v);
+  printf("set coeff in %p with val %.2f for mon ", (void*)t, v);
   mono_print(t->desc->nv, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t,n,m);
+  mono_t *o = t->desc->o;
+  t->coef[i] = v;
+  if (o[i] > t->mo) t->mo = o[i];
+  if (v != 0)       t->nz = bset(t->nz, o[i]);
+}
+
+void
+tpsa_set_const(tpsa_t *t, num_t v)
+{
+  assert(t);
+  mono_t m[t->desc->nv];
+  mono_clr(t->desc->nv, m);
+  tpsa_set_coeff(t, t->desc->nv, m, v);
+}
+
+num_t
+tpsa_get_coeff(tpsa_t *t, int n, mono_t m[n])
+{
+  assert(t && m);
+  assert(n <= t->desc->nv);
+  idx_t i = desc_get_idx(t,n,m);
+  return t->coef[i];
 }
 
 int // error code

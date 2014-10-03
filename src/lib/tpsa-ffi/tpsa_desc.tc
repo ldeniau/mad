@@ -12,6 +12,7 @@ struct desc {
           *a,         // alphas
           *mons,      // 'matrix' storing the monomials (sorted by ord)
          **To,        // Table by orders -- pointers to mons, sorted by order
+          *o,         // order of each mono of To
          **Tv;        // Table by vars   -- pointers to mons, sorted by vars
   idx_t  **L;         // multiplication indexes -- l[oa][ob] = lc; lc[ia][ib] = ic
   idx_t   *H;         // indexing matrix
@@ -184,18 +185,20 @@ make_mons(desc_t *d)
   int nv = d->nv;
   d->mons = malloc(nv * d->nc  * sizeof *(d->mons));
   d->ps   = malloc((d->mo + 2) * sizeof *(d->ps));
+  d->o    = malloc(d->nc       * sizeof *(d->o));
 
   // ord 0
   mono_clr(nv, d->mons);
-  d->ps[0] = 0;
+  d->ps[0] = d->o[0] = 0;
   int crtMonIdx = 1;
 
   // ord 1
   d->ps[1] = 1;
   for (int i = 0; i < nv; ++i, ++crtMonIdx) {
-  for (int j = 0; j <  nv; ++j)
-    if (i == j) d->mons[crtMonIdx * nv + j] = 1;
-    else        d->mons[crtMonIdx * nv + j] = 0;
+    d->o[crtMonIdx] = 1;
+    for (int j = 0; j <  nv; ++j)
+      if (i == j) d->mons[crtMonIdx * nv + j] = 1;
+      else        d->mons[crtMonIdx * nv + j] = 0;  
   }
 
   // ords 2..mo
@@ -209,6 +212,7 @@ make_mons(desc_t *d)
         mono_add(nv, d->mons + i*nv, d->mons + j*nv, m);
         if (mono_isvalid(nv, m, d->a, d->mo)) {
           mono_cpy(nv, m, crtMon);
+          d->o[crtMonIdx] = o;
           crtMonIdx++;
           crtMon += nv;
         }
@@ -307,10 +311,6 @@ tbl_index_H(const desc_t *d, const mono_t a[])
   }
   return I;
 }
-
-static inline idx_t
-desc_get_idx(const tpsa_t *t, int n, const mono_t m[n])
-{ return t->desc->tvi[tbl_index_H(d->desc,m)]; }
 
 static inline void
 tbl_clear_H(desc_t *d)
