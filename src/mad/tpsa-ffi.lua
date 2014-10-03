@@ -53,64 +53,37 @@ PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
 local clib = ffi.load(PATH .. "/../lib/tpsa-ffi/libtpsa-ffi.so")
 
 local static_dcl = [[
-typedef unsigned int  bit_t;
+typedef struct tpsa tpsa_t;
 typedef unsigned char mono_t;
-typedef double        coef_t;
-typedef int           idx_t;
 typedef struct desc   desc_t;
-typedef struct tpsa   tpsa_t;
-typedef struct table  table_t;
-
-struct table {
-  int     *o, *i, *ps;
-  mono_t **m;
-};
-
-struct desc {
-  int      nv, mo, nc;
-  mono_t  *a;
-  table_t *Tv,
-          *To;
-  idx_t  **l;
-  idx_t    H[?];
-};
-
-struct tpsa { // warning: must be kept identical to LuaJit definition
-  desc_t *desc;
-  int     mo;
-  bit_t   nz;
-  coef_t  coef[];
-};
+typedef unsigned int  bit_t;
+typedef double        num_t;
 
 tpsa_t* tpsa_new(desc_t *d);
-void    tpsa_delete(tpsa_t *t);
+int     tpsa_get_size(desc_t *d);
+tpsa_t* tpsa_init_wd(tpsa_t *t,   desc_t *d);
+tpsa_t* tpsa_init_wt(tpsa_t *src, tpsa_t *dst);
+void    tpsa_cpy(tpsa_t *src, tpsa_t *dst);
+tpsa_t* tpsa_same(tpsa_t *src);
+void    tpsa_clr(tpsa_t *t);
+void    tpsa_del(tpsa_t* t);
+void    tpsa_print(const tpsa_t *t);
 
-int tpsa_setCoeff(tpsa_t* t, idx_t i, int o, coef_t v);
-int tpsa_mul(const tpsa_t* a, const tpsa_t* b, tpsa_t* c);
-int tpsa_print(tpsa_t *t);
+void    tpsa_set_coeff(const tpsa_t *t, mono_t m[], num_t v);
+int     tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c);
 
-int tbl_by_var(table_t* t, int nv, int no, int nc, const mono_t *a, mono_t *m);
-int tbl_by_ord(table_t *to, table_t *tv, int no, int nc);
-void tbl_build_H(desc_t *d);
-int  tbl_index_H(const desc_t *d, const mono_t *a);
-
-int  mono_equ(const int n, const mono_t *a, const mono_t *b);
-void mono_add(const int n, const mono_t *a, const mono_t *b, mono_t *c);
-int  mono_isvalid(int n, const mono_t *m, const mono_t *a, const int o);
-
-idx_t hpoly_idx_triang(idx_t ib, idx_t ia);
-idx_t hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size);
-void  build_lc(const desc_t *d, int oa, int ob, int n, int *lc);
+desc_t* tpsa_get_desc      (int nv, mono_t *var_ords, mono_t mo);
+desc_t* tpsa_get_desc_knobs(int nv, mono_t *var_ords, mono_t mvo,
+                            int nk, mono_t *knb_ords, mono_t mko);
+void    tpsa_del_desc(desc_t *d);
 ]]
 
 ffi.cdef(static_dcl)
 
-local desc_t  = typeof("desc_t    ")
-local table_t = typeof("table_t   ")
 local mono_t  = typeof("mono_t [?]")
-local intArr  = typeof("int    [?]")
-local iptrArr = typeof("int*   [?]")
-local mptrArr = typeof("mono_t*[?]")
+local desc_t  = typeof("desc_t    ")
+local char_arr= typeof("char   [?]")
+local tpsa_t  = function(size) return ffi.cast("tpsa_t *", char_arr(size)) end
 
 -- functions -------------------------------------------------------------------
 
@@ -119,355 +92,26 @@ local mptrArr = typeof("mono_t*[?]")
 
 local function fun_true() return true end
 
---------------
--- M monomials
-
-local function mono_val(l, n)
-  local a = {}
-  for i=1,l do a[i] = n end
-  return a
-end
-
-local function mono_max(a)
-  local m = 0
-  for i=1,#a do if a[i]>m then m = a[i] end end
-  return m
-end
-
-
 ------------------
 -- T lookup tables
 
-local function table_by_vars(D)
-  local nv, no, nc = #D.A, D.mo, D.nc
-  local ord, idxs, mons, m = intArr(nc), intArr(nc), mono_t(nc*nv), mptrArr(nc)
-
-  local t = table_t(ord, idxs, nil, m)
-  local rnc = clib.tbl_by_var(t, nv, no, nc, mono_t(nv, D.A), mons)
-
-  D.nc = rnc
-  D._ptrs.Tv = { ["o"]=ord, ["idxs"]=idxs, ["mons"]=mons, ["m"]=m } -- avoid GC
-  return t
-end
-
-local function table_by_ords(D)
-  local nv, mo, nc = #D.A, D.mo, D.nc
-  local ord, idxs, ps, m = intArr(nc), intArr(nc), intArr(mo+2), mptrArr(nc)
-  local t = table_t(ord, idxs, ps, m)
-  clib.tbl_by_ord(t, D.Tv, mo, nc)
-
-  D._ptrs.To = { ["o"]=ord, ["idxs"]=idxs, ["ps"]=ps, ["m"]=m }     -- avoid GC
-  return t
-end
-
-local function hpoly_idx_fun(oa, ob, ps)
-  local iao, ibo = ps[oa], ps[ob]  -- offsets
-  if oa == ob then
-    -- ia commutes with ib so use ia as row to keep it left triangular
-    return function (ib, ia) return clib.hpoly_idx_triang(ib-ibo, ia-iao)end
-  else
-    local cols = ps[oa+1] - ps[oa]
-    return function (ib, ia) return clib.hpoly_idx_rect(ib-ibo, ia-iao, cols) end
-  end
-end
-
-------------
--- unit test
-
-local function table_check(D)
-  local cols, cdesc, Tv, To, index = D.mo + 2, D.cdesc, D.Tv, D.To, D.index
-  local a, nv, H = cdesc.a, cdesc.nv, cdesc.H
-
-  --if D.nc~= #Tv + 1                    then return 1e6+0 end
-  for i=1,nv-1 do
-    if H[i*cols + 1] ~= (H[(i-1)*cols + a[i-1]+1] ~= 0 and
-                         H[(i-1)*cols + a[i-1]+1] or H[(i-1)*cols + a[i-1]]+1)
-                                            then return 1e6+i end
-  end
-  for i=1,D.nc-1 do
-    if To.i[Tv.i[i]]  ~= i                  then return 2e6+i end
-    if index(To.m[i]) ~= i                  then return 3e6+i end
-    if clib.mono_equ(nv,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 4e6+i end
-    if clib.mono_equ(nv,To.m[Tv.i[i]],Tv.m[i]) == 0 then return 5e6+i end
-  end
-  return 0
-end
-
-local function check_lc(lc, oa, ob, D)
-  local oc, nv, To, ps = oa+ob, #D.A, D.To.m, D.To.ps
-  local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
-  local m, a = mono_t(nv), mono_t(nv, D.A)
-  local idx_lc = hpoly_idx_fun(oa, ob, ps)
-
-  for ibl=0,sb-1 do
-    local ib = ibl + ps[ob]
-
-    local ia_start
-    if   oa == ob then ia_start = ibl
-    else               ia_start = 0 end
-
-    for ial=ia_start,sa-1 do
-      local ia = ial + ps[oa]
-      local il = idx_lc(ib, ia)
-      if il < 0 then                        return 1           end
-      if il >= sizeof(lc) / sizeof("idx_t") then
-                                            return ia*1e5 + ib  end
-
-      local ic = lc[il]
-      if ic >= D.nc then                    return 11          end
-      if ic >= 0 and ic < #D.A then         return 12          end
-      clib.mono_add(nv, To[ia], To[ib], m)
-      if ic <  0 and clib.mono_isvalid(nv, m, a, D.mo) ~= 0 then
-                                            return 13          end
-    end
-  end
-  return 0
-end
-
-local function check_L(D)
-  local L, nc, mo, ho, ps = D.L, D.nc, D.mo, floor(D.mo*0.5), D.To.ps
-  if sizeof(L) ~= (mo*ho + 1) * sizeof("void*") then
-                                            return 1e7 + 0           end
-  for oa=1,mo-1          do
-  for ob=1,min(oa,mo-oa) do
-    local il = oa*ho + ob
-    if il < 0 or il >= mo*ho + 1 then         return 1e7 + oa*1e3+ob   end
-
-    local sa, sb = ps[oa+1]-ps[oa], ps[ob+1]-ps[ob]
-    local sl
-    if oa == ob then sl = sa * (sb+1) / 2
-    else             sl = sa * sb         end
-
-    local lc = D._ptrs.L[oa][ob]
-    if lc ~= L[oa*ho + ob] then             return 2e7 + oa*1e3+ob   end
-    if sizeof(lc) ~= sl * sizeof("idx_t") then
-                                            return 3e7 + oa*1e3+ob   end
-
-    local lc_err = check_lc(lc, oa, ob, D)
-    if lc_err ~= 0 then                     return 4e7 + lc_err      end
-  end end
-  return 0
-end
-
-
-local function fact(n)
-  if n==1 then return 1 end
-  return n * fact(n-1)
-end
-
-local function max_nc(nv, no)
-  return fact(nv + no) / (fact(nv) * fact(no))
-end
-
-local function set_T(D)
-  D.nc = max_nc(#D.A, D.mo)
-  D.Tv = table_by_vars(D)
-  D.To = table_by_ords(D)
-end
-
---------------------
--- H indexing matrix
-
-local function index_T(D)
-  local T, cdesc = D.Tv.i, D.cdesc
-  return function (m) return T[ clib.tbl_index_H(cdesc,m) ] end
-end
-
-local function set_H(D)
-  clib.tbl_build_H(D.cdesc)
-  D.index = index_T(D)
-
-  -- check consistency (debugging)
-  local chk = table_check(D)
-  if chk ~= 0 then
-    io.write("A= ")   M.print_mono (D.A,'\n')
-    io.write("H=")    M.print_table(D.H)
-    io.write("Tv= ")  M.print_table(D.Tv);
-    io.write("Checking tables consistency... ", chk, '\n')
-    error("invalid TPSA descriptor")
-  end
-end
-
-
---------------------
--- L matrix, indexing in polynomials
-
-local function fill_L(oa, ob, D)
-  local ps = D.To.ps
-  local rows = ps[oa+1]-ps[oa]
-  local cols = ps[ob+1]-ps[ob]
-  local size
-
-  if   oa == ob then size = ((rows+1) * cols) / 2
-  else               size =   rows    * cols      end
-
-  D.size = D.size + size*4
-  return intArr(size, -1), size
-end
-
-local function build_L(oa, ob, D)
-  local lc, lc_size = fill_L(oa, ob, D)
-  clib.build_lc(D.cdesc, oa, ob, lc_size, lc)
-
-  return lc
-end
-
-
-local function set_L(d)
-  local o, ho = d.mo, floor(d.mo * 0.5)
-  local L =   iptrArr(o*ho + 1)
-  d.size  = d.size + (o*ho + 1) * 8 -- pointers
-  local ptrs = {}   -- stores lc references so they don't get GC'ed
-
-  for oc=2,o do
-    for j=1,oc/2 do -- foreach pair of oa, ob=oc-oa
-      local oa, ob = oc-j, j
-
-      local lc = build_L(oa, ob, d)
-      L[oa*ho + ob] = lc
-      ptrs[oa] = ptrs[oa] or {}
-      ptrs[oa][ob] = lc
-    end
-  end
-  d.L, d.cdesc.l, d._ptrs.L = L, L, ptrs
-end
-
-local function new_Ctpsa(t)
-  local dp = t.D.cdesc
-  return ffi.gc(clib.tpsa_new(dp), clib.tpsa_delete)
-end
-
---------------------
--- D tpsa descriptor
-
- -- get_desc(key, {var_names}, {var_orders}, max_order, predicate)
-local function add_desc(s, n, a, o, f)
-  if M.trace then
-    io.write("creating descriptor for TPSA { ", s, " }\n")
-  end
-  local ds = concat(a,',')
-  local d = M.D[ds]
-  if not d then -- build the descriptor
-    d = { A=a, mo=o, size=0, F=f or fun_true } -- alphas, order, size and predicate
-    d._ptrs = {}
-    set_T(d)
-    local ac = mono_t(#a, a)
-    d._ptrs.a = ac
-    d.cdesc = desc_t((#a+1) * (d.mo+2), {#a, d.mo, d.nc, ac, d.Tv, d.To});
-    set_H(d) -- requires Tv
-    set_L(d)
-
-    local chk = check_L(d)
-    if chk ~= 0 then error("Invalid TPSA multiplication indexes " .. chk) end
-
-    d.size = d.size + 4 + 4 + 8 + (d.mo+1+1) * 4  -- mo + ord_0 + ord_(mo+1)
-
-    -- do not register the descriptor during benchmark
-    if not M.benchmark then M.D[ds] = d end
-  end
-  M.T[s] = { V=n, D=d }
-end
-
- -- get_desc({var_names}, {var_orders}, max_order, predicate)
-local function get_desc(n, o, m, f)
-  -- build the key (string) from var_names and var_orders
-  local s = concat(n,',') .. ':' .. concat(o,',')
-  if not M.T[s] then add_desc(s, n, o, m, f) end
-  local t = M.T[s]
-  -- do not register the descriptor during benchmark
-  if M.benchmark then M.T[s] = nil end
-  return t
-end
-
--- debugging -------------------------------------------------------------------
 
 local function printf(s, ...)  -- TODO: put this somewhere and import it
   io.write(s:format(...))
 end
 
-function M.print_mono(a, term)
-  local s = not a[0] and 1 or 0
-
-  io.write(string.format("[ %2d ",a[s]))
-  for i=s+1,#a do
-    io.write(string.format("%3d ",a[i]))
-  end
-  io.write(" ]")
-  if term then io.write(term) end
-end
-
-function M.print_table(t)
-  local s = not a[0] and 1 or 0
-  for i=s,#a do
-    io.write(string.format("%3d: ",i))
-    M.print_mono(a[i])
-    if a.o then io.write(string.format("%3d ",a.o[i])) end
-    if a.i then io.write(string.format("->%3d ",a.i[i])) end
---    if a.index then io.write(string.format(":%3d ",a.index(a[i]))) end
-    io.write("\n")
-  end
-  if a.p then io.write(" Pi: ") M.print_mono(a.p,'\n') end
-end
-
-function M.print_vect(t)
-  local cf, ps, write, format = t._c.coef, t._T.D.To.ps, io.write, string.format
-  write(format("[ nz=%2d mo=%d; ", t._c.nz, t._c.mo))
-  for i=0,ps[t._c.mo+1]-1 do write(format("%.2f ",cf[i])) end
-  write(" ]\n")
-end
-
-local function print_lc(lc, oa, ob, d)
-  local ps, pe = d.To.ps, d.To.pe
-  local idx_lc = hpoly_idx_fun(oa, ob, ps, pe)
-  for ib=ps[ob],pe[ob] do
-    printf("\n  ")
-    for ia=max(ib,ps[oa]),pe[oa] do
-      printf("%d ", lc[ idx_lc(ib,ia) ])
-    end
-  end
-  printf("\n")
-end
-
-function M.print_L(t)
-  local d = t._T.D
-  local l, o, ho = d.L, d.mo, floor(d.mo * 0.5)
-  for oc=2,o do
-    for j=1,oc/2 do -- foreach pair of oa, ob=oc-oa
-      local oa, ob = oc-j, j
-      printf("L[%d][%d] = {", oa, ob)
-      local lc = l[oa*ho + ob]
-      print_lc(lc, oa, ob, d)
-    end
-  end
-end
-
--- methods ---------------------------------------------------------------------
-function M:new()
-  return setmetatable({ _T=self._T, _c=new_Ctpsa(self._T), size=self.size },
-                        getmetatable(self));
-end
-
-local function same(src, dst)
-  dst = dst or src:new()
-  dst._c.mo, dst._c.nz = src._c.mo, src._c.nz
-  return dst
+function M:same(c_side)
+  if c_side then return ffi.gc(clib.tpsa_same(self), clib.tpsa_del) end
+  local s = clib.tpsa_get_size(self.desc)
+  return clib.tpsa_init_wt(tpsa_t(s), self.desc)
 end
 
 function M.cpy(src, dst)
-  dst = same(src, dst)
-
-  local ps = src._T.D.To.ps
-  local dmo, dcoef, scoef = dst._c.mo, dst._c.coef, src._c.coef
-  for i=0,ps[dmo+1]-1 do dcoef[i] = scoef[i] end
-  return dst
+  clib.tpsa_cpy(src, dst)
 end
 
-function M.setCoeff(t, i, v)
-  local d = t._T.D
-  local o = d.To.o
-  if type(i) == "table" then i = d.index(mono_t(#i, i)) end
-  if o[i] >= 2 then error("NYI. Poke only order 1 and use mul") end
-  clib.tpsa_setCoeff(t._c, i, o[i], v);
+function M.set_coeff(t, m, v)
+  clib.tpsa_set_coeff(t, mono_t(#m, m), v)
 end
 
 function M.setConst(t, v)
@@ -490,20 +134,7 @@ function M.mul(a, b, c)
 end
 
 function M.print(t)
-  local d, nv, mo = t._T.D, #t._T.V, t._c.mo
-  local To, c = d.To, t._c.coef
-  local pe, o= To.pe, To.o
-  printf("\n%10s, NO =%5d, NV =%5d, INA =%5d\n%s\n",
-         "NONAME",d.mo, nv, 0,
-         "*********************************************")
-  printf("\n    I  COEFFICIENT          ORDER   EXPONENTS\n")
-  -- TODO: print "ALL COMPONENTS ZERO" when neccesary
-  for i=0,pe[mo] do
-    printf("%6d  %21.14E %5d   ", i, c[i], o[i])
-    local m = To[i]
-    for mi=1,#m do printf("%2d ", m[mi]) end
-    printf("\n")
-  end
+  clib.tpsa_print(t)
 end
 
 
@@ -544,26 +175,42 @@ function M.pow(a, p)
 end
 
 -- constructors of tpsa:
---   tpsa({var_names}, max_order)
---   tpsa({var_names}, {var_orders})
---   tpsa({var_names}, {var_orders}, max_order)
---   tpsa({var_names}, {var_orders}, {{partial_max_orders}})
+--   tpsa(C_side, {var_orders}, max_var_order)
+--   tpsa(C_side, {var_orders}, max_var_order,
+--                {knb_orders}, max_knb_order)
+--   C_side: nil to alloc on lua side; non-nil to alloc on C side
 
-function MT:__call(n,o,m,f)
-  if type(o) == "number" then                          -- ({var_names}, max_order)
-    o, m = mono_val(#n,o), o
-  elseif is_list(o) and not m then                     -- ({var_names}, {var_orders})
-       m = mono_max(o)
+function MT:__call(c_side, var_ords, mvo, knb_ords, mko)
+  local err, knobs = false, false
+  if not is_list(var_ords) or not mvo                                 then err = true
+  elseif knb_ords and (not is_list(knb_ords) or not mko or mvo > mko) then err = true
+  else
+    -- no problem, continue building
+    local d
+    local nv, vo = #var_ords, mono_t(#var_ords, var_ords)
+    if knb_ords then
+      local nk, ko = #knb_ords, mono_t(#knb_ords, knb_orders)
+      d = clib.tpsa_get_desc_knobs(nv, vo, mvo, nk, ko, mko)
+    else
+      d = clib.tpsa_get_desc(nv, vo, mvo)
+    end
+
+    if not M._mt_is_set then
+      ffi.metatype("tpsa_t", self)
+      self.__index = self
+      M._mt_is_set = true
+    end
+    if c_side then
+      return ffi.gc(clib.tpsa_new(d), clib.tpsa_del)
+    else
+      local s = clib.tpsa_get_size(d)
+      local t = tpsa_t(s)
+      return clib.tpsa_init_wd(t, d)
+    end
   end
 
-  if type(m) == "number" and is_list(o) then           -- ({var_names}, {var_orders}, max_order)
-    self.__index = self  -- inheritance
-    local t = get_desc(n,o,m,f)
-    local s = 8 + 4 + 4 + 4*t.D.nc
-    return setmetatable({_T=t, _c=new_Ctpsa(t), size=s}, self)
-  end
-
-  error ("invalid tpsa constructor argument, tpsa({var_names}, {var_orders}, {cpl_orders}) expected")
+  error ("invalid tpsa constructor argument, tpsa(C_side, {var_orders}, "..
+           "max_var_order, {knb_orders}, max_knb_order) expected"); 
 end
 
 -- end -------------------------------------------------------------------------

@@ -3,7 +3,6 @@
 
 #define _TPSA_DESC_NUM_ 1000    // number of descriptors to store
 
-typedef int           idx_t;
 typedef unsigned char mono_t;
 typedef struct desc   desc_t;
 

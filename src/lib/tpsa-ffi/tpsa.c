@@ -8,6 +8,8 @@
 
 //#define TRACE
 
+#define TRACE
+
 typedef unsigned int  bit_t;
 typedef double        num_t;
 
@@ -190,21 +192,20 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 tpsa_t*
 tpsa_new(desc_t *d)
 {
+  assert(d);
+  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
 #ifdef TRACE
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
-  assert(d);
-  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
-  tpsa_init(t,d);
-  return t;
+  return tpsa_init_wd(t,d);
 }
 
 int
 tpsa_get_size(desc_t *d)
-{ assert(d); return d->nc; }
+{ assert(d); return sizeof(tpsa_t) + d->nc * sizeof(num_t); }
 
-void
-tpsa_init(tpsa_t *t, desc_t *d)
+tpsa_t*
+tpsa_init_wd(tpsa_t *t, desc_t *d)
 {
 #ifdef TRACE
   printf("init %p from %p\n", (void*)t, (void*)d);
@@ -215,7 +216,12 @@ tpsa_init(tpsa_t *t, desc_t *d)
   t->nz = 0;
   for (int i = 0; i < t->desc->nc; ++i)
     t->coef[i] = 0;
+  return t;
 }
+
+tpsa_t*
+tpsa_init_wt(tpsa_t *src, tpsa_t *dst)
+{ return tpsa_init_wd(src, dst->desc); }
 
 void
 tpsa_cpy(tpsa_t *src, tpsa_t *dst)
@@ -228,6 +234,10 @@ tpsa_cpy(tpsa_t *src, tpsa_t *dst)
 #endif
 }
 
+tpsa_t*
+tpsa_same(tpsa_t* src)
+{ return tpsa_new(src->desc); }
+
 void
 tpsa_clr(tpsa_t *t)
 {
@@ -237,7 +247,7 @@ tpsa_clr(tpsa_t *t)
 }
 
 void
-tpsa_delete(tpsa_t* t)
+tpsa_del(tpsa_t* t)
 {
 #ifdef TRACE
   printf("tpsa del %p\n", (void*)t);
@@ -251,9 +261,20 @@ tpsa_print(const tpsa_t *t)
   desc_t *d = t->desc;
   printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
   for (int i=0; i < d->nc; ++i)
-    printf("%f ", t->coef[i]);
+    printf("%.2f ", t->coef[i]);
   printf(" ]\n");
-  return 0;
+}
+
+void
+tpsa_set_coeff(const tpsa_t *t, int n, mono_t m[n], num_t v)
+{
+  assert(t && m);
+  assert(n < t->desc->nv);
+#ifdef TRACE
+  printf("set coeff in %p with val %d for mon ", (void*)t, v);
+  mono_print(t->desc->nv, m); printf("\n");
+#endif
+  idx_t i = desc_get_idx(t,n,m);
 }
 
 int // error code

@@ -1,12 +1,14 @@
 #include "tpsa_desc.h"
 
 //#define TRACE
+typedef int           idx_t;
 
 struct desc {
   int      nv, nc,    // number of vars, number of coeff
+           knb_start, // index in `a` where the knobs start
           *ps,        // poly start in To
           *tvi, *toi; // lookup tv->to, to->tv
-  mono_t   mo,        // maximum order
+  mono_t   mo, mko,   // maximum order, maximum knob order
           *a,         // alphas
           *mons,      // 'matrix' storing the monomials (sorted by ord)
          **To,        // Table by orders -- pointers to mons, sorted by order
@@ -306,6 +308,10 @@ tbl_index_H(const desc_t *d, const mono_t a[])
   return I;
 }
 
+static inline idx_t
+desc_get_idx(const tpsa_t *t, int n, const mono_t m[n])
+{ return t->desc->tvi[tbl_index_H(d->desc,m)]; }
+
 static inline void
 tbl_clear_H(desc_t *d)
 {
@@ -542,15 +548,17 @@ static desc_t *D[_TPSA_DESC_NUM_];
 static int last_desc_idx = -1;
 
 static inline desc_t*
-desc_new(int nv, mono_t var_ords[nv], mono_t mvo)
+desc_new(int nv, mono_t var_ords[nv], mono_t mvo, mono_t mko, int knb_start)
 {
 #ifdef TRACE
-  printf("tpsa_desc_new nv=%d mo=%d nc=%d var_ords=", nv, mvo, max_nc(nv, mvo));
+  printf("tpsa_desc_new nv=%d mo=%d nc=%d ks=%d var_ords=",
+         nv, mvo, max_nc(nv, mvo), knb_start);
   mono_print(nv, var_ords);
   printf("\n");
 #endif
   desc_t *d = malloc(sizeof *d);
-  d->nv = nv, d->mo = mvo, d->nc = max_nc(nv, mvo);
+  d->nv = nv, d->mo = mvo, d->mko = mko;
+  d->knb_start = knb_start, d->nc = max_nc(nv, mvo);
 
   d->a = malloc(nv * sizeof *(d->a));
   mono_cpy(nv, var_ords, d->a);
@@ -575,17 +583,18 @@ desc_new(int nv, mono_t var_ords[nv], mono_t mvo)
 }
 
 static inline int
-desc_equ(desc_t *d, int nv, mono_t var_ords[nv], mono_t mvo)
+desc_equ(desc_t *d, int nv, mono_t var_ords[nv], mono_t mvo, mono_t mko, int knb_start)
 {
   assert(d && d->a);
-  return d->nv == nv && d->mo == mvo && mono_equ(nv, d->a, var_ords);
+  return d->nv == nv && d->mo == mvo && d->mko == mko
+                     && d->knb_start == knb_start && mono_equ(nv, d->a, var_ords);
 }
 
 static inline desc_t*
-desc_search(int nv, mono_t var_ords[nv], mono_t mvo)
+desc_search(int nv, mono_t var_ords[nv], mono_t mvo, mono_t mko, int knb_start)
 {
   for (int i = last_desc_idx; i >= 0; --i) {
-    if (desc_equ(D[i], nv, var_ords, mvo))
+    if (desc_equ(D[i], nv, var_ords, mvo, mko, knb_start))
       return D[i];
   }
   return NULL;
@@ -596,15 +605,22 @@ desc_search(int nv, mono_t var_ords[nv], mono_t mvo)
 desc_t*
 tpsa_get_desc(int nv, mono_t var_ords[nv], mono_t mvo)
 {
-  desc_t *d = desc_search(nv,var_ords,mvo);
-  return d ? d : (D[++last_desc_idx] = desc_new(nv, var_ords, mvo));
+  desc_t *d = desc_search(nv,var_ords,mvo,0,nv);
+  return d ? d : (D[++last_desc_idx] = desc_new(nv, var_ords, mvo, 0, nv));
 }
 
 desc_t*
 tpsa_get_desc_knobs(int nv, mono_t var_ords[nv], mono_t mvo,
                     int nk, mono_t knb_ords[nk], mono_t mko)
 {
-  
+  assert(var_ords && knb_ords);
+  assert(mvo <= mko);
+  mono_t ords[nv+nk];
+  int io = 0;
+  for (int i = 0; i < nv; ++i) ords[io++] = var_ords[i];
+  for (int i = 0; i < nk; ++i) ords[io++] = knb_ords[i];
+  desc_t *d = desc_search(nv+nk, ords, mvo, mko, nv);
+  return d ? d : (D[++last_desc_idx] = desc_new(nv+nk, ords, mvo, mko, nv));
 }
 
 void
