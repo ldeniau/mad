@@ -1,6 +1,6 @@
 #include "tpsa_desc.h"
 
-//#define TRACE
+#define TRACE
 typedef int           idx_t;
 
 struct desc {
@@ -33,12 +33,15 @@ mmin (mono_t a, mono_t b)
 { return a<b ? a : b; }
 
 static inline int
-fact(int n)
-{ return n == 1 ? 1 : n * fact(n-1); }
-
-static inline int
 max_nc(int nv, int no)
-{ return fact(nv+no) / (fact(nv) * fact(no)); }
+{
+  int max = imax(nv,no), num = 1, den = 1;
+  for (int i = max + 1; i <= nv + no; ++i) {
+    num *= i;
+    den *= i - max;
+  }
+  return num / den;
+}
 
 static inline idx_t
 hpoly_idx_triang(idx_t ib, idx_t ia)
@@ -452,10 +455,12 @@ tbl_build_LC(int oa, int ob, const desc_t *d)
       lc[ilc] = ic;
 
 #ifdef TRACE
+      /*
       printf(" ib=%d ", ib); mono_print(d->nv, To[ib]);
       printf(" ia=%d ", ia); mono_print(d->nv, To[ia]);
       printf(" ic=%d ", ic); mono_print(d->nv, m);
       printf(" ilc=%d\n", ilc);
+      */
 #endif
     }
   }

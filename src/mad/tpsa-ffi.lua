@@ -79,6 +79,8 @@ desc_t* tpsa_get_desc      (int nv, mono_t *var_ords, mono_t mo);
 desc_t* tpsa_get_desc_knobs(int nv, mono_t *var_ords, mono_t mvo,
                             int nk, mono_t *knb_ords, mono_t mko);
 void    tpsa_del_desc(desc_t *d);
+
+void print_wf(const tpsa_t *t);
 ]]
 
 ffi.cdef(static_dcl)
@@ -145,6 +147,11 @@ M.new = M.same
 function M.print(t)
   clib.tpsa_print(t)
 end
+
+function M.print_wf(t)
+  clib.print_wf(t)
+end
+
 
 
 -- metamethods -----------------------------------------------------------------

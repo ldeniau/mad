@@ -8,7 +8,7 @@
 
 //#define TRACE
 
-#define TRACE
+//#define TRACE
 
 typedef unsigned int  bit_t;
 
@@ -31,6 +31,16 @@ print_l(const idx_t const* l)
   printf("\n");
 }
 
+void
+print_wf(const tpsa_t *t)
+{
+  desc_t *d = t->desc;
+  printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
+  for (int o = t->mo; o >= 0; --o)
+    for (int i = d->ps[o]; i < d->ps[o+1]; ++i)
+      printf("%.2f ", t->coef[i]);
+  printf(" ]\n");
+}
 // == helpers
 
 static inline bit_t
@@ -58,7 +68,7 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
   int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
 
 #ifdef TRACE
-  printf("triang_mul oa=%d ob=%d\n", oa, oa, ps[oc], ps[oc+1]);
+  printf("triang_mul oa=%d ob=%d\n", oa, oa);
 #endif
 
   for (idx_t ib = ps[oa]; ib < ps[oa+1]; ib++)
