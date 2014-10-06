@@ -8,8 +8,6 @@
 
 //#define TRACE
 
-//#define TRACE
-
 typedef unsigned int  bit_t;
 
 struct tpsa { // warning: must be kept identical to LuaJit definition 
@@ -56,10 +54,6 @@ bget (bit_t b, int n)
 }
 
 // == local functions
-
-static inline idx_t
-desc_get_idx(const tpsa_t *t, int n, const mono_t m[n])
-{ return t->desc->tvi[tbl_index_H(t->desc,m)]; }
 
 static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int ps[])
@@ -208,22 +202,18 @@ tpsa_new(desc_t *d)
 #ifdef TRACE
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
-  return tpsa_init_wd(t,d);
+  return tpsa_init(t,d);
 }
 
 int
-tpsa_get_size_fd(desc_t *d)
-{ assert(d); return sizeof(tpsa_t) + d->nc * sizeof(num_t); }
-
-int
-tpsa_get_size_ft(tpsa_t *t)
-{ return tpsa_get_size_fd(t->desc); }
+tpsa_get_nc(desc_t *d)
+{ assert(d); return d->nc; }
 
 tpsa_t*
-tpsa_init_wd(tpsa_t *t, desc_t *d)
+tpsa_init(tpsa_t *t, desc_t *d)
 {
 #ifdef TRACE
-  printf("init %p from %p\n", (void*)t, (void*)d);
+  printf("init %p from %p nc=%d\n", (void*)t, (void*)d, d->nc);
 #endif
   assert(t && t->coef && d);
   t->desc = d;
@@ -234,25 +224,19 @@ tpsa_init_wd(tpsa_t *t, desc_t *d)
   return t;
 }
 
-tpsa_t*
-tpsa_init_wt(tpsa_t *src, tpsa_t *dst)
-{ return tpsa_init_wd(src, dst->desc); }
-
 void
 tpsa_cpy(tpsa_t *src, tpsa_t *dst)
 {
   assert(src && dst);
   assert(src->desc == dst->desc);
-  int size = tpsa_get_size_fd(src->desc);
-  memcpy(dst, src, size);
+  dst->mo = src->mo;
+  dst->nz = src->nz;
+  for (int i = 0; i < src->desc->nc; ++i)
+    dst->coef[i] = src->coef[i];
 #ifdef TRACE
-  printf("Copied %d bytes from %p to %p\n", size, (void*)src, (void*)dst);
+  printf("Copied from %p to %p\n", (void*)src, (void*)dst);
 #endif
 }
-
-tpsa_t*
-tpsa_same(tpsa_t* src)
-{ return tpsa_new(src->desc); }
 
 void
 tpsa_clr(tpsa_t *t)
@@ -290,7 +274,7 @@ tpsa_set_coeff(tpsa_t *t, int n, mono_t m[n], num_t v)
   printf("set coeff in %p with val %.2f for mon ", (void*)t, v);
   mono_print(t->desc->nv, m); printf("\n");
 #endif
-  idx_t i = desc_get_idx(t,n,m);
+  idx_t i = desc_get_idx(t->desc,n,m);
   mono_t *o = t->desc->o;
   t->coef[i] = v;
   if (o[i] > t->mo) t->mo = o[i];
@@ -311,7 +295,7 @@ tpsa_get_coeff(tpsa_t *t, int n, mono_t m[n])
 {
   assert(t && m);
   assert(n <= t->desc->nv);
-  idx_t i = desc_get_idx(t,n,m);
+  idx_t i = desc_get_idx(t->desc,n,m);
   return t->coef[i];
 }
 

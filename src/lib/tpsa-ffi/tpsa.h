@@ -7,12 +7,9 @@ typedef struct tpsa tpsa_t;
 typedef double      num_t;
 
 tpsa_t* tpsa_new(desc_t *d);
-int     tpsa_get_size_fd(desc_t *d);
-int     tpsa_get_size_ft(tpsa_t *t);
-tpsa_t* tpsa_init_wd(tpsa_t *t,   desc_t *d);
-tpsa_t* tpsa_init_wt(tpsa_t *src, tpsa_t *dst);
+int     tpsa_get_nc(desc_t *d);
+tpsa_t* tpsa_init(tpsa_t *t,   desc_t *d);
 void    tpsa_cpy(tpsa_t *src, tpsa_t *dst);
-tpsa_t* tpsa_same(tpsa_t* src);
 void    tpsa_clr(tpsa_t *t);
 void    tpsa_del(tpsa_t* t);
 void    tpsa_print(const tpsa_t *t);

@@ -30,7 +30,7 @@ local ffi    = require"ffi"
 
 local getmetatable, setmetatable = getmetatable, setmetatable
 local sizeof, typeof = ffi.sizeof, ffi.typeof
-local type, ipairs, concat = type, ipairs, table.concat
+local type, tonumber, concat = type, tonumber, table.concat
 local min, max, floor = math.min, math.max, math.floor
 local is_list = utils.is_list
 
@@ -53,19 +53,23 @@ PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf
 local clib = ffi.load(PATH .. "/../lib/tpsa-ffi/libtpsa-ffi.so")
 
 local static_dcl = [[
-typedef struct tpsa tpsa_t;
+typedef struct tpsa   tpsa_t;
 typedef unsigned char mono_t;
 typedef struct desc   desc_t;
 typedef unsigned int  bit_t;
 typedef double        num_t;
 
+struct tpsa { // warning: must be kept identical to LuaJit definition
+  desc_t *desc;
+  int     mo;
+  bit_t   nz;
+  num_t   coef[?];
+};
+
 tpsa_t* tpsa_new(desc_t *d);
-int     tpsa_get_size_fd(desc_t *d);
-int     tpsa_get_size_ft(tpsa_t *t);
-tpsa_t* tpsa_init_wd(tpsa_t *t,   desc_t *d);
-tpsa_t* tpsa_init_wt(tpsa_t *src, tpsa_t *dst);
+int     tpsa_get_nc(desc_t *d);
+tpsa_t* tpsa_init(tpsa_t *t, desc_t *d);
 void    tpsa_cpy(tpsa_t *src, tpsa_t *dst);
-tpsa_t* tpsa_same(tpsa_t *src);
 void    tpsa_clr(tpsa_t *t);
 void    tpsa_del(tpsa_t* t);
 void    tpsa_print(const tpsa_t *t);
@@ -79,8 +83,6 @@ desc_t* tpsa_get_desc      (int nv, mono_t *var_ords, mono_t mo);
 desc_t* tpsa_get_desc_knobs(int nv, mono_t *var_ords, mono_t mvo,
                             int nk, mono_t *knb_ords, mono_t mko);
 void    tpsa_del_desc(desc_t *d);
-
-void print_wf(const tpsa_t *t);
 ]]
 
 ffi.cdef(static_dcl)
@@ -88,31 +90,27 @@ ffi.cdef(static_dcl)
 local mono_t  = typeof("mono_t [?]")
 local desc_t  = typeof("desc_t    ")
 local char_arr= typeof("char   [?]")
-local tpsa_t  = function(size) return ffi.cast("tpsa_t *", char_arr(size)) end
+local tpsa_t  = typeof("tpsa_t    ")
 
 -- functions -------------------------------------------------------------------
-
---------------
--- U utils
-
-local function fun_true() return true end
-
-------------------
--- T lookup tables
-
 
 local function printf(s, ...)  -- TODO: put this somewhere and import it
   io.write(s:format(...))
 end
 
-function M:same(c_side)
-  if c_side then return ffi.gc(clib.tpsa_same(self), clib.tpsa_del) end
-  local s = clib.tpsa_get_size_ft(self)
-  return clib.tpsa_init_wt(tpsa_t(s), self)
+function M:new(c_side)
+  if c_side then
+    local t = ffi.gc(clib.tpsa_new(self.desc), clib.tpsa_del)
+    return t
+  end
+  local nc = clib.tpsa_get_nc(self.desc)
+  local t  = tpsa_t(nc)
+  clib.tpsa_init(t, self.desc)
+  return t
 end
 
 function M.cpy(src, dst)
-  if not dst then dst = src:same(false) end
+  if not dst then dst = src:new(true) end
   clib.tpsa_cpy(src, dst)
   return dst
 end
@@ -134,25 +132,20 @@ end
 function M.init(var_names, mo)
   local ords = {}
   for i=1,#var_names do ords[i] = mo end
-  return M(nil, ords, mo)
+  return M(false, ords, mo)
 end
+
+M.same = M.new
 
 function M.mul(a, b, c)
   -- c should be different from a and b
   return clib.tpsa_mul(a,b,c)
 end
 
-M.new = M.same
 
-function M.print(t)
-  clib.tpsa_print(t)
-end
+-- debugging -------------------------------------------------------------------
 
-function M.print_wf(t)
-  clib.print_wf(t)
-end
-
-
+M.print = clib.tpsa_print
 
 -- metamethods -----------------------------------------------------------------
 
@@ -194,7 +187,7 @@ end
 --   tpsa(C_side, {var_orders}, max_var_order)
 --   tpsa(C_side, {var_orders}, max_var_order,
 --                {knb_orders}, max_knb_order)
---   C_side: nil to alloc on lua side; non-nil to alloc on C side
+--   C_side: nil/false to alloc on lua side; true to alloc on C side
 
 function MT:__call(c_side, var_ords, mvo, knb_ords, mko)
   local err, knobs = false, false
@@ -205,23 +198,24 @@ function MT:__call(c_side, var_ords, mvo, knb_ords, mko)
     local d
     local nv, vo = #var_ords, mono_t(#var_ords, var_ords)
     if knb_ords then
-      local nk, ko = #knb_ords, mono_t(#knb_ords, knb_orders)
+      local nk, ko = #knb_ords, mono_t(#knb_ords, knb_ords)
       d = clib.tpsa_get_desc_knobs(nv, vo, mvo, nk, ko, mko)
     else
       d = clib.tpsa_get_desc(nv, vo, mvo)
     end
 
     if not M._mt_is_set then
-      ffi.metatype("tpsa_t", self)
       self.__index = self
+      ffi.metatype("tpsa_t", self)
       M._mt_is_set = true
     end
     if c_side then
       return ffi.gc(clib.tpsa_new(d), clib.tpsa_del)
     else
-      local s = clib.tpsa_get_size_fd(d)
-      local t = tpsa_t(s)
-      return clib.tpsa_init_wd(t, d)
+      local nc = clib.tpsa_get_nc(d)
+      local t  = tpsa_t(nc)
+      clib.tpsa_init(t, d)
+      return t
     end
   end
 
@@ -229,5 +223,5 @@ function MT:__call(c_side, var_ords, mvo, knb_ords, mko)
            "max_var_order, {knb_orders}, max_knb_order) expected");
 end
 
--- end -------------------------------------------------------------------------
+-- end ------------------s-------------------------------------------------------
 return M

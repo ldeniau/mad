@@ -1,6 +1,7 @@
 #include "tpsa_desc.h"
 
-#define TRACE
+//#define TRACE
+
 typedef int           idx_t;
 
 struct desc {
@@ -50,6 +51,7 @@ hpoly_idx_triang(idx_t ib, idx_t ia)
 static inline idx_t
 hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 { return ib*ia_size + ia; }
+
 
 // ========== MONOMIALS ============
 
@@ -314,6 +316,10 @@ tbl_index_H(const desc_t *d, const mono_t a[])
   }
   return I;
 }
+
+static inline idx_t
+desc_get_idx(const desc_t *d, int n, const mono_t m[n])
+{ return d->tvi[tbl_index_H(d,m)]; }
 
 static inline void
 tbl_clear_H(desc_t *d)
