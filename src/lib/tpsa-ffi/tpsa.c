@@ -10,8 +10,11 @@
 
 typedef unsigned int  bit_t;
 
+#define T struct tpsa
+#define D struct tpsa_desc
+
 struct tpsa { // warning: must be kept identical to LuaJit definition 
-  desc_t *desc;
+  D      *desc;
   int     mo;
   bit_t   nz;
   num_t   coef[];
@@ -30,9 +33,9 @@ print_l(const idx_t const* l)
 }
 
 void
-print_wf(const tpsa_t *t)
+print_wf(const T *t)
 {
-  desc_t *d = t->desc;
+  D *d = t->desc;
   printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
   for (int o = t->mo; o >= 0; --o)
     for (int i = d->ps[o]; i < d->ps[o+1]; ++i)
@@ -140,12 +143,12 @@ hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int
 }
 
 static inline int
-hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
+hpoly_mul (const T *a, const T *b, T *c)
 {
 #ifdef TRACE
   printf("poly_mul\n");
 #endif
-  desc_t *dc = c->desc;
+  D *dc = c->desc;
   const idx_t *l = NULL;
   int *ps = dc->ps, hod = dc->mo / 2, comps = 0;
   const num_t *ca  = a->coef, *cb  = b->coef;
@@ -194,28 +197,14 @@ hpoly_mul (const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
 // == public functions
 
-tpsa_t*
-tpsa_new(desc_t *d)
+T*
+tpsa_new(D *d)
 {
   assert(d);
-  tpsa_t *t = malloc(sizeof(tpsa_t) + d->nc * sizeof(num_t));
+  T *t = malloc(sizeof(T) + d->nc * sizeof(num_t));
 #ifdef TRACE
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
-  return tpsa_init(t,d);
-}
-
-int
-tpsa_get_nc(desc_t *d)
-{ assert(d); return d->nc; }
-
-tpsa_t*
-tpsa_init(tpsa_t *t, desc_t *d)
-{
-#ifdef TRACE
-  printf("init %p from %p nc=%d\n", (void*)t, (void*)d, d->nc);
-#endif
-  assert(t && t->coef && d);
   t->desc = d;
   t->mo = 0;
   t->nz = 0;
@@ -225,7 +214,7 @@ tpsa_init(tpsa_t *t, desc_t *d)
 }
 
 void
-tpsa_cpy(tpsa_t *src, tpsa_t *dst)
+tpsa_copy(T *src, T *dst)
 {
   assert(src && dst);
   assert(src->desc == dst->desc);
@@ -239,7 +228,7 @@ tpsa_cpy(tpsa_t *src, tpsa_t *dst)
 }
 
 void
-tpsa_clr(tpsa_t *t)
+tpsa_clean(T *t)
 {
   assert(t && t->coef);
   for (int i = 0; i < t->desc->nc; ++i) t->coef[i] = 0;
@@ -247,7 +236,7 @@ tpsa_clr(tpsa_t *t)
 }
 
 void
-tpsa_del(tpsa_t* t)
+tpsa_del(T* t)
 {
 #ifdef TRACE
   printf("tpsa del %p\n", (void*)t);
@@ -255,18 +244,17 @@ tpsa_del(tpsa_t* t)
   free(t);
 }
 
-void
-tpsa_print(const tpsa_t *t)
+num_t
+tpsa_getm(T *t, int n, mono_t m[n])
 {
-  desc_t *d = t->desc;
-  printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
-  for (int i=0; i < d->nc; ++i)
-    printf("%.2f ", t->coef[i]);
-  printf(" ]\n");
+  assert(t && m);
+  assert(n <= t->desc->nv);
+  idx_t i = desc_get_idx(t->desc,n,m);
+  return t->coef[i];
 }
 
 void
-tpsa_set_coeff(tpsa_t *t, int n, mono_t m[n], num_t v)
+tpsa_setm(T *t, int n, mono_t m[n], num_t v)
 {
   assert(t && m);
   assert(n <= t->desc->nv);
@@ -281,40 +269,44 @@ tpsa_set_coeff(tpsa_t *t, int n, mono_t m[n], num_t v)
   if (v != 0)       t->nz = bset(t->nz, o[i]);
 }
 
-void
-tpsa_set_const(tpsa_t *t, num_t v)
+num_t
+tpsa_geti(T *t, int i)
 {
   assert(t);
-  mono_t m[t->desc->nv];
-  mono_clr(t->desc->nv, m);
-  tpsa_set_coeff(t, t->desc->nv, m, v);
-}
-
-num_t
-tpsa_get_coeff(tpsa_t *t, int n, mono_t m[n])
-{
-  assert(t && m);
-  assert(n <= t->desc->nv);
-  idx_t i = desc_get_idx(t->desc,n,m);
+  assert(i >= 0 && i < t->desc->nc);
   return t->coef[i];
 }
 
-int // error code
-tpsa_add(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
+void
+tpsa_seti(T *t, int i, num_t v)
 {
-  (void)a; (void)b; (void)c;
-  return 0;
+  assert(t);
+    assert(i >= 0 && i < t->desc->nc);
+  t->coef[i] = v;
 }
 
-int // error code
-tpsa_sub(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
+int
+tpsa_get_idx(T *t, int n, mono_t m[n])
 {
-  (void)a; (void)b; (void)c;
-  return 0;
+  assert(t && t->desc);
+  assert(n <= t->desc->nv);
+  return desc_get_idx(t->desc, n, m);
 }
 
-int // error code
-tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
+void
+tpsa_add(const T *a, const T *b, T *c)
+{
+  (void)a; (void)b; (void)c;
+}
+
+void
+tpsa_sub(const T *a, const T *b, T *c)
+{
+  (void)a; (void)b; (void)c;
+}
+
+void
+tpsa_mul(const T *a, const T *b, T *c)
 {
 #ifdef TRACE
   printf("tpsa_mul\n");
@@ -324,7 +316,7 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
 
   const num_t *ca = a->coef, *cb = b->coef;
   num_t *cc = c->coef;
-  desc_t *dc = c->desc;
+  D *dc = c->desc;
 
   c->nz = (ca[0] ? a->nz : 0) | (cb[0] ? b->nz : 0);
   c->mo = imin(a->mo + b->mo, dc->mo);
@@ -339,7 +331,20 @@ tpsa_mul(const tpsa_t *a, const tpsa_t *b, tpsa_t *c)
   if (c->mo >= 2)
     comps += hpoly_mul(a, b, c);
 
-  return comps;
+//return comps;
 }
 
+
+void
+tpsa_print(const T *t)
+{
+  D *d = t->desc;
+  printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
+  for (int i=0; i < d->nc; ++i)
+    printf("%.2f ", t->coef[i]);
+  printf(" ]\n");
+}
+
+#undef T
+#undef D
 
