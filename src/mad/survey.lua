@@ -23,9 +23,11 @@ SEE ALSO
 
 local E = require"mad.element"
 local T = require"mad.table"
+local U = require"mad.utils"
 
 -- locals ----------------------------------------------------------------------
 
+local getval = U.getval
 local cos, sin, atan2 = math.cos, math.sin, math.atan2
 local sqrt, floor, ceil = math.sqrt, math.floor, math.ceil
 local twopi = 2*math.pi 
@@ -120,51 +122,61 @@ end
 
 -- load survey maps into elements
 
+local drift_survey = function (X, L)
+  local R = vec(0,0,L)
+  X.V = vadd( mmulv(X.W, R), X.V )
+end
+
 E.element.survey = function (self, X)
-  local L = self.length or 0
+  local L = getval(self.length)
   if L > 0 then
-    local R = vec(0,0,L)
-    X.V = vadd( mmulv(X.W, R), X.V )
+      drift_survey(X, L)
   end
+  return self.s_pos + L
+end
+
+E.multipole.survey = function (self, X)
+  local L = self.length
+  if L > 0 then
+      -- TODO: k0l & k0sl
+  end
+  return self.s_pos + L
 end
 
 E.sbend.survey = function (self, X)
-  local L = self.length or 0
-  if L > 0 then
-    local angle = self.angle or 0
-    if angle ~= 0 then
-      local ca, sa = cos(angle), sin(angle)
-      local rho = L/angle
-      local R = vec(rho*(ca-1), 0, rho*sa)
-      local S = mat( vec(ca,  0, -sa),
-                     vec( 0,  1,   0),
-                     vec(sa,  0,  ca) )
-
-      local tilt = self.tilt or 0
-      if tilt ~= 0 then
-        local ct, st = cos(tilt), sin(tilt)
-        local T = mat( vec(ct,-st,0), vec(st,ct,0), vec(0,0,1) )
-        R, S = mmulv(T,R), mmul(mmul(T,S),mtrn(T))
-      end
-
-      X.V = vadd( mmulv(X.W, R), X.V )
-      X.W = mmul( X.W, S )
-    else
-      E.element.survey(self, X)
-    end
+  local angle = self.angle or 0
+  if angle == 0 then
+    return E.element.survey(self, X)
   end
+
+  local L = self.length
+  if L > 0 then
+    local ca, sa = cos(angle), sin(angle)
+    local rho = L/angle
+    local R = vec(rho*(ca-1), 0, rho*sa)
+    local S = mat( vec(ca,  0, -sa),
+                   vec( 0,  1,   0),
+                   vec(sa,  0,  ca) )
+
+    local tilt = self.tilt or 0
+    if tilt ~= 0 then
+      local ct, st = cos(tilt), sin(tilt)
+      local T = mat( vec(ct,-st,0), vec(st,ct,0), vec(0,0,1) )
+      R, S = mmulv(T,R), mmul(mmul(T,S),mtrn(T))
+    end
+
+    X.V = vadd( mmulv(X.W, R), X.V )
+    X.W = mmul( X.W, S )
+  end
+  return self.s_pos + L
 end
 
 -- survey table
 
 M.table = function (name)
   name = name or 'survey'
-  local tbl = T(name) ({{'name'}, 's', 'length', 'angle', 'X', 'Y', 'Z', 'theta', 'phi', 'psi'})
+  local tbl = T(name) ({{'name'}, 's', 'length', 'angle', 'tilt', 'X', 'Y', 'Z', 'theta', 'phi', 'psi', 'globaltilt'})
   tbl:set_key{ type='survey' }
-  tbl:set_key{ title='no-title' }
-  tbl:set_key{ origin='no-origin' }
-  tbl:set_key{ date=os.date"%d/%m/%y" }
-  tbl:set_key{ time=os.date"%H:%M:%S" }
   return tbl
 end
 
@@ -173,26 +185,40 @@ end
 -- survey { seq=seqname, tbl=tblname, X={x0,y0,z0}, A={theta0,phi0,psi0} }
 
 M.survey = function (info)
-  local seq = info.seq or error("invalid sequence")
+  local seq = info.seq or info[1] or error("invalid sequence")
   local tbl = M.table(info.tbl)
+
   local X = { V = info.X0 or vec(0,0,0), W = info.A0 and mrots(unvec(info.A0)) or umat() }
 
   local x, y, z
   local theta, phi, psi
 
-  if info.A0 then
-    theta, phi, psi = unvec(infoA0)
-  else
-    theta, phi, psi = 0,0,0
-  end 
+  if info.A0 then theta, phi, psi = unvec(infoA0)
+  else            theta, phi, psi = 0,0,0 end
 
+  -- geometrical tracking
+  local end_pos = seq[1].s_pos + seq[1].length -- $start marker
   for i=1,#seq do
     local e = seq[i]
-    e:survey(X)
+    local ds = e.s_pos - end_pos
+
+    -- implicit drift with L = ds
+    if ds > 1e-12 then
+      drift_survey(X, ds)
+      end_pos = end_pos + ds
+    end
+
+    -- sequence element
+    end_pos = e:survey(X)
+
+    -- retieve columns values
     x, y, z = unvec(X.V)
     theta, phi, psi = mangles(X.W, theta, phi, psi)
-    tbl:add_row { name=e.name, s=e.s_pos, length=e.length or 0, angle=e.angle or 0,
-                  X=x, Y=y, Z=z, theta=theta, phi=phi, psi=psi }
+
+    -- fill the table
+    tbl:add_row { name=e.name, s=e.s_pos,
+                  length=e.length, angle=e.angle or 0, tilt=e.tilt or 0,
+                  X=x, Y=y, Z=z, theta=theta, phi=phi, psi=psi, globaltilt=(e.tilt or 0)+psi }
   end
   return tbl
 end

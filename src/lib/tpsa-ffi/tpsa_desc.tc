@@ -48,11 +48,15 @@ max_nc(int nv, int no)
 
 static inline idx_t
 hpoly_idx_triang(idx_t ib, idx_t ia)
-{ return (ia*(ia+1))/2 + ib; } // left triangular
+{
+  return (ia*(ia+1))/2 + ib;  // left triangular
+}
 
 static inline idx_t
 hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
-{ return ib*ia_size + ia; }
+{
+  return ib*ia_size + ia;
+}
 
 
 // ========== MONOMIALS ============
@@ -92,7 +96,7 @@ mono_acc(int n, const mono_t a[n], mono_t r[n])
 static inline int
 mono_equ(const int n, const mono_t a[n], const mono_t b[n])
 {
-  assert(a && n);
+  assert(a && b);
   for (int i = 0; i < n; ++i)
     if (a[i] != b[i]) return 0;
   return 1;
@@ -202,7 +206,7 @@ make_mons(D *d)
   // ord 1
   d->ps[1] = 1;
   for (int i = 0; i < nv; ++i, ++crtMonIdx) {
-    d->o[crtMonIdx] = 1;
+    d->o[curr_mono_idx] = 1;
     for (int j = 0; j <  nv; ++j)
       if (i == j) d->mons[crtMonIdx * nv + j] = 1;
       else        d->mons[crtMonIdx * nv + j] = 0;  
@@ -557,7 +561,9 @@ tbl_check(D *d)
 
 // ========== DESC management ============
 
-static D *Ds[_TPSA_DESC_NUM_];
+enum { TPSA_DESC_NUM = 1000 }    // number of descriptors to store
+
+static D  *Ds[TPSA_DESC_NUM];
 static int last_desc_idx = -1;
 
 static inline D*
@@ -570,10 +576,12 @@ desc_new(int nv, mono_t var_ords[nv], mono_t mvo, mono_t mko, int knb_start)
   printf("\n");
 #endif
   D *d = malloc(sizeof *d);
+  assert(d);
   d->nv = nv, d->mo = mvo, d->mko = mko;
   d->knb_start = knb_start, d->nc = max_nc(nv, mvo);
 
   d->a = malloc(nv * sizeof *(d->a));
+  assert(d->a);
   mono_cpy(nv, var_ords, d->a);
 
   d->nc = make_mons(d);
@@ -637,7 +645,7 @@ tpsa_get_desc_knobs(int nv, mono_t var_ords[nv], mono_t mvo,
 }
 
 void
-tpsa_del_desc(D *d)
+tpsa_desc_del(D *d)
 {
   // free and set to NULL so that they cannot be accidentally reused
   free(d->ps);    d->ps   = NULL;

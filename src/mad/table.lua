@@ -224,7 +224,12 @@ local function init(cols, name)
   local rcol, ridx = nil
 
   -- create header
-  M.set_key(self, {name=name})
+  M.set_key(self, { name=name })
+  M.set_key(self, { type='no-type' })
+  M.set_key(self, { title='no-title' })
+  M.set_key(self, { origin='no-origin' })
+  M.set_key(self, { date=os.date"%d/%m/%y" })
+  M.set_key(self, { time=os.date"%H:%M:%S" })
 
   -- create columns
   for i,v in ipairs(cols) do

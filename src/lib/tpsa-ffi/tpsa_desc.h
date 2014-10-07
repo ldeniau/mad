@@ -1,12 +1,20 @@
-#ifndef TPSA_DESC_H
-#define TPSA_DESC_H
+#ifndef MAD_TPSA_DESC_H
+#define MAD_TPSA_DESC_H
 
-#define _TPSA_DESC_NUM_ 1000    // number of descriptors to store
+#include "mad_mono.h"
 
-struct tpsa_desc* tpsa_get_desc      (int nv, mono_t var_ords[nv], mono_t mo);
-struct tpsa_desc* tpsa_get_desc_knobs(int nv, mono_t var_ords[nv], mono_t mvo,
-                                      int nk, mono_t knb_ords[nk], mono_t mko);
-void              tpsa_del_desc      (struct tpsa_desc *d);
+// --- interface
 
-int               tpsa_get_nc (struct tpsa_desc *d);
+#define D struct tpsa_desc
+
+D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[nv], ord_t mo);
+D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t mvo, // with knobs
+                          int nk, const ord_t knb_ords[nk], ord_t mko);
+void  mad_tpsa_desc_del  (struct tpsa_desc *d);
+
+int   mad_tpsa_desc_nc   (const struct tpsa_desc *d);
+
+#undef D
+
+// --- end
 #endif

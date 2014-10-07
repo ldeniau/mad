@@ -147,7 +147,7 @@ M.placeholder = M.drift       'placeholder' { kind='placeholder' }
 M.rfcavity    = M.cavity      'rfcavity'    { kind='rfcavity' }
 
 -- magnets
-M.sbend       = M.magnet      'sbend'       { kind='sbend', angle=0 }
+M.sbend       = M.magnet      'sbend'       { kind='sbend' }
 M.rbend       = M.magnet      'rbend'       { kind='rbend' }
 M.quadrupole  = M.magnet      'quadrupole'  { kind='quadrupole' }
 M.sextupole   = M.magnet      'sextupole'   { kind='sextupole' }

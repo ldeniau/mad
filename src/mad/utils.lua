@@ -30,6 +30,14 @@ local ipairs, pairs = ipairs, pairs
 
 -- functions -------------------------------------------------------------------
 
+local getval = function (a, ...)
+  if type(a) == 'function' then
+    return a(...)
+  else
+    return a
+  end
+end
+
 local is_list = function (a)
   return type(a) == 'table' and getmetatable(a) == nil
 end
@@ -67,6 +75,8 @@ local function show_all_fields(lst, disp, equ, sep)
 end
 
 -- methods --------------------------------------------------------------------
+
+M.getval = getval
 
 M.is_list = is_list
 
