@@ -1,7 +1,7 @@
 #ifndef MAD_H
 #define MAD_H
 
-// --- types
+// --- types -------------------------------------------------------------------
 
 typedef double num_t;
 

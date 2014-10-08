@@ -4,21 +4,19 @@
 #include "mad.h"
 #include "mad_mono.h"
 
-// --- types
+// --- types -------------------------------------------------------------------
 
 struct tpsa;
 struct tpsa_desc;
 
-typedef unsigned char ord_t; // move to mono.h
-
-// --- interface
+// --- interface ---------------------------------------------------------------
 
 #define T struct tpsa
 
-T*    mad_tpsa_newd    (const struct tpsa_desc *d);
+T*    mad_tpsa_newd    (struct tpsa_desc *d);  // to use const?
 
-T*    mad_tpsa_new     (const struct T*);
-T*    mad_tpsa_clone   (const struct T*); // new + copy
+T*    mad_tpsa_new     (const T *t);
+T*    mad_tpsa_clone   (const T *t); // new + copy
 void  mad_tpsa_copy    (const T *src, T *dst);
 void  mad_tpsa_clean   (      T *t);
 void  mad_tpsa_del     (      T *t);
@@ -39,5 +37,5 @@ void  mad_tpsa_print   (const T *t);
 
 #undef T
 
-// --- end
+// -----------------------------------------------------------------------------
 #endif

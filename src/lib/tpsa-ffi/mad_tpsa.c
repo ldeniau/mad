@@ -13,7 +13,7 @@ typedef unsigned int  bit_t;
 #define T struct tpsa
 #define D struct tpsa_desc
 
-struct tpsa { // warning: must be kept identical to LuaJit definition 
+struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
   int     mo;
   bit_t   nz;
@@ -38,10 +38,11 @@ print_wf(const T *t)
   D *d = t->desc;
   printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
   for (int o = t->mo; o >= 0; --o)
-    for (int i = d->ps[o]; i < d->ps[o+1]; ++i)
+    for (int i = d->hpoly_To_idx[o]; i < d->hpoly_To_idx[o+1]; ++i)
       printf("%.2f ", t->coef[i]);
   printf(" ]\n");
 }
+
 // == helpers
 
 static inline bit_t
@@ -59,87 +60,87 @@ bget (bit_t b, int n)
 // == local functions
 
 static inline int
-hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int ps[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
 {
-  int iao = ps[oa], ibo = ps[oa];  // offsets for shifting to 0
-  int l_size = (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa] + 1) / 2, oc = oa + oa;
+  int iao = pi[oa], ibo = pi[oa];  // offsets for shifting to 0
+  int l_size = (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa] + 1) / 2, oc = oa + oa;
 
 #ifdef TRACE
   printf("triang_mul oa=%d ob=%d\n", oa, oa);
 #endif
 
-  for (idx_t ib = ps[oa]; ib < ps[oa+1]; ib++)
-  for (idx_t ia = ib + 1; ia < ps[oa+1]; ia++) {
+  for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
+  for (idx_t ia = ib + 1; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_triang(ib-ibo, ia-iao);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
     if (ic >= 0) {
-      assert(ps[oc] <= ic && ic < ps[oc+1]);
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
     }
   }
 
-  for (int ia=ps[oa]; ia < ps[oa+1]; ia++) {
+  for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_triang(ia-iao, ia-iao);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
     if (ic >= 0) {
-      assert(ps[oc] <= ic && ic < ps[oc+1]);
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ia];
     }
   }
-  return (ps[oa+1]-ps[oa]) * (ps[oa+1]-ps[oa]);
+  return (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa]);
 }
 
 static inline int
-hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
+hpoly_sym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-  int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
-  int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
+  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
+  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
   int l_size  = ia_size*ib_size, oc = oa+ob;
 
-  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++)
-  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++) {
+  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
+  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
     if (ic >= 0) {
-      assert(ps[oc] <= ic && ic < ps[oc+1]);
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
     }
   }
-  return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]) * 2;
+  return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]) * 2;
 }
 
 static inline int
-hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int ps[])
+hpoly_asym_mul (const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
 {
 #ifdef TRACE
   printf("asym_mul oa=%d ob=%d \n", oa, ob);
 #endif
 
-  int iao = ps[oa], ibo = ps[ob];  // offsets for shifting to 0
-  int ia_size = ps[oa+1]-ps[oa], ib_size = ps[ob+1]-ps[ob];
+  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
+  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
   int l_size  = ia_size*ib_size, oc = oa+ob;
 
-  for (idx_t ib=ps[ob]; ib < ps[ob+1]; ib++)
-  for (idx_t ia=ps[oa]; ia < ps[oa+1]; ia++) {
+  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
+  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
     if (ic >= 0) {
-      assert(ps[oc] <= ic && ic < ps[oc+1]);
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
     }
   }
-  return (ps[oa+1]-ps[oa]) * (ps[ob+1]-ps[ob]);
+  return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]);
 }
 
 static inline int
@@ -150,7 +151,7 @@ hpoly_mul (const T *a, const T *b, T *c)
 #endif
   D *dc = c->desc;
   const idx_t *l = NULL;
-  int *ps = dc->ps, hod = dc->mo / 2, comps = 0;
+  int *ps = dc->hpoly_To_idx, hod = dc->mo / 2, comps = 0;
   const num_t *ca  = a->coef, *cb  = b->coef;
   bit_t   nza = a->nz  ,  nzb = b->nz;
   num_t *cc  = c->coef;
@@ -198,10 +199,11 @@ hpoly_mul (const T *a, const T *b, T *c)
 // == public functions
 
 T*
-tpsa_new(D *d)
+mad_tpsa_newd(D *d)
 {
   assert(d);
   T *t = malloc(sizeof(T) + d->nc * sizeof(num_t));
+  assert(t);
 #ifdef TRACE
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
@@ -213,8 +215,15 @@ tpsa_new(D *d)
   return t;
 }
 
+T*
+mad_tpsa_new(const T *t)
+{
+  assert(t && t->desc);
+  return mad_tpsa_newd(t->desc);
+}
+
 void
-tpsa_copy(T *src, T *dst)
+mad_tpsa_copy(const T *src, T *dst)
 {
   assert(src && dst);
   assert(src->desc == dst->desc);
@@ -228,7 +237,7 @@ tpsa_copy(T *src, T *dst)
 }
 
 void
-tpsa_clean(T *t)
+mad_tpsa_clean(T *t)
 {
   assert(t && t->coef);
   for (int i = 0; i < t->desc->nc; ++i) t->coef[i] = 0;
@@ -236,7 +245,7 @@ tpsa_clean(T *t)
 }
 
 void
-tpsa_del(T* t)
+mad_tpsa_del(T* t)
 {
 #ifdef TRACE
   printf("tpsa del %p\n", (void*)t);
@@ -245,7 +254,7 @@ tpsa_del(T* t)
 }
 
 num_t
-tpsa_getm(T *t, int n, mono_t m[n])
+mad_tpsa_getm(const T *t, int n, const ord_t m[n])
 {
   assert(t && m);
   assert(n <= t->desc->nv);
@@ -254,7 +263,7 @@ tpsa_getm(T *t, int n, mono_t m[n])
 }
 
 void
-tpsa_setm(T *t, int n, mono_t m[n], num_t v)
+mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
 {
   assert(t && m);
   assert(n <= t->desc->nv);
@@ -263,14 +272,14 @@ tpsa_setm(T *t, int n, mono_t m[n], num_t v)
   mono_print(t->desc->nv, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
-  mono_t *o = t->desc->o;
+  ord_t *ords = t->desc->ords;
   t->coef[i] = v;
-  if (o[i] > t->mo) t->mo = o[i];
-  if (v != 0)       t->nz = bset(t->nz, o[i]);
+  if (ords[i] > t->mo) t->mo = ords[i];
+  if (v != 0)       t->nz = bset(t->nz, ords[i]);
 }
 
 num_t
-tpsa_geti(T *t, int i)
+mad_tpsa_geti(const T *t, int i)
 {
   assert(t);
   assert(i >= 0 && i < t->desc->nc);
@@ -278,7 +287,7 @@ tpsa_geti(T *t, int i)
 }
 
 void
-tpsa_seti(T *t, int i, num_t v)
+mad_tpsa_seti(T *t, int i, num_t v)
 {
   assert(t);
     assert(i >= 0 && i < t->desc->nc);
@@ -286,7 +295,7 @@ tpsa_seti(T *t, int i, num_t v)
 }
 
 int
-tpsa_get_idx(T *t, int n, mono_t m[n])
+mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
 {
   assert(t && t->desc);
   assert(n <= t->desc->nv);
@@ -294,19 +303,19 @@ tpsa_get_idx(T *t, int n, mono_t m[n])
 }
 
 void
-tpsa_add(const T *a, const T *b, T *c)
+mad_tpsa_add(const T *a, const T *b, T *c)
 {
   (void)a; (void)b; (void)c;
 }
 
 void
-tpsa_sub(const T *a, const T *b, T *c)
+mad_tpsa_sub(const T *a, const T *b, T *c)
 {
   (void)a; (void)b; (void)c;
 }
 
 void
-tpsa_mul(const T *a, const T *b, T *c)
+mad_tpsa_mul(const T *a, const T *b, T *c)
 {
 #ifdef TRACE
   printf("tpsa_mul\n");
@@ -323,7 +332,7 @@ tpsa_mul(const T *a, const T *b, T *c)
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i < dc->ps[c->mo+1]; i++)
+  for (int i=1; i < dc->hpoly_To_idx[c->mo+1]; i++)
     cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
 
   int comps = (dc->nc-1) * 2 + 1;
@@ -336,7 +345,7 @@ tpsa_mul(const T *a, const T *b, T *c)
 
 
 void
-tpsa_print(const T *t)
+mad_tpsa_print(const T *t)
 {
   D *d = t->desc;
   printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
