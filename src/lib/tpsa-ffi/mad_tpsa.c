@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include "tpsa.h"
+#include "mad_tpsa.h"
 #include "tpsa_desc.tc"
 //#include "mem_alloc.h"
 
@@ -269,7 +269,7 @@ mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
   assert(n <= t->desc->nv);
 #ifdef TRACE
   printf("set coeff in %p with val %.2f for mon ", (void*)t, v);
-  mono_print(t->desc->nv, m); printf("\n");
+  mono_print(n, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
   ord_t *ords = t->desc->ords;

@@ -1,4 +1,4 @@
-#include "tpsa_desc.h"
+#include "mad_tpsa_desc.h"
 
 // #define TRACE
 
@@ -21,7 +21,7 @@ struct tpsa_desc {
   idx_t   *H;         // indexing matrix
 };
 
-// ========== HELPERS ============
+// ========== HELPERS ==========================================================
 
 static inline int
 imin (int a, int b)
@@ -59,7 +59,7 @@ hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 }
 
 
-// ========== MONOMIALS ============
+// ========== MONOMIALS ========================================================
 
 static inline int
 nxt_mono_by_var(int n, const ord_t a[n], const ord_t o, ord_t m[n])
@@ -93,19 +93,19 @@ static inline void
 print_mono_mat(int w, int h, const ord_t t[w*h])
 {
   for (int i = 0; i < h; ++i) {
-    printf("(%d) ", i);
+    printf("(%2d) ", i);
     mono_print(w, t + i*w);
     printf("\n");
   }
 }
 
-// ========== TABLES ============
+// ========== TABLES ===========================================================
 
 static inline void
 tbl_print(int w, int h, ord_t **t)
 {
   for (int i = 0; i < h; ++i) {
-    printf("(%d) ", i);
+    printf("(%2d) ", i);
     mono_print(w, t[i]);
     printf("\n");
   }
@@ -119,12 +119,12 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
 #endif
 
 // ords 2..mo
-  int j, nv = d->nv;
+  int nv = d->nv, j;
   ord_t m[nv], *currMono = d->monos + curr_mono_idx*nv;
-  for (ord_t o = 2; o <= d->mo; o++) {  // to build ord o:
+  for (ord_t o = 2; o <= d->mo; o++) {             // to build ord o:
     d->hpoly_To_idx[o] = curr_mono_idx;
-    for (int i = 1; i <= nv; ++i) {     // i goes through ord    1  monos
-      j = d->hpoly_To_idx[o-1];         // j goes through ord (o-1) monos
+    for (int i = 1; i < d->hpoly_To_idx[2]; ++i) { // i goes through ord    1
+      j = d->hpoly_To_idx[o-1];                    // j goes through ord (o-1)
       do {
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
         if (mono_isvalid(nv, m, d->a, d->mo)) {
@@ -134,7 +134,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
           currMono += nv;
         }
         j++;
-      } while(m[i-1] <= d->a[i-1] && m[i-1] < o );
+      } while(m[i-1] <= d->a[i-1] && m[i-1] < o && j < d->hpoly_To_idx[o]);
     }
   }
   d->hpoly_To_idx[d->mo+1] = curr_mono_idx;
@@ -171,12 +171,15 @@ make_monos(D *d)
 
   // ord 1
   d->hpoly_To_idx[1] = 1;
-  for (int i = 0; i < nv; ++i, ++curr_mono_idx) {
-    d->ords[curr_mono_idx] = 1;
-    for (int j = 0; j <  nv; ++j)
-      if (i == j) d->monos[curr_mono_idx * nv + j] = 1;
-      else        d->monos[curr_mono_idx * nv + j] = 0;
-  }
+  for (int i = 1; i <= nv; ++i)
+  for (int j = 0; j <  nv; ++j)
+    d->monos[i*nv + j] = 0;        // init with 0
+  for (int i = 0; i < nv; ++i)
+    if (d->a[i] >= 1) {            // set 1 on main diag, if possible
+      d->monos[curr_mono_idx*nv + i] = 1;
+      d->ords[curr_mono_idx]         = 1;
+      curr_mono_idx++;
+    }
 
   return make_higher_ord_monos(d, curr_mono_idx);
 }
@@ -247,7 +250,7 @@ tbl_by_var(D *d)
 #endif
 }
 
-// ========== H indexing matrix ============
+// ========== H indexing matrix ================================================
 
 static inline void
 tbl_print_H(const D *d)
@@ -262,21 +265,24 @@ tbl_print_H(const D *d)
 }
 
 static inline int
-tbl_index_H(const D *d, const ord_t a[])
+tbl_index_H(const D *d, int n, const ord_t m[n])
 {
+  assert(d);
+  assert(n <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2;
   const int *H = d->H;
-  for (int i = d->nv - 1; i >= 0; --i) {
-    I += H[i*cols + s+a[i]] - H[i*cols + s];
-    s += a[i];
+  for (int i = n - 1; i >= 0; --i) {
+    I += H[i*cols + s+m[i]] - H[i*cols + s];
+    s += m[i];
   }
+  assert(I > -1);
   return I;
 }
 
 static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
-  return d->tv2to[tbl_index_H(d,m)];
+  return d->tv2to[tbl_index_H(d,n,m)];
 }
 
 static inline void
@@ -287,7 +293,7 @@ tbl_clear_H(D *d)
   int cols = d->mo + 2;
   for (int i = 0; i < d->nv; ++i)
     for (int j = 1 + mmin(sa[i],d->mo); j < cols; ++j)
-      d->H[i*cols + j] = 0;
+      d->H[i*cols + j] = -1;
 }
 
 static inline void
@@ -301,7 +307,7 @@ tbl_solve_H(D *d)
   for (int i = nv-2; i >= 1; --i)  // variables
     for (int j = a[i]+2; j <= mmin(sa[i],d->mo); j++) { // orders
       nxt_mono_by_unk(nv,a,i,j,b);
-      idx_t idx0 = tbl_index_H(d,b);
+      idx_t idx0 = tbl_index_H(d,nv,b);
       idx_t idx1 = find_index(nv,(const ord_t**)d->Tv,b,idx0,d->nc);
       d->H[i*cols + j] = idx1 - idx0;
     }
@@ -354,7 +360,7 @@ tbl_set_H(D *d)
 #endif
 }
 
-// ========== L indexing matrix ============
+// ========== L indexing matrix ================================================
 
 static inline void
 tbl_print_LC(const idx_t *lc, int oa, int ob, int *pi)
@@ -415,7 +421,7 @@ tbl_build_LC(int oa, int ob, const D *d)
   for (int ia = imax(pi[oa],ib); ia < pi[oa+1]; ++ia) {
     mono_add(d->nv, To[ia], To[ib], m);
     if (mono_isvalid(d->nv, m, d->a, d->mo)) {
-      ic = i[tbl_index_H(d,m)];
+      ic = i[tbl_index_H(d,d->nv,m)];
       if (oa == ob) ilc = hpoly_idx_triang(ib-ibo, ia-iao);
       else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
       lc[ilc] = ic;
@@ -455,7 +461,7 @@ tbl_set_L(D *d)
 #endif
 }
 
-// ========== UNIT TEST ============
+// ========== UNIT TEST ========================================================
 
 static inline int
 tbl_check_L(D *d)
@@ -467,7 +473,7 @@ tbl_check_L(D *d)
     for (int j = 1; j <= oc / 2; ++j) {
       int oa = oc - j, ob = j;
       idx_t *lc = d->L[oa*ho + ob];
-      if (!lc)                                       return  1e7 + oa*1e3 + ob;
+      if (!lc)                                   return  1e7 + oa*1e3 + ob;
 
       int sa = pi[oa+1]-pi[oa], sb = pi[ob+1]-pi[ob];
 
@@ -476,16 +482,16 @@ tbl_check_L(D *d)
         int ib = ibl + pi[ob], ia = ial + pi[oa];
         int il = (oa == ob ?
                   hpoly_idx_triang(ibl,ial) : hpoly_idx_rect(ibl,ial,sa));
-        if (il < 0)                                  return -2e7 - ia*1e5 - ib;
-        if (il >= sa * sb)                           return  2e7 + ia*1e5 + ib;
+        if (il < 0)                              return -2e7 - ia*1e5 - ib;
+        if (il >= sa * sb)                       return  2e7 + ia*1e5 + ib;
 
         int ic = lc[il];
-        if (ic >= pi[oc+1])                          return  3e7 + ic*1e5 + 11;
-        if (ic >= 0 && ic < d->nv)                   return  3e7 + ic*1e5 + 12;
+        if (ic >= pi[oc+1])                      return  3e7 + ic*1e5 + 11;
+        if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
 
         mono_add(d->nv, d->To[ia], d->To[ib], m);
         if (ic < 0 && mono_isvalid(d->nv, m, d->a, d->mo))
-                                                     return -3e7          - 13;
+                                                 return -3e7          - 13;
         }
       }
     }
@@ -500,21 +506,27 @@ tbl_check(D *d)
   idx_t *H = d->H;
 
   // check H
+  for (int i = 0; i < nv; ++i)
+    if (H[i*cols + 0] != 0)                   return 1e6 + i;
   for (int i = 1; i < nv; ++i)
-    if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] ?
+    if (a[i] == 0) {
+      for (int j = 1; j <= d->mo + 1; ++j)
+        if (H[i*cols + j] != -1)              return 2e6 + i;
+    }
+    else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
                           H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
-                                           return 1e6 + i;
+                                              return 3e6 + i;
 
   for (int i = 1; i < d->nc; ++i) {
-    if (to2tv[tv2to[i]] != i)              return 2e6 + i;
-    if (tv2to[tbl_index_H(d,To[i])] != i)  return 3e6 + i;
-    if (! mono_equ(nv,To[tv2to[i]],Tv[i])) return 4e6 + i;
-    if (! mono_equ(nv,To[i],monos + nv*i)) return 5e6 + i;
+    if (to2tv[tv2to[i]] != i)                 return 4e6 + i;
+    if (tv2to[tbl_index_H(d,nv,To[i])] != i)  return 5e6 + i;
+    if (! mono_equ(nv,To[tv2to[i]],Tv[i]))    return 6e6 + i;
+    if (! mono_equ(nv,To[i],monos + nv*i))    return 7e6 + i;
   }
   return tbl_check_L(d);
 }
 
-// ========== DESC management ============
+// ========== DESC management ==================================================
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
 
@@ -548,10 +560,10 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
 
   int err = tbl_check(d);
   if (err != 0) {
-    printf("\nA= ");  mono_print(d->nv, d->a);
-    printf("\nH= ");  tbl_print_H(d);
-    printf("\nTv= "); tbl_print(d->nv, d->nc, d->Tv);
-    printf("\nTo= "); tbl_print(d->nv, d->nc, d->To);
+    printf("\nA= ");   mono_print(d->nv, d->a);
+    printf("\nH=\n");  tbl_print_H(d);
+    printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
+    printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
     printf("\nCheking table consistency ... %d\n", err);
     assert(NULL);
   }
@@ -578,7 +590,7 @@ desc_search(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_star
   return NULL;
 }
 
-// ========== Public Functions ============
+// ========== Public Functions =================================================
 
 D*
 mad_tpsa_desc_new (int nv, const ord_t var_ords[nv], ord_t mvo)

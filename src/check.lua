@@ -43,12 +43,15 @@ local function mono_print(m, file)
 end
 
 
-function M.fill_ord1(t, nv)
+function M.fill_ord1(t, nv, startVal, inc)
+  if not startVal then startVal = 1.1 end
+  if not inc      then inc      = 0.1 end
   local m = mono_val(nv, 0)
-  t:setCoeff(m, 1.1)
+  t:setCoeff(m, startVal)
   for i=1,nv do
     m[i] = 1
-    t:setCoeff(m, 1.1 + i/10)
+    startVal = startVal + inc
+    t:setCoeff(m, startVal)
     m[i] = 0
   end
 end
@@ -135,7 +138,7 @@ local function prepare_check(vars, no)
   end
 
   local berz = require"lib.tpsaBerz"
-  local t =  mod.init(vars, no)
+  local t =  mod(mono_val(#vars,no), no, mono_val(2,0), 12)
   local b = berz.init(vars, no)
 
   M.fill_ord1(b, #vars)
