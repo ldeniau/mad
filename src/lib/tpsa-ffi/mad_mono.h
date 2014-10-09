@@ -2,7 +2,7 @@
 #define MAD_MONO_H
 
 #include <assert.h>
-
+#include <stdio.h>
 // --- types -------------------------------------------------------------------
 
 typedef unsigned char ord_t;
@@ -53,6 +53,17 @@ mono_equ(const int n, const ord_t a[n], const ord_t b[n])
   assert(a && b);
   for (int i = 0; i < n; ++i)
     if (a[i] != b[i]) return 0;
+  return 1;
+}
+
+static inline int
+mono_geq(const int n, const ord_t a[n], const ord_t b[n])
+{
+  // partial order relation ({3,0,0} <= {1,1,0})
+  assert(a && b);
+  for (int i = n - 1; i >= 0; --i)
+    if      (a[i] < b[i]) return 0;
+    else if (a[i] > b[i]) return 1;
   return 1;
 }
 

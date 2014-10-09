@@ -1,6 +1,7 @@
 #include "mad_tpsa_desc.h"
 
 // #define TRACE
+// #define DEBUG
 
 typedef int           idx_t;
 
@@ -111,8 +112,25 @@ tbl_print(int w, int h, ord_t **t)
   }
 }
 
+static inline void
+tbl_realloc_monos(D *d, int new_nc_)
+{
+  // reallocates array of monomials with the new_size
+  assert(d);
+#ifdef TRACE
+  printf("realloc\n");
+#endif
+  if (!new_nc_) {
+    if (d->nc < (1<<21)) new_nc_ = d->nc * 2;        // double capacity
+    else                 new_nc_ = d->nc + (1<<20);  // +1 Mb
+  }
+  d->nc = new_nc_;
+  d->monos = realloc(d->monos, d->nc * d->nv * sizeof *(d->monos));
+  d->ords  = realloc(d->ords,  d->nc         * sizeof *(d->monos));
+}
+
 static inline int  // last monomial's index
-make_higher_ord_monos(D *d, int curr_mono_idx)
+make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
 {
 #ifdef TRACE
   printf("make_higher_ord_monos, cmi=%d\n", curr_mono_idx);
@@ -120,7 +138,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
 
 // ords 2..mo
   int nv = d->nv, j;
-  ord_t m[nv], *currMono = d->monos + curr_mono_idx*nv;
+  ord_t m[nv], *curr_mono = d->monos + curr_mono_idx*nv;
   for (ord_t o = 2; o <= d->mo; o++) {             // to build ord o:
     d->hpoly_To_idx[o] = curr_mono_idx;
     for (int i = 1; i < d->hpoly_To_idx[2]; ++i) { // i goes through ord    1
@@ -128,10 +146,14 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
       do {
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
         if (mono_isvalid(nv, m, d->a, d->mo)) {
-          mono_cpy(nv, m, currMono);
+          if (need_realloc && curr_mono_idx >= d->nc) {
+            tbl_realloc_monos(d,0);
+            curr_mono = d->monos + nv*curr_mono_idx;
+          }
+          mono_cpy(nv, m, curr_mono);
           d->ords[curr_mono_idx] = o;
           curr_mono_idx++;
-          currMono += nv;
+          curr_mono += nv;
         }
         j++;
       } while(m[i-1] <= d->a[i-1] && m[i-1] < o && j < d->hpoly_To_idx[o]);
@@ -139,7 +161,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
   }
   d->hpoly_To_idx[d->mo+1] = curr_mono_idx;
 
-#ifdef TRACE
+#ifdef DEBUG
   print_mono_mat(d->nv, imin(curr_mono_idx, 50), d->monos);
   if (curr_mono_idx > 50) printf("... [ %d more rows ] ...\n", curr_mono_idx - 50);
 #endif
@@ -147,7 +169,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx)
   return curr_mono_idx;
 }
 
-static inline int  // real NC
+static inline void
 make_monos(D *d)
 {
   // builds the monomials matrix in To order
@@ -156,13 +178,20 @@ make_monos(D *d)
 #endif
 
   assert(d && d->a);
-  int nv = d->nv;
-  d->monos        = malloc(nv * d->nc  * sizeof *(d->monos));
-  d->hpoly_To_idx = malloc((d->mo + 2) * sizeof *(d->hpoly_To_idx));
+  const int max_init_alloc = 1 << 15;
+  d->nc = max_nc(d->nv, d->mo);
+  int nv = d->nv, need_realloc = 0;
+  if (d->nc > max_init_alloc) {
+    need_realloc = 1;
+    d->nc = max_init_alloc;
+  }
+
+  d->monos        = malloc(d->nc * nv  * sizeof *(d->monos));
   d->ords         = malloc(d->nc       * sizeof *(d->ords));
+  d->hpoly_To_idx = malloc((d->mo + 2) * sizeof *(d->hpoly_To_idx));
   assert(d->monos);
-  assert(d->hpoly_To_idx);
   assert(d->ords);
+  assert(d->hpoly_To_idx);
 
   // ord 0
   mono_clr(nv, d->monos);
@@ -177,11 +206,12 @@ make_monos(D *d)
   for (int i = 0; i < nv; ++i)
     if (d->a[i] >= 1) {            // set 1 on main diag, if possible
       d->monos[curr_mono_idx*nv + i] = 1;
-      d->ords[curr_mono_idx]         = 1;
+      d->ords [curr_mono_idx]        = 1;
       curr_mono_idx++;
     }
 
-  return make_higher_ord_monos(d, curr_mono_idx);
+  int real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+  tbl_realloc_monos(d, real_nc);
 }
 
 static inline int
@@ -195,6 +225,35 @@ find_index(int n, const ord_t **T, const ord_t m[n], int start, int stop)
   printf("monomial not found in table: ");
   mono_print(n,m);
   assert(NULL);
+  return -1;
+}
+
+static inline int
+find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop)
+{
+#ifdef DEBUG
+  mono_print(n,m);
+  printf(" from %d to %d\n", start, stop);
+#endif
+  int count = stop - start, i = 0, step = 0;
+  while (count > 0) {
+    step = count / 2;
+    i = start + step;
+    if (mono_geq(n,T[i],m))
+      count = step;
+    else {
+      start = ++i;
+      count -= step + 1;
+    }
+  }
+  if (mono_equ(n,T[start], m))
+    return start;
+
+  // error
+  printf("monomial not found in table: "); mono_print(n,m);
+  printf("; reached to mono ");            mono_print(n,T[start]);
+  assert(NULL);
+  return -1;
 }
 
 static inline void
@@ -234,14 +293,14 @@ tbl_by_var(D *d)
   mono_clr(nv, m);
   do {
     int o = mono_sum(nv, m);
-    int idx = find_index(nv, (const ord_t**)d->To, m,
+    int idx = find_index_bin(nv, (const ord_t**)d->To, m,
                          d->hpoly_To_idx[o], d->hpoly_To_idx[o+1]);
     d->tv2to[mi]  = idx;
     d->to2tv[idx] = mi;
     d->Tv[mi]   = d->To[idx];
     ++mi;
   } while (nxt_mono_by_var(nv, d->a, d->mo, m));
-#ifdef TRACE
+#ifdef DEBUG
   tbl_print(nv, imin(mi,50), d->Tv);
   if (mi > 50) printf("... [ %d more rows ] ...\n", mi - 50);
   printf("tv2to=[ ");
@@ -308,7 +367,7 @@ tbl_solve_H(D *d)
     for (int j = a[i]+2; j <= mmin(sa[i],d->mo); j++) { // orders
       nxt_mono_by_unk(nv,a,i,j,b);
       idx_t idx0 = tbl_index_H(d,nv,b);
-      idx_t idx1 = find_index(nv,(const ord_t**)d->Tv,b,idx0,d->nc);
+      idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc);
       d->H[i*cols + j] = idx1 - idx0;
     }
 }
@@ -354,7 +413,7 @@ tbl_set_H(D *d)
   tbl_solve_H(d);
   tbl_clear_H(d);
 
-#ifdef TRACE
+#ifdef DEBUG
   printf("H = {\n");
   tbl_print_H(d);
 #endif
@@ -397,7 +456,7 @@ tbl_print_L(const D *d)
 static inline idx_t*
 tbl_build_LC(int oa, int ob, const D *d)
 {
-#ifdef TRACE
+#ifdef DEBUG
   printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
 #endif
   assert(d && d->To && d->hpoly_To_idx && d->tv2to);
@@ -426,7 +485,7 @@ tbl_build_LC(int oa, int ob, const D *d)
       else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
       lc[ilc] = ic;
 
-#ifdef TRACE
+#ifdef DEBUG
       /*
       printf(" ib=%d ", ib); mono_print(d->nv, To[ib]);
       printf(" ia=%d ", ia); mono_print(d->nv, To[ia]);
@@ -456,7 +515,7 @@ tbl_set_L(D *d)
 
       d->L[oa*ho + ob] = tbl_build_LC(oa, ob, d);
     }
-#ifdef TRACE
+#ifdef DEBUG
   tbl_print_L(d);
 #endif
 }
@@ -546,13 +605,13 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
   D *d = malloc(sizeof *d);
   assert(d);
   d->nv = nv, d->mo = mvo, d->mko = mko;
-  d->knb_start = knb_start, d->nc = max_nc(nv, mvo);
+  d->knb_start = knb_start;
 
   d->a = malloc(nv * sizeof *(d->a));
   assert(d->a);
   mono_cpy(nv, var_ords, d->a);
 
-  d->nc = make_monos(d);
+  make_monos(d);
   tbl_by_ord(d);
   tbl_by_var(d);  // requires To
   tbl_set_H(d);
