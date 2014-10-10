@@ -1,6 +1,6 @@
 #include "mad_tpsa_desc.h"
 
-// #define TRACE
+#define TRACE
 // #define DEBUG
 
 typedef int           idx_t;
@@ -10,16 +10,17 @@ typedef int           idx_t;
 struct tpsa_desc {
   int      nv, nc,    // number of vars, number of coeff
            knb_start, // index in `a` where the knobs start
-          *hpoly_To_idx,  // poly start in To
-          *tv2to, *to2tv; // lookup tv->to, to->tv
+           size;      // bytes used by current desc
   ord_t    mo, mko,   // maximum order, maximum knob order
           *a,         // alphas
           *monos,     // 'matrix' storing the monomials (sorted by ord)
          **To,        // Table by orders -- pointers to monos, sorted by order
           *ords,      // order of each mono of To
          **Tv;        // Table by vars   -- pointers to monos, sorted by vars
-  idx_t  **L;         // multiplication indexes -- l[oa][ob] = lc; lc[ia][ib] = ic
-  idx_t   *H;         // indexing matrix
+  idx_t   *hpoly_To_idx,  // poly start in To
+          *tv2to, *to2tv, // lookup tv->to, to->tv
+         **L,         // multiplication indexes -- l[oa][ob] = lc; lc[ia][ib] = ic
+          *H;         // indexing matrix
 };
 
 // ========== HELPERS ==========================================================
@@ -212,6 +213,9 @@ make_monos(D *d)
 
   int real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
   tbl_realloc_monos(d, real_nc);
+  d->size += real_nc * d->nv * sizeof *(d->monos);
+  d->size += real_nc         * sizeof *(d->ords);
+  d->size += (d->mo + 2)     * sizeof *(d->hpoly_To_idx);
 }
 
 static inline int
@@ -269,6 +273,8 @@ tbl_by_ord(D *d)
   d->to2tv = malloc(d->nc * sizeof *(d->to2tv));
   assert(d->To);
   assert(d->to2tv);
+  d->size += d->nc * sizeof *(d->To);
+  d->size += d->nc * sizeof *(d->to2tv);
 
   ord_t *monos = d->monos;
   for (int i = 0; i < d->nc; ++i, monos += d->nv)
@@ -287,6 +293,8 @@ tbl_by_var(D *d)
   d->tv2to = malloc(d->nc * sizeof *(d->tv2to));
   assert(d->Tv);
   assert(d->tv2to);
+  d->size += d->nc * sizeof *(d->Tv);
+  d->size += d->nc * sizeof *(d->tv2to);
 
   int mi = 0, nv = d->nv;
   ord_t m[nv];
@@ -409,6 +417,8 @@ tbl_set_H(D *d)
 
   d->H = malloc(d->nv * (d->mo+2) * sizeof *(d->H));
   assert(d->H);
+  d->size += d->nv * (d->mo+2) * sizeof *(d->H);
+
   tbl_build_H(d->H, d->nv, d->mo + 2, d->a, (const ord_t**)d->Tv, d->nc);
   tbl_solve_H(d);
   tbl_clear_H(d);
@@ -454,7 +464,7 @@ tbl_print_L(const D *d)
 }
 
 static inline idx_t*
-tbl_build_LC(int oa, int ob, const D *d)
+tbl_build_LC(int oa, int ob, D *d)
 {
 #ifdef DEBUG
   printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
@@ -472,6 +482,7 @@ tbl_build_LC(int oa, int ob, const D *d)
   else          mat_size = rows * cols;
   idx_t *lc = malloc(mat_size * sizeof *lc);
   assert(lc);
+  d->size += mat_size * sizeof *lc;
   for (int i = 0; i < mat_size; ++i) lc[i] = -1;
 
   ord_t m[d->nv];
@@ -508,6 +519,7 @@ tbl_set_L(D *d)
   ord_t o = d->mo, ho = d->mo / 2;
   d->L = malloc((o*ho + 1) * sizeof *(d->L));
   assert(d->L);
+  d->size += (o*ho + 1) * sizeof *(d->L);
 
   for (int oc = 2; oc <= d->mo; ++oc)
     for (int j = 1; j <= oc / 2; ++j) {
@@ -606,16 +618,22 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
   assert(d);
   d->nv = nv, d->mo = mvo, d->mko = mko;
   d->knb_start = knb_start;
+  d->size = sizeof(d);
 
   d->a = malloc(nv * sizeof *(d->a));
   assert(d->a);
   mono_cpy(nv, var_ords, d->a);
+  d->size += nv * sizeof *(d->a);
 
   make_monos(d);
   tbl_by_ord(d);
   tbl_by_var(d);  // requires To
   tbl_set_H(d);
   tbl_set_L(d);
+
+#ifdef TRACE
+  printf("  Total desc size: %d bytes\n", d->size);
+#endif
 
   int err = tbl_check(d);
   if (err != 0) {
@@ -707,4 +725,5 @@ mad_tpsa_desc_nc(const D *d)
 }
 
 #undef D
-
+#undef TRACE
+#undef DEBUG

@@ -356,4 +356,4 @@ mad_tpsa_print(const T *t)
 
 #undef T
 #undef D
-
+#undef TRACE
