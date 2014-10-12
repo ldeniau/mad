@@ -1,6 +1,6 @@
 #include "mad_tpsa_desc.h"
 
-#define TRACE
+// #define TRACE
 // #define DEBUG
 
 typedef int           idx_t;

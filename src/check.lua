@@ -6,6 +6,8 @@ end
 
 local min, abs = math.min, math.abs
 
+-- HELPERS ---------------------------------------------------------------------
+
 local function mono_val(l, n)
   local a = {}
   for i=1,l do a[i] = n end
@@ -42,39 +44,7 @@ local function mono_print(m, file)
   end
 end
 
-
-function M.fill_ord1(t, nv, startVal, inc)
-  if not startVal then startVal = 1.1 end
-  if not inc      then inc      = 0.1 end
-  local m = mono_val(nv, 0)
-  t:setCoeff(m, startVal)
-  for i=1,nv do
-    m[i] = 1
-    startVal = startVal + inc
-    t:setCoeff(m, startVal)
-    m[i] = 0
-  end
-end
-
-function M.fill_full(t, no)
-  -- t:pow(no)
-  local b, r, floor = t:cpy(), t:new(), math.floor
-  r:setConst(1)
-
-  while no > 0 do
-    if no%2==1 then
-      r.mul(r, b, t)
-      r, t = t, r
-      no = no - 1
-    end
-    b.mul(b, b, t)
-    b, t = t, b
-    no = no/2
-  end
---  r:print()
-  r:cpy(t)
-end
-
+-- LOCALS ----------------------------------------------------------------------
 
 local function initMons(nv)
   local t = { ps={ [0]=0, [1]=1 }, pe={ [0]=0, [1]=nv } }
@@ -113,6 +83,87 @@ local function table_by_ords(nv, no)
   return t
 end
 
+local function prepare_check(vars, no)
+  local mod, To = M.mod, M.To
+  if not vars or not no then
+    vars, no = M.vars, M.no
+  elseif vars ~= M.vars or no ~= M.no then
+    To = table_by_ords(#vars, no)
+  end
+
+  local berz = require"lib.tpsaBerz"
+--  local t =  mod(mono_val(#vars,no), no, mono_val(2,0), 12)
+  local t =  mod(mono_val(#vars,no), no)
+  local b = berz.init(vars, no)
+
+  M.fill_ord1(b, #vars)
+  M.fill_full(b, no)
+  M.fill_ord1(t, #vars)
+  M.fill_full(t, no)
+
+  return t, b, To
+end
+
+
+-- EXPORTED UTILS --------------------------------------------------------------
+
+M.mono_val = mono_val
+
+function M.fill_ord1(t, nv, startVal, inc)
+  if not startVal then startVal = 1.1 end
+  if not inc      then inc      = 0.1 end
+  local m = mono_val(nv, 0)
+  t:setCoeff(m, startVal)
+  for i=1,nv do
+    m[i] = 1
+    startVal = startVal + inc
+    t:setCoeff(m, startVal)
+    m[i] = 0
+  end
+end
+
+function M.fill_full(t, no)
+  -- t:pow(no)
+  local b, r, floor = t:cpy(), t:new(), math.floor
+  r:setConst(1)
+
+  while no > 0 do
+    if no%2==1 then
+      r.mul(r, b, t)
+      r, t = t, r
+      no = no - 1
+    end
+    b.mul(b, b, t)
+    b, t = t, b
+    no = no/2
+  end
+--  r:print()
+  r:cpy(t)
+end
+
+-- read benchmark input parameters: NV, NO, NL
+function M.read_params(filename)
+  local f = io.open(filename, "r")
+  local NV, NO, NL, l = {}, {}, {}, 1
+
+  if not f then
+    error("Params file not found: " .. filename)
+  else
+    while true do
+      local nv, no, nl, ts = f:read("*number", "*number", "*number", "*number")
+      if not (nv and no and nl) then break end
+      assert(nv and no and nl)
+      NV[l], NO[l], NL[l] = nv, no, nl
+      l = l + 1
+    end
+    fprintf(io.output(), "%d lines read from %s.\n", l, filename)
+  end
+  f:close()
+  return NV, NO, NL
+end
+
+
+-- CHECKING & DEBUGGING --------------------------------------------------------
 
 function M.setup(mod, vars, no, filename)
   M.mod, M.vars, M.no = mod, vars, no
@@ -126,27 +177,6 @@ end
 
 function M.tear_down()
   M.file:close()
-end
-
-
-local function prepare_check(vars, no)
-  local mod, To = M.mod, M.To
-  if not vars or not no then
-    vars, no = M.vars, M.no
-  elseif vars ~= M.vars or no ~= M.no then
-    To = table_by_ords(#vars, no)
-  end
-
-  local berz = require"lib.tpsaBerz"
-  local t =  mod(mono_val(#vars,no), no, mono_val(2,0), 12)
-  local b = berz.init(vars, no)
-
-  M.fill_ord1(b, #vars)
-  M.fill_full(b, no)
-  M.fill_ord1(t, #vars)
-  M.fill_full(t, no)
-
-  return t, b, To
 end
 
 function M.same_coeff(t1, t2, eps, To)
@@ -168,7 +198,6 @@ function M.same_coeff(t1, t2, eps, To)
   end
 end
 
-
 function M.with_berz(eps, vars, no)
   -- cross checks a full tpsa of (nv, no) with a full berz tpsa
   -- if nv, no are not specified then the ones from setup are used
@@ -177,6 +206,7 @@ function M.with_berz(eps, vars, no)
   eps = eps or 1e-3
   M.same_coeff(t, b, eps, To)
 end
+
 
 function M.print(t)
   local f, To = M.file, M.To
@@ -192,7 +222,6 @@ function M.print(t)
     end
   end
 end
-
 
 function M.print_all(...)
   local arg = {...}

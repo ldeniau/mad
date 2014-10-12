@@ -43,10 +43,6 @@ M.name = 'tpsa'
 M.kind = 'tpsa'
 M.is_tpsa = true
 
--- descriptors of all tpsa
-M.D = {} -- descriptor
-M.T = {} -- descriptor with named vars
-
 -- initialize FFI
 local PATH = (...):match("(.+)%.[^%.]+$") or (...) -- current path
 PATH:gsub("%.", "/")    -- replace . with / to get "foo/bar" TODO: cross platf

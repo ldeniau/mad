@@ -272,10 +272,7 @@ mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
   mono_print(n, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
-  ord_t *ords = t->desc->ords;
-  t->coef[i] = v;
-  if (ords[i] > t->mo) t->mo = ords[i];
-  if (v != 0)       t->nz = bset(t->nz, ords[i]);
+  mad_tpsa_seti(t,i,v);
 }
 
 num_t
@@ -290,7 +287,11 @@ void
 mad_tpsa_seti(T *t, int i, num_t v)
 {
   assert(t);
-    assert(i >= 0 && i < t->desc->nc);
+  assert(i >= 0 && i < t->desc->nc);
+  ord_t *ords = t->desc->ords;
+  t->coef[i] = v;
+  if (ords[i] > t->mo) t->mo = ords[i];
+  if (v != 0)          t->nz = bset(t->nz, ords[i]);
   t->coef[i] = v;
 }
 
