@@ -1,8 +1,5 @@
-local tpsa = { name="berz", _cnt=0 }
-local MT   = { __index=tpsa }
-
 local ffi = require('ffi')
-local format, setmetatable = string.format, setmetatable
+local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -55,24 +52,28 @@ ffi.cdef[[
   void dapri_(int *idx, int *dest);                // print TPSA at idx on stream dest
 ]]
 
-
 -- Fortran only takes pointers, so define their type
 -- a pointer to a single value is a length 1 array
-local intPtr = ffi.typeof("int    [1]")
-local intArr = ffi.typeof("int    [?]")
-local dblPtr = ffi.typeof("double [1]")
-local name_t = ffi.typeof("char  [11]")
+local intPtr = typeof("int    [1]")
+local intArr = typeof("int    [?]")
+local dblPtr = typeof("double [1]")
+local name_t = typeof("char  [11]")
+
 
 -- Create pointers to some useful literals
 local zero_i, one_i, six_i = intPtr(0),   intPtr(1), intPtr(6)
 local zero_d, one_d        = dblPtr(0.0), dblPtr(1.0)
 
 
+local tpsa = { name = "berz", mono_t = intArr, _cnt = 0 }
+local MT   = { __index = tpsa }
+
+
 local function create(nv, no)
   local r = {}
   r.nv, r.no = nv, no
   r.idx = intPtr()
-  local name = name_t(format("Berz%6d", tpsa._cnt))
+  local name = name_t(string.format("Berz%6d", tpsa._cnt))
   berzLib.daall_(r.idx, one_i, name, intPtr(no), intPtr(nv))
   tpsa._cnt = tpsa._cnt + 1
   return setmetatable(r, MT)
@@ -203,6 +204,20 @@ end
 
 function tpsa.print(t)
    berzLib.dapri_(t.idx, six_i)     -- prints on stdout, represented by 6 in Fortran
+end
+
+-- interface for benchmarking --------------------------------------------------
+
+function tpsa.setm(t, l, m, v)
+  -- m is a t._coef_t (intArr), l is its length
+  berzLib.dapok_(t.idx, m, dblPtr(v))
+end
+
+function tpsa.getm(t, l, m)
+  -- m is a t._coef_t (mono_t), l is its length
+  local v_ptr = dblPtr()
+  berzLib.dapek_(t.idx, m, v_ptr)
+  return tonumber(v_ptr[0])
 end
 
 return tpsa

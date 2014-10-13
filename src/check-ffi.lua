@@ -1,4 +1,5 @@
 local M = {}
+local ffi = require"ffi"
 
 local function fprintf(f, s, ...)  -- TODO: put this somewhere and import it
   f:write(s:format(...))
@@ -9,37 +10,41 @@ local min, abs = math.min, math.abs
 -- HELPERS ---------------------------------------------------------------------
 
 local function mono_val(l, n)
-  local a = {}
-  for i=1,l do a[i] = n end
-  return a
+  return M.mono_t(l, n)
 end
 
-local function mono_add(a,b)
-  local c = {}
-  for i=1,#a do c[i] = a[i]+b[i] end
+local function mono_cpy(l, m)
+  local r = mono_val(l,0)
+  for i=0,l-1 do r[i] = m[i] end
+  return r
+end
+
+local function mono_add(l,a,b)
+  local c = mono_val(l,0)
+  for i=0,l-1 do c[i] = a[i]+b[i] end
   return c
 end
 
-local function mono_sum(a)
+local function mono_sum(l,a)
   local s = 0
-  for i=1,#a do s = s + a[i] end
+  for i=0,l-1 do s = s + a[i] end
   return s
 end
 
-local function melem_leq(a,b)
-  for i=1,#a do
+local function melem_leq(l,a,b)
+  for i=0,l-1 do
     if a[i] > b[i] then return false end
   end
   return true
 end
 
-local function mono_isvalid(m, a, o)
-  return mono_sum(m) <= o and melem_leq(m,a)
+local function mono_isvalid(l, m, a, o)
+  return mono_sum(l, m) <= o and melem_leq(l, m,a)
 end
 
-local function mono_print(m, file)
+local function mono_print(l, m, file)
   file = file or io.output()
-  for mi=1,#m do
+  for mi=0,l-1 do
     fprintf(file, "%d ", m[mi])
   end
 end
@@ -49,12 +54,10 @@ end
 local function initMons(nv)
   local t = { ps={ [0]=0, [1]=1 }, pe={ [0]=0, [1]=nv } }
 
-  for i=0,nv do
-    t[i] = {}
-    for j=1,nv do
-      if i==j then t[i][j] = 1
-      else         t[i][j] = 0 end
-     end
+  t[0] = mono_val(nv, 0)
+  for i=1,nv do
+    t[i] = mono_val(nv, 0)
+    t[i][i-1] = 1
   end
 
   return t
@@ -69,12 +72,12 @@ local function table_by_ords(nv, no)
       j = t.ps[ord-1]
 
       repeat
-        local m = mono_add(t[i], t[j])
-        if mono_isvalid(m, a, no) then
+        local m = mono_add(nv,t[i], t[j])
+        if mono_isvalid(nv, m, a, no) then
           t[#t+1] = m
         end
         j = j+1
-      until m[i] > a[i] or m[i] >= ord
+      until m[i-1] > a[i-1] or m[i-1] >= ord
 
     end
     t.ps[ord]   = j
@@ -107,14 +110,16 @@ end
 
 -- EXPORTED UTILS --------------------------------------------------------------
 
-M.mono_val = mono_val
+M.mono_val   = mono_val
+M.mono_cpy   = mono_cpy
+M.mono_print = mono_print
 
 function M.fill_ord1(t, nv, startVal, inc)
   if not startVal then startVal = 1.1 end
   if not inc      then inc      = 0.1 end
   local m = mono_val(nv, 0)
   t:setCoeff(m, startVal)
-  for i=1,nv do
+  for i=0,nv-1 do
     m[i] = 1
     startVal = startVal + inc
     t:setCoeff(m, startVal)
@@ -166,7 +171,7 @@ end
 -- CHECKING & DEBUGGING --------------------------------------------------------
 
 function M.setup(mod, vars, no, filename)
-  M.mod, M.vars, M.no = mod, vars, no
+  M.mod, M.vars, M.no, M.mono_t = mod, vars, no, mod.mono_t
   if not filename then filename = (mod.name or "check") .. ".out" end
   if not M.file then
     M.file = io.open(filename, "w")

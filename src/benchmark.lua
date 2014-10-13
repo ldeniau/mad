@@ -15,8 +15,8 @@ local function timeit(fun, nl, t1, t2, r)
 end
 
 local function setup(tpsa, nv, no)
-  local vars, vname = {}, "x%d"
-  for i=1,nv do vars[i] = vname:format(i) end
+  local vars = {}
+  for i=1,nv do vars[i] = no end
 
   local t = tpsa.init(vars, no) -- call tpsa constructor, i.e. the module
   fill_ord1(t, nv)

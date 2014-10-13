@@ -1,8 +1,5 @@
-local tpsa = { name="yang" }
-local MT   = { __index=tpsa }
-
 local ffi = require('ffi')
-local format, setmetatable = string.format, setmetatable
+local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -43,16 +40,21 @@ ffi.cdef[[
   void ad_print_(const TVEC *iv);
 ]]
 
-
-local uintPtr  = ffi.typeof("unsigned int [1]")
-local uintArr  = ffi.typeof("unsigned int [?]")
-local  intArr  = ffi.typeof("         int [?]")
-local sizetPtr = ffi.typeof("size_t       [1]")
-local dblPtr   = ffi.typeof("double       [1]")
+-- all functions work with pointers, so define their type
+-- a pointer to a single value is a length 1 array
+local uintPtr  = typeof("unsigned int [1]")
+local uintArr  = typeof("unsigned int [?]")
+local  intArr  = typeof("         int [?]")
+local sizetPtr = typeof("size_t       [1]")
+local dblPtr   = typeof("double       [1]")
 
 -- Create pointers to some useful literals
 local zero_i, one_i = uintPtr(0),  uintPtr(1)
 local zero_d, one_d = dblPtr(0.0), dblPtr(1.0)
+
+
+local tpsa = { name = "yang", mono_t = intArr }
+local MT   = { __index = tpsa }
 
 local initialized = false
 
@@ -137,6 +139,21 @@ function tpsa.print(t)
   yangLib.ad_print_(t.idx)
 end
 
+-- interface for benchmarking --------------------------------------------------
+
+function tpsa.setm(t, l, m, v)
+  -- m is a t._coef_t (intArr), l is its length
+  local l_ptr, v_ptr = sizetPtr(l), dblPtr(v)
+  yangLib.ad_pok_(t.idx, m, l_ptr, v_ptr)
+end
+
+
+function tpsa.getm(t, l, m)
+  -- m is a t._coef_t (mono_t), l is its length
+  local l_ptr, v_ptr = sizetPtr(l), dblPtr()
+  yangLib.ad_pek_(t.idx, m, l_ptr, v_ptr)
+  return tonumber(v_ptr[0])
+end
 
 return tpsa
 
