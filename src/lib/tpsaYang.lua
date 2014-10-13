@@ -44,18 +44,20 @@ ffi.cdef[[
 ]]
 
 
-local uintPtr  = ffi.typeof("unsigned int [?]") -- serves as pointer or array
-local sizetPtr = ffi.typeof("size_t [1]")
-local dblPtr   = ffi.typeof("double [1]")
+local uintPtr  = ffi.typeof("unsigned int [1]")
+local uintArr  = ffi.typeof("unsigned int [?]")
+local  intArr  = ffi.typeof("         int [?]")
+local sizetPtr = ffi.typeof("size_t       [1]")
+local dblPtr   = ffi.typeof("double       [1]")
 
 -- Create pointers to some useful literals
-local zero_i, one_i = uintPtr(1, 0), uintPtr(1, 1)
-local zero_d, one_d = dblPtr(0.0),   dblPtr(1.0)
+local zero_i, one_i = uintPtr(0),  uintPtr(1)
+local zero_d, one_d = dblPtr(0.0), dblPtr(1.0)
 
 local initialized = false
 
 local function create(nv, no)
-  local t = { nv=nv, no=no, idx=uintPtr(1) }
+  local t = { nv=nv, no=no, idx=uintPtr() }
   yangLib.ad_alloc_(t.idx)
   return setmetatable(t, MT)
 end
@@ -74,11 +76,11 @@ function tpsa.init(nv, no)
     initialized = true
   end
 
-  yangLib.ad_init_(uintPtr(1, nv), uintPtr(1, no))
+  yangLib.ad_init_(uintPtr(nv), uintPtr(no))
 
   -- reserve should be called right after init, so we'll do it here
   local size = 30000                -- to suffice for allocations
-  yangLib.ad_reserve_(uintPtr(1, size))
+  yangLib.ad_reserve_(uintPtr(size))
   return create(nv, no)
 end
 
@@ -93,13 +95,13 @@ end
 function tpsa.setCoeff(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
-  local indexes, size = uintPtr(#mon, mon), sizetPtr(#mon)
+  local indexes, size = intArr(#mon, mon), sizetPtr(#mon)
   yangLib.ad_pok_(t.idx, indexes, size, dblPtr(val))
 end
 
 function tpsa.getCoeff(t, mon)
   -- mon = see setCoeff
-  local indexes, size, val = uintPtr(#mon, mon), sizetPtr(#mon), dblPtr(1)
+  local indexes, size, val = intArr(#mon, mon), sizetPtr(#mon), dblPtr()
   yangLib.ad_pek_(t.idx, indexes, size, val)
 
   return tonumber(val[0])
@@ -119,7 +121,7 @@ end
 function tpsa.cct(a, b, c)
   -- a, b, c should be compatible arrays of TPSAs, starting from 1
 
-  local bIdxs, bSize = uintPtr(#b), uintPtr(1, #b)
+  local bIdxs, bSize = uintArr(#b), uintPtr(#b)
   for i=1,#b do bIdxs[i-1] = b[i].idx[0] end
 
   for i=1,#a do

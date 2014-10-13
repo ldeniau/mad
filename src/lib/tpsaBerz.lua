@@ -58,21 +58,22 @@ ffi.cdef[[
 
 -- Fortran only takes pointers, so define their type
 -- a pointer to a single value is a length 1 array
-local intPtr = ffi.typeof("int [?]")
-local dblPtr = ffi.typeof("double [?]")
-local chrPtr = ffi.typeof("char [?]")
+local intPtr = ffi.typeof("int    [1]")
+local intArr = ffi.typeof("int    [?]")
+local dblPtr = ffi.typeof("double [1]")
+local name_t = ffi.typeof("char  [11]")
 
 -- Create pointers to some useful literals
-local zero_i, one_i, six_i = intPtr(1, 0  ), intPtr(1, 1  ), intPtr(1, 6)
-local zero_d, one_d        = dblPtr(1, 0.0), dblPtr(1, 1.0)
+local zero_i, one_i, six_i = intPtr(0),   intPtr(1), intPtr(6)
+local zero_d, one_d        = dblPtr(0.0), dblPtr(1.0)
 
 
 local function create(nv, no)
   local r = {}
   r.nv, r.no = nv, no
-  local name = format("Berz%6d", tpsa._cnt)
-  r.idx = intPtr(1)
-  berzLib.daall_(r.idx, one_i, chrPtr(#name+1, name), intPtr(1,no), intPtr(1,nv))
+  r.idx = intPtr()
+  local name = name_t(format("Berz%6d", tpsa._cnt))
+  berzLib.daall_(r.idx, one_i, name, intPtr(no), intPtr(nv))
   tpsa._cnt = tpsa._cnt + 1
   return setmetatable(r, MT)
 end
@@ -85,7 +86,7 @@ function tpsa.init(nv, no)
   elseif type(nv) ~= "number" then error(errStr) end
   if     type(no) ~= "number" then error(errStr) end
 
-  berzLib.daini_(intPtr(1,no), intPtr(1,nv), zero_i)
+  berzLib.daini_(intPtr(no), intPtr(nv), zero_i)
   return create(nv, no)
 end
 
@@ -94,20 +95,20 @@ function tpsa.new(t)
 end
 
 function tpsa.setConst(t, val)
-  berzLib.dacon_(t.idx, dblPtr(1,val))
+  berzLib.dacon_(t.idx, dblPtr(val))
 end
 
 function tpsa.setCoeff(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
-  local cmon = intPtr(#mon, mon)
-  berzLib.dapok_(t.idx, cmon, dblPtr(1,val))
+  local cmon = intArr(#mon, mon)
+  berzLib.dapok_(t.idx, cmon, dblPtr(val))
 end
 
 function tpsa.getCoeff(t, mon)
   -- monomial = see setCoeff
-  local cmon, val = intPtr(#mon, mon), dblPtr(1)
+  local cmon, val = intArr(#mon, mon), dblPtr()
   berzLib.dapek_(t.idx, cmon, val)
   return tonumber(val[0])
 end
@@ -143,8 +144,8 @@ end
 function tpsa.cct(a, b, c)
   -- a, b, c should be compatible arrays of TPSAs, starting from 1
 
-  local aIdxs, bIdxs, cIdxs = intPtr(#a), intPtr(#b), intPtr(#c)
-  local aSize, bSize, cSize = intPtr(1,#a), intPtr(1,#b), intPtr(1,#c)
+  local aIdxs, bIdxs, cIdxs = intArr(#a), intArr(#b), intArr(#c)
+  local aSize, bSize, cSize = intPtr(#a), intPtr(#b), intPtr(#c)
   for i=1,#a do aIdxs[i-1] = a[i].idx[0] end
   for i=1,#b do bIdxs[i-1] = b[i].idx[0] end
   for i=1,#c do cIdxs[i-1] = c[i].idx[0] end
@@ -155,37 +156,37 @@ end
 
 -- binary operations between TPSA and scalar ----------------------------------
 function tpsa.cadd(t, c, r)
-  berzLib.dacad_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacad_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.csub(t, c, r)
-  berzLib.dacsu_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacsu_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.subc(t, c, r)
-  berzLib.dacad_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacad_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.cmul(t, c, r)
-  berzLib.dacmu_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacmu_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.cdiv(t, c, r)
-  berzLib.dacdi_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacdi_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.divc(t, c, r)
-  berzLib.dacmu_(t.idx, intPtr(1,c), r.idx)
+  berzLib.dacmu_(t.idx, intPtr(c), r.idx)
 end
 
 function tpsa.cma(t1, t2, c, r)
-  berzLib.dacma_(t1.idx, t2,idx, intPtr(1,c), r.idx)
+  berzLib.dacma_(t1.idx, t2,idx, intPtr(c), r.idx)
 end
 -- unary operations -----------------------------------------------------------
 function tpsa.inv(ma, mr)
   -- ma, mr = arrays of TPSAs
-  local aIdxs, rIdxs = intPtr(#ma), intPtr(#mr)
-  local aSize, rSize = intPtr(1, #ma), intPtr(1, #mr)
+  local aIdxs, rIdxs = intArr(#ma), intArr(#mr)
+  local aSize, rSize = intPtr(#ma), intPtr(#mr)
   for i=1,#ma do aIdxs[i-1] = ma[i].idx[0] end
   for i=1,#mr do rIdxs[i-1] = mr[i].idx[0] end
 
