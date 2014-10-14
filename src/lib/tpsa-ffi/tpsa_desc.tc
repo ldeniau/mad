@@ -349,6 +349,9 @@ tbl_index_H(const D *d, int n, const ord_t m[n])
 static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
+  assert(d && m);
+  assert(d->tv2to && d->a);
+  assert(n <= d->nv && mono_isvalid(n, m, d->a, d->mo));
   return d->tv2to[tbl_index_H(d,n,m)];
 }
 
