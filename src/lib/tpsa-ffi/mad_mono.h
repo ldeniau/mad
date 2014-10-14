@@ -30,6 +30,12 @@ mmin (ord_t a, ord_t b)
   return a<b ? a : b;
 }
 
+static inline ord_t
+mmax (ord_t a, ord_t b)
+{
+  return a>b ? a : b;
+}
+
 static inline void
 mono_set(int n, ord_t a[n], ord_t v)
 {

@@ -34,6 +34,8 @@ ffi.cdef[[
   void ad_const_(const TVEC *idx, const double *r);  // sets the constant term
 
   void ad_mult_ (const TVEC *ivlhs, const TVEC *ivrhs, TVEC *ivdst);
+  void ad_add_  (const TVEC *ivdst, const TVEC *ivsrc);
+  void ad_sub_  (const TVEC *ivdst, const TVEC *ivsrc);
   void ad_subst_(const TVEC *iv, const TVEC *ibv, const TNVND *nbv,
                  const TVEC *iret);
 
@@ -118,6 +120,14 @@ end
 function tpsa.mul(t1, t2, r)
   -- r should be different from t1 and t2
   yangLib.ad_mult_(t1.idx, t2.idx, r.idx)
+end
+
+function tpsa.add(t1, t2)
+  yangLib.ad_add_(t2.idx, t2.idx)
+end
+
+function tpsa.sub(t1, t2)
+  yangLib.ad_sub_(t2.idx, t2.idx)
 end
 
 function tpsa.cct(a, b, c)

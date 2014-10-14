@@ -306,13 +306,54 @@ mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
 void
 mad_tpsa_add(const T *a, const T *b, T *c)
 {
-  (void)a; (void)b; (void)c;
+#ifdef TRACE
+  printf("tpsa_add\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+  c->nz = a->nz | b->nz;
+  c->mo = mmax(a->mo, b->mo);
+
+  const num_t *ca, *cb;
+  int len_a, len_b;
+  if (a->mo <= b->mo) {
+    ca = a->coef;
+    cb = b->coef;
+    len_a = c->desc->hpoly_To_idx[a->mo + 1];
+    len_b = c->desc->hpoly_To_idx[b->mo + 1];
+  }
+  else {  // swap: 'ca' is the shortest
+    ca = b->coef;
+    cb = a->coef;
+    len_a = c->desc->hpoly_To_idx[b->mo + 1];
+    len_b = c->desc->hpoly_To_idx[a->mo + 1];
+  }
+
+  for (int i = 0    ; i < len_a; ++i)  c->coef[i] = ca[i] + cb[i];
+  for (int i = len_a; i < len_b; ++i)  c->coef[i] =         cb[i];
 }
 
 void
 mad_tpsa_sub(const T *a, const T *b, T *c)
 {
-  (void)a; (void)b; (void)c;
+#ifdef TRACE
+  printf("tpsa_sub\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+  c->nz = a->nz | b->nz;
+  c->mo = mmax(a->mo, b->mo);
+
+  const num_t *ca = a->coef, *cb = b->coef;
+  int len_a = c->desc->hpoly_To_idx[a->mo + 1],
+      len_b = c->desc->hpoly_To_idx[b->mo + 1];
+  printf("len_a=%d len_b=%d\n");
+
+    for (int i = 0    ; i < imin(len_a,len_b); ++i) c->coef[i] = ca[i] - cb[i];
+  if (len_a <= len_b)
+    for (int i = len_a; i <            len_b ; ++i) c->coef[i] =       - cb[i];
+  else
+    for (int i = len_b; i <      len_a       ; ++i) c->coef[i] = ca[i]        ;
 }
 
 void
