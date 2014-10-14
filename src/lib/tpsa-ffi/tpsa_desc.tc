@@ -69,7 +69,7 @@ nxt_mono_by_var(int n, const ord_t a[n], const ord_t o, ord_t m[n])
   assert(m && a);
   for (int i=0; i < n; ++i) {
     ++m[i];
-    if (mono_isvalid(n, m, a, o))
+    if (mono_isvalid(n, a, m, o))
       return 1;
     m[i] = 0;
   }
@@ -80,7 +80,7 @@ static inline void
 nxt_mono_by_unk(int n, const ord_t a[n], int i, int j, ord_t m[n])
 {
   assert(a && m);
-  mono_clr(n,m);
+  mono_set(n,m,0);
   for (int k=i; k < n; ++k) {
     m[k] = a[k];
     j -= a[k];
@@ -146,7 +146,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
       j = d->hpoly_To_idx[o-1];                    // j goes through ord (o-1)
       do {
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
-        if (mono_isvalid(nv, m, d->a, d->mo)) {
+        if (mono_isvalid(nv, d->a, m, d->mo)) {
           if (need_realloc && curr_mono_idx >= d->nc) {
             tbl_realloc_monos(d,0);
             curr_mono = d->monos + nv*curr_mono_idx;
@@ -195,7 +195,7 @@ make_monos(D *d)
   assert(d->hpoly_To_idx);
 
   // ord 0
-  mono_clr(nv, d->monos);
+  mono_set(nv, d->monos, 0);
   d->hpoly_To_idx[0] = d->ords[0] = 0;
   int curr_mono_idx = 1;
 
@@ -243,7 +243,7 @@ find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop)
   while (count > 0) {
     step = count / 2;
     i = start + step;
-    if (mono_geq(n,T[i],m))
+    if (mono_rpgeq(n,T[i],m))
       count = step;
     else {
       start = ++i;
@@ -298,7 +298,7 @@ tbl_by_var(D *d)
 
   int mi = 0, nv = d->nv;
   ord_t m[nv];
-  mono_clr(nv, m);
+  mono_set(nv, m, 0);
   do {
     int o = mono_sum(nv, m);
     int idx = find_index_bin(nv, (const ord_t**)d->To, m,
@@ -490,7 +490,7 @@ tbl_build_LC(int oa, int ob, D *d)
   for (int ib =      pi[ob]    ; ib < pi[ob+1]; ++ib)
   for (int ia = imax(pi[oa],ib); ia < pi[oa+1]; ++ia) {
     mono_add(d->nv, To[ia], To[ib], m);
-    if (mono_isvalid(d->nv, m, d->a, d->mo)) {
+    if (mono_isvalid(d->nv, d->a, m, d->mo)) {
       ic = i[tbl_index_H(d,d->nv,m)];
       if (oa == ob) ilc = hpoly_idx_triang(ib-ibo, ia-iao);
       else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
@@ -561,7 +561,7 @@ tbl_check_L(D *d)
         if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
 
         mono_add(d->nv, d->To[ia], d->To[ib], m);
-        if (ic < 0 && mono_isvalid(d->nv, m, d->a, d->mo))
+        if (ic < 0 && mono_isvalid(d->nv, d->a, m, d->mo))
                                                  return -3e7          - 13;
         }
       }

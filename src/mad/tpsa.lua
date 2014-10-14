@@ -356,7 +356,7 @@ local function table_check(D)
 
   if D.Nc~= #Tv                        then return 1e6+0 end
   for i=2,#a do
-    if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
+    if H[i][1] ~= (H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
                                        then return 1e6+i end
   end
   for i=1,#D.Tv do

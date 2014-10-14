@@ -1,13 +1,28 @@
 #ifndef MAD_MONO_H
 #define MAD_MONO_H
 
-#include <assert.h>
-#include <stdio.h>
 // --- types -------------------------------------------------------------------
 
 typedef unsigned char ord_t;
 
 // --- interface ---------------------------------------------------------------
+
+static ord_t mmin         (ord_t a, ord_t b);
+static void  mono_set     (int n, ord_t a[n], ord_t v);
+static int   mono_sum     (int n, const ord_t a[n]);
+static void  mono_cpy     (int n, const ord_t a[n], ord_t r[n]);
+static void  mono_acc     (int n, const ord_t a[n], ord_t r[n]);
+static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
+static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]);
+static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
+static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
+static int   mono_isvalid (int n, const ord_t a[n], const ord_t m[n], int o);
+static void  mono_print   (int n, const ord_t a[n]);
+
+// -----------------------------------------------------------------------------
+// --- implementation ----------------------------------------------------------
+
+#include <assert.h>
 
 static inline ord_t
 mmin (ord_t a, ord_t b)
@@ -16,39 +31,37 @@ mmin (ord_t a, ord_t b)
 }
 
 static inline void
-mono_clr(int n, ord_t m[n])
+mono_set(int n, ord_t a[n], ord_t v)
 {
-  assert(m);
-  for (int i=0; i < n; ++i) m[i] = 0;
+  assert(a);
+  for (int i=0; i < n; ++i) a[i] = v;
 }
 
-static inline ord_t
-mono_sum(int n, const ord_t m[n])
+static inline int
+mono_sum(int n, const ord_t a[n])
 {
-  assert(m);
-  ord_t s = 0;
-  for (int i=0; i < n; ++i)
-    s += m[i];
+  assert(a);
+  int s = 0;
+  for (int i=0; i < n; ++i) s += a[i];
   return s;
 }
 
 static inline void
-mono_cpy(int n, const ord_t src[n], ord_t dst[n])
+mono_cpy(int n, const ord_t a[n], ord_t r[n])
 {
-  assert(src && dst);
-  for (int i = 0; i < n; ++i) dst[i] = src[i];
+  assert(a && r);
+  for (int i = 0; i < n; ++i) r[i] = a[i];
 }
 
 static inline void
 mono_acc(int n, const ord_t a[n], ord_t r[n])
 {
   mono_cpy(n,a,r);
-  for (int i = n-2; i >= 0; --i)
-    r[i] += r[i+1];
+  for (int i = n-2; i >= 0; --i) r[i] += r[i+1];
 }
 
 static inline int
-mono_equ(const int n, const ord_t a[n], const ord_t b[n])
+mono_equ(int n, const ord_t a[n], const ord_t b[n])
 {
   assert(a && b);
   for (int i = 0; i < n; ++i)
@@ -57,7 +70,7 @@ mono_equ(const int n, const ord_t a[n], const ord_t b[n])
 }
 
 static inline int
-mono_geq(const int n, const ord_t a[n], const ord_t b[n])
+mono_rpgeq(int n, const ord_t a[n], const ord_t b[n])
 {
   // partial order relation ({3,0,0} <= {1,1,0})
   assert(a && b);
@@ -68,12 +81,11 @@ mono_geq(const int n, const ord_t a[n], const ord_t b[n])
 }
 
 static inline int
-mono_elem_leq(int n, const ord_t a[n], const ord_t b[n])
+mono_leq(int n, const ord_t a[n], const ord_t b[n])
 {
   assert(a && b);
   for (int i=0; i < n; ++i)
-    if (a[i] > b[i])
-      return 0;
+    if (a[i] > b[i]) return 0;
   return 1;
 }
 
@@ -85,10 +97,12 @@ mono_add(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 }
 
 static inline int
-mono_isvalid(int n, const ord_t m[n], const ord_t a[n], const ord_t o)
+mono_isvalid(int n, const ord_t a[n], const ord_t m[n], int o)
 {
-  return mono_sum(n, m) <= o && mono_elem_leq(n, m, a);
+  return mono_sum(n, m) <= o && mono_leq(n, m, a);
 }
+
+#include <stdio.h>
 
 static inline void
 mono_print(int n, const ord_t m[n])
@@ -100,6 +114,10 @@ mono_print(int n, const ord_t m[n])
   printf("]");
 }
 
-// -----------------------------------------------------------------------------
+// --- SSE2 implementation -----------------------------------------------------
 
+// Comment the following include to disable SSE/AVX optimization
+#include "mad_mono_sse.h"
+
+// -----------------------------------------------------------------------------
 #endif
