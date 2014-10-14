@@ -23,7 +23,7 @@ struct tpsa_desc {
           *H;         // indexing matrix
 };
 
-// ========== HELPERS ==========================================================
+// --- HELPERS ----------------------------------------------------------------
 
 static inline int
 imin (int a, int b)
@@ -61,7 +61,7 @@ hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 }
 
 
-// ========== MONOMIALS ========================================================
+// --- MONOMIALS --------------------------------------------------------------
 
 static inline int
 nxt_mono_by_var(int n, const ord_t a[n], const ord_t o, ord_t m[n])
@@ -101,7 +101,7 @@ print_mono_mat(int w, int h, const ord_t t[w*h])
   }
 }
 
-// ========== TABLES ===========================================================
+// --- TABLES -----------------------------------------------------------------
 
 static inline void
 tbl_print(int w, int h, ord_t **t)
@@ -317,7 +317,7 @@ tbl_by_var(D *d)
 #endif
 }
 
-// ========== H indexing matrix ================================================
+// --- H indexing matrix ------------------------------------------------------
 
 static inline void
 tbl_print_H(const D *d)
@@ -432,7 +432,7 @@ tbl_set_H(D *d)
 #endif
 }
 
-// ========== L indexing matrix ================================================
+// --- L indexing matrix ------------------------------------------------------
 
 static inline void
 tbl_print_LC(const idx_t *lc, int oa, int ob, int *pi)
@@ -535,7 +535,7 @@ tbl_set_L(D *d)
 #endif
 }
 
-// ========== UNIT TEST ========================================================
+// --- UNIT TEST --------------------------------------------------------------
 
 static inline int
 tbl_check_L(D *d)
@@ -600,7 +600,7 @@ tbl_check(D *d)
   return tbl_check_L(d);
 }
 
-// ========== DESC management ==================================================
+// --- DESC management --------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
 
@@ -670,7 +670,7 @@ desc_search(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_star
   return NULL;
 }
 
-// ========== Public Functions =================================================
+// --- Public Functions -------------------------------------------------------
 
 D*
 mad_tpsa_desc_new (int nv, const ord_t var_ords[nv], ord_t mvo)

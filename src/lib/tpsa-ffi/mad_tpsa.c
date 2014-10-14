@@ -20,7 +20,8 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   num_t   coef[];
 };
 
-// == debug
+// --- DEBUGGING --------------------------------------------------------------
+
 static inline void
 print_l(const idx_t const* l)
 {
@@ -57,7 +58,7 @@ bget (bit_t b, int n)
   return b & (1 << n);
 }
 
-// == local functions
+// --- LOCAL FUNCTIONS --------------------------------------------------------
 
 static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
@@ -196,7 +197,7 @@ hpoly_mul (const T *a, const T *b, T *c)
   return comps;
 }
 
-// == public functions
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 T*
 mad_tpsa_newd(D *d)
