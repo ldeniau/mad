@@ -74,12 +74,5 @@ mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
   return 1;
 }
 
-static inline int
-mono_isvalid_sse(int n, const ord_t a[n], const ord_t m[n], int o)
-{
-  // BUG: should test nv_o and nv_k
-  return mono_sum_sse(n, a) <= o && mono_leq_sse(n, a, m);
-}
-
 #endif
 #endif
