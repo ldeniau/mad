@@ -126,15 +126,17 @@ tbl_print(int w, int h, ord_t **t)
 static inline void
 tbl_realloc_monos(D *d, int new_nc_)
 {
-  // reallocates array of monomials with the new_size
+  // reallocates array of monomials to fit at least new_nc_ items
+  // if new_nc_ is not specified, it increases the capacity of exiting array
   assert(d);
-#ifdef TRACE
-  printf("realloc\n");
-#endif
+
   if (!new_nc_) {
     if (d->nc < (1<<21)) new_nc_ = d->nc * 2;        // double capacity
     else                 new_nc_ = d->nc + (1<<20);  // +1 Mb
   }
+#ifdef TRACE
+  printf("realloc for nc= %d\n", new_nc_);
+#endif
   d->nc = new_nc_;
   d->monos = realloc(d->monos, d->nc * d->nv * sizeof *(d->monos));
   d->ords  = realloc(d->ords,  d->nc         * sizeof *(d->monos));
@@ -151,7 +153,6 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
   int nv = d->nv, j;
   ord_t m[nv], *curr_mono = d->monos + curr_mono_idx*nv;
   for (ord_t o = 2; o <= d->mo; o++) {             // to build ord o:
-    d->hpoly_To_idx[o] = curr_mono_idx;
     for (int i = 1; i < d->hpoly_To_idx[2]; ++i) { // i goes through ord    1
       j = d->hpoly_To_idx[o-1];                    // j goes through ord (o-1)
       do {
@@ -169,8 +170,8 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
         j++;
       } while(m[i-1] <= d->a[i-1] && m[i-1] < o && j < d->hpoly_To_idx[o]);
     }
+    d->hpoly_To_idx[o+1] = curr_mono_idx;
   }
-  d->hpoly_To_idx[d->mo+1] = curr_mono_idx;
 
 #ifdef DEBUG
   print_mono_mat(d->nv, imin(curr_mono_idx, 50), d->monos);
@@ -211,6 +212,7 @@ make_monos(D *d)
 
   // ord 1
   d->hpoly_To_idx[1] = 1;
+  d->hpoly_To_idx[2] = nv + 1;
   for (int i = 1; i <= nv; ++i)
   for (int j = 0; j <  nv; ++j)
     d->monos[i*nv + j] = 0;        // init with 0
@@ -221,7 +223,10 @@ make_monos(D *d)
       curr_mono_idx++;
     }
 
-  int real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+  int real_nc = curr_mono_idx;
+  if (d->mo >= 2)
+    real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+
   tbl_realloc_monos(d, real_nc);
   d->size += real_nc * d->nv * sizeof *(d->monos);
   d->size += real_nc         * sizeof *(d->ords);
@@ -312,7 +317,7 @@ tbl_by_var(D *d)
   do {
     int o = mono_sum(nv, m);
     int idx = find_index_bin(nv, (const ord_t**)d->To, m,
-                         d->hpoly_To_idx[o], d->hpoly_To_idx[o+1]);
+                             d->hpoly_To_idx[o], d->hpoly_To_idx[o+1]);
     d->tv2to[mi]  = idx;
     d->to2tv[idx] = mi;
     d->Tv[mi]   = d->To[idx];
@@ -427,6 +432,9 @@ tbl_set_H(D *d)
 {
   assert(d && d->a && d->Tv && d->To);
   assert(d->nv != 0 && d->mo != 0 && d->nc != 0);
+#ifdef TRACE
+  printf("tbl_set_H for %p\n", (void*)d);
+#endif
 
   d->H = malloc(d->nv * (d->mo+2) * sizeof *(d->H));
   assert(d->H);
