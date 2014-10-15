@@ -313,7 +313,7 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
   c->nz = a->nz | b->nz;
-  c->mo = mmax(a->mo, b->mo);
+  c->mo = a->mo > b->mo ? a->mo : b->mo;  // max(amo,bmo)
 
   const num_t *ca, *cb;
   int len_a, len_b;
@@ -343,12 +343,11 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
   c->nz = a->nz | b->nz;
-  c->mo = mmax(a->mo, b->mo);
+  c->mo = a->mo > b->mo ? a->mo : b->mo;  // max(amo,bmo)
 
   const num_t *ca = a->coef, *cb = b->coef;
   int len_a = c->desc->hpoly_To_idx[a->mo + 1],
       len_b = c->desc->hpoly_To_idx[b->mo + 1];
-  printf("len_a=%d len_b=%d\n");
 
     for (int i = 0    ; i < imin(len_a,len_b); ++i) c->coef[i] = ca[i] - cb[i];
   if (len_a <= len_b)

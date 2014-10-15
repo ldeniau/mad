@@ -350,7 +350,6 @@ static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  assert(d->tv2to && d->a);
   assert(n <= d->nv && mono_isvalid(n, m, d->a, d->mo));
   return d->tv2to[tbl_index_H(d,n,m)];
 }
@@ -358,29 +357,30 @@ desc_get_idx(const D *d, int n, const ord_t m[n])
 static inline void
 tbl_clear_H(D *d)
 {
-  int sa[d->nv];
-  mono_racc(d->nv, d->a, sa);
-  int cols = d->mo + 2;
-  for (int i = 0; i < d->nv; ++i)
-    for (int j = 1 + mmin(sa[i],d->mo); j < cols; ++j)
+  int cols = d->mo + 2, accum = 0;
+  for (int i = d->nv - 1; i >= 0; --i) {
+    accum += d->a[i];
+    for (int j = 1 + imin(accum,d->mo); j < cols; ++j)
       d->H[i*cols + j] = -1;
+  }
 }
 
 static inline void
 tbl_solve_H(D *d)
 {
-  int nv = d->nv, cols = d->mo + 2;
-  int sa[nv], b[nv], *a = d->a;
-  mono_racc(nv,a,sa);
+  int nv = d->nv, cols = d->mo + 2, accum = d->a[nv-1];
+  ord_t b[nv], *a = d->a;
 
   // solve system of equations
-  for (int i = nv-2; i >= 1; --i)  // variables
-    for (int j = a[i]+2; j <= mmin(sa[i],d->mo); j++) { // orders
+  for (int i = nv-2; i >= 1; --i) { // variables
+    accum += a[i];
+    for (int j = a[i]+2; j <= imin(accum,d->mo); j++) { // orders
       nxt_mono_by_unk(nv,a,i,j,b);
       idx_t idx0 = tbl_index_H(d,nv,b);
       idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc);
       d->H[i*cols + j] = idx1 - idx0;
     }
+  }
 }
 
 static inline void
@@ -640,10 +640,10 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
 
   int err = tbl_check(d);
   if (err != 0) {
-    printf("\nA= ");   mono_print(d->nv, d->a);
-    printf("\nH=\n");  tbl_print_H(d);
-    printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
-    printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
+    // printf("\nA= ");   mono_print(d->nv, d->a);
+    // printf("\nH=\n");  tbl_print_H(d);
+    // printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
+    // printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
     printf("\nCheking table consistency ... %d\n", err);
     assert(NULL);
   }

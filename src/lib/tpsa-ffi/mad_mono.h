@@ -7,11 +7,9 @@ typedef unsigned char ord_t;
 
 // --- interface ---------------------------------------------------------------
 
-static ord_t mmin         (ord_t a, ord_t b);
 static void  mono_set     (int n, ord_t a[n], ord_t v);
 static int   mono_sum     (int n, const ord_t a[n]);
-static void  mono_cpy     (int n, const ord_t a[n], ord_t r[n]);
-static void  mono_acc     (int n, const ord_t a[n], ord_t r[n]);
+static void  mono_cpy     (int n, const ord_t a[n],       ord_t r[n]);
 static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]); // reverse partial greater or equal
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
@@ -23,18 +21,6 @@ static void  mono_print   (int n, const ord_t a[n]);
 // --- implementation ----------------------------------------------------------
 
 #include <assert.h>
-
-static inline ord_t
-mmin (ord_t a, ord_t b)
-{
-  return a<b ? a : b;
-}
-
-static inline ord_t
-mmax (ord_t a, ord_t b)
-{
-  return a>b ? a : b;
-}
 
 static inline void
 mono_set(int n, ord_t a[n], ord_t v)
@@ -57,14 +43,6 @@ mono_cpy(int n, const ord_t a[n], ord_t r[n])
 {
   assert(a && r);
   for (int i = 0; i < n; ++i) r[i] = a[i];
-}
-
-static inline void
-mono_racc(int n, const ord_t a[n], int r[n])
-{
-  assert(a && r);
-  r[n-1]=a[n-1];
-  for (int i = n-2; i >= 0; --i) r[i] = a[i]+r[i+1];
 }
 
 static inline int
