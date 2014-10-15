@@ -358,7 +358,7 @@ desc_get_idx(const D *d, int n, const ord_t m[n])
 static inline void
 tbl_clear_H(D *d)
 {
-  ord_t sa[d->nv];
+  int sa[d->nv];
   mono_acc(d->nv, d->a, sa);
   int cols = d->mo + 2;
   for (int i = 0; i < d->nv; ++i)
@@ -370,7 +370,7 @@ static inline void
 tbl_solve_H(D *d)
 {
   int nv = d->nv, cols = d->mo + 2;
-  ord_t sa[nv], b[nv], *a = d->a;
+  int sa[nv], b[nv], *a = d->a;
   mono_acc(nv,a,sa);
 
   // solve system of equations

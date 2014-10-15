@@ -54,10 +54,11 @@ mono_cpy(int n, const ord_t a[n], ord_t r[n])
 }
 
 static inline void
-mono_acc(int n, const ord_t a[n], ord_t r[n])
+mono_racc(int n, const ord_t a[n], int r[n])
 {
-  mono_cpy(n,a,r);
-  for (int i = n-2; i >= 0; --i) r[i] += r[i+1];
+  assert(a && r);
+  r[n-1]=a[n-1];
+  for (int i = n-2; i >= 0; --i) r[i] = a[i]+r[i+1];
 }
 
 static inline int
