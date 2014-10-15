@@ -13,7 +13,7 @@ static int   mono_sum     (int n, const ord_t a[n]);
 static void  mono_cpy     (int n, const ord_t a[n], ord_t r[n]);
 static void  mono_acc     (int n, const ord_t a[n], ord_t r[n]);
 static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
-static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]);
+static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]); // reverse partial greater or equal
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
 static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static int   mono_isvalid (int n, const ord_t a[n], const ord_t m[n], int o);
@@ -99,7 +99,7 @@ mono_add(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 static inline int
 mono_isvalid(int n, const ord_t a[n], const ord_t m[n], int o)
 {
-  return mono_sum(n, m) <= o && mono_leq(n, m, a);
+  return mono_sum(n, a) <= o && mono_leq(n, a, m);
 }
 
 #include <stdio.h>
@@ -118,6 +118,7 @@ mono_print(int n, const ord_t m[n])
 
 // Comment the following include to disable SSE/AVX optimization
 #include "mad_mono_sse.h"
+#include "mad_mono_avx.h"
 
 // -----------------------------------------------------------------------------
 #endif

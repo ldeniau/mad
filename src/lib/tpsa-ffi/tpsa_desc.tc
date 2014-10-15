@@ -69,7 +69,7 @@ nxt_mono_by_var(int n, const ord_t a[n], const ord_t o, ord_t m[n])
   assert(m && a);
   for (int i=0; i < n; ++i) {
     ++m[i];
-    if (mono_isvalid(n, a, m, o))
+    if (mono_isvalid(n, m, a, o))
       return 1;
     m[i] = 0;
   }
@@ -146,7 +146,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
       j = d->hpoly_To_idx[o-1];                    // j goes through ord (o-1)
       do {
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
-        if (mono_isvalid(nv, d->a, m, d->mo)) {
+        if (mono_isvalid(nv, m, d->a, d->mo)) {
           if (need_realloc && curr_mono_idx >= d->nc) {
             tbl_realloc_monos(d,0);
             curr_mono = d->monos + nv*curr_mono_idx;
@@ -493,7 +493,7 @@ tbl_build_LC(int oa, int ob, D *d)
   for (int ib =      pi[ob]    ; ib < pi[ob+1]; ++ib)
   for (int ia = imax(pi[oa],ib); ia < pi[oa+1]; ++ia) {
     mono_add(d->nv, To[ia], To[ib], m);
-    if (mono_isvalid(d->nv, d->a, m, d->mo)) {
+    if (mono_isvalid(d->nv, m, d->a, d->mo)) {
       ic = i[tbl_index_H(d,d->nv,m)];
       if (oa == ob) ilc = hpoly_idx_triang(ib-ibo, ia-iao);
       else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
@@ -564,7 +564,7 @@ tbl_check_L(D *d)
         if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
 
         mono_add(d->nv, d->To[ia], d->To[ib], m);
-        if (ic < 0 && mono_isvalid(d->nv, d->a, m, d->mo))
+        if (ic < 0 && mono_isvalid(d->nv, m, d->a, d->mo))
                                                  return -3e7          - 13;
         }
       }
