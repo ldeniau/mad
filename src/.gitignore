@@ -1,5 +1,9 @@
 # specifies patterns of files which should never be tracked
 
+# Output files #
+################
+*.out
+
 # Compiled source #
 ###################
 *.com
