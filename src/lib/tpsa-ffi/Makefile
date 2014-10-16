@@ -4,7 +4,7 @@ CC=gcc
 
 tpsaFFI: libtpsa-ffi-$(CC).so
 
-libtpsa-ffi-$(CC).so: *.c *.h
+libtpsa-ffi-$(CC).so: *.c *.tc *.h
 ifeq ($(CC),gcc)
 ifdef OPENMP
 	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared -fopenmp -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so

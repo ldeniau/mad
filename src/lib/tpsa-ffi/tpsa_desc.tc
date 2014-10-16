@@ -23,7 +23,7 @@ struct tpsa_desc {
           *H;         // indexing matrix
 };
 
-// ========== HELPERS ==========================================================
+// --- HELPERS ----------------------------------------------------------------
 
 static inline int
 imin (int a, int b)
@@ -61,15 +61,25 @@ hpoly_idx_rect(idx_t ib, idx_t ia, int ia_size)
 }
 
 
-// ========== MONOMIALS ========================================================
+// --- MONOMIALS --------------------------------------------------------------
 
 static inline int
-nxt_mono_by_var(int n, const ord_t a[n], const ord_t o, ord_t m[n])
+desc_mono_isvalid(const D *d, int n, const ord_t m[n])
 {
-  assert(m && a);
+  assert(d && m);
+  return    n <= d->nv
+         && mono_sum(        d->knb_start, m               ) <= d->mo
+         && mono_sum(d->nv - d->knb_start, m + d->knb_start) <= d->mko
+         && mono_leq(d->nv, m, d->a);
+}
+
+static inline int
+nxt_mono_by_var(D *d, int n, ord_t m[n])
+{
+  assert(d && m);
   for (int i=0; i < n; ++i) {
     ++m[i];
-    if (mono_isvalid(n, m, a, o))
+    if (desc_mono_isvalid(d, n, m))
       return 1;
     m[i] = 0;
   }
@@ -101,7 +111,7 @@ print_mono_mat(int w, int h, const ord_t t[w*h])
   }
 }
 
-// ========== TABLES ===========================================================
+// --- TABLES -----------------------------------------------------------------
 
 static inline void
 tbl_print(int w, int h, ord_t **t)
@@ -116,15 +126,17 @@ tbl_print(int w, int h, ord_t **t)
 static inline void
 tbl_realloc_monos(D *d, int new_nc_)
 {
-  // reallocates array of monomials with the new_size
+  // reallocates array of monomials to fit at least new_nc_ items
+  // if new_nc_ is not specified, it increases the capacity of exiting array
   assert(d);
-#ifdef TRACE
-  printf("realloc\n");
-#endif
+
   if (!new_nc_) {
     if (d->nc < (1<<21)) new_nc_ = d->nc * 2;        // double capacity
     else                 new_nc_ = d->nc + (1<<20);  // +1 Mb
   }
+#ifdef TRACE
+  printf("realloc for nc= %d\n", new_nc_);
+#endif
   d->nc = new_nc_;
   d->monos = realloc(d->monos, d->nc * d->nv * sizeof *(d->monos));
   d->ords  = realloc(d->ords,  d->nc         * sizeof *(d->monos));
@@ -141,12 +153,11 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
   int nv = d->nv, j;
   ord_t m[nv], *curr_mono = d->monos + curr_mono_idx*nv;
   for (ord_t o = 2; o <= d->mo; o++) {             // to build ord o:
-    d->hpoly_To_idx[o] = curr_mono_idx;
     for (int i = 1; i < d->hpoly_To_idx[2]; ++i) { // i goes through ord    1
       j = d->hpoly_To_idx[o-1];                    // j goes through ord (o-1)
       do {
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
-        if (mono_isvalid(nv, m, d->a, d->mo)) {
+        if (desc_mono_isvalid(d, nv, m)) {
           if (need_realloc && curr_mono_idx >= d->nc) {
             tbl_realloc_monos(d,0);
             curr_mono = d->monos + nv*curr_mono_idx;
@@ -159,8 +170,8 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
         j++;
       } while(m[i-1] <= d->a[i-1] && m[i-1] < o && j < d->hpoly_To_idx[o]);
     }
+    d->hpoly_To_idx[o+1] = curr_mono_idx;
   }
-  d->hpoly_To_idx[d->mo+1] = curr_mono_idx;
 
 #ifdef DEBUG
   print_mono_mat(d->nv, imin(curr_mono_idx, 50), d->monos);
@@ -201,6 +212,7 @@ make_monos(D *d)
 
   // ord 1
   d->hpoly_To_idx[1] = 1;
+  d->hpoly_To_idx[2] = nv + 1;
   for (int i = 1; i <= nv; ++i)
   for (int j = 0; j <  nv; ++j)
     d->monos[i*nv + j] = 0;        // init with 0
@@ -211,7 +223,10 @@ make_monos(D *d)
       curr_mono_idx++;
     }
 
-  int real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+  int real_nc = curr_mono_idx;
+  if (d->mo >= 2)
+    real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+
   tbl_realloc_monos(d, real_nc);
   d->size += real_nc * d->nv * sizeof *(d->monos);
   d->size += real_nc         * sizeof *(d->ords);
@@ -302,12 +317,12 @@ tbl_by_var(D *d)
   do {
     int o = mono_sum(nv, m);
     int idx = find_index_bin(nv, (const ord_t**)d->To, m,
-                         d->hpoly_To_idx[o], d->hpoly_To_idx[o+1]);
+                             d->hpoly_To_idx[o], d->hpoly_To_idx[o+1]);
     d->tv2to[mi]  = idx;
     d->to2tv[idx] = mi;
     d->Tv[mi]   = d->To[idx];
     ++mi;
-  } while (nxt_mono_by_var(nv, d->a, d->mo, m));
+  } while (nxt_mono_by_var(d,nv,m));
 #ifdef DEBUG
   tbl_print(nv, imin(mi,50), d->Tv);
   if (mi > 50) printf("... [ %d more rows ] ...\n", mi - 50);
@@ -317,7 +332,7 @@ tbl_by_var(D *d)
 #endif
 }
 
-// ========== H indexing matrix ================================================
+// --- H indexing matrix ------------------------------------------------------
 
 static inline void
 tbl_print_H(const D *d)
@@ -350,37 +365,37 @@ static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  assert(d->tv2to && d->a);
-  assert(n <= d->nv && mono_isvalid(n, m, d->a, d->mo));
+  assert(desc_mono_isvalid(d, n, m));
   return d->tv2to[tbl_index_H(d,n,m)];
 }
 
 static inline void
 tbl_clear_H(D *d)
 {
-  int sa[d->nv];
-  mono_racc(d->nv, d->a, sa);
-  int cols = d->mo + 2;
-  for (int i = 0; i < d->nv; ++i)
-    for (int j = 1 + mmin(sa[i],d->mo); j < cols; ++j)
+  int cols = d->mo + 2, accum = 0;
+  for (int i = d->nv - 1; i >= 0; --i) {
+    accum += d->a[i];
+    for (int j = 1 + imin(accum,d->mo); j < cols; ++j)
       d->H[i*cols + j] = -1;
+  }
 }
 
 static inline void
 tbl_solve_H(D *d)
 {
-  int nv = d->nv, cols = d->mo + 2;
-  int sa[nv], b[nv], *a = d->a;
-  mono_racc(nv,a,sa);
+  int nv = d->nv, cols = d->mo + 2, accum = d->a[nv-1];
+  ord_t b[nv], *a = d->a;
 
   // solve system of equations
-  for (int i = nv-2; i >= 1; --i)  // variables
-    for (int j = a[i]+2; j <= mmin(sa[i],d->mo); j++) { // orders
+  for (int i = nv-2; i >= 1; --i) { // variables
+    accum += a[i];
+    for (int j = a[i]+2; j <= imin(accum,d->mo); j++) { // orders
       nxt_mono_by_unk(nv,a,i,j,b);
       idx_t idx0 = tbl_index_H(d,nv,b);
       idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc);
       d->H[i*cols + j] = idx1 - idx0;
     }
+  }
 }
 
 static inline void
@@ -417,6 +432,9 @@ tbl_set_H(D *d)
 {
   assert(d && d->a && d->Tv && d->To);
   assert(d->nv != 0 && d->mo != 0 && d->nc != 0);
+#ifdef TRACE
+  printf("tbl_set_H for %p\n", (void*)d);
+#endif
 
   d->H = malloc(d->nv * (d->mo+2) * sizeof *(d->H));
   assert(d->H);
@@ -432,7 +450,7 @@ tbl_set_H(D *d)
 #endif
 }
 
-// ========== L indexing matrix ================================================
+// --- L indexing matrix ------------------------------------------------------
 
 static inline void
 tbl_print_LC(const idx_t *lc, int oa, int ob, int *pi)
@@ -493,7 +511,7 @@ tbl_build_LC(int oa, int ob, D *d)
   for (int ib =      pi[ob]    ; ib < pi[ob+1]; ++ib)
   for (int ia = imax(pi[oa],ib); ia < pi[oa+1]; ++ia) {
     mono_add(d->nv, To[ia], To[ib], m);
-    if (mono_isvalid(d->nv, m, d->a, d->mo)) {
+    if (desc_mono_isvalid(d,d->nv,m)) {
       ic = i[tbl_index_H(d,d->nv,m)];
       if (oa == ob) ilc = hpoly_idx_triang(ib-ibo, ia-iao);
       else          ilc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
@@ -535,7 +553,7 @@ tbl_set_L(D *d)
 #endif
 }
 
-// ========== UNIT TEST ========================================================
+// --- UNIT TEST --------------------------------------------------------------
 
 static inline int
 tbl_check_L(D *d)
@@ -564,7 +582,7 @@ tbl_check_L(D *d)
         if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
 
         mono_add(d->nv, d->To[ia], d->To[ib], m);
-        if (ic < 0 && mono_isvalid(d->nv, m, d->a, d->mo))
+        if (ic < 0 && desc_mono_isvalid(d,d->nv,m))
                                                  return -3e7          - 13;
         }
       }
@@ -600,7 +618,7 @@ tbl_check(D *d)
   return tbl_check_L(d);
 }
 
-// ========== DESC management ==================================================
+// --- DESC management --------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
 
@@ -640,10 +658,10 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
 
   int err = tbl_check(d);
   if (err != 0) {
-    printf("\nA= ");   mono_print(d->nv, d->a);
-    printf("\nH=\n");  tbl_print_H(d);
-    printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
-    printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
+    // printf("\nA= ");   mono_print(d->nv, d->a);
+    // printf("\nH=\n");  tbl_print_H(d);
+    // printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
+    // printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
     printf("\nCheking table consistency ... %d\n", err);
     assert(NULL);
   }
@@ -670,7 +688,7 @@ desc_search(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_star
   return NULL;
 }
 
-// ========== Public Functions =================================================
+// --- Public Functions -------------------------------------------------------
 
 D*
 mad_tpsa_desc_new (int nv, const ord_t var_ords[nv], ord_t mvo)

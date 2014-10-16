@@ -135,9 +135,18 @@ M.same = M.new
 
 function M.mul(a, b, c)
   -- c should be different from a and b
-  return clib.mad_tpsa_mul(a,b,c)
+  clib.mad_tpsa_mul(a,b,c)
 end
 
+function M.add(a, b, c)
+  -- c should be different from a and b
+  clib.mad_tpsa_add(a, b, c)
+end
+
+function M.sub(a, b, c)
+  -- c should be different from a and b
+  clib.mad_tpsa_sub(a, b, c)
+end
 
 -- debugging -------------------------------------------------------------------
 
