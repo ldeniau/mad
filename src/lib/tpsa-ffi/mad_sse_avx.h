@@ -21,4 +21,9 @@
 #define SSE_DRND(n) ((n) & ~(SSE_DSIZ-1))
 #define SSE_DMOD(n) ((n) &  (SSE_DSIZ-1))
 
+extern const unsigned char mad_sse_msk1[16][16];
+extern const unsigned char mad_sse_msk2[16][16];
+extern const unsigned char mad_sse_msk3[16][16];
+extern const unsigned char mad_sse_msk4[16][16];
+
 #endif
