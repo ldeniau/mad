@@ -26,7 +26,7 @@ mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
     _mm_storeu_si128((__m128i*)&r[i],rr);
   }
 
-  if (nm) { // slightly faster...
+  if (nm) {
     rm = _mm_load_si128 ((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_loadu_si128((__m128i*)&a[i]);
     rb = _mm_loadu_si128((__m128i*)&b[i]);
@@ -42,17 +42,24 @@ static inline int
 mono_sum_sse(int n, const ord_t a[n])
 {
   assert(a);
-  __m128i _0x00 = _mm_setzero_si128();
-  __m128i ra;
+  __m128i ra, rs, rm, _0x00 = _mm_setzero_si128();
   int i=0, s=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
   for (; i < nn; i+=SSE_CSIZ) {
-    ra = _mm_sad_epu8(_mm_loadu_si128((__m128i*)&a[i]), _0x00);
-    s += _mm_cvtsi128_si32(_mm_srli_si128(ra,8)) + _mm_cvtsi128_si32(ra);
+    ra = _mm_loadu_si128((__m128i*)&a[i]);
+    rs = _mm_sad_epu8(ra, _0x00);
+    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
   }
 
-  for (int j=0; j < nm; j++)
-    s += a[i+j];
+ if (nm) {
+    rm = _mm_load_si128((__m128i*)mad_sse_msk2[nm]);
+    ra = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&a[i]));
+    rs = _mm_sad_epu8(ra, _0x00);
+    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
+ }
+
+//  for (int j=0; j < nm; j++)
+//    s += a[i+j];
 
   return s;
 }
@@ -61,7 +68,7 @@ static inline int
 mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
 {
   assert(a && b);
-  __m128i ra, rb, rr;
+  __m128i ra, rb, rr, rm;
   int i=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
   for (; i < nn; i+=SSE_CSIZ) {
@@ -71,8 +78,16 @@ mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
     if (_mm_movemask_epi8(rr)) return 0;
   }
 
-  for (int j=0; j < nm; j++)
-    if (a[i+j] > b[i+j]) return 0;
+  if (nm) {
+    rm = _mm_load_si128((__m128i*)mad_sse_msk2[nm]);
+    ra = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&a[i]));
+    rb = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&b[i]));
+    rr = _mm_cmpgt_epi8(ra,rb);
+    if (_mm_movemask_epi8(rr)) return 0;
+  }
+
+//  for (int j=0; j < nm; j++)
+//    if (a[i+j] > b[i+j]) return 0;
 
   return 1;
 }
