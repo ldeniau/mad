@@ -16,28 +16,23 @@ static inline void
 mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 {
   assert(a && b && r);
-  __m128i ra, rb, rr;
-  int i=0;
+  __m128i ra, rb, rr, rm;
+  int i=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
-  for (; i < SSE_CRND(n); i+=SSE_CSIZ) {
+  for (; i < nn; i+=SSE_CSIZ) {
     ra = _mm_loadu_si128((__m128i*)&a[i]);
     rb = _mm_loadu_si128((__m128i*)&b[i]);
     rr = _mm_adds_epi8(ra,rb);
     _mm_storeu_si128((__m128i*)&r[i],rr);
   }
 
-#if 0
-  for (int j=0; j < SSE_CMOD(n); j++)
-    r[i+j] = a[i+j] + b[i+j];
-#else
-  if (SSE_CMOD(n)) { // slightly faster...
-    __m128i rm = _mm_load_si128((__m128i*)mad_sse_msk2[SSE_CMOD(n)]);
+  if (nm) { // slightly faster...
+    rm = _mm_load_si128 ((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_loadu_si128((__m128i*)&a[i]);
     rb = _mm_loadu_si128((__m128i*)&b[i]);
     rr = _mm_adds_epi8(ra,rb);
     _mm_maskmoveu_si128(rr, rm, (char*)&r[i]);
   }
-#endif
 }
 
 static inline int
