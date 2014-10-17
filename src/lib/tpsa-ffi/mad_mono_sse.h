@@ -33,6 +33,9 @@ mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
     rr = _mm_adds_epi8(ra,rb);
     _mm_maskmoveu_si128(rr, rm, (char*)&r[i]);
   }
+
+//  for (int j=0; j < nm; ++j)
+//    r[i+j] = a[i+j] + b[i+j];
 }
 
 static inline int
@@ -41,14 +44,14 @@ mono_sum_sse(int n, const ord_t a[n])
   assert(a);
   __m128i _0x00 = _mm_setzero_si128();
   __m128i ra;
-  int i, s=0;
+  int i=0, s=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
-  for (i=0; i < SSE_CRND(n); i+=SSE_CSIZ) {
+  for (; i < nn; i+=SSE_CSIZ) {
     ra = _mm_sad_epu8(_mm_loadu_si128((__m128i*)&a[i]), _0x00);
     s += _mm_cvtsi128_si32(_mm_srli_si128(ra,8)) + _mm_cvtsi128_si32(ra);
   }
 
-  for (int j=0; j < SSE_CMOD(n); j++)
+  for (int j=0; j < nm; j++)
     s += a[i+j];
 
   return s;
@@ -59,16 +62,16 @@ mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
 {
   assert(a && b);
   __m128i ra, rb, rr;
-  int i;
+  int i=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
-  for (i=0; i < SSE_CRND(n); i+=SSE_CSIZ) {
+  for (; i < nn; i+=SSE_CSIZ) {
     ra = _mm_loadu_si128((__m128i*)&a[i]);
     rb = _mm_loadu_si128((__m128i*)&b[i]);
     rr = _mm_cmpgt_epi8(ra,rb);
     if (_mm_movemask_epi8(rr)) return 0;
   }
 
-  for (int j=0; j < SSE_CMOD(n); j++)
+  for (int j=0; j < nm; j++)
     if (a[i+j] > b[i+j]) return 0;
 
   return 1;
