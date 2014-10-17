@@ -33,6 +33,8 @@ void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
 void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 
+void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+
 void  mad_tpsa_print   (const T *t);
 
 #undef T

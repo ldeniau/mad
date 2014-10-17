@@ -54,15 +54,19 @@ ffi.cdef[[
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 
+  void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+
   void  mad_tpsa_print   (const T *t);
 
   // ---------------------------------------------------------------------------
 ]]
 
 -- define types just once as use their constructor
-local mono_t  = typeof("ord_t[?]")
-local desc_t  = typeof("D       ")
-local tpsa_t  = typeof("T       ")
+local mono_t   = typeof("ord_t[?]")
+local desc_t   = typeof("D       ")
+local tpsa_t   = typeof("T       ")
+local tpsa_carr = typeof("const T*   [?]")
+local tpsa_arr = typeof("T*   [?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
@@ -146,6 +150,11 @@ end
 function M.sub(a, b, c)
   -- c should be different from a and b
   clib.mad_tpsa_sub(a, b, c)
+end
+
+function M.compose(ma, mb, mc)
+  local cma, cmb, cmc = tpsa_carr(#ma, ma), tpsa_carr(#mb, mb), tpsa_arr(#mc, mc)
+  clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
 end
 
 -- debugging -------------------------------------------------------------------
