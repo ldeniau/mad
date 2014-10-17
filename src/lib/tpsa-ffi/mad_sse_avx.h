@@ -24,4 +24,8 @@
 extern const unsigned char mad_sse_msk1[16][16];
 extern const unsigned char mad_sse_msk2[16][16];
 
+#ifdef __SSE3__
+#define _mm_loadu_si128(a) _mm_lddqu_si128(a)
+#endif
+
 #endif

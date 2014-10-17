@@ -42,21 +42,23 @@ static inline int
 mono_sum_sse(int n, const ord_t a[n])
 {
   assert(a);
-  __m128i ra, rs, rm, _0x00 = _mm_setzero_si128();
+  __m128i ra, rs, rm, zero = _mm_setzero_si128();
   int i=0, s=0, nn=SSE_CRND(n), nm=SSE_CMOD(n);
 
   for (; i < nn; i+=SSE_CSIZ) {
     ra = _mm_loadu_si128((__m128i*)&a[i]);
-    rs = _mm_sad_epu8(ra, _0x00);
-    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
+    rs = _mm_sad_epu8(ra, zero);
+    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,SSE_CSIZ/2));
+    s += _mm_cvtsi128_si32(rs);
   }
 
 #if 1
  if (nm) {
     rm = _mm_load_si128((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&a[i]));
-    rs = _mm_sad_epu8(ra, _0x00);
-    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
+    rs = _mm_sad_epu8(ra, zero);
+    s += _mm_cvtsi128_si32(_mm_srli_si128(rs,SSE_CSIZ/2));
+    s += _mm_cvtsi128_si32(rs);
  }
 #else
   for (int j=0; j < nm; j++)
