@@ -2,11 +2,6 @@
 #ifdef __SSE2__ // minimum requirement
 #include "mad_sse_avx.h"
 
-// Warning: untested code!
-// Not faster than compiler version for remaing 16 bytes
-// Could be faster if monomials are always k*16 bytes long, i.e. padded with zeros
-// Could be even faster (?) if monomials are always 16 bytes aligned
-
 #undef mono_add
 #undef mono_sum
 #undef mono_leq
