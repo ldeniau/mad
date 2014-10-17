@@ -23,7 +23,5 @@
 
 extern const unsigned char mad_sse_msk1[16][16];
 extern const unsigned char mad_sse_msk2[16][16];
-extern const unsigned char mad_sse_msk3[16][16];
-extern const unsigned char mad_sse_msk4[16][16];
 
 #endif
