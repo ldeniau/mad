@@ -5,12 +5,10 @@
 #undef mono_add
 #undef mono_sum
 #undef mono_leq
-#undef mono_isvalid // should be moved to tpsa_desc
 
-#define mono_add     mono_add_sse
-#define mono_sum     mono_sum_sse
-#define mono_leq     mono_leq_sse
-#define mono_isvalid mono_isvalid_sse
+#define mono_add  mono_add_sse
+#define mono_sum  mono_sum_sse
+#define mono_leq  mono_leq_sse
 
 static inline void
 mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
@@ -26,6 +24,7 @@ mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
     _mm_storeu_si128((__m128i*)&r[i],rr);
   }
 
+#if 1
   if (nm) {
     rm = _mm_load_si128 ((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_loadu_si128((__m128i*)&a[i]);
@@ -33,9 +32,10 @@ mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
     rr = _mm_adds_epi8(ra,rb);
     _mm_maskmoveu_si128(rr, rm, (char*)&r[i]);
   }
-
-//  for (int j=0; j < nm; ++j)
-//    r[i+j] = a[i+j] + b[i+j];
+#else
+  for (int j=0; j < nm; ++j)
+    r[i+j] = a[i+j] + b[i+j];
+#endif
 }
 
 static inline int
@@ -51,16 +51,17 @@ mono_sum_sse(int n, const ord_t a[n])
     s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
   }
 
+#if 1
  if (nm) {
     rm = _mm_load_si128((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&a[i]));
     rs = _mm_sad_epu8(ra, _0x00);
     s += _mm_cvtsi128_si32(_mm_srli_si128(rs,8)) + _mm_cvtsi128_si32(rs);
  }
-
-//  for (int j=0; j < nm; j++)
-//    s += a[i+j];
-
+#else
+  for (int j=0; j < nm; j++)
+    s += a[i+j];
+#endif
   return s;
 }
 
@@ -78,6 +79,7 @@ mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
     if (_mm_movemask_epi8(rr)) return 0;
   }
 
+#if 1
   if (nm) {
     rm = _mm_load_si128((__m128i*)mad_sse_msk2[nm]);
     ra = _mm_and_si128(rm,_mm_loadu_si128((__m128i*)&a[i]));
@@ -85,10 +87,10 @@ mono_leq_sse(int n, const ord_t a[n], const ord_t b[n])
     rr = _mm_cmpgt_epi8(ra,rb);
     if (_mm_movemask_epi8(rr)) return 0;
   }
-
-//  for (int j=0; j < nm; j++)
-//    if (a[i+j] > b[i+j]) return 0;
-
+#else
+  for (int j=0; j < nm; j++)
+    if (a[i+j] > b[i+j]) return 0;
+#endif
   return 1;
 }
 
