@@ -6,7 +6,7 @@
 #include "tpsa_desc.tc"
 //#include "mem_alloc.h"
 
-//#define TRACE
+// #define TRACE
 
 typedef unsigned int  bit_t;
 
@@ -185,7 +185,7 @@ hpoly_mul (const T *a, const T *b, T *c)
       }
     }
 
-    if (! (oc&1)) {  // even oc, triang matrix
+    if (! (oc & 1)) {  // even oc, triang matrix
       int hoc = oc/2;
       l = dc->L[hoc*hod + hoc];
       assert(l);
@@ -366,19 +366,30 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
 
+  if (a->mo > b->mo) {  // swap so that a is the shortest
+    const T *tmp = a;
+    a = b;
+    b = tmp;
+  }
+
   const num_t *ca = a->coef, *cb = b->coef;
   num_t *cc = c->coef;
   D *dc = c->desc;
 
-  c->nz = (ca[0] ? a->nz : 0) | (cb[0] ? b->nz : 0);
+  c->nz = (ca[0] ? b->nz : 0) | (cb[0] ? a->nz : 0);
   c->mo = imin(a->mo + b->mo, dc->mo);
 
   cc[0] = ca[0]*cb[0];
 
-  for (int i=1; i < dc->hpoly_To_idx[c->mo+1]; i++)
-    cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
+  int len_a = dc->hpoly_To_idx[a->mo+1],
+      len_b = dc->hpoly_To_idx[b->mo+1],
+      len_c = dc->hpoly_To_idx[c->mo+1],
+      i = 1;
+  for (; i < len_a; i++) cc[i] = ca[0]*cb[i] + cb[0]*ca[i];
+  for (; i < len_b; i++) cc[i] = ca[0]*cb[i];
+  for (; i < len_c; i++) cc[i] = 0;
 
-  int comps = (dc->nc-1) * 2 + 1;
+  int comps = (dc->hpoly_To_idx[c->mo+1] - 1) * 2 - 1;
 
   if (c->mo >= 2)
     comps += hpoly_mul(a, b, c);
@@ -391,10 +402,11 @@ void
 mad_tpsa_print(const T *t)
 {
   D *d = t->desc;
-  printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
-  for (int i=0; i < d->nc; ++i)
-    printf("%.2f ", t->coef[i]);
-  printf(" ]\n");
+  printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
+  for (int i=0; i < d->hpoly_To_idx[t->mo + 1]; ++i)
+    if (t->coef[i])
+      printf("[%d]=%.2f ", i, t->coef[i]);
+  printf(" }\n");
 }
 
 #undef T

@@ -67,10 +67,11 @@ static inline int
 desc_mono_isvalid(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  return    n <= d->nv
-         && mono_sum(        d->knb_start, m               ) <= d->mo
-         && mono_sum(d->nv - d->knb_start, m + d->knb_start) <= d->mko
-         && mono_leq(d->nv, m, d->a);
+  int ks = d->knb_start;
+  return    ( n <= d->nv )
+         && (         mono_sum(imin(n,  ks), m     ) <= d->mo    )
+         && (n > ks ? mono_sum(     n - ks , m + ks) <= d->mko : 1)
+         && mono_leq(n, m, d->a);
 }
 
 static inline int
