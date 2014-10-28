@@ -208,13 +208,13 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, l, m, v)
-  -- m is a t._coef_t (intArr), l is its length
+function tpsa.setm(t, m, v)
+  -- m is a t.mono_t (i.e. intArr) of length nv
   berzLib.dapok_(t.idx, m, dblPtr(v))
 end
 
-function tpsa.getm(t, l, m)
-  -- m is a t._coef_t (mono_t), l is its length
+function tpsa.getm(t, m)
+  -- m is a t.mono_t (i.e. intArr) of length nv
   local v_ptr = dblPtr()
   berzLib.dapek_(t.idx, m, v_ptr)
   return tonumber(v_ptr[0])

@@ -71,6 +71,8 @@ local tpsa_arr = typeof("T*   [?]")
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
 
+local current_nv  -- used in benchmarking getm
+
 -- functions -------------------------------------------------------------------
 
 -- constructors of tpsa:
@@ -102,6 +104,9 @@ function M.init(var_ords, mvo, knb_ords, mko)
       ffi.metatype("struct tpsa", MT)
       M._mt_is_set = true
     end
+
+    -- allow getm to omit mono length
+    current_nv = #var_ords + (knb_ords and #knb_ords or 0)
 
     return t
   end
@@ -153,7 +158,14 @@ function M.sub(a, b, c)
   clib.mad_tpsa_sub(a, b, c)
 end
 
-function M.compose(ma, mb, mc)
+function M.pow(a, p)
+  local r = a:new()
+  clib.mad_tpsa_pow(a, r, p)
+  r:cpy(a)
+end
+
+function M.compose(mb, ma, mc)
+  -- ma, mb, mc -- compatible lua arrays of TPSAs
   local cma, cmb, cmc = tpsa_carr(#ma, ma), tpsa_carr(#mb, mb), tpsa_arr(#mc, mc)
   clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
 end
@@ -164,15 +176,21 @@ M.print = clib.mad_tpsa_print
 
 -- interface for benchmarking --------------------------------------------------
 
-function M.setm(t, l, m, v)
-  -- m is a t._coef_t (mono_t), l is its length
+function M.setm(t, m, v, l)
+  -- m should be a t.mono_t of length l or length nv+nk
+  l = l or current_nv
   clib.mad_tpsa_setm(t, l, m, v)
 end
 
-function M.getm(t, l, m)
-  -- m is a t._coef_t (mono_t), l is its length
+function M.getm(t, m, l)
+  -- m should be a t.mono_t of length l or length nv+nk
+  l = l or current_nv
   return tonumber(clib.mad_tpsa_getm(t, l, m))
 end
 
+function M.compose_raw(la, ma, lb, mb, lc, mc)
+  -- ma, mb, mc -- compatible FFI arrays of TPSAs
+    clib.mad_tpsa_compose(la, ma, lb, mb, lc, mc)
+end
 -- end -------------------------------------------------------------------------
 return M

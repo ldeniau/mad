@@ -63,7 +63,6 @@ local initialized = false
 local function create(nv, no)
   local t = { nv=sizetPtr(nv), no=no, idx=uintPtr() }
   yangLib.ad_alloc_(t.idx)
-
   return setmetatable(t, MT)
 end
 

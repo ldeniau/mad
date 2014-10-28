@@ -44,6 +44,21 @@ local function mono_print(m, file)
   end
 end
 
+
+local function get_return(mod, fct_name, nv, no)
+  local t, val = mod.init(mono_val(nv,no), no), 4.3
+  fct_name = fct_name or 'generic'
+  local rets = {
+    getm = function() return t, M.To_ffi, nv      end,
+    setm = function() return t, M.To_ffi, val, nv end,
+    setCoeff = function () return t, M.To, val end,
+    getCoeff = function () return t, M.To, nv end,
+    generic  = function () return t, M.To end
+  }
+  return rets[fct_name]()
+end
+
+
 -- LOCALS ----------------------------------------------------------------------
 
 local function initMons(nv)
@@ -119,16 +134,18 @@ function M.setup(args)
     M.To_ffi = make_To_ffi(mod.mono_t, M.To)
   end
 
-  if     fct_name == "setm"     or fct_name == "getm"     then
-    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To_ffi
-  elseif fct_name == "mul"      or fct_name == "__mul"    or
-         fct_name == "add"      or fct_name == "sub"      then
-    return setup_bin_op()
-  elseif fct_name == "compose" then
-    return setup_compose()
-  else
-    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To
-  end
+  return get_return(M.mod, fct_name, M.nv, M.no)
+
+--  if     fct_name == "setm"     or fct_name == "getm"     then
+--    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To_ffi
+--  elseif fct_name == "mul"      or fct_name == "__mul"    or
+--         fct_name == "add"      or fct_name == "sub"      then
+--    return setup_bin_op()
+--  elseif fct_name == "compose" then
+--    return setup_compose()
+--  else
+--    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To
+--  end
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------

@@ -7,11 +7,12 @@ local function printf(s, ...)
   io.write(s:format(...))
 end
 
-local function timeit(fun, To, nl, t)
-  local nv, val, start = To.pe[1]-To.ps[1]+1, 3.2, clock()
+local function timeit(fun, nl, ...)
+  local t, To = select(1, ...)
+  local start = clock()
   for l=1,nl do
     for i=0,#To do
-      fun(t, To[i], val)
+      fun(t, To[i], select(3, ...))
     end
   end
   return clock() - start
@@ -36,12 +37,11 @@ local function bench(mod_name, fct_name, filename)
 
   local Ts = {}  -- times
   for i=1,#NL do
-    local t, To = factory.setup{tpsa, fct_name, NV[i], NO[i]}
     check.do_all_checks(tpsa, NV[i], NO[i])
 
-    Ts[i] = timeit(tpsa[fct_name], To,      NL[i], t)
+    Ts[i] = timeit(tpsa[fct_name], NL[i], factory.setup{tpsa, fct_name, NV[i], NO[i]})
 
-    printf(line_fmt, NV[i], NO[i], #To+1, NL[i], Ts[i])
+    printf(line_fmt, NV[i], NO[i], #factory.To+1, NL[i], Ts[i])
   end
 end
 
