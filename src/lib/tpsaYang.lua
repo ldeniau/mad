@@ -61,8 +61,9 @@ local MT   = { __index = tpsa }
 local initialized = false
 
 local function create(nv, no)
-  local t = { nv=nv, no=no, idx=uintPtr() }
+  local t = { nv=sizetPtr(nv), no=no, idx=uintPtr() }
   yangLib.ad_alloc_(t.idx)
+
   return setmetatable(t, MT)
 end
 
@@ -89,7 +90,7 @@ function tpsa.init(nv, no)
 end
 
 function tpsa.new(t)
-  return create(t.nv, t.mo)
+  return create(t.nv[0], t.mo)
 end
 
 function tpsa.setConst(t, val)
@@ -151,17 +152,17 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, l, m, v)
-  -- m is a t._coef_t (intArr), l is its length
-  local l_ptr, v_ptr = sizetPtr(l), dblPtr(v)
-  yangLib.ad_pok_(t.idx, m, l_ptr, v_ptr)
+function tpsa.setm(t, m, v)
+  -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
+  local v_ptr = dblPtr(v)
+  yangLib.ad_pok_(t.idx, m, t.nv, v_ptr)
 end
 
 
-function tpsa.getm(t, l, m)
-  -- m is a t._coef_t (mono_t), l is its length
-  local l_ptr, v_ptr = sizetPtr(l), dblPtr()
-  yangLib.ad_pek_(t.idx, m, l_ptr, v_ptr)
+function tpsa.getm(t, m)
+  -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
+  local v_ptr = dblPtr()
+  yangLib.ad_pek_(t.idx, m, t.nv, v_ptr)
   return tonumber(v_ptr[0])
 end
 

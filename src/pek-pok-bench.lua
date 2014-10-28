@@ -1,4 +1,4 @@
-local factory, check = require"factory", require"check-ffi"
+local factory, check = require"factory", require"check"
 local clock = os.clock
 local header_fmt = "nv\tno\tnc\tnl\ttime(s)\n"
 local line_fmt   = "%d\t%d\t%d\t%d\t%f\n"
@@ -11,7 +11,7 @@ local function timeit(fun, To, nl, t)
   local nv, val, start = To.pe[1]-To.ps[1]+1, 3.2, clock()
   for l=1,nl do
     for i=0,#To do
-      fun(t, nv, To[i], val)
+      fun(t, To[i], val)
     end
   end
   return clock() - start
@@ -36,8 +36,8 @@ local function bench(mod_name, fct_name, filename)
 
   local Ts = {}  -- times
   for i=1,#NL do
-    local t, To = factory.setup(tpsa, fct_name, NV[i], NO[i])
-    check.do_check(tpsa, NV[i], NO[i])
+    local t, To = factory.setup{tpsa, fct_name, NV[i], NO[i]}
+    check.do_all_checks(tpsa, NV[i], NO[i])
 
     Ts[i] = timeit(tpsa[fct_name], To,      NL[i], t)
 

@@ -1,5 +1,5 @@
 local factory = require"factory"
-local random = math.random
+local rand = math.random
 
 local M = {}  -- this module
 
@@ -26,53 +26,60 @@ local function prepare_check(vars, no)
   return t, b, To
 end
 
-local function check_coeff(mod, nv, no)
-  local t, To = factory.setup(mod, 'getm', nv, no)
+local function dummy_fct() return 0 end
 
-  -- initial state
-  local v
-  for m=0,#To do
-    v = t:getm(To[m])
-    if v ~= 0 then error ("Initial coefficients differ from 0: i=" .. m) end
-  end
+local function check_coeff_consistency(mod, in_vals, fset_name, fget_name, err_code)
+  local fset = fset_name and mod[fset_name] or dummy_fct
+  local fget = mod[fget_name] or error("Incorrect get function: " .. fget_name)
+  local err_fmt = "Error %d: inconsistent coefficients at %d (%d should have been %d)"
+  local t, To_set, To_get, _
 
-  -- setm and getm consistency
-  local c = {}
-  for m=0,#To do
-    c[m] = random(1, 2)
-    t:setm(To[m], c[m])
-  end
-  for m=0,#To do
-    v = t:getm(To[m])
-    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
-  end
+  t, To_set = factory.setup{ fct_name=fset_name }
+  _, To_get = factory.setup{ fct_name=fget_name }
+  if #To_set ~= #To_get  then error("Inconsistent factory setup")    end
+  if #To_set ~= #in_vals then error("Inconsistent consistency call") end
 
-  -- setCoeff and getm consistency
-  local tm, To_m = factory.setup(mod, 'getm'    , nv, no)
-  local tc, To_c = factory.setup(mod, 'getCoeff', nv, no)
-  if #To_m ~= #To_c then error("Inconsistent To setup") end
-  for m=0,#To_c do
-    c[m] = random(1, 2)
-    t:setCoeff(To_c[m], c[m])
-  end
-  for m=0,#To_m do
-    v = t:getm(To_m[m])
-    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
-  end
-
-  -- setm and getCoeff consistency
-  local tm, To_m = factory.setup(mod, 'getm'    , nv, no)
-  local tc, To_c = factory.setup(mod, 'getCoeff', nv, no)
-  if #To_m ~= #To_c then error("Inconsistent To setup") end
-  for m=0,#To_m do
-    c[m] = random(1, 2)
-    t:setm(To_m[m], c[m])
-  end
-  for m=0,#To_c do
-    v = t:getCoeff(To_m[m])
-    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
+  local out_vals = {}
+  for m=0,#To_set  do               fset(t, To_set[m], in_vals[m]) end
+  for m=0,#To_get  do out_vals[m] = fget(t, To_get[m])             end
+  for m=0,#in_vals do
+    if in_vals[m] ~= out_vals[m] then
+      error(err_fmt, err_code, m, out_vals[m], in_vals[m])
+    end
   end
 end
+
+local function get_consistency_fct(state, mod)
+  local nc, vals = #factory.To
+
+  if state == "initial" then
+    vals = factory.mono_val(nc, 0)
+    vals[0] = 0
+    return  function (fget_name, err_code)
+              check_coeff_consistency(mod, vals,       nil, fget_name, err_code)
+            end
+  else
+    vals = factory.mono_val(nc)  -- with randoms
+    vals[0] = 1 + rand()
+    return  function (fset_name, fget_name, err_code)
+              check_coeff_consistency(mod, vals, fset_name, fget_name, err_code)
+            end
+  end
+end
+
+local function check_coeff(mod)
+  local check_fct = get_consistency_fct("initial", mod)
+  check_fct(            "getm"    , -1)
+  check_fct(            "getCoeff", -2)
+
+  check_fct = get_consistency_fct("rest", mod)
+  check_fct("setCoeff", "getCoeff",  0)
+  check_fct("setCoeff", "getm"    ,  1)
+  check_fct("setm"    , "getCoeff",  2)
+  check_fct("setm"    , "getm"    ,  3)
+end
+
+
 
 local function check_with_berz(mod, nv, no)
 
@@ -86,7 +93,6 @@ function M.do_all_checks(mod, nv, no)
     M.file:close()
     M.file = nil
   end
-  M.mod, M.nv, M.no = mod, nv, no
 
   if not M.file then
     local filename = (mod.name or "check") .. ".out"
@@ -94,7 +100,8 @@ function M.do_all_checks(mod, nv, no)
   end
 
   factory.fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
-  check_coeff(mod, nv, no)
+  factory.setup{ mod=mod, nv=nv, no=no }
+  check_coeff(mod, #factory.To + 1)
   check_with_berz(mod, nv, no)
 end
 

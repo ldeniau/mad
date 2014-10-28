@@ -5,8 +5,12 @@ local M = {}  -- this module
 -- HELPERS ---------------------------------------------------------------------
 
 local function mono_val(l, n)
-  local a = {}
-  for i=1,l do a[i] = n end
+  local a, rand = {}, math.random
+
+  if   n then for i=1,l do a[i] = n          end
+  else        for i=1,l do a[i] = 1 + rand() end
+  end
+
   return a
 end
 
@@ -77,20 +81,12 @@ local function table_by_ords(nv, no)
   return t
 end
 
-local function make_ffi_To(mono_t, To)
+local function make_To_ffi(mono_t, To)
+  if not mono_t then return To end
+
   local To_ffi = { ps=To.ps, pe=To.pe }
   for i=0,#To do To_ffi[i] = mono_t(#To[i], To[i]) end
   return To_ffi
-end
-
-
-local function setup_peek(mod, nv, no)
-  local To = M.To
-  if mod.mono_t then  -- use cdata for To
-    To = make_ffi_To(mod.mono_t, To)
-  end
-
-  return mod.init(mono_val(nv,no), no), To
 end
 
 local function setup_bin_op(mod, nv, no)
@@ -99,27 +95,39 @@ local function setup_bin_op(mod, nv, no)
   M.fill_full(t)
 end
 
+-- args = table with named or positional arguments:
+--   mod      or args[1] = the loaded tpsa module
+--   fct_name or args[2] = [optional] string specifying which function to setup
+--   nv       or args[3] = NV parameter for the mod
+--   no       or args[4] = NO parameter for the mod
+function M.setup(args)
+  local mod, fct_name, nv, no = args[1] or args.mod, args[2] or args.fct_name,
+                                args[3] or args.nv , args[4] or args.no
 
-function M.setup(mod, fct_name, nv, no)
-  if not M.nv or not M.no or M.nv ~= nv or M.no ~= no then
+  if not M.mod and not nv and not no then
+    error(string.format("Cannot setup factory: mod=%s fct=%s nv=%d no=%d",
+                        mod.name, fct_name, nv, no))
+  end
+
+  -- save / update state
+  if nv and no and (nv ~= M.nv or no ~= M.no) then
     M.nv, M.no, M.To = nv, no, table_by_ords(nv, no)
+    M.To_ffi = make_To_ffi(mod.mono_t, M.To)
+  end
+  if mod and mod ~= M.mod then
+    M.mod = mod
+    M.To_ffi = make_To_ffi(mod.mono_t, M.To)
   end
 
   if     fct_name == "setm"     or fct_name == "getm"     then
-    return setup_peek(mod, nv, no)
-
-  elseif fct_name == "setCoeff" or fct_name == "getCoeff" then
-    return mod.init(mono_val(nv,no), no), M.To
-
+    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To_ffi
   elseif fct_name == "mul"      or fct_name == "__mul"    or
          fct_name == "add"      or fct_name == "sub"      then
-    return setup_bin_op(mod, nv, no)
-
+    return setup_bin_op()
   elseif fct_name == "compose" then
-    return setup_compose(mod, nv, no)
-
+    return setup_compose()
   else
-    error("Cannot setup function " .. fct_name)
+    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To
   end
 end
 
