@@ -79,8 +79,8 @@ local MT   = { __index = M }
 --        {knb_orders}, max_knb_order)
 function M.init(var_ords, mvo, knb_ords, mko)
   local err, knobs = false, false
-  if not is_list(var_ords) or not mvo                                 then err = true
-  elseif knb_ords and (not is_list(knb_ords) or not mko or mvo > mko) then err = true
+  if not is_list(var_ords) or not mvo                                 then err = 1
+  elseif knb_ords and (not is_list(knb_ords) or not mko or mvo > mko) then err = 2
   else  -- no problem, continue building
     -- get a descriptor
     local d
@@ -106,8 +106,9 @@ function M.init(var_ords, mvo, knb_ords, mko)
     return t
   end
 
-  error ("invalid tpsa constructor argument. Use:\n"..
-         "\ttpsa({var_orders}, max_var_order, {knb_orders}, max_knb_order)\n");
+  error ("Error " .. tostring(err) .. ": invalid tpsa constructor argument. Use:\n"..
+         "\ttpsa({var_orders}, max_var_order) OR\n"..
+         "\ttpsa({var_orders}, max_var_order, {knb_orders}, max_knb_order)\n")
 end
 
 function M:new()

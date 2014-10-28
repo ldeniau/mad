@@ -1,87 +1,9 @@
-local M = {}
+local factory = require"factory"
+local random = math.random
 
-local function fprintf(f, s, ...)  -- TODO: put this somewhere and import it
-  f:write(s:format(...))
-end
+local M = {}  -- this module
 
 local min, abs = math.min, math.abs
-
--- HELPERS ---------------------------------------------------------------------
-
-local function mono_val(l, n)
-  local a = {}
-  for i=1,l do a[i] = n end
-  return a
-end
-
-local function mono_add(a,b)
-  local c = {}
-  for i=1,#a do c[i] = a[i]+b[i] end
-  return c
-end
-
-local function mono_sum(a)
-  local s = 0
-  for i=1,#a do s = s + a[i] end
-  return s
-end
-
-local function melem_leq(a,b)
-  for i=1,#a do
-    if a[i] > b[i] then return false end
-  end
-  return true
-end
-
-local function mono_isvalid(m, a, o)
-  return mono_sum(m) <= o and melem_leq(m,a)
-end
-
-local function mono_print(m, file)
-  file = file or io.output()
-  for mi=1,#m do
-    fprintf(file, "%d ", m[mi])
-  end
-end
-
--- LOCALS ----------------------------------------------------------------------
-
-local function initMons(nv)
-  local t = { ps={ [0]=0, [1]=1 }, pe={ [0]=0, [1]=nv } }
-
-  for i=0,nv do
-    t[i] = {}
-    for j=1,nv do
-      if i==j then t[i][j] = 1
-      else         t[i][j] = 0 end
-     end
-  end
-
-  return t
-end
-
-local function table_by_ords(nv, no)
-  local t, a = initMons(nv), mono_val(nv, no)
-
-  local j
-  for ord=2,no do
-    for i=1,nv do
-      j = t.ps[ord-1]
-
-      repeat
-        local m = mono_add(t[i], t[j])
-        if mono_isvalid(m, a, no) then
-          t[#t+1] = m
-        end
-        j = j+1
-      until m[i] > a[i] or m[i] >= ord
-
-    end
-    t.ps[ord]   = j
-    t.pe[ord-1] = j-1
-  end
-  return t
-end
 
 local function prepare_check(vars, no)
   local mod, To = M.mod, M.To
@@ -104,75 +26,76 @@ local function prepare_check(vars, no)
   return t, b, To
 end
 
+local function check_coeff(mod, nv, no)
+  local t, To = factory.setup(mod, 'getm', nv, no)
 
--- EXPORTED UTILS --------------------------------------------------------------
+  -- initial state
+  local v
+  for m=0,#To do
+    v = t:getm(To[m])
+    if v ~= 0 then error ("Initial coefficients differ from 0: i=" .. m) end
+  end
 
-M.mono_val = mono_val
+  -- setm and getm consistency
+  local c = {}
+  for m=0,#To do
+    c[m] = random(1, 2)
+    t:setm(To[m], c[m])
+  end
+  for m=0,#To do
+    v = t:getm(To[m])
+    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
+  end
 
-function M.fill_ord1(t, nv, startVal, inc)
-  if not startVal then startVal = 1.1 end
-  if not inc      then inc      = 0.1 end
-  local m = mono_val(nv, 0)
-  t:setCoeff(m, startVal)
-  for i=1,nv do
-    m[i] = 1
-    startVal = startVal + inc
-    t:setCoeff(m, startVal)
-    m[i] = 0
+  -- setCoeff and getm consistency
+  local tm, To_m = factory.setup(mod, 'getm'    , nv, no)
+  local tc, To_c = factory.setup(mod, 'getCoeff', nv, no)
+  if #To_m ~= #To_c then error("Inconsistent To setup") end
+  for m=0,#To_c do
+    c[m] = random(1, 2)
+    t:setCoeff(To_c[m], c[m])
+  end
+  for m=0,#To_m do
+    v = t:getm(To_m[m])
+    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
+  end
+
+  -- setm and getCoeff consistency
+  local tm, To_m = factory.setup(mod, 'getm'    , nv, no)
+  local tc, To_c = factory.setup(mod, 'getCoeff', nv, no)
+  if #To_m ~= #To_c then error("Inconsistent To setup") end
+  for m=0,#To_m do
+    c[m] = random(1, 2)
+    t:setm(To_m[m], c[m])
+  end
+  for m=0,#To_c do
+    v = t:getCoeff(To_m[m])
+    if v ~= c[m] then error ("Inconsistent coefficients setup: i=" .. m) end
   end
 end
 
-function M.fill_full(t, no)
-  -- t:pow(no)
-  local b, r, floor = t:cpy(), t:new(), math.floor
-  r:setConst(1)
+local function check_with_berz(mod, nv, no)
 
-  while no > 0 do
-    if no%2==1 then
-      r.mul(r, b, t)
-      r, t = t, r
-      no = no - 1
-    end
-    b.mul(b, b, t)
-    b, t = t, b
-    no = no/2
-  end
---  r:print()
-  r:cpy(t)
 end
-
--- read benchmark input parameters: NV, NO, NL
-function M.read_params(filename)
-  local f = io.open(filename, "r")
-  local NV, NO, NL, l = {}, {}, {}, 1
-
-  if not f then
-    error("Params file not found: " .. filename)
-  else
-    while true do
-      local nv, no, nl, ts = f:read("*number", "*number", "*number", "*number")
-      if not (nv and no and nl) then break end
-      assert(nv and no and nl)
-      NV[l], NO[l], NL[l] = nv, no, nl
-      l = l + 1
-    end
-    fprintf(io.output(), "%d lines read from %s.\n", l, filename)
-  end
-  f:close()
-  return NV, NO, NL
-end
-
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
 
-function M.setup(mod, vars, no, filename)
-  M.mod, M.vars, M.no = mod, vars, no
-  if not filename then filename = (mod.name or "check") .. ".out" end
+function M.do_all_checks(mod, nv, no)
+  -- should be called before any other function in this module
+  if M.file and M.mod ~= mod then  -- file is for another module
+    M.file:close()
+    M.file = nil
+  end
+  M.mod, M.nv, M.no = mod, nv, no
+
   if not M.file then
+    local filename = (mod.name or "check") .. ".out"
     M.file = io.open(filename, "w")
   end
-  M.To = table_by_ords(#vars, no)
-  fprintf(M.file, "\n\n=NV= %d, NO= %d =======================", #vars, no)
+
+  factory.fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
+  check_coeff(mod, nv, no)
+  check_with_berz(mod, nv, no)
 end
 
 function M.tear_down()

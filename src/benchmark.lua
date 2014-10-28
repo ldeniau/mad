@@ -1,5 +1,5 @@
 local clock = os.clock
-local check = require "check"
+local factory, check = require"factory", require "check"
 local fill_ord1, fill_full = check.fill_ord1, check.fill_full
 
 local header_fmt, line_fmt
@@ -42,7 +42,7 @@ local function bench(mod_name, fct_name, filename, print_size)
 
   local Ts = {}
   for i=1,#NL do
-    local t1, t2, r = setup(tpsa, NV[i], NO[i])
+    local t1, t2, r = factory.setup(tpsa, fct_name, NV[i], NO[i])
     check.print_all(t1, t2, r)
 
     Ts[i] = timeit(tpsa[fct_name], NL[i], t1, t2, r)
