@@ -45,20 +45,6 @@ local function mono_print(m, file)
 end
 
 
-local function get_return(mod, fct_name, nv, no)
-  local t, val = mod.init(mono_val(nv,no), no), 4.3
-  fct_name = fct_name or 'generic'
-  local rets = {
-    getm = function() return t, M.To_ffi, nv      end,
-    setm = function() return t, M.To_ffi, val, nv end,
-    setCoeff = function () return t, M.To, val end,
-    getCoeff = function () return t, M.To, nv end,
-    generic  = function () return t, M.To end
-  }
-  return rets[fct_name]()
-end
-
-
 -- LOCALS ----------------------------------------------------------------------
 
 local function initMons(nv)
@@ -110,42 +96,49 @@ local function setup_bin_op(mod, nv, no)
   M.fill_full(t)
 end
 
+function M.new_instance()
+  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
+  return M.t
+end
+
+function M.get_params(fct_name)
+  local val = 4.3
+  local params = { -- use anonymous functions to avoid unpack which is not compiled
+    getm     = function() return M.t, M.To_ffi,      M.nv end,
+    getCoeff = function() return M.t, M.To                end,
+    setm     = function() return M.t, M.To_ffi, val, M.nv end,
+    setCoeff = function() return M.t, M.To    , val       end,
+    generic  = function() return M.t, M.To                end
+  }
+  return params[fct_name]()
+end
+
 -- args = table with named or positional arguments:
 --   mod      or args[1] = the loaded tpsa module
---   fct_name or args[2] = [optional] string specifying which function to setup
---   nv       or args[3] = NV parameter for the mod
---   no       or args[4] = NO parameter for the mod
+--   nv       or args[2] = NV parameter for the mod
+--   no       or args[3] = NO parameter for the mod
+--   need_ffi or args[4] = [opt] 0 to disable reconstruction of To_ffi (1 by default)
 function M.setup(args)
-  local mod, fct_name, nv, no = args[1] or args.mod, args[2] or args.fct_name,
-                                args[3] or args.nv , args[4] or args.no
-
+  -- process arguments
+  local mod, nv, no = args[1] or args.mod, args[2] or args.nv, args[3] or args.no
+  local need_ffi = args[4] or args.need_ffi or true
   if not M.mod and not nv and not no then
-    error(string.format("Cannot setup factory: mod=%s fct=%s nv=%d no=%d",
-                        mod.name, fct_name, nv, no))
+    error("Cannot setup factory: not enough args and no previous state")
   end
 
   -- save / update state
+  local state_changed = false
   if nv and no and (nv ~= M.nv or no ~= M.no) then
-    M.nv, M.no, M.To = nv, no, table_by_ords(nv, no)
-    M.To_ffi = make_To_ffi(mod.mono_t, M.To)
+    M.nv, M.no, M.To, state_changed = nv, no, table_by_ords(nv, no), true
   end
   if mod and mod ~= M.mod then
-    M.mod = mod
+    M.mod, state_changed = mod, true
+  end
+  if state_changed and need_ffi then
     M.To_ffi = make_To_ffi(mod.mono_t, M.To)
   end
 
-  return get_return(M.mod, fct_name, M.nv, M.no)
-
---  if     fct_name == "setm"     or fct_name == "getm"     then
---    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To_ffi
---  elseif fct_name == "mul"      or fct_name == "__mul"    or
---         fct_name == "add"      or fct_name == "sub"      then
---    return setup_bin_op()
---  elseif fct_name == "compose" then
---    return setup_compose()
---  else
---    return M.mod.init(mono_val(M.nv,M.no), M.no), M.To
---  end
+  M.new_instance()
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------

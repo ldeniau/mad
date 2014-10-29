@@ -71,8 +71,6 @@ local tpsa_arr = typeof("T*   [?]")
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
 
-local current_nv  -- used in benchmarking getm
-
 -- functions -------------------------------------------------------------------
 
 -- constructors of tpsa:
@@ -104,9 +102,6 @@ function M.init(var_ords, mvo, knb_ords, mko)
       ffi.metatype("struct tpsa", MT)
       M._mt_is_set = true
     end
-
-    -- allow getm to omit mono length
-    current_nv = #var_ords + (knb_ords and #knb_ords or 0)
 
     return t
   end
@@ -177,14 +172,12 @@ M.print = clib.mad_tpsa_print
 -- interface for benchmarking --------------------------------------------------
 
 function M.setm(t, m, v, l)
-  -- m should be a t.mono_t of length l or length nv+nk
-  l = l or current_nv
+  -- m should be a t.mono_t of length l
   clib.mad_tpsa_setm(t, l, m, v)
 end
 
 function M.getm(t, m, l)
-  -- m should be a t.mono_t of length l or length nv+nk
-  l = l or current_nv
+  -- m should be a t.mono_t of length l
   return tonumber(clib.mad_tpsa_getm(t, l, m))
 end
 

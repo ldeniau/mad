@@ -28,61 +28,60 @@ end
 
 local function dummy_fct() return 0 end
 
-local function check_coeff_consistency(mod, in_vals, fset_name, fget_name, err_code)
-  local fset = fset_name and mod[fset_name] or dummy_fct
-  local fget = mod[fget_name] or error("Incorrect get function: " .. fget_name)
+local function check_coeff_consistency(fset_name, fget_name, in_vals, get_params, err_code)
   local err_fmt = "Error %d: inconsistent coefficients at %d (%d should have been %d)"
-  local t, To_set, To_get, _
 
-  t, To_set = factory.setup{ fct_name=fset_name }
-  _, To_get = factory.setup{ fct_name=fget_name }
-  if #To_set ~= #To_get  then error("Inconsistent factory setup")    end
-  if #To_set ~= #in_vals then error("Inconsistent consistency call") end
+  local t, To_set, To_get, l_set, l_get, _
+
+  t = factory.new_instance()
+  _, To_set, _, l_set = factory.get_params(fset_name or "generic")
+  _, To_get,    l_get = factory.get_params(fget_name)
+  if #To_set ~= #To_get  then error("Inconsistent factory setup")  end
+  if #To_get ~= #in_vals then error("Incorrect in_vals")  end
+
+  local fset = fset_name and t[fset_name] or dummy_fct
+  local fget = t[fget_name] or error("Incorrect get function: " .. fget_name)
 
   local out_vals = {}
-  for m=0,#To_set  do               fset(t, To_set[m], in_vals[m]) end
-  for m=0,#To_get  do out_vals[m] = fget(t, To_get[m])             end
+  for m=0,#To_set  do               fset(t, To_set[m], in_vals[m], l_set) end
+  for m=0,#To_get  do out_vals[m] = fget(t, To_get[m],             l_get) end
   for m=0,#in_vals do
     if in_vals[m] ~= out_vals[m] then
-      error(err_fmt, err_code, m, out_vals[m], in_vals[m])
+      error(string.format(err_fmt, err_code, m, out_vals[m], in_vals[m]))
     end
   end
 end
 
-local function get_consistency_fct(state, mod)
-  local nc, vals = #factory.To
+local function check_coeff(get_params)
+  local in_vals
 
-  if state == "initial" then
-    vals = factory.mono_val(nc, 0)
-    vals[0] = 0
-    return  function (fget_name, err_code)
-              check_coeff_consistency(mod, vals,       nil, fget_name, err_code)
-            end
-  else
-    vals = factory.mono_val(nc)  -- with randoms
-    vals[0] = 1 + rand()
-    return  function (fset_name, fget_name, err_code)
-              check_coeff_consistency(mod, vals, fset_name, fget_name, err_code)
-            end
-  end
-end
+  in_vals = factory.mono_val(#factory.To, 0)  -- initially all should be 0
+  in_vals[0] = 0
+  check_coeff_consistency(nil,        "getm"    , in_vals, get_params, -1)
+  check_coeff_consistency(nil,        "getCoeff", in_vals, get_params, -2)
 
-local function check_coeff(mod)
-  local check_fct = get_consistency_fct("initial", mod)
-  check_fct(            "getm"    , -1)
-  check_fct(            "getCoeff", -2)
-
-  check_fct = get_consistency_fct("rest", mod)
-  check_fct("setCoeff", "getCoeff",  0)
-  check_fct("setCoeff", "getm"    ,  1)
-  check_fct("setm"    , "getCoeff",  2)
-  check_fct("setm"    , "getm"    ,  3)
+  in_vals = factory.mono_val(#factory.To)     -- randoms
+  in_vals[0] = 1 + rand()
+  check_coeff_consistency("setCoeff", "getCoeff", in_vals, get_params,  0)
+  check_coeff_consistency("setCoeff", "getm"    , in_vals, get_params,  1)
+  check_coeff_consistency("setm"    , "getCoeff", in_vals, get_params,  2)
+  check_coeff_consistency("setm"    , "getm"    , in_vals, get_params,  3)
 end
 
 
 
 local function check_with_berz(mod, nv, no)
+  -- factory has already been setup for {mod, nv, no}
+  local funcs = {"mul"}
+  -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
+  local t1s, t2s, trs = {}, {}, {}
+  local b1s, b2s, brs = {}, {}, {}
 
+  for f=1,#funcs do
+--    t1s[f] = factory.setup
+  end
+
+  local berz = require"lib.tpsaBerz"
 end
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
@@ -100,9 +99,9 @@ function M.do_all_checks(mod, nv, no)
   end
 
   factory.fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
-  factory.setup{ mod=mod, nv=nv, no=no }
-  check_coeff(mod, #factory.To + 1)
-  check_with_berz(mod, nv, no)
+  local get_params = factory.setup{ mod=mod, nv=nv, no=no }
+  check_coeff(get_params)
+--  check_with_berz(mod, nv, no)
 end
 
 function M.tear_down()
@@ -136,7 +135,6 @@ function M.with_berz(eps, vars, no)
   eps = eps or 1e-3
   M.same_coeff(t, b, eps, To)
 end
-
 
 function M.print(t)
   local f, To = M.file, M.To
