@@ -1,5 +1,6 @@
 local factory = require"factory"
 local rand = math.random
+local printf, fprintf, mono_print = factory.printf, factory.fprintf, factory.mono_print
 
 local M = {}  -- this module
 
@@ -28,14 +29,15 @@ end
 
 local function dummy_fct() return 0 end
 
-local function check_coeff_consistency(fset_name, fget_name, in_vals, get_params, err_code)
+local function check_coeff_consistency(fset_name, fget_name, in_vals, err_code)
   local err_fmt = "Error %d: inconsistent coefficients at %d (%d should have been %d)"
 
   local t, To_set, To_get, l_set, l_get, _
 
   t = factory.new_instance()
-  _, To_set, _, l_set = factory.get_params(fset_name or "generic")
-  _, To_get,    l_get = factory.get_params(fget_name)
+  To_set, _, l_set = factory.get_args(fset_name or "generic")
+  To_get,    l_get = factory.get_args(fget_name)
+
   if #To_set ~= #To_get  then error("Inconsistent factory setup")  end
   if #To_get ~= #in_vals then error("Incorrect in_vals")  end
 
@@ -52,20 +54,20 @@ local function check_coeff_consistency(fset_name, fget_name, in_vals, get_params
   end
 end
 
-local function check_coeff(get_params)
+local function check_coeff()
   local in_vals
 
   in_vals = factory.mono_val(#factory.To, 0)  -- initially all should be 0
   in_vals[0] = 0
-  check_coeff_consistency(nil,        "getm"    , in_vals, get_params, -1)
-  check_coeff_consistency(nil,        "getCoeff", in_vals, get_params, -2)
+  check_coeff_consistency(nil,        "getm"    , in_vals, -1)
+  check_coeff_consistency(nil,        "getCoeff", in_vals, -2)
 
   in_vals = factory.mono_val(#factory.To)     -- randoms
   in_vals[0] = 1 + rand()
-  check_coeff_consistency("setCoeff", "getCoeff", in_vals, get_params,  0)
-  check_coeff_consistency("setCoeff", "getm"    , in_vals, get_params,  1)
-  check_coeff_consistency("setm"    , "getCoeff", in_vals, get_params,  2)
-  check_coeff_consistency("setm"    , "getm"    , in_vals, get_params,  3)
+  check_coeff_consistency("setCoeff", "getCoeff", in_vals,  0)
+  check_coeff_consistency("setCoeff", "getm"    , in_vals,  1)
+  check_coeff_consistency("setm"    , "getCoeff", in_vals,  2)
+  check_coeff_consistency("setm"    , "getm"    , in_vals,  3)
 end
 
 
@@ -98,9 +100,9 @@ function M.do_all_checks(mod, nv, no)
     M.file = io.open(filename, "w")
   end
 
-  factory.fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
-  local get_params = factory.setup{ mod=mod, nv=nv, no=no }
-  check_coeff(get_params)
+  fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
+  factory.setup{ mod=mod, nv=nv, no=no }
+  check_coeff()
 --  check_with_berz(mod, nv, no)
 end
 

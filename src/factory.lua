@@ -3,6 +3,10 @@ local ffi = require"ffi"
 local M = {}  -- this module
 
 -- HELPERS ---------------------------------------------------------------------
+local function fprintf(f, s, ...)
+  f:write(s:format(...))
+end
+
 
 local function mono_val(l, n)
   local a, rand = {}, math.random
@@ -96,21 +100,22 @@ local function setup_bin_op(mod, nv, no)
   M.fill_full(t)
 end
 
+-- INTERFACE -------------------------------------------------------------------
+
 function M.new_instance()
-  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
-  return M.t
+  return M.t:new()
 end
 
-function M.get_params(fct_name)
+function M.get_args(fct_name)
   local val = 4.3
-  local params = { -- use anonymous functions to avoid unpack which is not compiled
-    getm     = function() return M.t, M.To_ffi,      M.nv end,
-    getCoeff = function() return M.t, M.To                end,
-    setm     = function() return M.t, M.To_ffi, val, M.nv end,
-    setCoeff = function() return M.t, M.To    , val       end,
-    generic  = function() return M.t, M.To                end
+  local args = { -- use anonymous functions to avoid unpack which is not compiled
+    getm     = function() return M.To_ffi,      M.nv end,
+    getCoeff = function() return M.To                end,
+    setm     = function() return M.To_ffi, val, M.nv end,
+    setCoeff = function() return M.To    , val       end,
+    generic  = function() return M.To                end
   }
-  return params[fct_name]()
+  return args[fct_name]()
 end
 
 -- args = table with named or positional arguments:
@@ -134,20 +139,18 @@ function M.setup(args)
   if mod and mod ~= M.mod then
     M.mod, state_changed = mod, true
   end
-  if state_changed and need_ffi then
+  if state_changed and need_ffi ~= 0 then
     M.To_ffi = make_To_ffi(mod.mono_t, M.To)
   end
 
-  M.new_instance()
+  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------
-local function fprintf(f, s, ...)  -- TODO: put this somewhere and import it
-  f:write(s:format(...))
-end
-
-M.mono_val = mono_val
-M.fprintf  = fprintf
+M.mono_val   = mono_val
+M.mono_print = mono_print
+M.fprintf    = fprintf
+M.printf     = function (...) fprintf(io.output(), ...) end
 
 function M.fill_ord1(t, nv, startVal, inc)
   if not startVal then startVal = 1.1 end
