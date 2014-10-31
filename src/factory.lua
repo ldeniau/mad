@@ -108,11 +108,19 @@ end
 
 function M.get_args(fct_name)
   local val = 4.3
-  local args = { -- use anonymous functions to avoid unpack which is not compiled
+
+  -- use anonymous functions to avoid unpack which is not compiled
+  local function bin_op() return M.full(M.t), M.full(M.t), M.new_instance() end
+
+  local args = {
     getm     = function() return M.To_ffi,      M.nv end,
     getCoeff = function() return M.To                end,
     setm     = function() return M.To_ffi, val, M.nv end,
     setCoeff = function() return M.To    , val       end,
+
+    mul      = bin_op,
+    add      = bin_op,
+    sub      = bin_op,
     generic  = function() return M.To                end
   }
   return args[fct_name]()
@@ -139,11 +147,11 @@ function M.setup(args)
   if mod and mod ~= M.mod then
     M.mod, state_changed = mod, true
   end
-  if state_changed and need_ffi ~= 0 then
-    M.To_ffi = make_To_ffi(mod.mono_t, M.To)
+  if state_changed then
+    M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
+    if need_ffi ~= 0 then M.To_ffi = make_To_ffi(mod.mono_t, M.To) end
   end
 
-  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------
@@ -152,36 +160,37 @@ M.mono_print = mono_print
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...) end
 
-function M.fill_ord1(t, nv, startVal, inc)
+function M.ord1(t, startVal, inc)
   if not startVal then startVal = 1.1 end
   if not inc      then inc      = 0.1 end
-  local m = mono_val(nv, 0)
+  t = t:new()  -- start fresh
+
+  local m = mono_val(M.nv, 0)
   t:setCoeff(m, startVal)
-  for i=1,nv do
+  for i=1,M.nv do
     m[i] = 1
     startVal = startVal + inc
     t:setCoeff(m, startVal)
     m[i] = 0
   end
+  return t
 end
 
-function M.fill_full(t, no)
-  -- t:pow(no)
-  local b, r, floor = t:cpy(), t:new(), math.floor
+function M.full(t)  -- same as t:pow(no)
+  local b, r, tmp, p = M.ord1(t), t:new(), t:new(), M.no
   r:setConst(1)
 
-  while no > 0 do
-    if no%2==1 then
-      r.mul(r, b, t)
-      r, t = t, r
-      no = no - 1
+  while p > 0 do
+    if p%2==1 then
+      r.mul(r, b, tmp)
+      r, tmp = tmp, r
+      p = p - 1
     end
-    b.mul(b, b, t)
-    b, t = t, b
-    no = no/2
+    b.mul(b, b, tmp)
+    b, tmp = tmp, b
+    p = p/2
   end
---  r:print()
-  r:cpy(t)
+  return r
 end
 
 

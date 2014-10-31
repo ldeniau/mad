@@ -30,7 +30,7 @@ end
 local function dummy_fct() return 0 end
 
 local function check_coeff_consistency(fset_name, fget_name, in_vals, err_code)
-  local err_fmt = "Error %d: inconsistent coefficients at %d (%d should have been %d)"
+  local err_fmt = "Error %d: inconsistent coefficients at %d (%f should have been %f)"
 
   local t, To_set, To_get, l_set, l_get, _
 
@@ -70,20 +70,51 @@ local function check_coeff()
   check_coeff_consistency("setm"    , "getm"    , in_vals,  3)
 end
 
+local function check_identical(t1, t2, eps, To)
+  for m=0,#To do
+    local v1, v2 = t1:getCoeff(To[m]), t2:getCoeff(To[m])
+
+    -- get the min for computing relative error
+    local minV = min(v1,v2) == 0 and 1 or min(v1,v2)
+
+    if abs((v1-v2)/minV) > eps then
+      printf("\n mono: ")
+      mono_print(To[m])
+      printf("  val_%s = %s val_%s = %f (eps = %f)\n",
+             t1.name, v1, t2.name, v2, eps)
+      t1:print()
+      t2:print()
+      error("Coefficients differ among libraries")
+    end
+  end
+end
 
 
-local function check_with_berz(mod, nv, no)
+local function check_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
-  local funcs = {"mul"}
+  local funcs = {"mul", "add", "sub"}
   -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
   local t1s, t2s, trs = {}, {}, {}
   local b1s, b2s, brs = {}, {}, {}
 
-  for f=1,#funcs do
---    t1s[f] = factory.setup
+  for fi=1,#funcs do
+    t1s[fi], t2s[fi], trs[fi] = factory.get_args(funcs[fi])
   end
 
   local berz = require"lib.tpsaBerz"
+  factory.setup{ mod=berz, need_ffi=0 }
+  for fi=1,#funcs do
+    b1s[fi], b2s[fi], brs[fi] = factory.get_args(funcs[fi])
+  end
+
+  for fi=1,#funcs do
+    local op_mod  = mod  [funcs[fi]]
+    local op_berz = berz [funcs[fi]]
+    op_mod (t1s[fi], t2s[fi], trs[fi])
+    op_berz(b1s[fi], b2s[fi], brs[fi])
+
+    check_identical(trs[fi], brs[fi], 0.001, factory.To)
+  end
 end
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
@@ -103,43 +134,15 @@ function M.do_all_checks(mod, nv, no)
   fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
   factory.setup{ mod=mod, nv=nv, no=no }
   check_coeff()
---  check_with_berz(mod, nv, no)
+  check_with_berz(mod)
 end
 
 function M.tear_down()
   M.file:close()
 end
 
-function M.same_coeff(t1, t2, eps, To)
-  for m=0,#To do
-    local vt, vb = t1:getCoeff(To[m]), t2:getCoeff(To[m])
-
-    -- get the min for computing relative error
-    local minV = min(vb,vt) == 0 and 1 or min(vb,vt)
-
-    if abs((vb-vt)/minV) > eps then
-      fprintf(io.output(), "\n mono: ")
-      mono_print(To[m])
-      fprintf(io.output(), "  v%s = %s vBerz = %f (eps = %f)\n",
-              M.mod.name, vt, vb, eps)
-      t1:print()
-      t2:print()
-      error("Coefficients differ among libraries")
-    end
-  end
-end
-
-function M.with_berz(eps, vars, no)
-  -- cross checks a full tpsa of (nv, no) with a full berz tpsa
-  -- if nv, no are not specified then the ones from setup are used
-
-  local mod, t, b, To = M.mod, prepare_check(vars, no)
-  eps = eps or 1e-3
-  M.same_coeff(t, b, eps, To)
-end
-
 function M.print(t)
-  local f, To = M.file, M.To
+  local f, To = M.file, factory.To
 
   fprintf(f, "\nCOEFFICIENT                \tEXPONENTS\n")
 

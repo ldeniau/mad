@@ -42,7 +42,7 @@ Usage:   luajit pek-pok-bench.lua mod_name    fct_name [params_filename]
 local help = [[
   mod_name: lib.tpsaFFI | lib.tpsaBerz | lib.tpsaYang | lib.tpsaMC
   fct_name: setm | getm
-  Example: luajit pek-pok-bench.lua lib.tpsaFFI setm     bench-params/pek-params.txt
+Example: luajit pek-pok-bench.lua lib.tpsaFFI setm     bench-params/pek-params.txt
   Note: `fct_name` is called for each of the coefficients, in every loop
 ]]
 
