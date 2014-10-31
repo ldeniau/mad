@@ -122,12 +122,14 @@ function tpsa.mul(t1, t2, r)
   yangLib.ad_mult_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.add(t1, t2)
-  yangLib.ad_add_(t2.idx, t2.idx)
+function tpsa.add(t1, t2, t3)
+  yangLib.ad_add_ (t2.idx, t1.idx)
+  yangLib.ad_copy_(t2.idx, t3.idx)
 end
 
-function tpsa.sub(t1, t2)
-  yangLib.ad_sub_(t2.idx, t2.idx)
+function tpsa.sub(t1, t2, t3)
+  yangLib.ad_sub_ (t2.idx, t1.idx)
+  yangLib.ad_copy_(t2.idx, t3.idx)
 end
 
 function tpsa.cct(a, b, c)

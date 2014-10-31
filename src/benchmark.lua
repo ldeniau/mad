@@ -12,9 +12,7 @@ end
 
 -- benchmark the speed of fct_name from module mod_name using parameters from filename
 local function bench(mod_name, fct_name, filename)
-  if not filename then filename = fct_name .. "-params.txt" end
-  local NV, NO, NL = factory.read_params(filename)
-  assert(#NV == #NO and #NV == #NL)
+  local NV, NO, NL = factory.read_params(fct_name, filename)
 
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
   printf(header_fmt)

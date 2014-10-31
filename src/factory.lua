@@ -94,12 +94,6 @@ local function make_To_ffi(mono_t, To)
   return To_ffi
 end
 
-local function setup_bin_op(mod, nv, no)
-  local t = mod.init(mono_val(nv,no), no)
-  M.fill_ord1(t)
-  M.fill_full(t)
-end
-
 -- INTERFACE -------------------------------------------------------------------
 
 function M.new_instance()
@@ -160,6 +154,7 @@ M.mono_print = mono_print
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...) end
 
+-- returns a tpsa filled with just its first order
 function M.ord1(t, startVal, inc)
   if not startVal then startVal = 1.1 end
   if not inc      then inc      = 0.1 end
@@ -176,6 +171,7 @@ function M.ord1(t, startVal, inc)
   return t
 end
 
+-- returns a tpsa filled up to its maximum order
 function M.full(t)  -- same as t:pow(no)
   local b, r, tmp, p = M.ord1(t), t:new(), t:new(), M.no
   r:setConst(1)
@@ -195,7 +191,9 @@ end
 
 
 -- read benchmark input parameters: NV, NO, NL
-function M.read_params(filename)
+function M.read_params(fct_name, filename)
+  if not filename then filename = fct_name .. "-params.txt" end
+
   local f = io.open(filename, "r")
   local NV, NO, NL, l = {}, {}, {}, 1
 
@@ -212,6 +210,7 @@ function M.read_params(filename)
     fprintf(io.output(), "\n%d lines read from %s.\n", l, filename)
   end
   f:close()
+  assert(#NV == #NO and #NV == #NL)
   return NV, NO, NL
 end
 

@@ -70,7 +70,7 @@ local function check_coeff()
   check_coeff_consistency("setm"    , "getm"    , in_vals,  3)
 end
 
-local function check_identical(t1, t2, eps, To)
+local function check_identical(t1, t2, eps, To, fct_name)
   for m=0,#To do
     local v1, v2 = t1:getCoeff(To[m]), t2:getCoeff(To[m])
 
@@ -84,7 +84,7 @@ local function check_identical(t1, t2, eps, To)
              t1.name, v1, t2.name, v2, eps)
       t1:print()
       t2:print()
-      error("Coefficients differ among libraries")
+      error("Coefficients differ among libraries for " .. fct_name)
     end
   end
 end
@@ -113,7 +113,7 @@ local function check_with_berz(mod)
     op_mod (t1s[fi], t2s[fi], trs[fi])
     op_berz(b1s[fi], b2s[fi], brs[fi])
 
-    check_identical(trs[fi], brs[fi], 0.001, factory.To)
+    check_identical(trs[fi], brs[fi], 0.001, factory.To, funcs[fi])
   end
 end
 
