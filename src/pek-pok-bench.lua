@@ -32,8 +32,6 @@ local function bench(mod_name, fct_name, filename)
 
     printf(line_fmt, NV[i], NO[i], #factory.To+1, NL[i], Ts[i])
   end
-
-  check.tear_down()
 end
 
 local usage = [[

@@ -220,5 +220,10 @@ function tpsa.getm(t, m)
   return tonumber(v_ptr[0])
 end
 
+function tpsa.subst(ma, mb, lb, mc)
+  -- ma, mc are arrays of 1 tpsa; mb is array of `lb` TPSAs; lb == ma[i].nv
+  berzLib.dacct_(ma, one_i, mb, lb, mc, one_i)
+end
+
 return tpsa
 

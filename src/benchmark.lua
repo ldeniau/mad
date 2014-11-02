@@ -4,9 +4,9 @@ local clock, printf = os.clock, factory.printf
 local header_fmt = "nv\tno\tnl       \ttime (s)\n"
 local line_fmt   = "%d\t%d\t%8d\t%.3f\n"
 
-local function timeit(fun, nl, t1, t2, r)
+local function timeit(fun, nl, p1, p2, p3, p4, p5, p6)
   local start = clock()
-  for l=1,nl do fun(t1, t2, r) end
+  for l=1,nl do fun(p1, p2, p3, p4, p5, p6) end
   return clock() - start
 end
 
@@ -21,20 +21,13 @@ local function bench(mod_name, fct_name, filename)
 
   local Ts = {}  -- times
   for i=1,#NL do
-    factory.setup{tpsa, NV[i], NO[i]}
-    local t1, t2, r = factory.get_args(fct_name)
-
     check.do_all_checks(tpsa, NV[i], NO[i])
-    check.print_all(t1, t2, r)  -- before
 
-    Ts[i] = timeit(tpsa[fct_name], NL[i], t1, t2, r)
-
-    check.print_all(t1, t2, r)  -- after
+    factory.setup{tpsa, NV[i], NO[i]}
+    Ts[i] = timeit(tpsa[fct_name], NL[i], factory.get_args(fct_name))
 
     printf(line_fmt, NV[i], NO[i], NL[i], Ts[i])
   end
-
-  check.tear_down()
 end
 
 local usage = [[

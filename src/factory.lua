@@ -94,6 +94,72 @@ local function make_To_ffi(mono_t, To)
   return To_ffi
 end
 
+-- use functions return to avoid unpack which is not compiled
+local function args_bin_op()
+  return M.full(), M.full(), M.new_instance()
+end
+
+local function args_subst_tpsa()
+  ffi.cdef("typedef struct tpsa T")
+  local tpsa_carr, tpsa_arr  = ffi.typeof("const T* [?]"), ffi.typeof("T* [?]")
+
+  local ptrs = {}  -- save some references to avoid GC
+  local t, nv = M.full(), M.nv
+
+  local cma, cmb, cmc = tpsa_carr(1), tpsa_carr(nv), tpsa_arr(1)
+  ptrs.ma, ptrs.mc = t:cpy(), t:new()
+  cma[0] , cmc[0]  = ptrs.ma, ptrs.mc
+  for i=1,nv do
+    ptrs[i]  = t:cpy()
+    cmb[i-1] = ptrs[i]
+  end
+  return cma, cmb, nv, cmc, ptrs
+end
+
+local function args_subst_berz()
+  local intArr = ffi.typeof("int [?]")
+
+  local ptrs = {}
+  local t, nv = M.full(), M.nv
+
+  local cma, cmb, cmc = intArr(1), intArr(nv), intArr(1)
+  ptrs.ma, ptrs.mc = t:cpy()       , t:new()
+  cma[0] , cmc[0]  = ptrs.ma.idx[0], ptrs.mc.idx[0]
+  for i=1,nv do
+    ptrs[i]  = t:cpy()
+    cmb[i-1] = ptrs[i].idx[0]
+  end
+  t:destroy()
+  return cma, cmb, intArr(1, {nv}), cmc, ptrs
+end
+
+local function args_subst_yang()
+  local uintArr = ffi.typeof("unsigned int[?]")
+
+  local ptrs = {}
+  local t, nv = M.full(), M.nv
+
+  local cma, cmb, cmc = uintArr(1), uintArr(nv), uintArr(1)
+  ptrs.ma, ptrs.mc = t             , t:new()
+  cma[0] , cmc[0]  = ptrs.ma.idx[0], ptrs.mc.idx[0]
+  for i=1,nv do
+    ptrs[i]  = t:cpy()
+    cmb[i-1] = ptrs[i].idx[0]
+  end
+  return cma, cmb, uintArr(1, {nv}), cmc, ptrs
+end
+
+local function args_subst()
+  local args = {
+    tpsa = args_subst_tpsa,
+    berz = args_subst_berz,
+    yang = args_subst_yang,
+  }
+  return args[M.mod.name]()
+end
+
+
+
 -- INTERFACE -------------------------------------------------------------------
 
 function M.new_instance()
@@ -103,18 +169,16 @@ end
 function M.get_args(fct_name)
   local val = 4.3
 
-  -- use anonymous functions to avoid unpack which is not compiled
-  local function bin_op() return M.full(M.t), M.full(M.t), M.new_instance() end
-
   local args = {
     getm     = function() return M.To_ffi,      M.nv end,
     getCoeff = function() return M.To                end,
     setm     = function() return M.To_ffi, val, M.nv end,
     setCoeff = function() return M.To    , val       end,
 
-    mul      = bin_op,
-    add      = bin_op,
-    sub      = bin_op,
+    mul      = args_bin_op,
+    add      = args_bin_op,
+    sub      = args_bin_op,
+    subst    = args_subst,
     generic  = function() return M.To                end
   }
   return args[fct_name]()
@@ -154,26 +218,34 @@ M.mono_print = mono_print
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...) end
 
--- returns a tpsa filled with just its first order
-function M.ord1(t, startVal, inc)
+-- returns a tpsa having only orders `ord` filled
+function M.ord(ord, startVal, inc)
+  -- process params
   if not startVal then startVal = 1.1 end
   if not inc      then inc      = 0.1 end
-  t = t:new()  -- start fresh
 
-  local m = mono_val(M.nv, 0)
-  t:setCoeff(m, startVal)
-  for i=1,M.nv do
-    m[i] = 1
-    startVal = startVal + inc
-    t:setCoeff(m, startVal)
-    m[i] = 0
+  if type(ord) == "number" then
+    ord = { math.floor(ord) }
+  else
+    table.sort(ord)
+    for i=1,#ord do ord[i] = math.floor(ord[i]) end
+  end
+
+  local t = M.new_instance()  -- start fresh
+  local To = M.To
+
+  for o=1,#ord do
+    for m=To.ps[ord[o]],To.pe[ord[o]] do
+      t:setCoeff(To[m], startVal)
+      startVal = startVal + inc
+    end
   end
   return t
 end
 
 -- returns a tpsa filled up to its maximum order
-function M.full(t)  -- same as t:pow(no)
-  local b, r, tmp, p = M.ord1(t), t:new(), t:new(), M.no
+function M.full()  -- same as t:pow(no)
+  local b, r, tmp, p = M.ord{0,1}, M.new_instance(), M.new_instance(), M.no
   r:setConst(1)
 
   while p > 0 do
@@ -185,6 +257,10 @@ function M.full(t)  -- same as t:pow(no)
     b.mul(b, b, tmp)
     b, tmp = tmp, b
     p = p/2
+  end
+  if M.mod.destroy then
+    b:destroy()
+    tmp:destroy()
   end
   return r
 end

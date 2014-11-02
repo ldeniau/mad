@@ -6,27 +6,6 @@ local M = {}  -- this module
 
 local min, abs = math.min, math.abs
 
-local function prepare_check(vars, no)
-  local mod, To = M.mod, M.To
-  if not vars or not no then
-    vars, no = M.vars, M.no
-  elseif vars ~= M.vars or no ~= M.no then
-    To = table_by_ords(#vars, no)
-  end
-
-  local berz = require"lib.tpsaBerz"
---  local t =  mod(mono_val(#vars,no), no, mono_val(2,0), 12)
-  local t =  mod.init(mono_val(#vars,no), no)
-  local b = berz.init(vars, no)
-
-  M.fill_ord1(b, #vars)
-  M.fill_full(b, no)
-  M.fill_ord1(t, #vars)
-  M.fill_full(t, no)
-
-  return t, b, To
-end
-
 local function dummy_fct() return 0 end
 
 local function check_coeff_consistency(fset_name, fget_name, in_vals, err_code)
@@ -90,7 +69,7 @@ local function check_identical(t1, t2, eps, To, fct_name)
 end
 
 
-local function check_with_berz(mod)
+local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
   local funcs = {"mul", "add", "sub"}
   -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
@@ -98,7 +77,9 @@ local function check_with_berz(mod)
   local b1s, b2s, brs = {}, {}, {}
 
   for fi=1,#funcs do
+    fprintf(M.file, "\n== %s =======================\n", funcs[fi])
     t1s[fi], t2s[fi], trs[fi] = factory.get_args(funcs[fi])
+    M.print_all(t1s[fi], t2s[fi])  -- print input
   end
 
   local berz = require"lib.tpsaBerz"
@@ -114,8 +95,28 @@ local function check_with_berz(mod)
     op_berz(b1s[fi], b2s[fi], brs[fi])
 
     check_identical(trs[fi], brs[fi], 0.001, factory.To, funcs[fi])
+    M.print(trs[fi])                -- print output
   end
+
+  factory.setup{ mod=mod, need_ffi=0 }  -- set it back
 end
+
+local function check_subst_with_berz(mod)
+  local ma, mb, lb, mc, ptrs_t, ptrs_b
+  ma, mb, lb, mc, ptrs_t = factory.get_args("subst")
+  mod.subst(ma, mb, lb, mc)
+
+  local berz = require"lib.tpsaBerz"
+  factory.setup{ mod=berz }
+  ma, mb, lb, mc, ptrs_b = factory.get_args("subst")
+
+  berz.subst(ma, mb, lb, mc)
+
+  check_identical(ptrs_t.mc, ptrs_b.mc, 0.001, factory.To, "subst")
+
+  factory.setup{ mod=mod }  -- set it back
+end
+
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
 
@@ -134,11 +135,8 @@ function M.do_all_checks(mod, nv, no)
   fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
   factory.setup{ mod=mod, nv=nv, no=no }
   check_coeff()
-  check_with_berz(mod)
-end
-
-function M.tear_down()
-  M.file:close()
+  check_bin_with_berz(mod)
+  check_subst_with_berz(mod)
 end
 
 function M.print(t)

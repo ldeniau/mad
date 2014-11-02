@@ -159,12 +159,15 @@ function tpsa.setm(t, m, v)
   yangLib.ad_pok_(t.idx, m, t.nv, v_ptr)
 end
 
-
 function tpsa.getm(t, m)
   -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
   local v_ptr = dblPtr()
   yangLib.ad_pek_(t.idx, m, t.nv, v_ptr)
   return tonumber(v_ptr[0])
+end
+
+function tpsa.subst(ma, mb, lb, mc)
+  yangLib.ad_subst_(ma, mb, lb, mc)
 end
 
 return tpsa

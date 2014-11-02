@@ -159,7 +159,7 @@ function M.pow(a, p)
   r:cpy(a)
 end
 
-function M.compose(mb, ma, mc)
+function M.compose(ma, mb, mc)
   -- ma, mb, mc -- compatible lua arrays of TPSAs
   local cma, cmb, cmc = tpsa_carr(#ma, ma), tpsa_carr(#mb, mb), tpsa_arr(#mc, mc)
   clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
@@ -181,9 +181,8 @@ function M.getm(t, m, l)
   return tonumber(clib.mad_tpsa_getm(t, l, m))
 end
 
-function M.compose_raw(la, ma, lb, mb, lc, mc)
-  -- ma, mb, mc -- compatible FFI arrays of TPSAs
-    clib.mad_tpsa_compose(la, ma, lb, mb, lc, mc)
+function M.subst(ma, mb, lb, mc)
+    clib.mad_tpsa_compose(1, ma, lb, mb, 1, mc)
 end
 -- end -------------------------------------------------------------------------
 return M
