@@ -404,33 +404,33 @@ mad_tpsa_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
   printf("tpsa_compose\n");
 #endif
   assert(ma && mb && mc);
-  assert(mb[0]->desc->nv == sa);
+  assert(ma[0]->desc->nv == sb);
   (void)sc;
 
-  D *db = mb[0]->desc;
-  T *b_mono = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
+  D *desc_a = ma[0]->desc;
   ord_t *curr_mono;
-  int nv = db->nv, coef_lim;
-  for (int ib = 0; ib < sb; ++ib) {
-    coef_lim = db->hpoly_To_idx[mb[ib]->mo + 1];
+  T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
+  int nv = desc_a->nv, coef_lim;
+  for (int ia = 0; ia < sa; ++ia) {
+    coef_lim = desc_a->hpoly_To_idx[ma[ia]->mo + 1];
 
     for (int mono_idx = 0; mono_idx < coef_lim; ++mono_idx) {
-      curr_mono = db->To[mono_idx];
+      curr_mono = desc_a->To[mono_idx];
 
-      mad_tpsa_clean(b_mono);
-      num_t curr_coef = mad_tpsa_geti(mb[ib], mono_idx);
+      mad_tpsa_clean(curr_build);
+      num_t curr_coef = mad_tpsa_geti(ma[ia], mono_idx);
       if (curr_coef == 0)
         continue;
 
-      mad_tpsa_seti(b_mono, 0, curr_coef);
+      mad_tpsa_seti(curr_build, 0, curr_coef);
       for (int cmi = 0; cmi < nv; ++cmi)
         for (ord_t o = 0; o < curr_mono[cmi]; ++o) { // pow
-          mad_tpsa_mul(b_mono, ma[cmi], tmp_res);
-          mad_tpsa_copy(tmp_res, b_mono);
+          mad_tpsa_mul(curr_build, mb[cmi], tmp_res);
+          mad_tpsa_copy(tmp_res, curr_build);
         }
 
-      mad_tpsa_add(mc[ib], b_mono, tmp_res);
-      mad_tpsa_copy(tmp_res, mc[ib]);
+      mad_tpsa_add(mc[ia], curr_build, tmp_res);
+      mad_tpsa_copy(tmp_res, mc[ia]);
     }
   }
 }
