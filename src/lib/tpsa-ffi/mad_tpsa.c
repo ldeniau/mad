@@ -44,7 +44,7 @@ print_wf(const T *t)
   printf(" ]\n");
 }
 
-// == helpers
+// --- HELPERS ----------------------------------------------------------------
 
 static inline bit_t
 bset (bit_t b, int n)
@@ -56,6 +56,14 @@ static inline int
 bget (bit_t b, int n)
 {
   return b & (1 << n);
+}
+
+static inline void
+swap (T **a, T **b)
+{
+  T *tmp = *a;
+  *a = *b;
+  *b = tmp;
 }
 
 // --- LOCAL FUNCTIONS --------------------------------------------------------
@@ -395,6 +403,50 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
     comps += hpoly_mul(a, b, c);
 
 //return comps;
+}
+
+void
+mad_tpsa_pow(const T *a, T *orig_res, int p)
+{
+#ifdef TRACE
+  printf("tpsa_pow %p to %d\n", (void*)a, p);
+#endif
+  assert(a && orig_res);
+  assert(a->desc == orig_res->desc);
+  assert(p >= 0);
+
+  if (p == 0) {
+    mad_tpsa_clean(orig_res);
+    mad_tpsa_seti(orig_res, 0, 1);
+    return;
+  }
+  if (p == 1) {
+    mad_tpsa_copy(a, orig_res);
+    return;
+  }
+
+  // init: base = a, r = 1, tmp
+  T *base = mad_tpsa_new(a), *r = orig_res, *tmp_res = mad_tpsa_new(a);
+  mad_tpsa_copy(a, base);
+  mad_tpsa_clean(r);
+  mad_tpsa_seti(r, 0, 1);
+
+  while(p > 1) {
+    if (p & 1) {
+      mad_tpsa_mul(base, r, tmp_res);
+      swap(&r, &tmp_res);
+    }
+    mad_tpsa_mul(base, base, tmp_res);
+    swap(&base, &tmp_res);
+    p /= 2;
+  }
+  mad_tpsa_mul(base, r, tmp_res);
+
+  // save result and dealloc
+  mad_tpsa_copy(tmp_res, orig_res);
+  if (base    != orig_res) mad_tpsa_del(base);
+  if (r       != orig_res) mad_tpsa_del(r);
+  if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
 }
 
 void

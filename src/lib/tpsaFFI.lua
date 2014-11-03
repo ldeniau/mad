@@ -53,6 +53,7 @@ ffi.cdef[[
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
+  void  mad_tpsa_pow     (const T *a, const T *r, int p);
 
   void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
 
@@ -156,7 +157,7 @@ end
 function M.pow(a, p)
   local r = a:new()
   clib.mad_tpsa_pow(a, r, p)
-  r:cpy(a)
+  return r
 end
 
 function M.compose(ma, mb, mc)

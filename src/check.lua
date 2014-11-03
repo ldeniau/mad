@@ -139,6 +139,8 @@ function M.do_all_checks(mod, nv, no)
   check_subst_with_berz(mod)
 end
 
+M.identical = check_identical
+
 function M.print(t)
   local f, To = M.file, factory.To
 
