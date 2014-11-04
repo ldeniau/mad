@@ -449,8 +449,102 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
 }
 
+static inline void
+init_cached(int nv, int mo, T *cached[nv][mo], const T *mb[nv])
+{
+  assert(cached);
+  assert(nv == mb[0]->desc->nv);
+  for (int v = 0; v < nv; ++v) {
+    cached[v][0] = (T*) mb[v];
+    for (int o = 1; o < mo; ++o)
+      cached[v][o] = NULL;
+  }
+}
+
+/**
+ builds and returns cached[0] at power p
+ */
+static inline const T*
+get_cached(T *cached[], int p)
+{
+#ifdef TRACE
+  printf("get_cached p=%d", p);
+#endif
+  assert(cached);
+  assert(p > 0);
+  assert(p <= cached[0]->desc->mo);
+  --p; // column indexing starts from 0
+
+  int i = p;
+  while (!cached[i]) i--;
+  while (i < p) {
+    cached[i+1] = mad_tpsa_new(cached[0]);
+    mad_tpsa_mul(cached[i], cached[0], cached[i+1]);
+    i++;
+  }
+  return cached[i];
+}
+
+static inline void
+free_cached(int nv, int mo, T *cached[nv][mo])
+{
+  for (int v = 0; v < nv; ++v)
+  for (int o = 1; o < mo; ++o)  // 1st column is not allocated by us
+    free(cached[v][o]);
+}
+
+
 void
 mad_tpsa_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
+{
+#ifdef TRACE
+  printf("tpsa_compose\n");
+#endif
+  assert(ma && mb && mc);
+  assert(ma[0]->desc->nv == sb);
+  (void)sc;
+
+  D *desc_a = ma[0]->desc;
+  ord_t *curr_mono;
+  int nv = desc_a->nv, mo = desc_a->mo, coef_lim;
+  T *cache[nv][mo];
+  init_cached(nv, mo, cache, mb);
+
+  T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
+  const T *powered = NULL;
+
+  for (int ia = 0; ia < sa; ++ia) {
+    coef_lim = desc_a->hpoly_To_idx[ma[ia]->mo + 1];
+
+    for (int mono_idx = 0; mono_idx < coef_lim; ++mono_idx) {
+      curr_mono = desc_a->To[mono_idx];
+
+      mad_tpsa_clean(curr_build);
+      num_t curr_coef = mad_tpsa_geti(ma[ia], mono_idx);
+      if (curr_coef == 0)
+        continue;
+
+      mad_tpsa_seti(curr_build, 0, curr_coef);
+      for (int var = 0; var < nv; ++var) {
+        if (curr_mono[var]) {
+          powered = get_cached(cache[var], curr_mono[var]);
+          mad_tpsa_mul(curr_build, powered, tmp_res);
+          swap(&curr_build, &tmp_res);
+        }
+      }
+
+      mad_tpsa_add(mc[ia], curr_build, tmp_res);
+      mad_tpsa_copy(tmp_res, mc[ia]);
+    }
+  }
+
+  mad_tpsa_del(curr_build);
+  mad_tpsa_del(tmp_res);
+  free_cached(nv, mo, cache);
+}
+
+void
+mad_tpsa_compose_slow(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
 {
 #ifdef TRACE
   printf("tpsa_compose\n");
