@@ -185,5 +185,11 @@ end
 function M.subst(ma, mb, lb, mc)
     clib.mad_tpsa_compose(1, ma, lb, mb, 1, mc)
 end
+
+function M.compose_raw(sa, ma, sb, mb, sc, mc)
+  clib.mad_tpsa_compose(sa, ma, sb, mb, sc, mc)
+end
+
+
 -- end -------------------------------------------------------------------------
 return M

@@ -94,71 +94,81 @@ local function make_To_ffi(mono_t, To)
   return To_ffi
 end
 
+-- ARGUMENTS BUILD -------------------------------------------------------------
 -- use functions return to avoid unpack which is not compiled
+
 local function args_bin_op()
   return M.full(), M.full(), M.new_instance()
 end
 
-local function args_subst_tpsa()
+-- --- SUBST -------------------------------------------------------------------
+
+local function args_subst_tpsa(t, nv, refs, size_a)
   ffi.cdef("typedef struct tpsa T")
   local tpsa_carr, tpsa_arr  = ffi.typeof("const T* [?]"), ffi.typeof("T* [?]")
 
-  local ptrs = {}  -- save some references to avoid GC
-  local t, nv = M.full(), M.nv
-
-  local cma, cmb, cmc = tpsa_carr(1), tpsa_carr(nv), tpsa_arr(1)
-  ptrs.ma, ptrs.mc = t:cpy(), t:new()
-  cma[0] , cmc[0]  = ptrs.ma, ptrs.mc
-  for i=1,nv do
-    ptrs[i]  = t:cpy()
-    cmb[i-1] = ptrs[i]
+  local cma, cmb, cmc = tpsa_carr(size_a), tpsa_carr(nv), tpsa_arr(size_a)
+  for i=1,size_a do
+    refs.ma[i], refs.mc[i] = t:cpy()   , t:new()
+    cma[i-1]  , cmc[i-1]   = refs.ma[i], refs.mc[i]
   end
-  return cma, cmb, nv, cmc, ptrs
+  for i=1,nv do
+    refs[i]  = t:cpy()
+    cmb[i-1] = refs[i]
+  end
+
+  if size_a == 1 then return cma, cmb, nv, cmc, refs end
+  return size_a, cma, nv, cmb, size_a, cmc
 end
 
-local function args_subst_berz()
+local function args_subst_berz(t, nv, refs, size_a)
   local intArr = ffi.typeof("int [?]")
 
-  local ptrs = {}
-  local t, nv = M.full(), M.nv
-
-  local cma, cmb, cmc = intArr(1), intArr(nv), intArr(1)
-  ptrs.ma, ptrs.mc = t:cpy()       , t:new()
-  cma[0] , cmc[0]  = ptrs.ma.idx[0], ptrs.mc.idx[0]
+  local cma, cmb, cmc = intArr(size_a), intArr(nv), intArr(size_a)
+  for i=1,size_a do
+    refs.ma[i], refs.mc[i] = t:cpy()   , t:new()
+    cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
+  end
   for i=1,nv do
-    ptrs[i]  = t:cpy()
-    cmb[i-1] = ptrs[i].idx[0]
+    refs[i]  = t:cpy()
+    cmb[i-1] = refs[i].idx[0]
   end
   t:destroy()
-  return cma, cmb, intArr(1, {nv}), cmc, ptrs
+  if size_a == 1 then return cma, cmb, intArr(1, {nv}), cmc, refs end
+  return intArr(1, size_a), cma, intArr(1, nv), cmb, intArr(1, size_a), cma
+
 end
 
-local function args_subst_yang()
+local function args_subst_yang(t, nv, refs, size_a)
+  if size_a ~= 1 then error("No compose Yang. Use subst") end
   local uintArr = ffi.typeof("unsigned int[?]")
 
-  local ptrs = {}
-  local t, nv = M.full(), M.nv
-
   local cma, cmb, cmc = uintArr(1), uintArr(nv), uintArr(1)
-  ptrs.ma, ptrs.mc = t             , t:new()
-  cma[0] , cmc[0]  = ptrs.ma.idx[0], ptrs.mc.idx[0]
+  refs.ma[1], refs.mc[1] = t                , t:new()
+  cma[0]    , cmc[0]     = refs.ma[1].idx[0], refs.mc[1].idx[0]
   for i=1,nv do
-    ptrs[i]  = t:cpy()
-    cmb[i-1] = ptrs[i].idx[0]
+    refs[i]  = t:cpy()
+    cmb[i-1] = refs[i].idx[0]
   end
-  return cma, cmb, uintArr(1, {nv}), cmc, ptrs
+  return cma, cmb, uintArr(1, {nv}), cmc, refs
 end
 
-local function args_subst()
+local function args_subst(size_a)
+  local refs = { ma={}, mb={}, mc={} }  -- save some references to avoid GC
   local args = {
     tpsa = args_subst_tpsa,
     berz = args_subst_berz,
     yang = args_subst_yang,
   }
-  return args[M.mod.name]()
+  return args[M.mod.name](M.full(), M.nv, refs, size_a or 1)
+end
+
+local function args_compose()
+  return args_subst(M.nv)
 end
 
 
+--------------------------------------------------------------------------------
 
 -- INTERFACE -------------------------------------------------------------------
 
@@ -179,6 +189,7 @@ function M.get_args(fct_name)
     add      = args_bin_op,
     sub      = args_bin_op,
     subst    = args_subst,
+    compose_raw = args_compose,
     generic  = function() return M.To                end
   }
   return args[fct_name]()

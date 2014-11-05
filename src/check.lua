@@ -112,7 +112,7 @@ local function check_subst_with_berz(mod)
 
   berz.subst(ma, mb, lb, mc)
 
-  check_identical(ptrs_t.mc, ptrs_b.mc, 0.001, factory.To, "subst")
+  check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 0.001, factory.To, "subst")
 
   factory.setup{ mod=mod }  -- set it back
 end
