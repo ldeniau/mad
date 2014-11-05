@@ -406,6 +406,21 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 }
 
 void
+mad_tpsa_mulc(const T *a, T *r, num_t v)
+{
+#ifdef TRACE
+  printf("tpsa_mul_constant %lf\n", v);
+#endif
+  assert(a && r);
+  assert(a->desc == r->desc);
+
+  r->nz = a->nz;
+  r->mo = a->mo;
+  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo + 1]; ++i)
+    r->coef[i] = a->coef[i] * v;
+}
+
+void
 mad_tpsa_pow(const T *a, T *orig_res, int p)
 {
 #ifdef TRACE
@@ -493,7 +508,6 @@ free_cached(int nv, int mo, T *cached[nv][mo])
     free(cached[v][o]);
 }
 
-
 void
 mad_tpsa_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
 {
@@ -506,35 +520,33 @@ mad_tpsa_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
 
   D *desc_a = ma[0]->desc;
   ord_t *curr_mono;
-  int nv = desc_a->nv, mo = desc_a->mo, coef_lim;
+  int nv = desc_a->nv, mo = desc_a->mo, coef_lim = desc_a->hpoly_To_idx[mo+1];
   T *cache[nv][mo];
   init_cached(nv, mo, cache, mb);
 
   T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
   const T *powered = NULL;
 
-  for (int ia = 0; ia < sa; ++ia) {
-    coef_lim = desc_a->hpoly_To_idx[ma[ia]->mo + 1];
+  for (int coef_idx = 0; coef_idx < coef_lim; ++coef_idx) {
+    mad_tpsa_clean(curr_build);
 
-    for (int mono_idx = 0; mono_idx < coef_lim; ++mono_idx) {
-      curr_mono = desc_a->To[mono_idx];
-
-      mad_tpsa_clean(curr_build);
-      num_t curr_coef = mad_tpsa_geti(ma[ia], mono_idx);
-      if (curr_coef == 0)
+    for (int ia = 0; ia < sa; ++ia) {
+      if (ma[ia]->coef[coef_idx] == 0)
         continue;
 
-      mad_tpsa_seti(curr_build, 0, curr_coef);
-      for (int var = 0; var < nv; ++var) {
-        if (curr_mono[var]) {
-          powered = get_cached(cache[var], curr_mono[var]);
-          mad_tpsa_mul(curr_build, powered, tmp_res);
-          swap(&curr_build, &tmp_res);
-        }
+      if (! curr_build->nz) {
+        curr_mono = desc_a->To[coef_idx];
+        curr_build->coef[0] = 1;
+        for (int var = 0; var < nv; ++var)
+          if (curr_mono[var]) {
+            powered = get_cached(cache[var], curr_mono[var]);
+            mad_tpsa_mul(curr_build, powered, tmp_res);
+            swap(&curr_build, &tmp_res);
+          }
       }
 
-      mad_tpsa_add(mc[ia], curr_build, tmp_res);
-      mad_tpsa_copy(tmp_res, mc[ia]);
+      mad_tpsa_mulc(curr_build, tmp_res, ma[ia]->coef[coef_idx]);
+      mad_tpsa_add(mc[ia], tmp_res, mc[ia]);
     }
   }
 
