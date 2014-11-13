@@ -296,6 +296,9 @@ mad_tpsa_geti(const T *t, int i)
 void
 mad_tpsa_seti(T *t, int i, num_t v)
 {
+#ifdef TRACE
+  printf("mad_tpsa_seti for %p i=%d v=%lf\n", (void*)t, i, v);
+#endif
   assert(t);
   assert(i >= 0 && i < t->desc->nc);
   ord_t *ords = t->desc->ords;
@@ -465,97 +468,41 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
 }
 
 static inline void
-init_required(int max_coef, int sa, const T *ma[], char required[])
+check_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
 {
-  assert(required && ma);
-  memset(required, 0, max_coef);
-  double eps = 1e-20;
-  for (int c = 0; c < max_coef; ++c)
-  for (int i = 0; i <   sa    ; ++i)
-    if (ma[i]->coef[c] < eps || ma[i]->coef[c] > eps)
-      required[c] = 1;
+  assert(ma && mb && mc);
+  assert(sa && sb && sc);
+  assert(sa == sc);
+  assert(sb == ma[0]->desc->nv);
+  for (int i = 1; i < sa; ++i) {
+    assert(ma[i]->desc == ma[i-1]->desc);
+    assert(ma[i]->desc == mc[i]->desc);
+  }
+  for (int i = 1; i < sb; ++i)
+    assert(mb[i]->desc == mb[i-1]->desc);
 }
 
 static inline void
-init_cached(int sb, const T *mb[sb], int max_coef, T *cached[max_coef])
+compose(int pos, ord_t o, ord_t curr_mono[], int sa, const T *ma[], const T *mb[], T *mc[], T *tmps[], D *da)
 {
-#ifdef TRACE
-  printf("init_cached :: max_coef=%d\n", max_coef);
-#endif
-  assert(cached && mb);
-  int i = 1;
-  for (; i <=    sb   ; ++i) cached[i] = (T*) mb[i-1];
-  for (; i <  max_coef; ++i) cached[i] = NULL;
-}
-
-static inline T*
-get_cached(int idx, T *cached[], T *tmp_res)
-{
-#ifdef TRACE
-  printf("get_cached idx=%d :: ", idx);
-#endif
-  assert(cached);
-  D *d = cached[1]->desc;
-  assert(idx < d->hpoly_To_idx[d->mo + 1]);
-
-  if (!cached[idx]) {
-#ifdef TRACE
-    printf("cache missed; rebuilding\n");
-#endif
-    cached[idx] = mad_tpsa_new(cached[1]);
-    cached[idx]->coef[0] = 1;
-
-    ord_t *mono = d->To[idx];
-    for (int var = 0; var < d->nv; ++var)
-      for (int o = 0; o < mono[var]; o++) {
-        mad_tpsa_mul(cached[idx], cached[var+1], tmp_res);
-        mad_tpsa_copy(tmp_res, cached[idx]);
-      }
-  }
-#ifdef TRACE
-  else
-    printf("cache hit\n");
-#endif
-
-  return cached[idx];
-}
-
-static inline void
-update_cached(char required[], const int curr_idx, T *cached[])
-{
-#ifdef TRACE
-  printf("update_cached curr_idx=%d\n", curr_idx);
-#endif
-
-  assert(required && cached);
-
-  D *d = cached[curr_idx]->desc;
-  if (d->ords[curr_idx] == d->mo) {  // nothing to create
-     if(d->mo != 1) {                // ord 1 wasn't allocated by you
-      free(cached[curr_idx]);
-      cached[curr_idx] = NULL;
+  // mono_print(da->nv, curr_mono);
+  // printf("\n");
+  for(  ; pos < da->nv; ++pos) {
+    curr_mono[pos]++;
+    if (desc_mono_isvalid(da, da->nv, curr_mono)) {
+      mad_tpsa_mul(tmps[o], mb[pos], tmps[o+1]);
+      compose(pos, o+1, curr_mono, sa, ma, mb, mc, tmps, da);
     }
-    return;
+    curr_mono[pos]--;
   }
-
-  int new_idx = 0;
-  ord_t new_mono[d->nv];
-
-  // make next order monos from this one
-  for (int idx_ord1 = 1; idx_ord1 <= d->nv; ++idx_ord1) {
-    mono_add(d->nv, d->To[idx_ord1], d->To[curr_idx], new_mono);
-    new_idx = desc_get_idx(d, d->nv, new_mono);
-    assert(new_idx > curr_idx && new_idx < d->hpoly_To_idx[d->mo+1]);
-
-    if (required[new_idx] && !cached[new_idx]) {
-      cached[new_idx] = mad_tpsa_newd(d);
-      mad_tpsa_mul(cached[idx_ord1], cached[curr_idx], cached[new_idx]);
+  int idx = desc_get_idx(da, da->nv, curr_mono);
+  double coef_val;
+  for (int i = 0; i < sa; ++i) {
+    if ((coef_val = ma[i]->coef[idx])) {
+      mad_tpsa_mulc(tmps[o], tmps[-1], coef_val);
+      mad_tpsa_add(mc[i], tmps[-1], mc[i]);
     }
   }
-
-  if (curr_idx <= d->nv) return;        // ord1 was not allocated by you
-  free(cached[curr_idx]);
-  cached[curr_idx] = NULL;
 }
 
 void
@@ -564,47 +511,22 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 #ifdef TRACE
   printf("tpsa_compose\n");
 #endif
-  assert(ma && mb && mc);
-  assert(ma[0]->desc->nv == sb);
-  (void)sc;
+  check_compose(sa, ma, sb, mb, sc, mc);
+  D *da = ma[0]->desc;
 
-  D *desc_a = ma[0]->desc;
-  int max_coef = desc_a->hpoly_To_idx[desc_a->mo+1];
-  num_t coef_val;
+  ord_t mono[da->nv];
+  T *tmps[da->mo+2];
+  for (int v = 0; v < da->nv  ; ++v) mono[v] = 0;
+  for (int o = 0; o < da->mo+2; ++o) tmps[o] = mad_tpsa_newd(da);
+  mad_tpsa_seti(tmps[1], 0, 1.0);
 
-  T *cached[max_coef];
-  char required[max_coef];
-  init_required(max_coef, sa, ma, required);
-  init_cached(sb, mb, max_coef, cached);
+  compose(0, 0, mono, sa, ma, mb, mc, tmps+1, da);
 
-  T *curr_build, *tmp_res = mad_tpsa_new(ma[0]);
-
-  // ord 0
-  for (int i = 0; i < sa; ++i)
-    mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
-
-  for (int coef_idx = 1; coef_idx < max_coef; ++coef_idx) {
-    if (!required[coef_idx])
-      continue;
-
-    curr_build = get_cached(coef_idx, cached, tmp_res);
-
-    for (int ia = 0; ia < sa; ++ia) {
-      coef_val = ma[ia]->coef[coef_idx];
-      if (coef_val) {
-        mad_tpsa_mulc(curr_build, tmp_res, coef_val);
-        mad_tpsa_add(mc[ia], tmp_res, mc[ia]);
-      }
-    }
-
-    update_cached(required, coef_idx, cached);
-  }
-
-  mad_tpsa_del(tmp_res);
+  for (int o = 0; o < da->mo+2; ++o) mad_tpsa_del(tmps[o]);
 }
 
 void
-mad_tpsa_compose_slow(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
+mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 {
 #ifdef TRACE
   printf("tpsa_compose\n");

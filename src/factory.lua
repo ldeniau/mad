@@ -80,8 +80,8 @@ local function table_by_ords(nv, no)
       until m[i] > a[i] or m[i] >= ord
 
     end
-    t.ps[ord]   = j
-    t.pe[ord-1] = j-1
+    t.ps[ord] = j
+    t.pe[ord] = #t
   end
   return t
 end
