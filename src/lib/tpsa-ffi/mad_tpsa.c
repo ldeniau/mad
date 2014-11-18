@@ -20,6 +20,13 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   num_t   coef[];
 };
 
+struct compose_ctx {
+  int sa;
+  const T **ma, **mb;
+        T **mc, **tmps;
+  D *da;
+};
+
 // --- DEBUGGING --------------------------------------------------------------
 
 static inline void
@@ -468,7 +475,7 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
 }
 
 static inline void
-check_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
+check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 {
   assert(ma && mb && mc);
   assert(sa && sb && sc);
@@ -483,24 +490,23 @@ check_compose(int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[])
 }
 
 static inline void
-compose(int pos, ord_t o, ord_t curr_mono[], int sa, const T *ma[], const T *mb[], T *mc[], T *tmps[], D *da)
+compose(int pos, ord_t o, ord_t curr_mono[], const struct compose_ctx *ctx)
 {
-  // mono_print(da->nv, curr_mono);
-  // printf("\n");
+  D *da = ctx->da;
   for(  ; pos < da->nv; ++pos) {
     curr_mono[pos]++;
     if (desc_mono_isvalid(da, da->nv, curr_mono)) {
-      mad_tpsa_mul(tmps[o], mb[pos], tmps[o+1]);
-      compose(pos, o+1, curr_mono, sa, ma, mb, mc, tmps, da);
+      mad_tpsa_mul(ctx->tmps[o], ctx->mb[pos], ctx->tmps[o+1]);
+      compose(pos, o+1, curr_mono, ctx);
     }
     curr_mono[pos]--;
   }
   int idx = desc_get_idx(da, da->nv, curr_mono);
   double coef_val;
-  for (int i = 0; i < sa; ++i) {
-    if ((coef_val = ma[i]->coef[idx])) {
-      mad_tpsa_mulc(tmps[o], tmps[-1], coef_val);
-      mad_tpsa_add(mc[i], tmps[-1], mc[i]);
+  for (int i = 0; i < ctx->sa; ++i) {
+    if ((coef_val = ctx->ma[i]->coef[idx])) {
+      mad_tpsa_mulc(ctx->tmps[o], ctx->tmps[-1], coef_val);
+      mad_tpsa_add(ctx->mc[i], ctx->tmps[-1], ctx->mc[i]);
     }
   }
 }
@@ -512,6 +518,7 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   printf("tpsa_compose\n");
 #endif
   check_compose(sa, ma, sb, mb, sc, mc);
+
   D *da = ma[0]->desc;
 
   ord_t mono[da->nv];
@@ -520,7 +527,9 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   for (int o = 0; o < da->mo+2; ++o) tmps[o] = mad_tpsa_newd(da);
   mad_tpsa_seti(tmps[1], 0, 1.0);
 
-  compose(0, 0, mono, sa, ma, mb, mc, tmps+1, da);
+  const struct compose_ctx ctx = {sa, ma, mb, mc, tmps+1, da};
+
+  compose(0, 0, mono, &ctx);
 
   for (int o = 0; o < da->mo+2; ++o) mad_tpsa_del(tmps[o]);
 }
