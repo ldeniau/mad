@@ -4,7 +4,7 @@ local clock, printf = os.clock, factory.printf
 local header_fmt = "nv\tno\tnl       \ttime (s)\n"
 local line_fmt   = "%d\t%d\t%8d\t%.3f\n"
 
-local function timeit(fun, nl, p1, p2, p3, p4, p5, p6)
+local function timeit(fun, nl, p1, p2, p3, p4, p5, p6, p7)
   local start = clock()
   for l=1,nl do fun(p1, p2, p3, p4, p5, p6) end
   return clock() - start

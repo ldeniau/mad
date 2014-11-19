@@ -118,7 +118,7 @@ local function args_subst_tpsa(t, nv, refs, size_a)
   end
 
   if size_a == 1 then return cma, cmb, nv, cmc, refs end
-  return size_a, cma, nv, cmb, size_a, cmc
+  return size_a, cma, nv, cmb, size_a, cmc, refs
 end
 
 local function args_subst_berz(t, nv, refs, size_a)
@@ -135,7 +135,7 @@ local function args_subst_berz(t, nv, refs, size_a)
   end
   t:destroy()
   if size_a == 1 then return cma, cmb, intArr(1, {nv}), cmc, refs end
-  return intArr(1, size_a), cma, intArr(1, nv), cmb, intArr(1, size_a), cma
+  return intArr(1, size_a), cma, intArr(1, nv), cmb, intArr(1, size_a), cma, refs
 
 end
 
