@@ -532,6 +532,8 @@ init_required(int sa, const T *ma[sa], char required[])
         required[c] = 1;
   }
 
+  required[0] = 1;    // root is always required
+
   // make fathers also required
   ord_t *mono = NULL;
   int j, father = -1;

@@ -113,8 +113,8 @@ local function args_subst_tpsa(t, nv, refs, size_a)
     cma[i-1]  , cmc[i-1]   = refs.ma[i], refs.mc[i]
   end
   for i=1,nv do
-    refs[i]  = t:cpy()
-    cmb[i-1] = refs[i]
+    refs.mb[i] = t:cpy()
+    cmb[i-1]   = refs.mb[i]
   end
 
   if size_a == 1 then return cma, cmb, nv, cmc, refs end
@@ -126,12 +126,12 @@ local function args_subst_berz(t, nv, refs, size_a)
 
   local cma, cmb, cmc = intArr(size_a), intArr(nv), intArr(size_a)
   for i=1,size_a do
-    refs.ma[i], refs.mc[i] = t:cpy()   , t:new()
+    refs.ma[i], refs.mc[i] = t:cpy()          , t:new()
     cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
   end
   for i=1,nv do
-    refs[i]  = t:cpy()
-    cmb[i-1] = refs[i].idx[0]
+    refs.mb[i] = t:cpy()
+    cmb[i-1]   = refs.mb[i].idx[0]
   end
   t:destroy()
   if size_a == 1 then return cma, cmb, intArr(1, {nv}), cmc, refs end
@@ -147,8 +147,8 @@ local function args_subst_yang(t, nv, refs, size_a)
   refs.ma[1], refs.mc[1] = t                , t:new()
   cma[0]    , cmc[0]     = refs.ma[1].idx[0], refs.mc[1].idx[0]
   for i=1,nv do
-    refs[i]  = t:cpy()
-    cmb[i-1] = refs[i].idx[0]
+    refs.mb[i] = t:cpy()
+    cmb[i-1]   = refs.mb[i].idx[0]
   end
   return cma, cmb, uintArr(1, {nv}), cmc, refs
 end
