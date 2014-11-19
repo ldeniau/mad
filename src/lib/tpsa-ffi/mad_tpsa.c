@@ -21,7 +21,8 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
 };
 
 struct compose_ctx {
-  int sa;
+  int sa, calls;
+  char *required;
   const T **ma, **mb;
         T **mc, **tmps;
   D *da;
@@ -490,24 +491,61 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 }
 
 static inline void
-compose(int pos, ord_t o, ord_t curr_mono[], const struct compose_ctx *ctx)
+compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
 {
   D *da = ctx->da;
-  for(  ; pos < da->nv; ++pos) {
-    curr_mono[pos]++;
-    if (desc_mono_isvalid(da, da->nv, curr_mono)) {
-      mad_tpsa_mul(ctx->tmps[o], ctx->mb[pos], ctx->tmps[o+1]);
-      compose(pos, o+1, curr_mono, ctx);
-    }
-    curr_mono[pos]--;
-  }
   int idx = desc_get_idx(da, da->nv, curr_mono);
+  if (!ctx->required[idx])
+    return;
+
+  if (o > 0)
+    mad_tpsa_mul(ctx->tmps[o-1], ctx->mb[pos], ctx->tmps[o]);
+
   double coef_val;
-  for (int i = 0; i < ctx->sa; ++i) {
+  for (int i = 0; i < ctx->sa; ++i)
     if ((coef_val = ctx->ma[i]->coef[idx])) {
       mad_tpsa_mulc(ctx->tmps[o], ctx->tmps[-1], coef_val);
       mad_tpsa_add(ctx->mc[i], ctx->tmps[-1], ctx->mc[i]);
     }
+
+  for(  ; pos < da->nv; ++pos) {
+    curr_mono[pos]++;
+    if (desc_mono_isvalid(da, da->nv, curr_mono))
+      compose(pos, o+1, curr_mono, ctx);
+    curr_mono[pos]--;
+  }
+}
+
+static inline void
+init_required(int sa, const T *ma[sa], char required[])
+{
+  assert(ma && required);
+  D *d = ma[0]->desc;
+  int nv = d->nv, max_mo = -1, *pi = d->hpoly_To_idx;
+  double eps = 1e-10;
+  memset(required, 0, d->nc);
+  for (int i = 0; i < sa; ++i) {
+    if (ma[i]->mo > max_mo)
+      max_mo = ma[i]->mo;
+    for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
+      if (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps) // != 0
+        required[c] = 1;
+  }
+
+  // make fathers also required
+  ord_t *mono = NULL;
+  int j, father = -1;
+  for (int o = max_mo; o > 1; --o) {
+    for (int c = pi[o]; c < pi[o+1]; ++c)
+      if (required[c]) {
+        mono = d->To[c];
+        for (j = nv-1; j >= 0 && !mono[j]; --j)
+          ; // get j to first non-zero element
+        mono[j]--;
+        father = desc_get_idx(d, nv, mono);
+        mono[j]++;
+        required[father] = 1;
+      }
   }
 }
 
@@ -519,18 +557,24 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 #endif
   check_compose(sa, ma, sb, mb, sc, mc);
 
+  // locals
   D *da = ma[0]->desc;
-
   ord_t mono[da->nv];
   T *tmps[da->mo+2];
+  char required[da->nc];
+
+  // initialization
+  init_required(sa, ma, required);
   for (int v = 0; v < da->nv  ; ++v) mono[v] = 0;
   for (int o = 0; o < da->mo+2; ++o) tmps[o] = mad_tpsa_newd(da);
   mad_tpsa_seti(tmps[1], 0, 1.0);
 
-  const struct compose_ctx ctx = {sa, ma, mb, mc, tmps+1, da};
+  struct compose_ctx ctx = { .sa=sa, .calls=0, .da=da, .required=required,
+                             .ma=ma, .mb=mb,  .mc=mc, .tmps=tmps+1 };
 
   compose(0, 0, mono, &ctx);
 
+  // cleanup
   for (int o = 0; o < da->mo+2; ++o) mad_tpsa_del(tmps[o]);
 }
 
