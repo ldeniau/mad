@@ -1,14 +1,14 @@
 #ifndef TPSA_COMPOSE_TEMPLATE
 #define TPSA_COMPOSE_TEMPLATE
 
-struct compose_ctx {
-  int sa;
-  char *required;
-  const T **ma, **mb;
-        T **mc, **tmps;
-  D *da;
-};
+#define MAX_CACHED_ORDS 4
 
+struct compose_ctx {
+  ord_t curr_cached, max_cached, *complement;
+  int *pi, calls, muls;
+  D *da;
+  T **cached, **tmps;
+};
 
 static inline void
 check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
@@ -25,66 +25,64 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
     assert(mb[i]->desc == mb[i-1]->desc);
 }
 
-static inline void
-compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
-{
-  D *da = ctx->da;
-  int idx = desc_get_idx(da, da->nv, curr_mono);
-  if (!ctx->required[idx])
-    return;
-
-  if (o > 0)
-    mad_tpsa_mul(ctx->tmps[o-1], ctx->mb[pos], ctx->tmps[o]);
-
-  double coef_val;
-  for (int i = 0; i < ctx->sa; ++i)
-    if ((coef_val = ctx->ma[i]->coef[idx]))
-      mad_tpsa_cma(ctx->mc[i], ctx->tmps[o], coef_val, ctx->mc[i]);
-
-  for(  ; pos < da->nv; ++pos) {
-    curr_mono[pos]++;
-    if (desc_mono_isvalid(da, da->nv, curr_mono))
-      compose(pos, o+1, curr_mono, ctx);
-    curr_mono[pos]--;
-  }
-}
-
-static inline void
+static inline int
 init_required(int sa, const T *ma[sa], char required[])
 {
   assert(ma && required);
   D *d = ma[0]->desc;
-  int nv = d->nv, max_mo = -1, *pi = d->hpoly_To_idx;
+  int *pi = d->hpoly_To_idx, max_mo = -1;
   double eps = 1e-10;
-
-  // original nodes
   memset(required, 0, d->nc);
   for (int i = 0; i < sa; ++i) {
     if (ma[i]->mo > max_mo)
       max_mo = ma[i]->mo;
+
     for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
       if (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps) // != 0
         required[c] = 1;
   }
+  return max_mo;
+}
 
-  // root is always required
-  required[0] = 1;
+static inline T*
+get_mono(int c, int tmp, struct compose_ctx *ctx)
+{
+  if (c < ctx->pi[ctx->curr_cached+1] && ctx->cached[c])
+    return ctx->cached[c];
 
-  // fathers of nodes
-  ord_t *mono = NULL;
-  int j, father = -1;
-  for (int o = max_mo; o > 1; --o) {
-    for (int c = pi[o]; c < pi[o+1]; ++c)
-      if (required[c]) {
-        mono = d->To[c];
-        for (j = nv-1; j >= 0 && !mono[j]; --j)
-          ; // get j to first non-zero element
-        mono[j]--;
-        father = desc_get_idx(d, nv, mono);
-        mono[j]++;
-        required[father] = 1;
-      }
+  D *da = ctx->da;
+  T **cached = ctx->cached;
+  int o = 1;
+  if (da->ords[c] > ctx->curr_cached) o = ctx->curr_cached;
+  else                                o = da->ords[c] - 1;
+
+
+  for (int m = ctx->pi[o+1] - 1; m > 0; --m)
+    if (cached[m] && mono_leq(da->nv, da->To[m], da->To[c])) {
+      mono_sub(da->nv, da->To[c], da->To[m], ctx->complement);
+      int compl_idx = desc_get_idx(da, da->nv, ctx->complement);
+      T *t = get_mono(compl_idx, tmp ^ 1, ctx);
+
+#ifdef DEBUG
+      mono_print(da->nv, da->To[c]);
+      printf(" = ");
+      mono_print(da->nv, da->To[m]);
+      mono_print(da->nv, da->To[compl_idx]);
+      printf("\n");
+#endif
+
+      mad_tpsa_mul(t, cached[m], ctx->tmps[tmp]);
+      // ctx->muls++;
+      break;
+    }
+  // update cache
+  if (da->ords[c] <= ctx->max_cached && !cached[c]) {
+    cached[c] = mad_tpsa_newd(cached[1]->desc);
+    mad_tpsa_copy(ctx->tmps[tmp], cached[c]);
+    if (ctx->curr_cached < da->ords[c])
+      ctx->curr_cached = da->ords[c];
   }
+  return ctx->tmps[tmp];
 }
 
 void
@@ -97,23 +95,51 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 
   // locals
   D *da = ma[0]->desc;
-  ord_t mono[da->nv];
-  T *tmps[da->mo+2];
   char required[da->nc];
+  int nv = da->nv, *pi = da->hpoly_To_idx;       // local names
+  ord_t scratch_mono[nv];
 
-  // initialization
-  init_required(sa, ma, required);
-  for (int v = 0; v < da->nv  ; ++v) mono[v] = 0;
-  for (int o = 0; o < da->mo+2; ++o) tmps[o] = mad_tpsa_newd(da);
-  mad_tpsa_seti(tmps[1], 0, 1.0);
+  // init
+  int max_mo = init_required(sa, ma, required);
 
-  struct compose_ctx ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
-                             .da=da, .mb=mb, .tmps=tmps+1  };
+  ord_t to_cache = da->mo < MAX_CACHED_ORDS ? da->mo : MAX_CACHED_ORDS;
+  int cached_size = pi[to_cache+1];
+  T *cached[cached_size], *tmps[2], *t = NULL;
 
-  compose(0, 0, mono, &ctx);
+  /* cached[0] not in use --> */              cached[0] = NULL;
+  for (int c =      1; c <= nv         ; ++c) cached[c] = (T *) mb[c-1];
+  for (int c = nv + 1; c <  cached_size; ++c) cached[c] = NULL;
+  tmps[0] = mad_tpsa_newd(mb[0]->desc);
+  tmps[1] = mad_tpsa_newd(mb[0]->desc);
 
-  // cleanup
-  for (int o = 0; o < da->mo+2; ++o) mad_tpsa_del(tmps[o]);
+  struct compose_ctx ctx = { .da    = da,   .curr_cached = 1,    .muls = 0,
+                             .tmps  = tmps, .cached      = cached,
+                             .calls = 0,    .max_cached  = to_cache,
+                             .pi    = pi,   .complement  = scratch_mono };
+
+  // compose
+  // cleanup & ord 0
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_clean(mc[i]);
+    mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
+  }
+
+  // ords 1..max_mo
+  for (int c = 1; c < pi[max_mo+1]; ++c) {
+    if (!required[c])
+      continue;
+
+    t = get_mono(c, 0, &ctx);
+    for (int i = 0; i < sa; ++i)
+      if (ma[i]->coef[c])
+        mad_tpsa_cma(mc[i], t, ma[i]->coef[c], mc[i]);
+  }
+
+  // finalize
+  for (int c = nv + 1; c < cached_size; ++c) mad_tpsa_del(cached[c]);
+  mad_tpsa_del(tmps[0]);
+  mad_tpsa_del(tmps[1]);
+  // printf("muls=%d\n",ctx.muls);
 }
 
 static inline void
@@ -153,5 +179,7 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
     }
   }
 }
+
+#undef MAX_CACHED_ORDS
 
 #endif

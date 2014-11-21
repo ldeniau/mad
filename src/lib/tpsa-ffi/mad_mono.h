@@ -14,6 +14,7 @@ static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]); // reverse partial greater or equal
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
 static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
+static void  mono_sub     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static void  mono_print   (int n, const ord_t a[n]);
 
 // -----------------------------------------------------------------------------
@@ -78,6 +79,13 @@ mono_add(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 {
   assert(a && b && r);
   for (int i = 0; i < n; ++i) r[i] = a[i] + b[i];
+}
+
+static inline void
+mono_sub(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
+{
+  assert(a && b && r);
+  for (int i = 0; i < n; ++i) r[i] = a[i] - b[i];
 }
 
 #include <stdio.h>

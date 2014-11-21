@@ -71,8 +71,10 @@ local function check_identical(t1, t2, eps, To, fct_name)
       printf("\n mono: ")
       mono_print(To[m])
       printf("\n")
-      t1:print()
-      t2:print()
+      if #To < 50 then
+        t1:print()
+        t2:print()
+      end
       error("Coefficients differ among libraries for " .. fct_name)
     end
   end
@@ -119,7 +121,7 @@ local function check_subst_with_berz(mod)
 
   berz.subst(ma, mb, lb, mc)
 
-  check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 1e-13, factory.To, "subst")
+  check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 1e-10, factory.To, "subst")
 
   factory.setup(mod)  -- restore original
 end
@@ -207,7 +209,7 @@ function M.do_all_checks(mod, nv, no)
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
---  check_subst_with_berz(mod)
+  check_subst_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
 end
