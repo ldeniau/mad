@@ -34,7 +34,8 @@ void  mad_tpsa_sub     (const T *a, const T *b, T *c);
 void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 void  mad_tpsa_pow     (const T *a,       T *b, int p);
 
-void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+void  mad_tpsa_lin     (num_t ca, const T *a   , num_t cb, const T *b   ,         T *c);
+void  mad_tpsa_compose (int   sa, const T *ma[], int   sb, const T *mb[], int sc, T *mc[]);
 
 void  mad_tpsa_print   (const T *t);
 

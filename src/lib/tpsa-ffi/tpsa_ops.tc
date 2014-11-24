@@ -1,0 +1,269 @@
+#ifndef TPSA_OPS_TEMPLATE
+#define TPSA_OPS_TEMPLATE
+
+// --- LOCAL FUNCTIONS --------------------------------------------------------
+
+static inline void
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
+{
+#ifdef TRACE
+  printf("triang_mul oa=%d ob=%d\n", oa, oa);
+#endif
+  int iao = pi[oa], ibo = pi[oa];  // offsets for shifting to 0
+  int l_size = (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa] + 1) / 2, oc = oa + oa;
+  (void)oc; (void)l_size;  // avoid warning when compiling without assert
+
+  for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
+  for (idx_t ia = ib + 1; ia < pi[oa+1]; ia++) {
+    int il = hpoly_idx_triang(ib-ibo, ia-iao);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    if (ic >= 0) {
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
+  }
+
+  for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
+    int il = hpoly_idx_triang(ia-iao, ia-iao);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    if (ic >= 0) {
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
+      cc[ic] = cc[ic] + ca[ia]*cb[ia];
+    }
+  }
+}
+
+static inline void
+hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+{
+#ifdef TRACE
+  printf("sym_mul oa=%d ob=%d \n", oa, ob);
+#endif
+  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
+  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+  (void)oc; (void)l_size;  // avoid warning when compiling without assert
+
+  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
+  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
+    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    if (ic >= 0) {
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    }
+  }
+}
+
+static inline void
+hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+{
+#ifdef TRACE
+  printf("asym_mul oa=%d ob=%d \n", oa, ob);
+#endif
+  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
+  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+  (void)oc; (void)l_size;  // avoid warning when compiling without assert
+
+  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
+  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
+    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+    assert(0 <= il && il < l_size);
+
+    int ic = l[il];
+    if (ic >= 0) {
+      assert(pi[oc] <= ic && ic < pi[oc+1]);
+      cc[ic] = cc[ic] + ca[ia]*cb[ib];
+    }
+  }
+}
+
+static inline void
+hpoly_mul(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("poly_mul\n");
+#endif
+  D *dc = c->desc;
+  const idx_t *l = NULL;
+  int *ps = dc->hpoly_To_idx, hod = dc->mo / 2;
+  const num_t *ca  = a->coef, *cb  = b->coef;
+  bit_t   nza = a->nz  ,  nzb = b->nz;
+  num_t *cc  = c->coef;
+
+#ifdef _OPENMP
+#pragma omp parallel for
+  for (int i=2; i <= c->mo; i++) {
+    int oc = !(i & 1) ? 1+i/2 : c->mo+1-i/2;
+#else
+  for (int oc=2; oc <= c->mo; oc++) {
+#endif
+
+    for (int j=1; j <= (oc-1)/2; ++j) {
+      int oa = oc-j, ob = j;            // oa > ob
+      l = dc->L[oa*hod + ob];
+      assert(l);
+
+      if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
+        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
+        c->nz = bset(c->nz,oc);
+      }
+      else if (bget(nza,oa) && bget(nzb,ob)) {
+        hpoly_asym_mul(ca,cb,cc, l, oa,ob,ps);
+        c->nz = bset(c->nz,oc);
+      }
+      else if (bget(nza,ob) && bget(nzb,oa)) {
+        hpoly_asym_mul(cb,ca,cc, l, oa,ob,ps);
+        c->nz = bset(c->nz,oc);
+      }
+    }
+
+    if (! (oc & 1)) {  // even oc, triang matrix
+      int hoc = oc/2;
+      l = dc->L[hoc*hod + hoc];
+      assert(l);
+      if (bget(nza,hoc) && bget(nzb,hoc) ) {
+        hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
+        c->nz = bset(c->nz,oc);
+      }
+    }
+  }
+}
+
+
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
+
+void
+mad_tpsa_lin(num_t c1, const T *a, num_t c2, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_lin\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && b->desc == c->desc);
+
+  if (a->mo > b->mo) {  // swap so that a is the shortest
+    const T *tmp = a;
+    a = b;
+    b = tmp;
+
+    num_t ctmp = c1;
+    c1 = c2;
+    c2 = ctmp;
+  }
+
+  c->nz = (c1 ? a->nz : 0) | (c2 ? b->nz : 0);
+  c->mo = a->mo > b->mo ? a->mo : b->mo;
+
+  const num_t *ca = a->coef, *cb = b->coef;
+  int i = 0, *pi = a->desc->hpoly_To_idx;
+  for ( ; i < pi[a->mo+1]; ++i) c->coef[i] = c1*ca[i] + c2*cb[i];
+  for ( ; i < pi[b->mo+1]; ++i) c->coef[i] =            c2*cb[i];
+  for ( ; i < c->desc->nc; ++i) c->coef[i] = 0;
+}
+
+
+void
+mad_tpsa_add(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_add\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+
+  mad_tpsa_lin(1.0, a, 1.0, b, c);
+}
+
+void
+mad_tpsa_sub(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_sub\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+  mad_tpsa_lin(1.0, a, -1.0, b, c);
+}
+
+void
+mad_tpsa_mul(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_mul\n");
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && a->desc == c->desc);
+
+  num_t a0 = a->coef[0], b0 = b->coef[0];
+  mad_tpsa_lin(b0, a, a0, b, c);
+  c->coef[0] -= a0 * b0;                 // was done twice in lin
+  c->mo = imin(a->mo + b->mo, c->desc->mo);
+
+  if (c->mo >= 2)
+    hpoly_mul(a, b, c);
+}
+
+void
+mad_tpsa_cma(const T *a, const T *b, num_t v, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_mul_constant %lf\n", v);
+#endif
+  assert(a && b && c);
+  assert(a->desc == b->desc && b->desc == c->desc);
+  mad_tpsa_lin(1.0, a, v, b, c);
+}
+
+void
+mad_tpsa_pow(const T *a, T *orig_res, int p)
+{
+#ifdef TRACE
+  printf("tpsa_pow %p to %d\n", (void*)a, p);
+#endif
+  assert(a && orig_res);
+  assert(a->desc == orig_res->desc);
+  assert(p >= 0);
+
+  if (p == 0) {
+    mad_tpsa_clean(orig_res);
+    mad_tpsa_seti(orig_res, 0, 1);
+    return;
+  }
+  if (p == 1) {
+    mad_tpsa_copy(a, orig_res);
+    return;
+  }
+
+  // init: base = a, r = 1, tmp
+  T *base = mad_tpsa_new(a), *r = orig_res, *tmp_res = mad_tpsa_new(a);
+  mad_tpsa_copy(a, base);
+  mad_tpsa_clean(r);
+  mad_tpsa_seti(r, 0, 1);
+
+  while(p > 1) {
+    if (p & 1) {
+      mad_tpsa_mul(base, r, tmp_res);
+      swap(&r, &tmp_res);
+    }
+    mad_tpsa_mul(base, base, tmp_res);
+    swap(&base, &tmp_res);
+    p /= 2;
+  }
+  mad_tpsa_mul(base, r, tmp_res);
+
+  // save result and dealloc
+  mad_tpsa_copy(tmp_res, orig_res);
+  if (base    != orig_res) mad_tpsa_del(base);
+  if (r       != orig_res) mad_tpsa_del(r);
+  if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
+}
+
+#endif
