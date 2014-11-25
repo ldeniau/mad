@@ -202,13 +202,22 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
 
+  if (a->desc->mo == 1) {
+    num_t a0 = a->coef[0], b0 = b->coef[0];
+    c->coef[0] = a0 * b0;
+    for (int i = 1; i <= a->desc->nv; ++i)
+      c->coef[i] = a0*b->coef[i] + b0*a->coef[i];
+    c->nz = (b0 ? a->nz : 0) | (a0 ? b->nz : 0);
+    c->mo = a->mo > b->mo ? a->mo : b->mo;
+    return;
+  }
+
   num_t a0 = a->coef[0], b0 = b->coef[0];
   mad_tpsa_lin(b0, a, a0, b, c);
   c->coef[0] -= a0 * b0;                 // was done twice in lin
   c->mo = imin(a->mo + b->mo, c->desc->mo);
 
-  if (c->mo >= 2)
-    hpoly_mul(a, b, c);
+  hpoly_mul(a, b, c);
 }
 
 void
