@@ -1,4 +1,4 @@
-local factory = require"factory"
+local factory, berz = require"factory", require"lib.tpsaBerz"
 local rand = math.random
 local printf, fprintf, mono_print = factory.printf, factory.fprintf, factory.mono_print
 
@@ -82,8 +82,7 @@ local function check_bin_with_berz(mod)
     M.print_all(t1s[fi], t2s[fi])  -- print input
   end
 
-  local berz = require"lib.tpsaBerz"
-  factory.setup{ mod=berz, need_ffi=0 }
+  factory.setup(berz)
   for fi=1,#funcs do
     b1s[fi], b2s[fi], brs[fi] = factory.get_args(funcs[fi])
   end
@@ -98,7 +97,7 @@ local function check_bin_with_berz(mod)
     M.print(trs[fi])                -- print output
   end
 
-  factory.setup{ mod=mod, need_ffi=0 }  -- set it back
+  factory.setup(mod)  -- restore original
 end
 
 local function check_subst_with_berz(mod)
@@ -106,29 +105,34 @@ local function check_subst_with_berz(mod)
   ma, mb, lb, mc, ptrs_t = factory.get_args("subst")
   mod.subst(ma, mb, lb, mc)
 
-  local berz = require"lib.tpsaBerz"
-  factory.setup{ mod=berz }
+  factory.setup(berz)
   ma, mb, lb, mc, ptrs_b = factory.get_args("subst")
 
   berz.subst(ma, mb, lb, mc)
 
   check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 0.001, factory.To, "subst")
 
-  factory.setup{ mod=mod }  -- restore mod
+  factory.setup(mod)  -- restore original
 end
 
 local function check_der_with_berz(mod)
   local ma, var, mr = factory.get_args("der")
   mod.der(ma, var, mr)
 
-  local berz = require"lib.tpsaBerz"
-  factory.setup{ mod=berz }
+  factory.setup(berz)
   local ba, _, br = factory.get_args("der")
   berz.der(ba, var, br)
 
   check_identical(mr, br, 0.0001, factory.To, "der")
 
-  factory.setup{ mod=mod }   -- restore mod
+  factory.setup(mod)  -- restore original
+end
+
+local function check_abs_with_berz(mod)
+  local t = factory.get_args("abs")
+  local tr = mod.abs(t)
+
+  factory.setup(berz)
 end
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
@@ -146,7 +150,7 @@ function M.do_all_checks(mod, nv, no)
   end
 
   fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
-  factory.setup{ mod=mod, nv=nv, no=no }
+  factory.setup(mod,nv,no)
   check_coeff()
 
   if mod.name == "berz" then return end

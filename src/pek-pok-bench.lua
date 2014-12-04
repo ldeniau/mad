@@ -26,7 +26,7 @@ local function bench(mod_name, fct_name, filename)
   for i=1,#NL do
     check.do_all_checks(tpsa, NV[i], NO[i])
 
-    factory.setup{tpsa, NV[i], NO[i]}
+    factory.setup(tpsa, NV[i], NO[i])
     local t = factory.new_instance()
     Ts[i] = timeit(tpsa[fct_name], NL[i], t, factory.get_args(fct_name))
 

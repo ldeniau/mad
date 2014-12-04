@@ -86,11 +86,20 @@ local function table_by_ords(nv, no)
   return t
 end
 
-local function make_To_ffi(mono_t, To)
-  if not mono_t then return To end
+local function make_To_ffi()
+  if M.To_ffi and M.To_ffi.mono_t == M.mod.mono_t
+              and M.To_ffi.nv     == M.nv
+              and M.To_ffi.no     == M.no
+  then return M.To_ffi end
 
-  local To_ffi = { ps=To.ps, pe=To.pe }
+  local To = M.To
+  local mono_t = M.mod.mono_t
+  if not mono_t then return M.To end
+
+  local To_ffi = { ps=To.ps, pe=To.pe, mono_t=mono_t, nv=M.nv, no=M.no }
   for i=0,#To do To_ffi[i] = mono_t(#To[i], To[i]) end
+
+  M.To_ffi = To_ffi
   return To_ffi
 end
 
@@ -180,48 +189,42 @@ function M.get_args(fct_name)
   local val = 4.3
 
   local args = {
-    getm     = function() return M.To_ffi,      M.nv end,
+    getm     = function() return make_To_ffi(), M.nv end,
     getCoeff = function() return M.To                end,
-    setm     = function() return M.To_ffi, val, M.nv end,
+    setm     = function() return make_To_ffi(), val, M.nv end,
     setCoeff = function() return M.To    , val       end,
+
+    abs      = M.full,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     mul      = args_bin_op,
     add      = args_bin_op,
     sub      = args_bin_op,
+
     subst    = args_subst,
     compose_raw = args_compose,
+
     generic  = function() return M.To                end
   }
   return args[fct_name]()
 end
 
--- args = table with named or positional arguments:
---   mod      or args[1] = the loaded tpsa module
---   nv       or args[2] = NV parameter for the mod
---   no       or args[3] = NO parameter for the mod
---   need_ffi or args[4] = [opt] 0 to disable reconstruction of To_ffi (1 by default)
-function M.setup(args)
-  -- process arguments
-  local mod, nv, no = args[1] or args.mod, args[2] or args.nv, args[3] or args.no
-  local need_ffi = args[4] or args.need_ffi or true
-  if not M.mod and not nv and not no then
+-- M.setup(mod, nv, no)
+-- M.setup(mod) when it has been previously used with some (nv, no)
+function M.setup(mod, nv, no)
+  if not mod or
+     not nv and not M.nv or
+     not no and not M.no then
     error("Cannot setup factory: not enough args and no previous state")
   end
 
-  -- save / update state
-  local state_changed = false
   if nv and no and (nv ~= M.nv or no ~= M.no) then
-    M.nv, M.no, M.To, state_changed = nv, no, table_by_ords(nv, no), true
+    M.nv, M.no, M.To= nv, no, table_by_ords(nv, no)
   end
-  if mod and mod ~= M.mod then
-    M.mod, state_changed = mod, true
+  if mod ~= M.mod then
+    M.mod = mod
   end
-  if state_changed then
-    M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
-    if need_ffi ~= 0 then M.To_ffi = make_To_ffi(mod.mono_t, M.To) end
-  end
-
+  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------
