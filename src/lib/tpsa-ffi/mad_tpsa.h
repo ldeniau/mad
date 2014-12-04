@@ -29,6 +29,7 @@ num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
 
 int   mad_tpsa_idx     (const T *t, int n, const ord_t m[n]);
 
+void  mad_tpsa_der     (const T *a, int var,    T *c);
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
 void  mad_tpsa_mul     (const T *a, const T *b, T *c);

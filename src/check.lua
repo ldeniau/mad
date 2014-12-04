@@ -114,9 +114,22 @@ local function check_subst_with_berz(mod)
 
   check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 0.001, factory.To, "subst")
 
-  factory.setup{ mod=mod }  -- set it back
+  factory.setup{ mod=mod }  -- restore mod
 end
 
+local function check_der_with_berz(mod)
+  local ma, var, mr = factory.get_args("der")
+  mod.der(ma, var, mr)
+
+  local berz = require"lib.tpsaBerz"
+  factory.setup{ mod=berz }
+  local ba, _, br = factory.get_args("der")
+  berz.der(ba, var, br)
+
+  check_identical(mr, br, 0.0001, factory.To, "der")
+
+  factory.setup{ mod=mod }   -- restore mod
+end
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
 
@@ -138,7 +151,8 @@ function M.do_all_checks(mod, nv, no)
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
-  check_subst_with_berz(mod)
+--  check_subst_with_berz(mod)
+  check_der_with_berz(mod)
 end
 
 M.identical = check_identical

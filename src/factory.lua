@@ -185,6 +185,7 @@ function M.get_args(fct_name)
     setm     = function() return M.To_ffi, val, M.nv end,
     setCoeff = function() return M.To    , val       end,
 
+    der      = function() return M.full(), 1, M.new_instance() end,
     mul      = args_bin_op,
     add      = args_bin_op,
     sub      = args_bin_op,
@@ -246,6 +247,7 @@ function M.ord(ord, startVal, inc)
   local To = M.To
 
   for o=1,#ord do
+    if ord[o] > M.no then error("Specified ord is greater than no") end
     for m=To.ps[ord[o]],To.pe[ord[o]] do
       t:setCoeff(To[m], startVal)
       startVal = startVal + inc

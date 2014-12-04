@@ -39,6 +39,8 @@ ffi.cdef[[
   void ad_subst_(const TVEC *iv, const TVEC *ibv, const TNVND *nbv,
                  const TVEC *iret);
 
+  void ad_derivative_(const TVEC *isrc, unsigned int *expo, const TVEC *idst);
+
   void ad_print_(const TVEC *iv);
 ]]
 
@@ -115,6 +117,10 @@ function tpsa.cpy(src, dst)
   if not dst then dst = src:new() end
   yangLib.ad_copy_(src.idx, dst.idx)
   return dst
+end
+
+function tpsa.der(src, var, dst)
+  yangLib.ad_derivative_(src.idx, uintPtr(var-1), dst.idx)
 end
 
 function tpsa.mul(t1, t2, r)

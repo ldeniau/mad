@@ -50,6 +50,7 @@ ffi.cdef[[
 
   int   mad_tpsa_idx     (const T *t, int n, const ord_t m[]);
 
+  void  mad_tpsa_der     (const T *a, int var,    T *c);
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
@@ -154,17 +155,22 @@ function M.sub(a, b, c)
   clib.mad_tpsa_sub(a, b, c)
 end
 
+function M.compose(ma, mb, mc)
+  -- ma, mb, mc -- compatible lua arrays of TPSAs
+  local cma, cmb, cmc = tpsa_carr(#ma, ma), tpsa_carr(#mb, mb), tpsa_arr(#mc, mc)
+  clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
+end
+
 function M.pow(a, p)
   local r = a:new()
   clib.mad_tpsa_pow(a, r, p)
   return r
 end
 
-function M.compose(ma, mb, mc)
-  -- ma, mb, mc -- compatible lua arrays of TPSAs
-  local cma, cmb, cmc = tpsa_carr(#ma, ma), tpsa_carr(#mb, mb), tpsa_arr(#mc, mc)
-  clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
+function M.der(src, var, dst)
+  clib.mad_tpsa_der(src, var, dst)
 end
+
 
 -- debugging -------------------------------------------------------------------
 

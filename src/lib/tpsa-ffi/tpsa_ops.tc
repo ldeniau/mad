@@ -141,6 +141,40 @@ hpoly_mul(const T *a, const T *b, T *c)
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 void
+mad_tpsa_der(const T *a, int var, T *c)
+{
+  assert(a && c);
+  assert(var > 0 && var <= a->desc->nv);
+
+  if (a->mo == 1) {
+    c->mo = 0;
+    if ((c->coef[0] = a->coef[var])) bset(c->nz, 1);
+    else                             bset(c->nz, 0);
+    return;
+  }
+
+  D *d = a->desc;
+  int idx_der = -1, *pi = d->hpoly_To_idx;
+
+  c->mo = a->mo - 1;
+  c->nz = 0;
+  for (int i = 0; i < pi[c->mo+1]; ++i)
+    c->coef[i] = 0;
+
+  var--;    // monos are 0-indexed
+  for (int o = 1; o <= a->mo; ++o)
+    if (bget(a->nz,o))
+      for (int m = pi[o]; m < pi[o+1]; ++m)
+        if (a->coef[m] && d->To[m][var]) {
+          d->To[m][var]--;
+          idx_der = desc_get_idx(d, d->nv, d->To[m]);
+          d->To[m][var]++;
+          c->coef[idx_der] = a->coef[m] * d->To[m][var];
+          bset(c->nz, d->ords[m]);
+        }
+}
+
+void
 mad_tpsa_lin(num_t c1, const T *a, num_t c2, const T *b, T *c)
 {
 #ifdef TRACE

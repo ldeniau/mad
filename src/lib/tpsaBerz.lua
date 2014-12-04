@@ -34,6 +34,9 @@ ffi.cdef[[
   void dadic_(int *t,  int *c, int *r);            // r = c / t
   void dacma_(int *t1, int *t2, int *c, int *r);   // r = t1 + c * t2
 
+  // operations on a TPSA
+  void dader_(int *var_idx, int *src, int *dest);
+
   // operations between 2 TPSAs
   void dacop_(int *src, int *dest);
   void daadd_(int *t1, int *t2, int *r);           // r = t1 + t2
@@ -184,6 +187,13 @@ function tpsa.cma(t1, t2, c, r)
   berzLib.dacma_(t1.idx, t2,idx, intPtr(c), r.idx)
 end
 -- unary operations -----------------------------------------------------------
+function tpsa.der(src, var, dst)
+  -- derivate `src` with respect to variable `var`, storing the result in `dst`
+  if not dst then dst = src:new() end
+  berzLib.dader_(intPtr(var), src.idx, dst.idx)
+  return dst
+end
+
 function tpsa.inv(ma, mr)
   -- ma, mr = arrays of TPSAs
   local aIdxs, rIdxs = intArr(#ma), intArr(#mr)
