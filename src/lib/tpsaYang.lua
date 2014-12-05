@@ -39,6 +39,7 @@ ffi.cdef[[
   void ad_subst_(const TVEC *iv, const TVEC *ibv, const TNVND *nbv,
                  const TVEC *iret);
 
+  void ad_abs_  (const TVEC *iv, double *r);
   void ad_derivative_(const TVEC *isrc, unsigned int *expo, const TVEC *idst);
 
   void ad_print_(const TVEC *iv);
@@ -118,6 +119,13 @@ function tpsa.cpy(src, dst)
   yangLib.ad_copy_(src.idx, dst.idx)
   return dst
 end
+
+function tpsa.abs(t)
+  local norm = dblPtr()
+  yangLib.ad_abs_(t.idx, norm)
+  return norm[0]
+end
+
 
 function tpsa.der(src, var, dst)
   yangLib.ad_derivative_(src.idx, uintPtr(var-1), dst.idx)

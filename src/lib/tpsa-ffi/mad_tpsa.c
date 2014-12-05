@@ -155,6 +155,39 @@ mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
   return desc_get_idx(t->desc, n, m);
 }
 
+#include <math.h>
+
+num_t
+mad_tpsa_abs(const T *a)
+{
+  assert(a);
+  num_t norm = 0.0;
+  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+    norm += fabs(a->coef[i]);
+  return norm;
+}
+
+num_t
+mad_tpsa_abs2(const T *a)
+{
+  assert(a);
+  num_t norm = 0;
+  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+    norm += a->coef[i] * a->coef[i];
+  return norm;
+}
+
+void
+mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
+{
+  assert(a);
+  srand(seed);
+  for (int i = 0; i < a->desc->nc; ++i)
+    a->coef[i] = low + rand() / (RAND_MAX/(high-low));
+  a->mo = a->desc->mo;
+  a->nz = (1 << (a->mo+1)) - 1;
+}
+
 // --- --- OPERATIONS ---------------------------------------------------------
 #include "tpsa_ops.tc"
 

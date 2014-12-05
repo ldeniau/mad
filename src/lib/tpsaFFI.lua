@@ -50,7 +50,14 @@ ffi.cdef[[
 
   int   mad_tpsa_idx     (const T *t, int n, const ord_t m[]);
 
+  num_t mad_tpsa_abs     (const T *t);
+  num_t mad_tpsa_abs2    (const T *t);
+  void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
+
   void  mad_tpsa_der     (const T *a, int var,    T *c);
+  void  mad_tpsa_pos     (const T *a,             T *c);
+  num_t mad_tpsa_comp    (const T *a, const T *b);
+
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
@@ -167,9 +174,30 @@ function M.pow(a, p)
   return r
 end
 
+function M.abs(a)
+  return clib.mad_tpsa_abs(a)
+end
+
+function M.abs2(a)
+  return clib.mad_tpsa_abs2(a)
+end
+
+function M.rand(a, low, high, seed)
+  clib.mad_tpsa_rand(a, low, high, seed)
+end
+
 function M.der(src, var, dst)
   clib.mad_tpsa_der(src, var, dst)
 end
+
+function M.pos(src, dst)
+  clib.mad_tpsa_pos(src, dst)
+end
+
+function M.comp(a, b)
+  return clib.mad_tpsa_comp(a, b)
+end
+
 
 
 -- debugging -------------------------------------------------------------------

@@ -194,8 +194,6 @@ function M.get_args(fct_name)
     setm     = function() return make_To_ffi(), val, M.nv end,
     setCoeff = function() return M.To    , val       end,
 
-    abs      = M.full,
-
     der      = function() return M.full(), 1, M.new_instance() end,
     mul      = args_bin_op,
     add      = args_bin_op,
@@ -231,7 +229,7 @@ end
 M.mono_val   = mono_val
 M.mono_print = mono_print
 M.fprintf    = fprintf
-M.printf     = function (...) fprintf(io.output(), ...) end
+M.printf     = function (...) fprintf(io.output(), ...); io:flush() end
 
 -- returns a tpsa having only orders `ord` filled
 function M.ord(ord, startVal, inc)
@@ -259,8 +257,15 @@ function M.ord(ord, startVal, inc)
   return t
 end
 
+function M.full(startVal, inc)
+  local ords = {}
+  for o=0,M.no do ords[o+1] = o end
+  return M.ord(ords, startVal, inc)
+end
+
+
 -- returns a tpsa filled up to its maximum order
-function M.full()  -- same as t:pow(no)
+function M.build_full()  -- same as t:pow(no)
   local b, r, tmp, p = M.ord{0,1}, M.new_instance(), M.new_instance(), M.no
   r:setConst(1)
 

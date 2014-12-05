@@ -22,7 +22,7 @@ ffi.cdef[[
   void dapok_(int *idx, int *mon, double *val);
   void dapek_(int *idx, int *mon, double *val);
 
-  // sets up the constant value of the TPSA at idx
+  // sets up the TPSA at idx as a constant value
   void dacon_(int *idx, double *constant);
 
   // operations between TPSA and constant
@@ -35,10 +35,14 @@ ffi.cdef[[
   void dacma_(int *t1, int *t2, int *c, int *r);   // r = t1 + c * t2
 
   // operations on a TPSA
+  void daabs_(int *a, double *norm);
+  void daabs2_(int *a, double *norm);
   void dader_(int *var_idx, int *src, int *dest);
+  void dacom_(int *a, int *b, double *dnorm);
 
   // operations between 2 TPSAs
   void dacop_(int *src, int *dest);
+  void dapos_(int *src, int *dest);
   void daadd_(int *t1, int *t2, int *r);           // r = t1 + t2
   void dasub_(int *t1, int *t2, int *r);           // r = t1 - t2
   void damul_(int *t1, int *t2, int *r);           // r = t1 * t2
@@ -51,7 +55,6 @@ ffi.cdef[[
 
   void dainv_(int *m1, int *s1, int *mr, int *sr); // mr = ma ^ -1
 
-  void daabs_(int *t, int *r);                     // r = |t|
   void dapri_(int *idx, int *dest);                // print TPSA at idx on stream dest
 ]]
 
@@ -184,9 +187,35 @@ function tpsa.divc(t, c, r)
 end
 
 function tpsa.cma(t1, t2, c, r)
-  berzLib.dacma_(t1.idx, t2,idx, intPtr(c), r.idx)
+  berzLib.dacma_(t1.idx, t2.idx, intPtr(c), r.idx)
 end
+
 -- unary operations -----------------------------------------------------------
+
+function tpsa.abs(t)
+  local norm = dblPtr()
+  berzLib.daabs_(t.idx, norm)
+  return norm[0]
+end
+
+function tpsa.abs2(t)
+  local norm = dblPtr()
+  berzLib.daabs2_(t.idx, norm)
+  return norm[0]
+end
+
+function tpsa.pos(src, dst)
+  berzLib.dapos_(src.idx, dst.idx)
+end
+
+function tpsa.comp(a, b)
+  error("Bug in TPSAlib.f")
+  local val = dblPtr()
+  berzLib.dacom_(a.idx, b.idx, val)
+  return val[0]
+end
+
+
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
   if not dst then dst = src:new() end
@@ -202,10 +231,6 @@ function tpsa.inv(ma, mr)
   for i=1,#mr do rIdxs[i-1] = mr[i].idx[0] end
 
   berzLib.dainv_(aIdxs, aSize, rIdxs, rSize)
-end
-
-function tpsa.abs(t, r)
-  berzLib.daabs_(t.idx, r.idx)
 end
 
 function tpsa.destroy(t)

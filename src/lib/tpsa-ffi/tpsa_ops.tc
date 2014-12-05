@@ -140,6 +140,34 @@ hpoly_mul(const T *a, const T *b, T *c)
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
+#include <math.h>
+
+num_t
+mad_tpsa_comp(const T *a, const T *b)
+{
+  assert(a && b);
+  assert(a->desc == b->desc);
+  num_t norm = 0;
+  int len_a = a->desc->hpoly_To_idx[a->mo+1],
+      len_b = b->desc->hpoly_To_idx[b->mo+1],
+      i     = 0;
+  for ( ; i < imin(len_a,len_b); ++i) norm += fabs(a->coef[i] - b->coef[i]);
+  for ( ; i <      len_a       ; ++i) norm += fabs(a->coef[i]);
+  for ( ; i <      len_b       ; ++i) norm += fabs(b->coef[i]);
+  return norm;
+}
+
+void
+mad_tpsa_pos(const T *a, T *c)
+{
+  assert(a);
+  assert(a->desc == c->desc);
+  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+    c->coef[i] = fabs(a->coef[i]);
+  c->nz = a->nz;
+  c->mo = a->mo;
+}
+
 void
 mad_tpsa_der(const T *a, int var, T *c)
 {
