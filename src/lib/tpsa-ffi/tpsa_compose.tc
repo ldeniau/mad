@@ -4,10 +4,10 @@
 #define MAX_CACHED_ORDS 4
 
 struct compose_ctx {
-  ord_t curr_cached, max_cached, *complement;
-  int *pi, calls, muls;
+  ord_t curr_cached, max_cached;
+  int *pi;
   D *da;
-  T **cached, **tmps;
+  T **cached;
 };
 
 static inline void
@@ -45,7 +45,7 @@ init_required(int sa, const T *ma[sa], char required[])
 }
 
 static inline T*
-get_mono(int c, int tmp, struct compose_ctx *ctx)
+get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], struct compose_ctx *ctx)
 {
   if (c < ctx->pi[ctx->curr_cached+1] && ctx->cached[c])
     return ctx->cached[c];
@@ -59,9 +59,9 @@ get_mono(int c, int tmp, struct compose_ctx *ctx)
 
   for (int m = ctx->pi[o+1] - 1; m > 0; --m)
     if (cached[m] && mono_leq(da->nv, da->To[m], da->To[c])) {
-      mono_sub(da->nv, da->To[c], da->To[m], ctx->complement);
-      int compl_idx = desc_get_idx(da, da->nv, ctx->complement);
-      T *t = get_mono(compl_idx, tmp ^ 1, ctx);
+      mono_sub(da->nv, da->To[c], da->To[m], complement);
+      int compl_idx = desc_get_idx(da, da->nv, complement);
+      T *t = get_mono(compl_idx, tmp_idx ^ 1, tmps, complement, ctx);
 
 #ifdef DEBUG
       mono_print(da->nv, da->To[c]);
@@ -71,18 +71,17 @@ get_mono(int c, int tmp, struct compose_ctx *ctx)
       printf("\n");
 #endif
 
-      mad_tpsa_mul(t, cached[m], ctx->tmps[tmp]);
-      // ctx->muls++;
+      mad_tpsa_mul(t, cached[m], tmps[tmp_idx]);
       break;
     }
   // update cache
   if (da->ords[c] <= ctx->max_cached && !cached[c]) {
     cached[c] = mad_tpsa_newd(cached[1]->desc);
-    mad_tpsa_copy(ctx->tmps[tmp], cached[c]);
+    mad_tpsa_copy(tmps[tmp_idx], cached[c]);
     if (ctx->curr_cached < da->ords[c])
       ctx->curr_cached = da->ords[c];
   }
-  return ctx->tmps[tmp];
+  return tmps[tmp_idx];
 }
 
 void
@@ -97,25 +96,21 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   D *da = ma[0]->desc;
   char required[da->nc];
   int nv = da->nv, *pi = da->hpoly_To_idx;       // local names
-  ord_t scratch_mono[nv];
 
   // init
   int max_mo = init_required(sa, ma, required);
 
   ord_t to_cache = da->mo < MAX_CACHED_ORDS ? da->mo : MAX_CACHED_ORDS;
   int cached_size = pi[to_cache+1];
-  T *cached[cached_size], *tmps[2], *t = NULL;
+  T *cached[cached_size], *t = NULL;
 
   /* cached[0] not in use --> */              cached[0] = NULL;
   for (int c =      1; c <= nv         ; ++c) cached[c] = (T *) mb[c-1];
   for (int c = nv + 1; c <  cached_size; ++c) cached[c] = NULL;
-  tmps[0] = mad_tpsa_newd(mb[0]->desc);
-  tmps[1] = mad_tpsa_newd(mb[0]->desc);
 
-  struct compose_ctx ctx = { .da    = da,   .curr_cached = 1,    .muls = 0,
-                             .tmps  = tmps, .cached      = cached,
-                             .calls = 0,    .max_cached  = to_cache,
-                             .pi    = pi,   .complement  = scratch_mono };
+  struct compose_ctx ctx = { .da = da, .max_cached  = to_cache, .cached = cached,
+                             .pi = pi, .curr_cached = 1
+                           };
 
   // compose
   // cleanup & ord 0
@@ -124,15 +119,31 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
     mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
   }
 
-  // ords 1..max_mo
-  for (int c = 1; c < pi[max_mo+1]; ++c) {
-    if (!required[c])
-      continue;
-
-    t = get_mono(c, 0, &ctx);
+  // do the cached ones sequentially
+  T *tmps[2];
+  tmps[0] = mad_tpsa_newd(mb[0]->desc);
+  tmps[1] = mad_tpsa_newd(mb[0]->desc);
+  ord_t mono[nv];
+  for (int c = 1; c < cached_size; ++c) {
+    t = get_mono(c, 0, tmps, mono, &ctx);
     for (int i = 0; i < sa; ++i)
       if (ma[i]->coef[c])
         mad_tpsa_cma(mc[i], t, ma[i]->coef[c], mc[i]);
+  }
+
+  // ords MAX_CACHED_ORDS..max_mo
+  // #pragma omp parallel
+  {
+
+    for (int c = cached_size; c < pi[max_mo+1]; ++c) {
+      if (!required[c])
+        continue;
+
+      // t = get_mono(c, 0, &ctx);
+      // for (int i = 0; i < sa; ++i)
+      //   if (ma[i]->coef[c])
+      //     mad_tpsa_cma(mc[i], t, ma[i]->coef[c], mc[i]);
+    }
   }
 
   // finalize
