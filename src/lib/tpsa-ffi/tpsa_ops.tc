@@ -98,13 +98,13 @@ hpoly_mul(const T *a, const T *b, T *c)
   bit_t   nza = a->nz  ,  nzb = b->nz;
   num_t *cc  = c->coef;
 
-#ifdef _OPENMP
-#pragma omp parallel for
-  for (int i=2; i <= c->mo; i++) {
-    int oc = !(i & 1) ? 1+i/2 : c->mo+1-i/2;
-#else
+// #ifdef _OPENMP
+// #pragma omp parallel for
+//   for (int i=2; i <= c->mo; i++) {
+//     int oc = !(i & 1) ? 1+i/2 : c->mo+1-i/2;
+// #else
   for (int oc=2; oc <= c->mo; oc++) {
-#endif
+// #endif
 
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa > ob
@@ -283,14 +283,15 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 }
 
 void
-mad_tpsa_cma(const T *a, const T *b, num_t v, T *c)
+mad_tpsa_cma(num_t v, const T *a, const T *b, T *c)
 {
+  /* c = v * a + b */
 #ifdef TRACE
-  printf("tpsa_mul_constant %lf\n", v);
+  printf("tpsa_cma %lf\n", v);
 #endif
   assert(a && b && c);
   assert(a->desc == b->desc && b->desc == c->desc);
-  mad_tpsa_lin(1.0, a, v, b, c);
+  mad_tpsa_lin(v, a, 1.0, b, c);
 }
 
 void

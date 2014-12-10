@@ -48,5 +48,5 @@ if arg[1] == "-h" then
 end
 
 bench(arg[1], arg[2], arg[3])
-
+os.exit(0)
 
