@@ -7,11 +7,12 @@
 // #define DEBUG
 
 struct compose_ctx {
-  ord_t curr_cached, max_cached;
-  int *pi;
-  D *da;
+  int cached_size;
+  D *d;
   T **cached;
 };
+
+#define CTX struct compose_ctx
 
 static inline void
 check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
@@ -48,24 +49,18 @@ init_required(int sa, const T *ma[sa], char required[])
 }
 
 static inline T*
-get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], struct compose_ctx *ctx)
+get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], CTX *ctx)
 {
-  if (c < ctx->pi[ctx->curr_cached+1] && ctx->cached[c])
+  if (c < ctx->cached_size && ctx->cached[c])
     return ctx->cached[c];
 
-  D *da = ctx->da;
+  D *d = ctx->d;
   T **cached = ctx->cached;
-  int o = 1;
-  if (da->ords[c] > ctx->curr_cached) o = ctx->curr_cached;
-  else                                o = da->ords[c] - 1;
 
-
-  for (int m = ctx->pi[o+1] - 1; m > 0; --m) {
-    if (!da->To[m]) printf("m=%d\n", m);
-    if (!da->To[c]) printf("c=%d\n", c);
-    if (cached[m] && mono_leq(da->nv, da->To[m], da->To[c])) {
-      mono_sub(da->nv, da->To[c], da->To[m], complement);
-      int compl_idx = desc_get_idx(da, da->nv, complement);
+  for (int m = ctx->cached_size - 1; m > 0; --m)
+    if (cached[m] && mono_leq(d->nv, d->To[m], d->To[c])) {
+      mono_sub(d->nv, d->To[c], d->To[m], complement);
+      int compl_idx = desc_get_idx(d, d->nv, complement);
       T *t = get_mono(compl_idx, tmp_idx ^ 1, tmps, complement, ctx);
 
 #ifdef DEBUG
@@ -80,16 +75,38 @@ get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], struct compose_ctx 
       mad_tpsa_mul(t, cached[m], tmps[tmp_idx]);
       break;
     }
-  }
 
-  // update cache
-  if (da->ords[c] <= ctx->max_cached && !cached[c]) {
-    cached[c] = mad_tpsa_newd(cached[1]->desc);
+  // update cache if needed
+  if (c < ctx->cached_size) {
+    assert(!cached[c]);             // no double alloc
+    cached[c] = mad_tpsa_newd(d);
     mad_tpsa_copy(tmps[tmp_idx], cached[c]);
-    if (ctx->curr_cached < da->ords[c])
-      ctx->curr_cached = da->ords[c];
   }
   return tmps[tmp_idx];
+}
+
+static inline void
+sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
+{
+  assert(ma && mc && ctx);
+
+  // cleanup & ord 0
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_clean(mc[i]);
+    mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
+  }
+
+  ord_t mono[ctx->d->nv];
+  T *tmps[2] = { mad_tpsa_newd(ctx->d), mad_tpsa_newd(ctx->d) }, *t;
+  for (int c = 1; c < ctx->cached_size; ++c) {
+    // TODO: only cache what is needed
+    t = get_mono(c, 0, tmps, mono, ctx);
+    for (int i = 0; i < sa; ++i)
+      if (ma[i]->coef[c])
+        mad_tpsa_cma(ma[i]->coef[c], t, mc[i], mc[i]);
+  }
+  mad_tpsa_del(tmps[0]);
+  mad_tpsa_del(tmps[1]);
 }
 
 void
@@ -116,30 +133,10 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   for (int c =      1; c <= nv         ; ++c) cached[c] = (T *) mb[c-1];
   for (int c = nv + 1; c <  cached_size; ++c) cached[c] = NULL;
 
-  struct compose_ctx ctx = { .da = da, .max_cached  = to_cache, .cached = cached,
-                             .pi = pi, .curr_cached = 1
-                           };
+  CTX ctx = { .d = da, .cached_size = cached_size, .cached = cached };
 
   // compose
-  // cleanup & ord 0
-  for (int i = 0; i < sa; ++i) {
-    mad_tpsa_clean(mc[i]);
-    mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
-  }
-
-  // do the cached ones sequentially
-  T *seq_tmps[2];
-  seq_tmps[0] = mad_tpsa_newd(mb[0]->desc);
-  seq_tmps[1] = mad_tpsa_newd(mb[0]->desc);
-  ord_t seq_mono[nv];
-  for (int c = 1; c < cached_size; ++c) {
-    t = get_mono(c, 0, seq_tmps, seq_mono, &ctx);
-    for (int i = 0; i < sa; ++i)
-      if (ma[i]->coef[c])
-        mad_tpsa_cma(ma[i]->coef[c], t, mc[i], mc[i]);
-  }
-  mad_tpsa_del(seq_tmps[0]);
-  mad_tpsa_del(seq_tmps[1]);
+  sequential_compose(sa, ma, mc, &ctx);
 
   // ords MAX_CACHED_ORDS..max_mo
   const int threads = 2;
@@ -173,7 +170,6 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
     mad_tpsa_del(tmps[1]);
   }
 
-  // printf("apres ||\n");
   for (int thread = 0; thread < threads; ++thread)
     for (int i = 0; i < sc; ++i) {
       mad_tpsa_add(mr[thread][i], mc[i], mc[i]);
@@ -224,5 +220,6 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
 }
 
 #undef MAX_CACHED_ORDS
+#undef CTX
 
 #endif
