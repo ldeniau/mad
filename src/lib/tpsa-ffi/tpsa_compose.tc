@@ -7,7 +7,7 @@
 // #define DEBUG
 
 struct compose_ctx {
-  int cached_size;
+  int cached_size, sa;
   D *d;
   T **cached;
 };
@@ -27,25 +27,6 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   }
   for (int i = 1; i < sb; ++i)
     assert(mb[i]->desc == mb[i-1]->desc);
-}
-
-static inline int
-init_required(int sa, const T *ma[sa], char required[])
-{
-  assert(ma && required);
-  D *d = ma[0]->desc;
-  int *pi = d->hpoly_To_idx, max_mo = -1;
-  double eps = 1e-10;
-  memset(required, 0, d->nc);
-  for (int i = 0; i < sa; ++i) {
-    if (ma[i]->mo > max_mo)
-      max_mo = ma[i]->mo;
-
-    for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
-      if (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps) // != 0
-        required[c] = 1;
-  }
-  return max_mo;
 }
 
 static inline T*
@@ -97,7 +78,7 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
   }
 
   ord_t mono[ctx->d->nv];
-  T *tmps[2] = { mad_tpsa_newd(ctx->d), mad_tpsa_newd(ctx->d) }, *t;
+  T *tmps[2] = { mad_tpsa_newd(ctx->d), mad_tpsa_newd(ctx->d) }, *t = NULL;
   for (int c = 1; c < ctx->cached_size; ++c) {
     // TODO: only cache what is needed
     t = get_mono(c, 0, tmps, mono, ctx);
@@ -109,6 +90,55 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
   mad_tpsa_del(tmps[1]);
 }
 
+static inline void
+parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
+{
+  ord_t max_mo = 0;
+  for (int i = 0; i < sa; ++i)
+    if (ma[i]->mo > max_mo)
+      max_mo = ma[i]->mo;
+  int max_coeff = ctx->d->hpoly_To_idx[max_mo+1];
+
+  const int threads = 8;
+  T *mt[threads][sa];    // each thread has its own copy to store results
+  #pragma omp parallel num_threads(threads)
+  {
+    int id = omp_get_thread_num();
+
+    // alloc private vars
+    ord_t mono[ctx->d->nv];
+    T *tmps[2] = { mad_tpsa_newd(ctx->d), mad_tpsa_newd(ctx->d) };
+    T **m_curr_thread = mt[id], *t = NULL;
+    for (int i = 0; i < sa; ++i)
+      m_curr_thread[i] = mad_tpsa_newd(ctx->d);
+
+    #pragma omp for
+    for (int c = ctx->cached_size; c < max_coeff; ++c) {
+      int needed = 0;
+      for (int i = 0; i < sa; ++i)
+        if (ma[i]->coef[c]) {
+          needed = 1;
+          break;
+        }
+      if (!needed) continue;
+
+      t = get_mono(c, 0, tmps, mono, ctx);
+      for (int i = 0; i < sa; ++i)
+        if (ma[i]->coef[c])
+          mad_tpsa_cma(ma[i]->coef[c], t, m_curr_thread[i], m_curr_thread[i]);
+    }
+
+    mad_tpsa_del(tmps[0]);
+    mad_tpsa_del(tmps[1]);
+  }
+
+  for (int thread = 0; thread < threads; ++thread)
+    for (int i = 0; i < sa; ++i) {
+      mad_tpsa_add(mt[thread][i], mc[i], mc[i]);
+      mad_tpsa_del(mt[thread][i]);
+    }
+}
+
 void
 mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 {
@@ -118,63 +148,22 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   check_compose(sa, ma, sb, mb, sc, mc);
 
   // locals
-  D *da = ma[0]->desc;
-  char required[da->nc];
-  int nv = da->nv, *pi = da->hpoly_To_idx;       // local names
+  D *d = ma[0]->desc;
+  int nv = d->nv;
 
-  // init
-  int max_mo = init_required(sa, ma, required);
-
-  ord_t to_cache = da->mo < MAX_CACHED_ORDS ? da->mo : MAX_CACHED_ORDS;
-  int cached_size = pi[to_cache+1];
-  T *cached[cached_size], *t = NULL;
+  ord_t to_cache = d->mo < MAX_CACHED_ORDS ? d->mo : MAX_CACHED_ORDS;
+  int cached_size = d->hpoly_To_idx[to_cache+1];
+  T *cached[cached_size];
 
   /* cached[0] not in use --> */              cached[0] = NULL;
   for (int c =      1; c <= nv         ; ++c) cached[c] = (T *) mb[c-1];
   for (int c = nv + 1; c <  cached_size; ++c) cached[c] = NULL;
 
-  CTX ctx = { .d = da, .cached_size = cached_size, .cached = cached };
+  CTX ctx = { .d = d, .cached_size = cached_size, .cached = cached };
 
   // compose
   sequential_compose(sa, ma, mc, &ctx);
-
-  // ords MAX_CACHED_ORDS..max_mo
-  const int threads = 2;
-  T *mr[threads][sc];
-  #pragma omp parallel private(mc) num_threads(threads)
-  {
-    int id = omp_get_thread_num();
-
-    // alloc private vars
-    ord_t mono[nv];
-    T *tmps[2];
-    tmps[0] = mad_tpsa_newd(mb[0]->desc);
-    tmps[1] = mad_tpsa_newd(mb[0]->desc);
-    mc = mr[id];
-    for (int i = 0; i < sc; ++i) {
-      mc[i] = mad_tpsa_newd(da);
-      assert(mc[i]->desc == da);
-    }
-
-    #pragma omp for
-    for (int c = cached_size; c < pi[max_mo+1]; ++c) {
-      if (!required[c])
-        continue;
-
-      t = get_mono(c, 0, tmps, mono, &ctx);
-      for (int i = 0; i < sa; ++i)
-        if (ma[i]->coef[c])
-          mad_tpsa_cma(ma[i]->coef[c], t, mc[i], mc[i]);
-    }
-    mad_tpsa_del(tmps[0]);
-    mad_tpsa_del(tmps[1]);
-  }
-
-  for (int thread = 0; thread < threads; ++thread)
-    for (int i = 0; i < sc; ++i) {
-      mad_tpsa_add(mr[thread][i], mc[i], mc[i]);
-      mad_tpsa_del(mr[thread][i]);
-    }
+  parallel_compose(sa, ma, mc, &ctx);
 
   // finalize
   for (int c = nv + 1; c < cached_size; ++c)
