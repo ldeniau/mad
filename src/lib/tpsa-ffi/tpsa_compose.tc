@@ -90,6 +90,8 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
   mad_tpsa_del(tmps[1]);
 }
 
+static int COMPOSE_NUM_THREADS;
+
 static inline void
 parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
 {
@@ -99,9 +101,11 @@ parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
       max_mo = ma[i]->mo;
   int max_coeff = ctx->d->hpoly_To_idx[max_mo+1];
 
-  const int threads = 8;
-  T *mt[threads][sa];    // each thread has its own copy to store results
-  #pragma omp parallel num_threads(threads)
+  if (!COMPOSE_NUM_THREADS)
+    COMPOSE_NUM_THREADS = omp_get_num_procs();
+
+  T *mt[COMPOSE_NUM_THREADS][sa];
+  #pragma omp parallel num_threads(COMPOSE_NUM_THREADS)
   {
     int id = omp_get_thread_num();
 
@@ -132,7 +136,7 @@ parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
     mad_tpsa_del(tmps[1]);
   }
 
-  for (int thread = 0; thread < threads; ++thread)
+  for (int thread = 0; thread < COMPOSE_NUM_THREADS; ++thread)
     for (int i = 0; i < sa; ++i) {
       mad_tpsa_add(mt[thread][i], mc[i], mc[i]);
       mad_tpsa_del(mt[thread][i]);

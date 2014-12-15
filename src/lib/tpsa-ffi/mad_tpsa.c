@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <stdio.h>
 #include "mad_tpsa.h"
 #include "tpsa_utils.tc"
 #include "tpsa_desc.tc"
@@ -83,6 +82,15 @@ mad_tpsa_copy(const T *src, T *dst)
 #ifdef TRACE
   printf("Copied from %p to %p\n", (void*)src, (void*)dst);
 #endif
+}
+
+T*
+mad_tpsa_clone(const T *src)
+{
+  assert(src);
+  T *res = mad_tpsa_newd(src->desc);
+  mad_tpsa_copy(src, res);
+  return res;
 }
 
 void
@@ -193,6 +201,8 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
 
 #include "tpsa_compose.tc"
 
+#include <stdio.h>
+
 void
 mad_tpsa_print(const T *t)
 {
@@ -203,6 +213,55 @@ mad_tpsa_print(const T *t)
       printf("[%d]=%.2f ", i, t->coef[i]);
   printf(" }\n");
 }
+
+// --- BENCHMARK --------------------------------------------------------------
+
+#ifdef TPSA_MAIN
+
+// gcc -DTPSA_MAIN -std=c99 -Wall -W -pedantic -O3 -fopenmp -static-libgcc  *.c -o tpsa
+
+#include <time.h>
+
+int main(int argc, char **argv)
+{
+  printf("Usage: tpsa nv mo nl [num_threads]\n");
+  if (argc < 3)
+    exit(1);
+  int nv = atoi(argv[1]), mo = atoi(argv[2]), nl = atoi(argv[3]);
+  if (argc >= 5) COMPOSE_NUM_THREADS = atoi(argv[4]);
+
+  ord_t var_ords[nv];
+  for (int v = 0; v < nv; ++v)
+    var_ords[v] = mo;
+
+  D *d = mad_tpsa_desc_new(nv, var_ords, mo);
+  T *t = mad_tpsa_newd(d);
+
+  int nc = d->nc, start_val = 1.1, inc = 0.1;
+  for (int c = 0; c < nc; ++c) {
+    mad_tpsa_seti(t, c, start_val);
+    start_val += inc;
+  }
+
+  T *ma[nv], *mb[nv], *mc[nv];
+  for (int i = 0; i < nv; ++i) {
+    ma[i] = mad_tpsa_clone(t);
+    mb[i] = mad_tpsa_clone(t);
+    mc[i] = mad_tpsa_new  (t);
+  }
+
+  double time = clock();
+  for (int l = 0; l < nl; ++l)
+    mad_tpsa_compose(nv, (const T**)ma, nv, (const T**)mb, nv, mc);
+  time = (clock() - time) / CLOCKS_PER_SEC;
+
+  printf("nv\tmo\tnc\tnl\tt_total\tt_real\n");
+  printf("%d\t%d\t%d\t%d\t%.3f\t%.3f\n", nv, mo, nc, nl, time, time/COMPOSE_NUM_THREADS);
+
+  return 0;
+}
+
+#endif
 
 #undef T
 #undef D
