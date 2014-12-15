@@ -203,6 +203,36 @@ mad_tpsa_der(const T *a, int var, T *c)
 }
 
 void
+mad_tpsa_inv(const T *a, T *c)
+{
+  assert(a && c);
+  assert(a->desc == c->desc);
+  assert(a->coef[0] != 0);
+
+  ord_t mo = a->mo;
+  num_t expansion_coef[mo+1], a0 = a->coef[0];
+  expansion_coef[0] = 1.0 / a0;
+  for (int o = 1; o <= mo; ++o)
+    expansion_coef[o] = -expansion_coef[o-1] / a0;
+
+  mad_tpsa_clean(c);
+  mad_tpsa_seti(c, 0, a0);
+
+  T *pow = mad_tpsa_newd(a->desc), *tmp = mad_tpsa_newd(a->desc);
+  mad_tpsa_seti(pow, 0, 1.0);
+  mad_tpsa_seti((T*)a, 0, 0.0);
+
+  for (int o = 1; o <= mo; ++o) {
+    mad_tpsa_mul(a, pow, tmp);
+    mad_tpsa_copy(tmp, pow);
+    mad_tpsa_cma(expansion_coef[o], pow, c, c);
+  }
+  mad_tpsa_seti((T*)a, 0, a0);  // restore val
+  mad_tpsa_del(pow);
+  mad_tpsa_del(tmp);
+}
+
+void
 mad_tpsa_lin(num_t c1, const T *a, num_t c2, const T *b, T *c)
 {
 #ifdef TRACE
@@ -283,14 +313,14 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 }
 
 void
-mad_tpsa_cma(const T *a, const T *b, num_t v, T *c)
+mad_tpsa_cma(num_t v, const T *a, const T *b, T *c)
 {
 #ifdef TRACE
   printf("tpsa_mul_constant %lf\n", v);
 #endif
   assert(a && b && c);
   assert(a->desc == b->desc && b->desc == c->desc);
-  mad_tpsa_lin(1.0, a, v, b, c);
+  mad_tpsa_lin(v, a, 1.0, b, c);
 }
 
 void

@@ -39,7 +39,7 @@ compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
   double coef_val;
   for (int i = 0; i < ctx->sa; ++i)
     if ((coef_val = ctx->ma[i]->coef[idx]))
-      mad_tpsa_cma(ctx->mc[i], ctx->tmps[o], coef_val, ctx->mc[i]);
+      mad_tpsa_cma(coef_val, ctx->tmps[o], ctx->mc[i], ctx->mc[i]);
 
   for(  ; pos < da->nv; ++pos) {
     curr_mono[pos]++;

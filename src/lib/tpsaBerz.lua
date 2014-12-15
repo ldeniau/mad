@@ -39,6 +39,7 @@ ffi.cdef[[
   void daabs2_(int *a, double *norm);
   void dader_(int *var_idx, int *src, int *dest);
   void dacom_(int *a, int *b, double *dnorm);
+  void dafun_(char *name, int *a, int *c);
 
   // operations between 2 TPSAs
   void dacop_(int *src, int *dest);
@@ -63,8 +64,7 @@ ffi.cdef[[
 local intPtr = typeof("int    [1]")
 local intArr = typeof("int    [?]")
 local dblPtr = typeof("double [1]")
-local name_t = typeof("char  [11]")
-
+local chrArr = typeof("char   [?]")
 
 -- Create pointers to some useful literals
 local zero_i, one_i, six_i = intPtr(0),   intPtr(1), intPtr(6)
@@ -79,7 +79,7 @@ local function create(nv, no)
   local r = {}
   r.nv, r.no = nv, no
   r.idx = intPtr()
-  local name = name_t(string.format("Berz%6d", tpsa._cnt))
+  local name = chrArr(11, string.format("Berz%6d", tpsa._cnt))
   berzLib.daall_(r.idx, one_i, name, intPtr(no), intPtr(nv))
   tpsa._cnt = tpsa._cnt + 1
   return setmetatable(r, MT)
@@ -215,6 +215,9 @@ function tpsa.comp(a, b)
   return val[0]
 end
 
+function tpsa.inv(a, b)
+  berzLib.dafun_(chrArr(5, 'inv '), a.idx, b.idx)
+end
 
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
@@ -223,7 +226,7 @@ function tpsa.der(src, var, dst)
   return dst
 end
 
-function tpsa.inv(ma, mr)
+function tpsa.minv(ma, mr)
   -- ma, mr = arrays of TPSAs
   local aIdxs, rIdxs = intArr(#ma), intArr(#mr)
   local aSize, rSize = intPtr(#ma), intPtr(#mr)

@@ -58,10 +58,16 @@ ffi.cdef[[
   void  mad_tpsa_pos     (const T *a,             T *c);
   num_t mad_tpsa_comp    (const T *a, const T *b);
 
+  void  mad_tpsa_inv     (const T *a, T *c);
+
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
-  void  mad_tpsa_pow     (const T *a, const T *r, int p);
+  void  mad_tpsa_pow     (const T *a,             T *c, int p);
+
+  void  mad_tpsa_cma     (num_t ca, const T *a,           const T *b, T *c);
+  void  mad_tpsa_lin     (num_t ca, const T *a, num_t cb, const T *b, T *c);
+
 
   void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
 
@@ -196,6 +202,14 @@ end
 
 function M.comp(a, b)
   return clib.mad_tpsa_comp(a, b)
+end
+
+function M.cma(v, a, b, c)
+  clib.mad_tpsa_cma(v, a, b, c)
+end
+
+function M.inv(a, c)
+  clib.mad_tpsa_inv(a, c)
 end
 
 
