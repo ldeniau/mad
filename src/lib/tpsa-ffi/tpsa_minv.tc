@@ -1,0 +1,103 @@
+#ifndef TPSA_MINV_TEMPLATE
+#define TPSA_MINV_TEMPLATE
+
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_permutation.h>
+
+#define T struct tpsa
+#define D struct tpsa_desc
+
+void
+mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
+{
+  assert(ma && mc);
+
+  D *d = ma[0]->desc;
+  int nv = d->nv;
+  gsl_matrix *lina_LU  = gsl_matrix_alloc(nv, nv),
+             *lina_inv = gsl_matrix_alloc(nv, nv);
+  num_t lin_a[nv][nv];
+
+  T **ma_nlin = (T**) ma;
+  for (int i = 0; i < sa; ++i) {
+    for (int v = 0; v < nv; ++v) {
+      lin_a[i][v] = ma[i]->coef[v+1];
+      gsl_matrix_set(lina_LU, i, v, lin_a[i][v]);
+      ma_nlin[i]->coef[v+1] = 0;  // keep just non-linear part
+    }
+    mad_tpsa_cmul(-1.0, ma_nlin[i], ma_nlin[i]); // temporary flip signs before inversion
+  }
+
+  gsl_permutation *p = gsl_permutation_alloc(nv);
+  int signum;
+  gsl_linalg_LU_decomp(lina_LU, p, &signum);
+  gsl_linalg_LU_invert(lina_LU, p, lina_inv);
+
+  T *ml_inv[sc], *m_tmp[sc];
+  for (int i = 0; i < sc; ++i) {
+    mad_tpsa_clean(mc[i]);
+    ml_inv[i] = mad_tpsa_newd(ma[0]->desc);
+    m_tmp[i] = mad_tpsa_newd(ma[0]->desc);
+  }
+
+  for (int i = 0; i < nv; ++i)
+    for (int j = 0; j < nv; ++j) {
+      num_t val = gsl_matrix_get(lina_inv, i, j);
+      mad_tpsa_seti(mc[i], j+1, val);;
+      mad_tpsa_seti(ml_inv[i], j+1, val);;
+    }
+
+  // iteratively compute higher orders of the inverse
+  // MC (OF ORDER I) = A1^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I) ]
+
+  ord_t orig_mo = d->mo;
+  for (int o = 2; o <= orig_mo; ++o) {
+    d->mo = o;
+    printf("O=%d ----\n", o);
+    for (int i = 0; i < sa; ++i) {
+      printf("nl[%d]: ", i);
+      mad_tpsa_print(ma_nlin[i]);
+    }
+    for (int i = 0; i < sa; ++i) {
+      printf("mc[%d]: ", i);
+      mad_tpsa_print(mc[i]);
+    }
+
+    mad_tpsa_compose_slow(sa, (const T**)ma_nlin, sa, (const T**)mc, sa, m_tmp);
+
+    for (int i = 0; i < sa; ++i) {
+      printf("tmp[%d]: ", i);
+      mad_tpsa_print(m_tmp[i]);
+    }
+
+    for (int v = 0; v < nv; ++v)
+      m_tmp[v]->coef[v+1]++;
+
+    for (int i = 0; i < sa; ++i) {
+      printf("tmp+i[%d]: ", i);
+      mad_tpsa_print(m_tmp[i]);
+    }
+
+    mad_tpsa_compose_slow(sa, (const T**)ml_inv, sa, (const T**)m_tmp, sa, mc);
+
+    printf("\n");
+  }
+
+  // restore sign and linear part of ma
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_cmul(-1.0, ma_nlin[i], ma_nlin[i]);
+    for (int v = 0; v < nv; ++v)
+      ma_nlin[i]->coef[v+1] = lin_a[i][v];
+  }
+
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_del(ml_inv[i]);
+    mad_tpsa_del(m_tmp[i]);
+  }
+}
+
+
+#undef T
+#undef D
+#endif

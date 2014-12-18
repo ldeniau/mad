@@ -1,6 +1,10 @@
 #ifndef TPSA_OPS_TEMPLATE
 #define TPSA_OPS_TEMPLATE
 
+#define T struct tpsa
+#define D struct tpsa_desc
+
+
 // --- LOCAL FUNCTIONS --------------------------------------------------------
 
 static inline void
@@ -313,6 +317,17 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 }
 
 void
+mad_tpsa_cmul(num_t v, const T *a, T *c)
+{
+  assert(a && c);
+  assert(a->desc == c->desc);
+  c->mo = a->mo;
+  c->nz = a->nz;
+  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+    c->coef[i] = v * a->coef[i];
+}
+
+void
 mad_tpsa_cma(num_t v, const T *a, const T *b, T *c)
 {
 #ifdef TRACE
@@ -367,4 +382,6 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
 }
 
+#undef T
+#undef D
 #endif

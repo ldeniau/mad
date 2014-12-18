@@ -68,8 +68,8 @@ ffi.cdef[[
   void  mad_tpsa_cma     (num_t ca, const T *a,           const T *b, T *c);
   void  mad_tpsa_lin     (num_t ca, const T *a, num_t cb, const T *b, T *c);
 
-
   void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+  void  mad_tpsa_minv    (int sa, const T *ma[],                        int sc, T *mc[]);
 
   void  mad_tpsa_print   (const T *t);
 
@@ -174,6 +174,12 @@ function M.compose(ma, mb, mc)
   clib.mad_tpsa_compose(#ma, cma, #mb, cmb, #mc, cmc)
 end
 
+function M.minv(ma, mc)
+    -- ma, mb, mc -- compatible lua arrays of TPSAs
+  local cma, cmc = tpsa_carr(#ma, ma), tpsa_arr(#mc, mc)
+  clib.mad_tpsa_minv(#ma, cma, #mc, cmc)
+end
+
 function M.pow(a, p)
   local r = a:new()
   clib.mad_tpsa_pow(a, r, p)
@@ -238,6 +244,9 @@ function M.compose_raw(sa, ma, sb, mb, sc, mc)
   clib.mad_tpsa_compose(sa, ma, sb, mb, sc, mc)
 end
 
+function M.minv_raw(sa, ma, sc, mc)
+  clib.mad_tpsa_minv(sa, ma, sc, mc)
+end
 
 -- end -------------------------------------------------------------------------
 return M

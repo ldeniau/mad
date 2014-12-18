@@ -141,7 +141,6 @@ mad_tpsa_seti(T *t, int i, num_t v)
   assert(t);
   assert(i >= 0 && i < t->desc->nc);
   ord_t *ords = t->desc->ords;
-  t->coef[i] = v;
   if (ords[i] > t->mo) t->mo = ords[i];
   if (v != 0)          t->nz = bset(t->nz, ords[i]);
   t->coef[i] = v;
@@ -188,11 +187,6 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
   a->nz = (1 << (a->mo+1)) - 1;
 }
 
-// --- --- OPERATIONS ---------------------------------------------------------
-#include "tpsa_ops.tc"
-
-#include "tpsa_compose.tc"
-
 void
 mad_tpsa_print(const T *t)
 {
@@ -206,4 +200,12 @@ mad_tpsa_print(const T *t)
 
 #undef T
 #undef D
+
+// --- --- OPERATIONS ---------------------------------------------------------
+#include "tpsa_ops.tc"
+
+#include "tpsa_compose.tc"
+
+#include "tpsa_minv.tc"
+
 #undef TRACE

@@ -1,6 +1,9 @@
 #ifndef TPSA_COMPOSE_TEMPLATE
 #define TPSA_COMPOSE_TEMPLATE
 
+#define T struct tpsa
+#define D struct tpsa_desc
+
 struct compose_ctx {
   int sa;
   char *required;
@@ -154,4 +157,6 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
   }
 }
 
+#undef T
+#undef D
 #endif
