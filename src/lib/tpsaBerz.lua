@@ -267,5 +267,9 @@ function tpsa.compose_raw(sa, ma, sb, mb, sc, mc)
   berzLib.dacct_(ma, sa, mb, sb, mc, sc)
 end
 
+function tpsa.minv_raw(sa, ma, sc, mc)
+  berzLib.dainv_(ma, sa, mc, sc)
+end
+
 return tpsa
 

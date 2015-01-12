@@ -15,6 +15,7 @@ struct tpsa_desc {
            knb_start, // index in `a` where the knobs start
            size;      // bytes used by current desc
   ord_t    mo, mko,   // maximum order, maximum knob order
+           trunc,     // truncation order for operations
           *a,         // alphas
           *monos,     // 'matrix' storing the monomials (sorted by ord)
          **To,        // Table by orders -- pointers to monos, sorted by order
@@ -38,6 +39,12 @@ static inline int
 imax (int a, int b)
 {
   return a>b ? a : b;
+}
+
+static inline ord_t
+min_ord(ord_t a, ord_t b)
+{
+  return a<b ? a : b;
 }
 
 static inline int
@@ -78,10 +85,10 @@ desc_mono_isvalid(const D *d, int n, const ord_t m[n])
 }
 
 static inline int
-nxt_mono_by_var(D *d, int n, ord_t m[n])
+nxt_mono_by_var(D *d, int n, ord_t m[n], int start)
 {
   assert(d && m);
-  for (int i=0; i < n; ++i) {
+  for (int i=start; i < n; ++i) {
     ++m[i];
     if (desc_mono_isvalid(d, n, m))
       return 1;
@@ -326,7 +333,7 @@ tbl_by_var(D *d)
     d->to2tv[idx] = mi;
     d->Tv[mi]   = d->To[idx];
     ++mi;
-  } while (nxt_mono_by_var(d,nv,m));
+  } while (nxt_mono_by_var(d,nv,m,0));
 #ifdef DEBUG
   tbl_print(nv, imin(mi,50), d->Tv);
   if (mi > 50) printf("... [ %d more rows ] ...\n", mi - 50);
@@ -641,7 +648,7 @@ desc_new(int nv, const ord_t var_ords[nv], ord_t mvo, ord_t mko, int knb_start)
 
   D *d = malloc(sizeof *d);
   assert(d);
-  d->nv = nv, d->mo = mvo, d->mko = mko;
+  d->nv = nv, d->trunc = d->mo = mvo, d->mko = mko;
   d->knb_start = knb_start;
   d->size = sizeof(d);
 
@@ -747,6 +754,18 @@ mad_tpsa_desc_nc(const D *d)
 {
   assert(d);
   return d->nc;
+}
+
+ord_t
+mad_tpsa_desc_trunc(D *d, ord_t *to_)
+{
+  assert(d);
+  ord_t orig = d->trunc;
+  if (to_) {
+    assert(*to_ <= d->mo);
+    d->trunc = *to_;
+  }
+  return orig;
 }
 
 #undef D

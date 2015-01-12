@@ -71,8 +71,10 @@ local function check_identical(t1, t2, eps, To, fct_name)
       printf("\n mono: ")
       mono_print(To[m])
       printf("\n")
-      t1:print()
-      t2:print()
+      if #To < 50 then
+        t1:print()
+        t2:print()
+      end
       error("Coefficients differ among libraries for " .. fct_name)
     end
   end
@@ -164,6 +166,7 @@ local function check_abs_with_berz(mod)
            "Different norm2")
   end
 
+    -- bug in TPSALib.f
 --  if mod.pos then
 --    t_pos = factory.new_instance()
 --    mod.pos (t, t_pos)
@@ -185,6 +188,21 @@ local function check_abs_with_berz(mod)
 --    assert(identical_value(t_cmp_val2, b_cmp_val2, 1e-13, t.name, b.name, "comp"),
 --           "Different comp")
 --  end
+end
+
+local function check_minv_with_berz(mod)
+  local sa, ma, sc, mc, m_refs = factory.get_args("minv_raw")
+  mod.minv_raw(sa, ma, sc, mc)
+
+  factory.setup(berz)
+  local sba, ba, sbc, bc, b_refs = factory.get_args("minv_raw")
+  berz.minv_raw(sba, ba, sbc, bc)
+
+  for i=1,sc do
+    check_identical(m_refs.mc[i], b_refs.mc[i], 1e-4, factory.To, 'minv')
+  end
+
+  factory.setup(mod)  -- restore original
 end
 
 -- CHECKING & DEBUGGING --------------------------------------------------------
@@ -210,6 +228,7 @@ function M.do_all_checks(mod, nv, no)
 --  check_subst_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
+  check_minv_with_berz(mod)
 end
 
 M.identical = check_identical

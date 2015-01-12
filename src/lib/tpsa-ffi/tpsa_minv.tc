@@ -51,37 +51,15 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
   // iteratively compute higher orders of the inverse
   // MC (OF ORDER I) = A1^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I) ]
 
-  ord_t orig_mo = d->mo;
-  for (int o = 2; o <= orig_mo; ++o) {
-    d->mo = o;
-    printf("O=%d ----\n", o);
-    for (int i = 0; i < sa; ++i) {
-      printf("nl[%d]: ", i);
-      mad_tpsa_print(ma_nlin[i]);
-    }
-    for (int i = 0; i < sa; ++i) {
-      printf("mc[%d]: ", i);
-      mad_tpsa_print(mc[i]);
-    }
+  for (int o = 2; o <= d->mo; ++o) {
+    d->trunc = o;
 
-    mad_tpsa_compose_slow(sa, (const T**)ma_nlin, sa, (const T**)mc, sa, m_tmp);
-
-    for (int i = 0; i < sa; ++i) {
-      printf("tmp[%d]: ", i);
-      mad_tpsa_print(m_tmp[i]);
-    }
+    mad_tpsa_compose(sa, (const T**)ma_nlin, sa, (const T**)mc, sa, m_tmp);
 
     for (int v = 0; v < nv; ++v)
-      m_tmp[v]->coef[v+1]++;
+      mad_tpsa_seti(m_tmp[v], v+1, m_tmp[v]->coef[v+1] + 1);    // add I
 
-    for (int i = 0; i < sa; ++i) {
-      printf("tmp+i[%d]: ", i);
-      mad_tpsa_print(m_tmp[i]);
-    }
-
-    mad_tpsa_compose_slow(sa, (const T**)ml_inv, sa, (const T**)m_tmp, sa, mc);
-
-    printf("\n");
+    mad_tpsa_compose(sa, (const T**)ml_inv, sa, (const T**)m_tmp, sa, mc);
   }
 
   // restore sign and linear part of ma
@@ -91,10 +69,14 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
       ma_nlin[i]->coef[v+1] = lin_a[i][v];
   }
 
+  // cleanup
   for (int i = 0; i < sa; ++i) {
     mad_tpsa_del(ml_inv[i]);
     mad_tpsa_del(m_tmp[i]);
   }
+  gsl_matrix_free(lina_LU);
+  gsl_matrix_free(lina_inv);
+  gsl_permutation_free(p);
 }
 
 

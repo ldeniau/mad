@@ -1,6 +1,7 @@
 local ffi = require"ffi"
 
 local M = {}  -- this module
+M.seed = os.time()
 
 -- HELPERS ---------------------------------------------------------------------
 local function fprintf(f, s, ...)
@@ -176,6 +177,51 @@ local function args_compose()
   return args_subst(M.nv)
 end
 
+-- --- MINV --------------------------------------------------------------------
+
+local function args_minv_tpsa(refs, rand)
+  ffi.cdef("typedef struct tpsa T")
+  local cma, cmc = ffi.new("const T* [?]", M.nv), ffi.new("T* [?]", M.nv)
+
+  for i=1,M.nv do
+    refs.ma[i], refs.mc[i] = M.new_instance(), M.new_instance()
+    cma[i-1]  , cmc[i-1]   = refs.ma[i]      , refs.mc[i]
+
+    for m=1,#M.To do
+      refs.ma[i]:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,1) interval
+    end
+  end
+  return M.nv, cma, M.nv, cmc, refs
+end
+
+local function args_minv_berz(refs, rand)
+  local intArr = ffi.typeof("int [?]")
+  local cma, cmc = intArr(M.nv), intArr(M.nv)
+
+  for i=1,M.nv do
+    refs.ma[i], refs.mc[i] = M.new_instance() , M.new_instance()
+    cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
+
+    for m=1,#M.To do
+      refs.ma[i]:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,1) interval
+    end
+  end
+  return intArr(1,M.nv), cma, intArr(1,M.nv), cmc, refs
+end
+
+local function args_minv()
+  local refs = { ma={}, mc={} }
+  local rand = math.random
+  math.randomseed(M.seed)
+  if M.mod.name == "berz" then
+    return args_minv_berz(refs, rand)
+  elseif M.mod.name == "tpsa" then
+    return args_minv_tpsa(refs, rand)
+  else
+    error("Map inversion not implemented")
+  end
+end
+
 
 --------------------------------------------------------------------------------
 
@@ -201,6 +247,7 @@ function M.get_args(fct_name)
 
     subst    = args_subst,
     compose_raw = args_compose,
+    minv_raw = args_minv,
 
     generic  = function() return M.To                end
   }

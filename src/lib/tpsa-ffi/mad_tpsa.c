@@ -59,8 +59,7 @@ mad_tpsa_newd(D *d)
   t->desc = d;
   t->mo = 0;
   t->nz = 0;
-  for (int i = 0; i < t->desc->nc; ++i)
-    t->coef[i] = 0;
+  t->coef[0] = 0;  // used without initialisation in mul
   return t;
 }
 
@@ -76,9 +75,10 @@ mad_tpsa_copy(const T *src, T *dst)
 {
   assert(src && dst);
   assert(src->desc == dst->desc);
-  dst->mo = src->mo;
-  dst->nz = src->nz;
-  for (int i = 0; i < src->desc->nc; ++i)
+  D *d = src->desc;
+  dst->mo = min_ord(src->mo, d->trunc);
+  dst->nz = btrunc(src->nz, dst->mo);
+  for (int i = 0; i < d->hpoly_To_idx[dst->mo+1]; ++i)
     dst->coef[i] = src->coef[i];
 #ifdef TRACE
   printf("Copied from %p to %p\n", (void*)src, (void*)dst);
@@ -106,9 +106,10 @@ num_t
 mad_tpsa_getm(const T *t, int n, const ord_t m[n])
 {
   assert(t && m);
-  assert(n <= t->desc->nv);
-  idx_t i = desc_get_idx(t->desc,n,m);
-  return t->coef[i];
+  D *d = t->desc;
+  assert(n <= d->nv);
+  idx_t i = desc_get_idx(d,n,m);
+  return bget(t->nz,d->ords[i]) ? t->coef[i] : 0;
 }
 
 void
@@ -128,8 +129,9 @@ num_t
 mad_tpsa_geti(const T *t, int i)
 {
   assert(t);
-  assert(i >= 0 && i < t->desc->nc);
-  return t->coef[i];
+  D *d = t->desc;
+  assert(i >= 0 && i < d->nc);
+  return bget(t->nz,d->ords[i]) ? t->coef[i] : 0;
 }
 
 void
@@ -139,10 +141,21 @@ mad_tpsa_seti(T *t, int i, num_t v)
   printf("mad_tpsa_seti for %p i=%d v=%lf\n", (void*)t, i, v);
 #endif
   assert(t);
-  assert(i >= 0 && i < t->desc->nc);
-  ord_t *ords = t->desc->ords;
-  if (ords[i] > t->mo) t->mo = ords[i];
-  if (v != 0)          t->nz = bset(t->nz, ords[i]);
+  D *d = t->desc;
+  assert(i >= 0 && i < d->nc && d->ords[i] <= d->trunc);
+  if (v == 0) {
+    t->coef[i] = v;
+    return;
+  }
+
+  ord_t o = d->ords[i];
+  if (! bget(t->nz,o)) {
+    t->nz = bset(t->nz, o);
+    int *pi = d->hpoly_To_idx;
+    for (int c = pi[o]; c < pi[o+1]; ++c)
+      t->coef[i] = 0;
+  }
+  t->mo = o > t->mo ? o : t->mo;
   t->coef[i] = v;
 }
 
@@ -161,7 +174,8 @@ mad_tpsa_abs(const T *a)
 {
   assert(a);
   num_t norm = 0.0;
-  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+  ord_t mo = min_ord(a->mo, a->desc->trunc);
+  for (int i = 0; i < a->desc->hpoly_To_idx[mo+1]; ++i)
     norm += fabs(a->coef[i]);
   return norm;
 }
@@ -171,7 +185,8 @@ mad_tpsa_abs2(const T *a)
 {
   assert(a);
   num_t norm = 0;
-  for (int i = 0; i < a->desc->hpoly_To_idx[a->mo+1]; ++i)
+  ord_t mo = min_ord(a->mo, a->desc->trunc);
+  for (int i = 0; i < a->desc->hpoly_To_idx[mo+1]; ++i)
     norm += a->coef[i] * a->coef[i];
   return norm;
 }
@@ -192,7 +207,8 @@ mad_tpsa_print(const T *t)
 {
   D *d = t->desc;
   printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
-  for (int i=0; i < d->hpoly_To_idx[t->mo + 1]; ++i)
+  ord_t mo = min_ord(t->mo, t->desc->trunc);
+  for (int i=0; i < d->hpoly_To_idx[mo+1]; ++i)
     if (t->coef[i])
       printf("[%d]=%.2f ", i, t->coef[i]);
   printf(" }\n");

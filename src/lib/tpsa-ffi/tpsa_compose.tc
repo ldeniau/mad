@@ -40,11 +40,25 @@ compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
     mad_tpsa_mul(ctx->tmps[o-1], ctx->mb[pos], ctx->tmps[o]);
 
   double coef_val;
-  for (int i = 0; i < ctx->sa; ++i)
-    if ((coef_val = ctx->ma[i]->coef[idx]))
-      mad_tpsa_cma(coef_val, ctx->tmps[o], ctx->mc[i], ctx->mc[i]);
+  const T **ma = ctx->ma;
+  for (int i = 0; i < ctx->sa; ++i) {
+    coef_val = 0;
+    // sum up all knobs
+    do {
+      idx = desc_get_idx(da, da->nv, curr_mono);
+      if (bget(ma[i]->nz, da->ords[idx]))
+        coef_val += ma[i]->coef[idx];
+    } while (nxt_mono_by_var(da,da->nv,curr_mono,da->knb_start));
 
-  for(  ; pos < da->nv; ++pos) {
+    if (coef_val)
+      mad_tpsa_cma(coef_val, ctx->tmps[o], ctx->mc[i], ctx->mc[i]);
+  }
+
+  // reset knobs
+  for (int k = da->knb_start; k < da->nv; ++k)
+    curr_mono[k] = 0;
+
+  for(  ; pos < da->knb_start; ++pos) {
     curr_mono[pos]++;
     if (desc_mono_isvalid(da, da->nv, curr_mono))
       compose(pos, o+1, curr_mono, ctx);
@@ -70,13 +84,17 @@ init_required(int sa, const T *ma[sa], char required[])
         required[c] = 1;
   }
 
+  // truncate
+  for (int c = pi[d->trunc+1]; c < pi[max_mo+1]; ++c)
+    required[c] = 0;
+
   // root is always required
   required[0] = 1;
 
   // fathers of nodes
   ord_t *mono = NULL;
   int j, father = -1;
-  for (int o = max_mo; o > 1; --o) {
+  for (int o = min_ord(max_mo,d->trunc); o > 1; --o) {
     for (int c = pi[o]; c < pi[o+1]; ++c)
       if (required[c]) {
         mono = d->To[c];
@@ -109,6 +127,8 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   for (int v = 0; v < da->nv  ; ++v) mono[v] = 0;
   for (int o = 0; o < da->mo+2; ++o) tmps[o] = mad_tpsa_newd(da);
   mad_tpsa_seti(tmps[1], 0, 1.0);
+  for (int ic = 0; ic < sc; ++ic)
+    mad_tpsa_clean(mc[ic]);
 
   struct compose_ctx ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
                              .da=da, .mb=mb, .tmps=tmps+1  };
@@ -129,12 +149,16 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
   assert(ma[0]->desc->nv == sb);
   (void)sc;
 
+  for (int ic = 0; ic < sc; ++ic)
+    mad_tpsa_clean(mc[ic]);
+
   D *desc_a = ma[0]->desc;
   ord_t *curr_mono;
   T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
   int nv = desc_a->nv, coef_lim;
   for (int ia = 0; ia < sa; ++ia) {
-    coef_lim = desc_a->hpoly_To_idx[ma[ia]->mo + 1];
+    ord_t mo = min_ord(ma[ia]->mo, desc_a->trunc);
+    coef_lim = desc_a->hpoly_To_idx[mo+1];
 
     for (int mono_idx = 0; mono_idx < coef_lim; ++mono_idx) {
       curr_mono = desc_a->To[mono_idx];
