@@ -64,8 +64,9 @@ local function initMons(nv)
   return t
 end
 
-local function table_by_ords(nv, no)
-  local t, a = initMons(nv), mono_val(nv, no)
+local function table_by_ords(nv, no, ords)
+  local t = initMons(nv)
+  local a = ords or mono_val(nv, no)
 
   local j
   for ord=2,no do
@@ -275,6 +276,7 @@ end
 -- EXPORTED UTILS --------------------------------------------------------------
 M.mono_val   = mono_val
 M.mono_print = mono_print
+M.make_To    = table_by_ords
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...); io:flush() end
 

@@ -94,8 +94,8 @@ local MT   = { __index = M }
 --        {knb_orders}, max_knb_order)
 function M.init(var_ords, mvo, knb_ords, mko)
   local err, knobs = false, false
-  if not is_list(var_ords) or not mvo                                 then err = 1
-  elseif knb_ords and (not is_list(knb_ords) or not mko or mvo > mko) then err = 2
+  if not is_list(var_ords) or not mvo                    then err = 1
+  elseif knb_ords and (not is_list(knb_ords) or not mko) then err = 2
   else  -- no problem, continue building
     -- get a descriptor
     local d

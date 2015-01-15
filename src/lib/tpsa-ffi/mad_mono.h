@@ -11,7 +11,7 @@ static void  mono_set     (int n, ord_t a[n], ord_t v);
 static int   mono_sum     (int n, const ord_t a[n]);
 static void  mono_cpy     (int n, const ord_t a[n],       ord_t r[n]);
 static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
-static int   mono_rpgeq   (int n, const ord_t a[n], const ord_t b[n]); // reverse partial greater or equal
+static int   mono_rcmp    (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
 static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static void  mono_print   (int n, const ord_t a[n]);
@@ -54,14 +54,14 @@ mono_equ(int n, const ord_t a[n], const ord_t b[n])
 }
 
 static inline int
-mono_rpgeq(int n, const ord_t a[n], const ord_t b[n])
+mono_rcmp(int n, const ord_t a[n], const ord_t b[n])
 {
-  // partial order relation ({3,0,0} <= {1,1,0})
-  assert(a && b);
+  assert(a);
+  assert(b);
   for (int i = n - 1; i >= 0; --i)
-    if      (a[i] < b[i]) return 0;
-    else if (a[i] > b[i]) return 1;
-  return 1;
+    if (a[i] != b[i])
+      return a[i] - b[i];
+  return 0;
 }
 
 static inline int
