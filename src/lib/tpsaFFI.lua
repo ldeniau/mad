@@ -32,9 +32,10 @@ ffi.cdef[[
   D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t mo);
   D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t mvo, // with knobs
                             int nk, const ord_t knb_ords[], ord_t mko);
-  void  mad_tpsa_desc_del  (struct tpsa_desc *d);
+  void  mad_tpsa_desc_del  (      D *d);
 
-  int   mad_tpsa_desc_nc   (const struct tpsa_desc *d);
+  int   mad_tpsa_desc_nc   (const D *d);
+  ord_t mad_tpsa_desc_trunc(      D *d, ord_t *to);
 
   // --- --- TPSA --------------------------------------------------------------
 
@@ -69,7 +70,9 @@ ffi.cdef[[
   void  mad_tpsa_lin     (num_t ca, const T *a, num_t cb, const T *b, T *c);
 
   void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+  void  mad_tpsa_compose_slow (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
   void  mad_tpsa_minv    (int sa, const T *ma[],                        int sc, T *mc[]);
+  void  mad_tpsa_minv_k  (int sa, const T *ma[],                        int sc, T *mc[]);
 
   void  mad_tpsa_print   (const T *t);
 
@@ -133,6 +136,8 @@ function M:new()
   return t
 end
 
+M.same = M.new
+
 function M.cpy(src, dst)
   if not dst then dst = src:new() end
   clib.mad_tpsa_copy(src, dst)
@@ -151,7 +156,11 @@ function M.getCoeff(t, m)
   return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
 end
 
-M.same = M.new
+function M.truncate(t, o)
+  -- use without `o` to get current truncation order
+  o = o and ffi.new("ord_t [1]", o)
+  return clib.mad_tpsa_desc_trunc(t.desc, o)
+end
 
 function M.mul(a, b, c)
   -- c should be different from a and b

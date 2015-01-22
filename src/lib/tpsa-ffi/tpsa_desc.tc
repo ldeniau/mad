@@ -338,7 +338,7 @@ tbl_by_var(D *d)
                              d->hpoly_To_idx[o], d->hpoly_To_idx[o+1], BY_ORD);
     d->tv2to[mi]  = idx;
     d->to2tv[idx] = mi;
-    d->Tv[mi]   = d->To[idx];
+    d->Tv[mi]     = d->To[idx];
     ++mi;
   } while (nxt_mono_by_var(d,nv,m,0));
 #ifdef DEBUG

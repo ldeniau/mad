@@ -19,7 +19,7 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   assert(ma && mb && mc);
   assert(sa && sb && sc);
   assert(sa == sc);
-  assert(sb == ma[0]->desc->nv);
+  assert(sb == ma[0]->desc->knb_start);
   for (int i = 1; i < sa; ++i) {
     assert(ma[i]->desc == ma[i-1]->desc);
     assert(ma[i]->desc == mc[i]->desc);
@@ -80,7 +80,8 @@ init_required(int sa, const T *ma[sa], char required[])
     if (ma[i]->mo > max_mo)
       max_mo = ma[i]->mo;
     for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
-      if (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps) // != 0
+      if (bget(ma[i]->nz,d->ords[c]) &&
+         (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps)) // != 0
         required[c] = 1;
   }
 
@@ -139,14 +140,14 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   for (int o = 0; o < da->mo+2; ++o) mad_tpsa_del(tmps[o]);
 }
 
-static inline void
+void
 mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 {
 #ifdef TRACE
   printf("tpsa_compose\n");
 #endif
   assert(ma && mb && mc);
-  assert(ma[0]->desc->nv == sb);
+  assert(ma[0]->desc->knb_start == sb);
   (void)sc;
 
   for (int ic = 0; ic < sc; ++ic)
@@ -155,7 +156,7 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
   D *desc_a = ma[0]->desc;
   ord_t *curr_mono;
   T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
-  int nv = desc_a->nv, coef_lim;
+  int coef_lim;
   for (int ia = 0; ia < sa; ++ia) {
     ord_t mo = min_ord(ma[ia]->mo, desc_a->trunc);
     coef_lim = desc_a->hpoly_To_idx[mo+1];
@@ -169,9 +170,9 @@ mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *m
         continue;
 
       mad_tpsa_seti(curr_build, 0, curr_coef);
-      for (int cmi = 0; cmi < nv; ++cmi)
-        for (ord_t o = 0; o < curr_mono[cmi]; ++o) { // pow
-          mad_tpsa_mul(curr_build, mb[cmi], tmp_res);
+      for (int var = 0; var < desc_a->knb_start; ++var)
+        for (ord_t o = 0; o < curr_mono[var]; ++o) { // pow
+          mad_tpsa_mul(curr_build, mb[var], tmp_res);
           mad_tpsa_copy(tmp_res, curr_build);
         }
 
