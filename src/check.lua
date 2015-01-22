@@ -88,9 +88,7 @@ local function check_bin_with_berz(mod)
   local b1s, b2s, brs = {}, {}, {}
 
   for fi=1,#funcs do
-    fprintf(M.file, "\n== %s =======================\n", funcs[fi])
     t1s[fi], t2s[fi], trs[fi] = factory.get_args(funcs[fi])
-    M.print_all(t1s[fi], t2s[fi])  -- print input
   end
 
   factory.setup(berz)
@@ -105,7 +103,8 @@ local function check_bin_with_berz(mod)
     op_berz(b1s[fi], b2s[fi], brs[fi])
 
     check_identical(trs[fi], brs[fi], 1e-13, factory.To, funcs[fi])
-    M.print(trs[fi])                -- print output
+    fprintf(M.file, "\n==== %s =======================\n", funcs[fi])
+    factory.print_all(M.file, {t1s[fi], t2s[fi], trs[fi]})
   end
 
   factory.setup(mod)  -- restore original
@@ -209,7 +208,7 @@ end
 
 function M.do_all_checks(mod, nv, no)
   -- should be called before any other function in this module
-  if M.file and M.mod ~= mod then  -- file is for another module
+  if M.file and factory.mod ~= mod then  -- file is for another module
     M.file:close()
     M.file = nil
   end
@@ -225,33 +224,12 @@ function M.do_all_checks(mod, nv, no)
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
---  check_subst_with_berz(mod)
+  check_subst_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
   check_minv_with_berz(mod)
 end
 
 M.identical = check_identical
-
-function M.print(t)
-  local f, To = M.file, factory.To
-
-  fprintf(f, "\nCOEFFICIENT                \tEXPONENTS\n")
-
-  for m=0,#To do
-    local v = t:getCoeff(To[m])
-    if v ~= 0 then
-      fprintf(f, "%20.10E\t", v)
-      mono_print(To[m], f)
-      fprintf(f, "\n")
-    end
-  end
-end
-
-function M.print_all(...)
-  local arg = {...}
-  for i=1,#arg do M.print(arg[i]) end
-end
-
 
 return M

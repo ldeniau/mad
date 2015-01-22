@@ -12,6 +12,14 @@ struct compose_ctx {
   D *da;
 };
 
+static inline void
+check_same_desc(int sa, const T *ma[sa], int sc, T *mc[sc])
+{
+  assert(ma && mc);
+  assert(ma[0]->desc == mc[0]->desc);
+  for (int i = 1; i < sa; ++i) assert(ma[i]->desc == ma[i-1]->desc);
+  for (int i = 1; i < sc; ++i) assert(mc[i]->desc == mc[i-1]->desc);
+}
 
 static inline void
 check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
@@ -20,12 +28,8 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   assert(sa && sb && sc);
   assert(sa == sc);
   assert(sb == ma[0]->desc->knb_start);
-  for (int i = 1; i < sa; ++i) {
-    assert(ma[i]->desc == ma[i-1]->desc);
-    assert(ma[i]->desc == mc[i]->desc);
-  }
-  for (int i = 1; i < sb; ++i)
-    assert(mb[i]->desc == mb[i-1]->desc);
+  check_same_desc(sa,ma,sc,mc);
+  check_same_desc(sb,mb,sc,mc);
 }
 
 static inline void

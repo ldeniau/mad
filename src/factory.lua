@@ -280,6 +280,27 @@ M.make_To    = table_by_ords
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...); io:flush() end
 
+function M.print(file, t)
+  local To = M.To
+
+  fprintf(file, "\nCOEFFICIENT                \tEXPONENTS\n")
+
+  for m=0,#To do
+    local v = t:getCoeff(To[m])
+    if v ~= 0 then
+      fprintf(file, "%20.10E\t", v)
+      mono_print(To[m], file)
+      fprintf(file, "\n")
+    end
+  end
+end
+
+function M.print_all(file, ts)
+  for i=1,#ts do M.print(file, ts[i]) end
+end
+
+
+
 -- returns a tpsa having only orders `ord` filled
 function M.ord(ord, startVal, inc)
   -- process params

@@ -8,75 +8,77 @@
 #define T struct tpsa
 #define D struct tpsa_desc
 
+static inline void
+split_and_inv(int nv, const T *ma[nv], T *lin_inv[nv], T *nonlin[nv], int pi[])
+{
+  assert(ma && lin_inv && nonlin);
+  gsl_matrix *mat_lin = gsl_matrix_alloc(nv,nv),
+             *mat_inv = gsl_matrix_alloc(nv,nv);
+
+  for (int i = 0; i < nv; ++i) {
+    assert(bget(ma[i]->nz,1));   // row cannot be 0
+    for (int v = 0; v < nv; ++v)
+      gsl_matrix_set(mat_lin, i,v, ma[i]->coef[v+1]);
+
+    for (int o = 2; o <= ma[i]->mo; ++o)
+      if (bget(ma[i]->nz,o))
+        for (int c = pi[o]; c < pi[o+1]; ++c)
+          mad_tpsa_seti(nonlin[i], c, -1 * ma[i]->coef[c]);
+  }
+
+  // invert linear part
+  gsl_permutation *p = gsl_permutation_alloc(nv);
+  int signum;
+  gsl_linalg_LU_decomp(mat_lin, p, &signum);
+  gsl_linalg_LU_invert(mat_lin, p, mat_inv);
+  gsl_permutation_free(p);
+
+  for (int i = 0; i < nv; ++i)
+  for (int j = 0; j < nv; ++j)
+    mad_tpsa_seti(lin_inv[i], j+1, gsl_matrix_get(mat_inv,i,j));
+  gsl_matrix_free(mat_lin);
+  gsl_matrix_free(mat_inv);
+}
+
 void
 mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 {
   assert(ma && mc);
+  assert(sa == sc);
+  check_same_desc(sa,ma,sc,mc);
 
   D *d = ma[0]->desc;
-  int nv = d->nv;
-  gsl_matrix *lina_LU  = gsl_matrix_alloc(nv, nv),
-             *lina_inv = gsl_matrix_alloc(nv, nv);
-  num_t lin_a[nv][nv];
-
-  T **ma_nlin = (T**) ma;
+  T *lin_inv[sa], *nonlin[sa], *tmp[sa];
   for (int i = 0; i < sa; ++i) {
-    for (int v = 0; v < nv; ++v) {
-      lin_a[i][v] = ma[i]->coef[v+1];
-      gsl_matrix_set(lina_LU, i, v, lin_a[i][v]);
-      ma_nlin[i]->coef[v+1] = 0;  // keep just non-linear part
-    }
-    mad_tpsa_cmul(-1.0, ma_nlin[i], ma_nlin[i]); // temporary flip signs before inversion
+    lin_inv[i] = mad_tpsa_newd(d);
+    nonlin[i]  = mad_tpsa_newd(d);
+    tmp[i]     = mad_tpsa_newd(d);
   }
 
-  gsl_permutation *p = gsl_permutation_alloc(nv);
-  int signum;
-  gsl_linalg_LU_decomp(lina_LU, p, &signum);
-  gsl_linalg_LU_invert(lina_LU, p, lina_inv);
+  split_and_inv(sa, ma, lin_inv, nonlin, d->hpoly_To_idx);
 
-  T *ml_inv[sc], *m_tmp[sc];
-  for (int i = 0; i < sc; ++i) {
-    mad_tpsa_clean(mc[i]);
-    ml_inv[i] = mad_tpsa_newd(ma[0]->desc);
-    m_tmp[i] = mad_tpsa_newd(ma[0]->desc);
-  }
-
-  for (int i = 0; i < nv; ++i)
-    for (int j = 0; j < nv; ++j) {
-      num_t val = gsl_matrix_get(lina_inv, i, j);
-      mad_tpsa_seti(mc[i], j+1, val);;
-      mad_tpsa_seti(ml_inv[i], j+1, val);;
-    }
+  for (int i = 0; i < sa; ++i)
+    mad_tpsa_copy(lin_inv[i], mc[i]);
 
   // iteratively compute higher orders of the inverse
-  // MC (OF ORDER I) = A1^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I) ]
+  // MC (OF ORDER I) = AL^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I) ]
 
   for (int o = 2; o <= d->mo; ++o) {
     d->trunc = o;
+    mad_tpsa_compose(sa, (const T**)nonlin,  sa, (const T**)mc,  sa, tmp);
 
-    mad_tpsa_compose(sa, (const T**)ma_nlin, sa, (const T**)mc, sa, m_tmp);
+    for (int v = 0; v < sa; ++v)
+      mad_tpsa_seti(tmp[v], v+1, tmp[v]->coef[v+1] + 1);    // add I
 
-    for (int v = 0; v < nv; ++v)
-      mad_tpsa_seti(m_tmp[v], v+1, m_tmp[v]->coef[v+1] + 1);    // add I
-
-    mad_tpsa_compose(sa, (const T**)ml_inv, sa, (const T**)m_tmp, sa, mc);
-  }
-
-  // restore sign and linear part of ma
-  for (int i = 0; i < sa; ++i) {
-    mad_tpsa_cmul(-1.0, ma_nlin[i], ma_nlin[i]);
-    for (int v = 0; v < nv; ++v)
-      ma_nlin[i]->coef[v+1] = lin_a[i][v];
+    mad_tpsa_compose(sa, (const T**)lin_inv, sa, (const T**)tmp, sa, mc);
   }
 
   // cleanup
   for (int i = 0; i < sa; ++i) {
-    mad_tpsa_del(ml_inv[i]);
-    mad_tpsa_del(m_tmp[i]);
+    mad_tpsa_del(lin_inv[i]);
+    mad_tpsa_del(nonlin[i]);
+    mad_tpsa_del(tmp[i]);
   }
-  gsl_matrix_free(lina_LU);
-  gsl_matrix_free(lina_inv);
-  gsl_permutation_free(p);
 }
 
 
