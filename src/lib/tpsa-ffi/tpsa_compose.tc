@@ -55,7 +55,7 @@ compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
     } while (nxt_mono_by_var(da,da->nv,curr_mono,da->knb_start));
 
     if (coef_val)
-      mad_tpsa_cma(coef_val, ctx->tmps[o], ctx->mc[i], ctx->mc[i]);
+      mad_tpsa_axpb(coef_val, ctx->tmps[o], ctx->mc[i], ctx->mc[i]);
   }
 
   // reset knobs

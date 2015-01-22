@@ -237,7 +237,7 @@ mad_tpsa_inv(const T *a, T *c)
   for (int o = 1; o <= mo; ++o) {
     mad_tpsa_mul(a, pow, tmp);
     mad_tpsa_copy(tmp, pow);
-    mad_tpsa_cma(expansion_coef[o], pow, c, c);
+    mad_tpsa_axpb(expansion_coef[o], pow, c, c);
   }
   mad_tpsa_seti((T*)a, 0, a0);  // restore val
   mad_tpsa_del(pow);
@@ -245,11 +245,11 @@ mad_tpsa_inv(const T *a, T *c)
 }
 
 void
-mad_tpsa_lin(num_t c1, const T *a, num_t c2, const T *b, T *c)
+mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
 {
   // this can be done in place [i.e. (a or b) == c ]
 #ifdef TRACE
-  printf("tpsa_lin\n");
+  printf("tpsa_axpby\n");
 #endif
   assert(a && b && c);
   assert(a->desc == b->desc && b->desc == c->desc);
@@ -293,7 +293,7 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
 
-  mad_tpsa_lin(1.0, a, 1.0, b, c);
+  mad_tpsa_axpby(1.0, a, 1.0, b, c);
 }
 
 void
@@ -304,7 +304,7 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
 #endif
   assert(a && b && c);
   assert(a->desc == b->desc && a->desc == c->desc);
-  mad_tpsa_lin(1.0, a, -1.0, b, c);
+  mad_tpsa_axpby(1.0, a, -1.0, b, c);
 }
 
 void
@@ -327,14 +327,14 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   }
 
   num_t a0 = a->coef[0], b0 = b->coef[0];
-  mad_tpsa_lin(b0, a, a0, b, c);
+  mad_tpsa_axpby(b0, a, a0, b, c);
   c->coef[0] -= a0 * b0;                 // was done twice in lin
 
   hpoly_mul(a, b, c);
 }
 
 void
-mad_tpsa_cmul(num_t v, const T *a, T *c)
+mad_tpsa_scale(num_t v, const T *a, T *c)
 {
   assert(a && c);
   assert(a->desc == c->desc);
@@ -345,14 +345,14 @@ mad_tpsa_cmul(num_t v, const T *a, T *c)
 }
 
 void
-mad_tpsa_cma(num_t v, const T *a, const T *b, T *c)
+mad_tpsa_axpb(num_t v, const T *a, const T *b, T *c)
 {
 #ifdef TRACE
   printf("tpsa_mul_constant %lf\n", v);
 #endif
   assert(a && b && c);
   assert(a->desc == b->desc && b->desc == c->desc);
-  mad_tpsa_lin(v, a, 1.0, b, c);
+  mad_tpsa_axpby(v, a, 1.0, b, c);
 }
 
 void

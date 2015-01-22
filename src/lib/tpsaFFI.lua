@@ -66,8 +66,9 @@ ffi.cdef[[
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
 
-  void  mad_tpsa_cma     (num_t ca, const T *a,           const T *b, T *c);
-  void  mad_tpsa_lin     (num_t ca, const T *a, num_t cb, const T *b, T *c);
+  void  mad_tpsa_scale   (num_t ca, const T *a,                       T *c);
+  void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
+  void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);
 
   void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
   void  mad_tpsa_compose_slow (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
