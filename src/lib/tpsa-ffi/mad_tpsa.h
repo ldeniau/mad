@@ -38,6 +38,16 @@ void  mad_tpsa_pos     (const T *a,             T *c);
 num_t mad_tpsa_comp    (const T *a, const T *b);
 
 void  mad_tpsa_inv     (const T *a, T *c);
+void  mad_tpsa_sqrt    (const T *a, T *c);
+void  mad_tpsa_isrt    (const T *a, T *c);
+void  mad_tpsa_exp     (const T *a, T *c);
+void  mad_tpsa_log     (const T *a, T *c);
+void  mad_tpsa_sin     (const T *a, T *c);
+void  mad_tpsa_cos     (const T *a, T *c);
+void  mad_tpsa_sincos  (const T *a, T *c);
+void  mad_tpsa_sirx    (const T *a, T *c);
+void  mad_tpsa_corx    (const T *a, T *c);
+void  mad_tpsa_sidx    (const T *a, T *c);
 
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);

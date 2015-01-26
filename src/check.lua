@@ -8,6 +8,8 @@ local min, abs = math.min, math.abs
 
 local function dummy_fct() return 0 end
 
+-- UTILS -----------------------------------------------------------------------
+
 local function check_coeff_consistency(fset_name, fget_name, in_vals, err_code)
   local err_fmt = "Error %d: inconsistent coefficients at %d (%f should have been %f)"
 
@@ -79,6 +81,8 @@ local function check_identical(t1, t2, eps, To, fct_name)
     end
   end
 end
+
+-- CHECKS ----------------------------------------------------------------------
 
 local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
@@ -204,6 +208,38 @@ local function check_minv_with_berz(mod)
   factory.setup(mod)  -- restore original
 end
 
+local function check_fun_with_berz(mod)
+  local funcs = {'inv', 'sqrt', 'isrt', 'exp', 'log', 'sin', 'cos'}
+  local t_in, t_out = factory.get_args("fun")
+  local t_in_zero   = factory.full(0.0)  -- a0 = 0
+
+  factory.setup(berz)
+  local b_in, b_out = factory.get_args("fun")
+  local b_in_zero   = factory.full(0.0)  -- a0 = 0
+
+  for _,fun in pairs(funcs) do
+    mod [fun](t_in,t_out)
+    berz[fun](b_in,b_out)
+
+    check_identical(t_in , b_in , 1e-6, factory.To, fun)
+    check_identical(t_out, b_out, 1e-6, factory.To, fun)
+    fprintf(M.file, "\n==== %s =======================\n", fun)
+    factory.print(M.file,t_in,t_out)
+  end
+
+  for _,fun in pairs({'sirx', 'corx', 'sidx'}) do
+    mod [fun](t_in_zero,t_out)
+    berz[fun](b_in_zero,b_out)
+
+    check_identical(t_in_zero, b_in_zero, 1e-6, factory.To, fun)
+    check_identical(t_out    , b_out    , 1e-6, factory.To, fun)
+    fprintf(M.file, "\n==== %s =======================\n", fun)
+    factory.print(M.file,t_in,t_out)
+  end
+
+  factory.setup(mod)  -- restore original
+end
+
 -- CHECKING & DEBUGGING --------------------------------------------------------
 
 function M.do_all_checks(mod, nv, no)
@@ -227,6 +263,7 @@ function M.do_all_checks(mod, nv, no)
   check_subst_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
+  check_fun_with_berz(mod)
   check_minv_with_berz(mod)
 end
 

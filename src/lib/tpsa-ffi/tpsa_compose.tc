@@ -12,6 +12,8 @@ struct compose_ctx {
   D *da;
 };
 
+// --- LOCAL FUNCTIONS --------------------------------------------------------
+
 static inline void
 check_same_desc(int sa, const T *ma[sa], int sc, T *mc[sc])
 {
@@ -112,6 +114,8 @@ init_required(int sa, const T *ma[sa], char required[])
       }
   }
 }
+
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 void
 mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])

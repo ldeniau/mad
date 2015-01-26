@@ -215,36 +215,6 @@ mad_tpsa_der(const T *a, int var, T *c)
 }
 
 void
-mad_tpsa_inv(const T *a, T *c)
-{
-  assert(a && c);
-  assert(a->desc == c->desc);
-  assert(a->coef[0] != 0);
-
-  ord_t mo = min_ord(a->mo, a->desc->trunc);
-  num_t expansion_coef[mo+1], a0 = a->coef[0];
-  expansion_coef[0] = 1.0 / a0;
-  for (int o = 1; o <= mo; ++o)
-    expansion_coef[o] = -expansion_coef[o-1] / a0;
-
-  mad_tpsa_clean(c);
-  mad_tpsa_seti(c, 0, a0);
-
-  T *pow = mad_tpsa_newd(a->desc), *tmp = mad_tpsa_newd(a->desc);
-  mad_tpsa_seti(pow, 0, 1.0);
-  mad_tpsa_seti((T*)a, 0, 0.0);
-
-  for (int o = 1; o <= mo; ++o) {
-    mad_tpsa_mul(a, pow, tmp);
-    mad_tpsa_copy(tmp, pow);
-    mad_tpsa_axpb(expansion_coef[o], pow, c, c);
-  }
-  mad_tpsa_seti((T*)a, 0, a0);  // restore val
-  mad_tpsa_del(pow);
-  mad_tpsa_del(tmp);
-}
-
-void
 mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
 {
   // this can be done in place [i.e. (a or b) == c ]
@@ -282,7 +252,6 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
   for ( ; i < pi[amo+1]; ++i) c->coef[i] = c1*ca[i] + c2*cb[i];
   for ( ; i < pi[bmo+1]; ++i) c->coef[i] =            c2*cb[i];
 }
-
 
 void
 mad_tpsa_add(const T *a, const T *b, T *c)

@@ -223,6 +223,10 @@ local function args_minv()
   end
 end
 
+-- --- FUN ---------------------------------------------------------------------
+local function args_fun()
+  return M.full(), M.new_instance()
+end
 
 --------------------------------------------------------------------------------
 
@@ -236,10 +240,10 @@ function M.get_args(fct_name)
   local val = 4.3
 
   local args = {
-    getm     = function() return make_To_ffi(), M.nv end,
-    getCoeff = function() return M.To                end,
-    setm     = function() return make_To_ffi(), val, M.nv end,
-    setCoeff = function() return M.To    , val       end,
+    getm     = function() return make_To_ffi(),      M.nv      end,
+    getCoeff = function() return M.To                          end,
+    setm     = function() return make_To_ffi(), val, M.nv      end,
+    setCoeff = function() return M.To         , val            end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     mul      = args_bin_op,
@@ -250,7 +254,11 @@ function M.get_args(fct_name)
     compose_raw = args_compose,
     minv_raw = args_minv,
 
-    generic  = function() return M.To                end
+    fun      = args_fun,
+    inv      = args_fun,
+    sqrt     = args_fun,
+
+    generic  = function() return M.To end
   }
   return args[fct_name]()
 end

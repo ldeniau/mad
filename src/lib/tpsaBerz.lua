@@ -219,6 +219,42 @@ function tpsa.inv(a, b)
   berzLib.dafun_(chrArr(5, 'inv '), a.idx, b.idx)
 end
 
+function tpsa.sqrt(a, b)
+  berzLib.dafun_(chrArr(5, 'sqrt'), a.idx, b.idx)
+end
+
+function tpsa.isrt(a, b)
+  berzLib.dafun_(chrArr(5, 'isrt'), a.idx, b.idx)
+end
+
+function tpsa.exp(a, b)
+  berzLib.dafun_(chrArr(5, 'exp '), a.idx, b.idx)
+end
+
+function tpsa.log(a, b)
+  berzLib.dafun_(chrArr(5, 'log '), a.idx, b.idx)
+end
+
+function tpsa.sin(a, b)
+  berzLib.dafun_(chrArr(5, 'sin '), a.idx, b.idx)
+end
+
+function tpsa.cos(a, b)
+  berzLib.dafun_(chrArr(5, 'cos '), a.idx, b.idx)
+end
+
+function tpsa.sirx(a, b)
+  berzLib.dafun_(chrArr(5, 'sirx'), a.idx, b.idx)
+end
+
+function tpsa.corx(a, b)
+  berzLib.dafun_(chrArr(5, 'corx'), a.idx, b.idx)
+end
+
+function tpsa.sidx(a, b)
+  berzLib.dafun_(chrArr(5, 'sidx'), a.idx, b.idx)
+end
+
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
   if not dst then dst = src:new() end

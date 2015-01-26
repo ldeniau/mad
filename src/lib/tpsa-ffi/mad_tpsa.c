@@ -220,6 +220,8 @@ mad_tpsa_print(const T *t)
 // --- --- OPERATIONS ---------------------------------------------------------
 #include "tpsa_ops.tc"
 
+#include "tpsa_fun.tc"
+
 #include "tpsa_compose.tc"
 
 #include "tpsa_minv.tc"

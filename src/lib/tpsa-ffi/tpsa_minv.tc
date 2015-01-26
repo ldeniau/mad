@@ -8,6 +8,8 @@
 #define T struct tpsa
 #define D struct tpsa_desc
 
+// --- LOCAL FUNCTIONS --------------------------------------------------------
+
 static inline void
 split_and_inv(int nv, const T *ma[nv], T *lin_inv[nv], T *nonlin[nv], int pi[])
 {
@@ -39,6 +41,8 @@ split_and_inv(int nv, const T *ma[nv], T *lin_inv[nv], T *nonlin[nv], int pi[])
   gsl_matrix_free(mat_lin);
   gsl_matrix_free(mat_inv);
 }
+
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 void
 mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])

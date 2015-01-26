@@ -60,6 +60,16 @@ ffi.cdef[[
   num_t mad_tpsa_comp    (const T *a, const T *b);
 
   void  mad_tpsa_inv     (const T *a, T *c);
+  void  mad_tpsa_sqrt    (const T *a, T *c);
+  void  mad_tpsa_isrt    (const T *a, T *c);
+  void  mad_tpsa_exp     (const T *a, T *c);
+  void  mad_tpsa_log     (const T *a, T *c);
+  void  mad_tpsa_sin     (const T *a, T *c);
+  void  mad_tpsa_cos     (const T *a, T *c);
+  void  mad_tpsa_sincos  (const T *a, T *c);
+  void  mad_tpsa_sirx    (const T *a, T *c);
+  void  mad_tpsa_corx    (const T *a, T *c);
+  void  mad_tpsa_sidx    (const T *a, T *c);
 
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
@@ -224,11 +234,51 @@ function M.cma(v, a, b, c)
   clib.mad_tpsa_cma(v, a, b, c)
 end
 
+-- FUNCTIONS -------------------------------------------------------------------
+
 function M.inv(a, c)
   clib.mad_tpsa_inv(a, c)
 end
 
+function M.sqrt(a, c)
+  clib.mad_tpsa_sqrt(a,c)
+end
 
+function M.isrt(a, c)
+  clib.mad_tpsa_isrt(a,c)
+end
+
+function M.exp(a, c)
+  clib.mad_tpsa_exp(a,c)
+end
+
+function M.log(a, c)
+  clib.mad_tpsa_log(a,c)
+end
+
+function M.sin(a, c)
+  clib.mad_tpsa_sin(a,c)
+end
+
+function M.cos(a, c)
+  clib.mad_tpsa_cos(a,c)
+end
+
+function M.sincos(a, c)
+  clib.mad_tpsa_sincos(a,c)
+end
+
+function M.sirx(a, c)
+  clib.mad_tpsa_sirx(a,c)
+end
+
+function M.corx(a, c)
+  clib.mad_tpsa_corx(a,c)
+end
+
+function M.sidx(a, c)
+  clib.mad_tpsa_sidx(a,c)
+end
 
 -- debugging -------------------------------------------------------------------
 
