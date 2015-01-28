@@ -255,6 +255,14 @@ function tpsa.sidx(a, b)
   berzLib.dafun_(chrArr(5, 'sidx'), a.idx, b.idx)
 end
 
+function tpsa.tan(a, b)
+  berzLib.dafun_(chrArr(5, 'tan '), a.idx, b.idx)
+end
+
+function tpsa.cot(a, b)
+  berzLib.dafun_(chrArr(5, 'cot '), a.idx, b.idx)
+end
+
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
   if not dst then dst = src:new() end

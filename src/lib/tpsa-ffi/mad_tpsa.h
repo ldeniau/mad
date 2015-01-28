@@ -49,6 +49,9 @@ void  mad_tpsa_sirx    (const T *a, T *c);
 void  mad_tpsa_corx    (const T *a, T *c);
 void  mad_tpsa_sidx    (const T *a, T *c);
 
+void  mad_tpsa_tan     (const T *a, T *c);
+void  mad_tpsa_cot     (const T *a, T *c);
+
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
 void  mad_tpsa_mul     (const T *a, const T *b, T *c);

@@ -71,6 +71,9 @@ ffi.cdef[[
   void  mad_tpsa_corx    (const T *a, T *c);
   void  mad_tpsa_sidx    (const T *a, T *c);
 
+  void  mad_tpsa_tan     (const T *a, T *c);
+  void  mad_tpsa_cot     (const T *a, T *c);
+
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
@@ -290,6 +293,16 @@ end
 function M.sidx(a, c)
   clib.mad_tpsa_sidx(a,c)
 end
+
+function M.tan(a, c)
+  clib.mad_tpsa_tan(a,c)
+end
+
+function M.cot(a, c)
+  clib.mad_tpsa_cot(a,c)
+end
+
+
 
 -- debugging -------------------------------------------------------------------
 

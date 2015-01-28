@@ -107,8 +107,11 @@ local function check_bin_with_berz(mod)
     op_berz(b1s[fi], b2s[fi], brs[fi])
 
     check_identical(trs[fi], brs[fi], 1e-13, factory.To, funcs[fi])
-    fprintf(M.file, "\n==== %s =======================\n", funcs[fi])
-    factory.print_all(M.file, {t1s[fi], t2s[fi], trs[fi]})
+
+    fprintf(M.mod_file , "\n==== %s =======================\n", funcs[fi])
+    fprintf(M.berz_file, "\n==== %s =======================\n", funcs[fi])
+    factory.print_all(M.mod_file , {t1s[fi], t2s[fi], trs[fi]})
+    factory.print_all(M.berz_file, {b1s[fi], b2s[fi], brs[fi]})
   end
 
   factory.setup(mod)  -- restore original
@@ -208,8 +211,24 @@ local function check_minv_with_berz(mod)
   factory.setup(mod)  -- restore original
 end
 
+
+local function check_set_of_fun(func_names, mod, t_in, t_out, b_in, b_out)
+  for _,fun in pairs(func_names) do
+    mod [fun](t_in,t_out)
+    berz[fun](b_in,b_out)
+
+    check_identical(t_in , b_in , 1e-6, factory.To, fun)
+    check_identical(t_out, b_out, 1e-6, factory.To, fun)
+
+    fprintf(M.mod_file , "\n==== %s =======================\n", fun)
+    fprintf(M.berz_file, "\n==== %s =======================\n", fun)
+    factory.print_all(M.mod_file , {t_in, t_out})
+    factory.print_all(M.berz_file, {b_in, b_out})
+  end
+end
+
+
 local function check_fun_with_berz(mod)
-  local funcs = {'inv', 'sqrt', 'isrt', 'exp', 'log', 'sin', 'cos'}
   local t_in, t_out = factory.get_args("fun")
   local t_in_zero   = factory.full(0.0)  -- a0 = 0
 
@@ -217,44 +236,37 @@ local function check_fun_with_berz(mod)
   local b_in, b_out = factory.get_args("fun")
   local b_in_zero   = factory.full(0.0)  -- a0 = 0
 
-  for _,fun in pairs(funcs) do
-    mod [fun](t_in,t_out)
-    berz[fun](b_in,b_out)
+  local funcs = {'inv', 'sqrt', 'isrt', 'exp', 'log', 'sin', 'cos'}
+  check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
 
-    check_identical(t_in , b_in , 1e-6, factory.To, fun)
-    check_identical(t_out, b_out, 1e-6, factory.To, fun)
-    fprintf(M.file, "\n==== %s =======================\n", fun)
-    factory.print(M.file,t_in,t_out)
-  end
+  funcs = {'sirx', 'corx', 'sidx'}
+  check_set_of_fun(funcs,mod,t_in_zero,t_out,b_in_zero,b_out)
 
-  for _,fun in pairs({'sirx', 'corx', 'sidx'}) do
-    mod [fun](t_in_zero,t_out)
-    berz[fun](b_in_zero,b_out)
-
-    check_identical(t_in_zero, b_in_zero, 1e-6, factory.To, fun)
-    check_identical(t_out    , b_out    , 1e-6, factory.To, fun)
-    fprintf(M.file, "\n==== %s =======================\n", fun)
-    factory.print(M.file,t_in,t_out)
+  if factory.no <= 5 then
+    funcs = {'tan', 'cot'}
+    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
   end
 
   factory.setup(mod)  -- restore original
 end
 
--- CHECKING & DEBUGGING --------------------------------------------------------
+-- EXPORTED FUNCTIONS ----------------------------------------------------------
 
+-- should be called before any other function in this module
 function M.do_all_checks(mod, nv, no)
-  -- should be called before any other function in this module
-  if M.file and factory.mod ~= mod then  -- file is for another module
-    M.file:close()
-    M.file = nil
+  if M.mod_file and factory.mod ~= mod then  -- file is for another module
+    M.mod_file:close()
+    M.mod_file = nil
   end
 
-  if not M.file then
+  if not M.mod_file then
     local filename = (mod.name or "check") .. ".out"
-    M.file = io.open(filename, "w")
+    M.mod_file  = io.open(filename, "w")
+    M.berz_file = io.open("berz.out", "w")
   end
 
-  fprintf(M.file, "\n\n== NV= %d, NO= %d =======================", nv, no)
+  fprintf(M.mod_file , "\n\n== NV= %d, NO= %d =======================", nv, no)
+  fprintf(M.berz_file, "\n\n== NV= %d, NO= %d =======================", nv, no)
   factory.setup(mod,nv,no)
   check_coeff()
 
