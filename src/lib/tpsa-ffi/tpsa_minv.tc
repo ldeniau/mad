@@ -48,7 +48,7 @@ void
 mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 {
   assert(ma && mc);
-  assert(sa == sc);
+  ensure(sa == sc);
   check_same_desc(sa,ma,sc,mc);
 
   D *d = ma[0]->desc;
@@ -85,6 +85,41 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
   }
 }
 
+void
+mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
+{
+  assert(ma && mc);
+  check_same_desc(sa,ma,sc,mc);
+
+  D *d = ma[0]->desc;
+  // split input map into rows that are inverted and rows that are not
+  T *mUsed[sa], *mUnused[sa], *mInv[sa];
+  for (int i = 0; i < sa; ++i) {
+    mUsed  [i] = mad_tpsa_newd(d);
+    mUnused[i] = mad_tpsa_newd(d);
+    mInv   [i] = mad_tpsa_newd(d);
+
+    if (row_select[i]) {
+      mad_tpsa_copy(ma[i],mUsed[i]);
+      mad_tpsa_seti(mUnused[i], i+1, 1.0);
+    }
+    else {
+      mad_tpsa_seti(mUsed[i], i+1, 1.0);
+      mad_tpsa_copy(ma[i],mUnused[i]);
+    }
+    mad_tpsa_seti(mUsed  [i],0,0.0);
+    mad_tpsa_seti(mUnused[i],0,0.0);
+  }
+
+  mad_tpsa_minv(sa,(const T**)mUsed,sa,mInv);
+  mad_tpsa_compose(sa,(const T**)mUnused,sa,(const T**)mInv,sc,mc);
+
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_del(mUsed[i]);
+    mad_tpsa_del(mUnused[i]);
+    mad_tpsa_del(mInv[i]);
+  }
+}
 
 #undef T
 #undef D

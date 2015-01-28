@@ -62,7 +62,8 @@ void  mad_tpsa_axpb    (num_t ca, const T *a,              const T *b, T *c);
 void  mad_tpsa_axpby   (num_t ca, const T *a,    num_t cb, const T *b, T *c);
 
 void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc, T *mc[]);
-void  mad_tpsa_minv    (int   sa, const T *ma[],                          int sc, T *mc[]);
+void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
+void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[sa]);
 
 void  mad_tpsa_print   (const T *t);
 

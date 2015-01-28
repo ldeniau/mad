@@ -55,6 +55,7 @@ ffi.cdef[[
   void dacct_(int *m1, int *s1, int *m2, int *s2, int *mr, int *sr);
 
   void dainv_(int *m1, int *s1, int *mr, int *sr); // mr = ma ^ -1
+  void dapin_(int *m1, int *s1, int *mr, int *sr, int *row_select); // partial inversion
 
   void dapri_(int *idx, int *dest);                // print TPSA at idx on stream dest
 ]]
@@ -280,6 +281,17 @@ function tpsa.minv(ma, mr)
   berzLib.dainv_(aIdxs, aSize, rIdxs, rSize)
 end
 
+function tpsa.pminv(ma, mr, rows)
+  -- ma, mr = arrays of TPSAs
+  local aIdxs, rIdxs = intArr(#ma), intArr(#mr)
+  local aSize, rSize = intPtr(#ma), intPtr(#mr)
+  for i=1,#ma do aIdxs[i-1] = ma[i].idx[0] end
+  for i=1,#mr do rIdxs[i-1] = mr[i].idx[0] end
+  local sel = intArr(#rows, rows)
+
+  berzLib.dapin_(aIdxs, aSize, rIdxs, rSize, sel)
+end
+
 function tpsa.destroy(t)
   berzLib.dadal_(t.idx, one_i)
 end
@@ -313,6 +325,10 @@ end
 
 function tpsa.minv_raw(sa, ma, sc, mc)
   berzLib.dainv_(ma, sa, mc, sc)
+end
+
+function tpsa.pminv_raw(sa, ma, sc, mc, sel)
+  berzLib.dapin_(ma, sa, mc, sc, sel)
 end
 
 return tpsa

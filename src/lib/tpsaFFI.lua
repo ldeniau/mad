@@ -83,10 +83,9 @@ ffi.cdef[[
   void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
   void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);
 
-  void  mad_tpsa_compose (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
-  void  mad_tpsa_compose_slow (int sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
-  void  mad_tpsa_minv    (int sa, const T *ma[],                        int sc, T *mc[]);
-  void  mad_tpsa_minv_k  (int sa, const T *ma[],                        int sc, T *mc[]);
+  void  mad_tpsa_compose (int   sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
+  void  mad_tpsa_minv    (int   sa, const T *ma[],                        int sc, T *mc[]);
+  void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,       T *mc[], int row_select[]);
 
   void  mad_tpsa_print   (const T *t);
 
@@ -209,9 +208,16 @@ function M.compose(ma, mb, mc)
 end
 
 function M.minv(ma, mc)
-    -- ma, mb, mc -- compatible lua arrays of TPSAs
+  -- ma, mb, mc -- compatible lua arrays of TPSAs
   local cma, cmc = tpsa_carr(#ma, ma), tpsa_arr(#mc, mc)
   clib.mad_tpsa_minv(#ma, cma, #mc, cmc)
+end
+
+function M.pminv(ma, mc, rows)
+  -- ma, mb, mc -- compatible lua arrays of TPSAs
+  local cma, cmc = tpsa_carr(#ma, ma), tpsa_arr(#mc, mc)
+  local sel = ffi.new("int[?]", #rows, rows)
+  clib.mad_tpsa_pminv(#ma, cma, #mc, cmc, sel)
 end
 
 function M.pow(a, p)
@@ -330,6 +336,10 @@ end
 
 function M.minv_raw(sa, ma, sc, mc)
   clib.mad_tpsa_minv(sa, ma, sc, mc)
+end
+
+function M.pminv_raw(sa, ma, sc, mc, sel)
+  clib.mad_tpsa_pminv(sa, ma, sc, mc, sel)
 end
 
 -- end -------------------------------------------------------------------------
