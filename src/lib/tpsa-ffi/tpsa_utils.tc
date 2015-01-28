@@ -1,6 +1,8 @@
 #ifndef TPSA_UTILS_TEMPLATE
 #define TPSA_UTILS_TEMPLATE
 
+#define ensure(bool_expression) assert(bool_expression)
+
 typedef unsigned int  bit_t;
 
 static inline bit_t
@@ -34,6 +36,18 @@ swap (struct tpsa **a, struct tpsa **b)
   struct tpsa *tmp = *a;
   *a = *b;
   *b = tmp;
+}
+
+static inline int
+imin (int a, int b)
+{
+  return a<b ? a : b;
+}
+
+static inline int
+imax (int a, int b)
+{
+  return a>b ? a : b;
 }
 
 #endif

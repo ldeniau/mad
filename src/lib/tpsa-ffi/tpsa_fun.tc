@@ -26,10 +26,6 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
   mad_tpsa_copy(a,acp);
   mad_tpsa_seti(acp,0,0.0);
 
-  for (int i = 0; i <= iter; ++i)
-    printf("%d:%.3f ", i, expansion_coef[i]);
-  printf("\n");
-
   for (int i = 1; i <= iter; ++i) {
     mad_tpsa_mul(acp,pow,tmp);
     mad_tpsa_copy(tmp,pow);

@@ -29,9 +29,9 @@ ffi.cdef[[
 
   // --- --- DESC --------------------------------------------------------------
 
-  D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t mo);
-  D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t mvo, // with knobs
-                            int nk, const ord_t knb_ords[], ord_t mko);
+  D*    mad_tpsa_desc_new  (ord_t mo, int nv, const ord_t var_ords[]);
+  D*    mad_tpsa_desc_newk (ord_t mo, int nv, const ord_t var_ords[], ord_t mvo, // with knobs
+                                      int nk, const ord_t knb_ords[], ord_t mko);
   void  mad_tpsa_desc_del  (      D *d);
 
   int   mad_tpsa_desc_nc   (const D *d);
@@ -100,25 +100,36 @@ local tpsa_arr = typeof("T*   [?]")
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
 
+-- helpers ---------------------------------------------------------------------
+local function arr_max(a)
+  local m = a[1]
+  for i=2,#a do
+    if a[i] > m then m = a[i] end
+  end
+  return m
+end
+
 -- functions -------------------------------------------------------------------
 
 -- constructors of tpsa:
---   tpsa({var_orders}, max_var_order)
---   tpsa({var_orders}, max_var_order,
---        {knb_orders}, max_knb_order)
-function M.init(var_ords, mvo, knb_ords, mko)
+--   tpsa({var_orders}, max_order)
+--   tpsa({var_orders}, max_order,
+--        {knb_orders}, max_var_order, max_knb_order)
+function M.init(var_ords, mo, knb_ords, mvo, mko)
   local err, knobs = false, false
-  if not is_list(var_ords) or not mvo                    then err = 1
-  elseif knb_ords and (not is_list(knb_ords) or not mko) then err = 2
+  if not is_list(var_ords) or type(mo) ~= 'number' then err = 1
+  elseif knb_ords and not is_list(knb_ords)        then err = 2
   else  -- no problem, continue building
     -- get a descriptor
     local d
     local nv, vo = #var_ords, mono_t(#var_ords, var_ords)
     if knb_ords then
       local nk, ko = #knb_ords, mono_t(#knb_ords, knb_ords)
-      d = clib.mad_tpsa_desc_newk(nv, vo, mvo, nk, ko, mko)
+      mvo = mvo or arr_max(var_ords)
+      mko = mko or arr_max(knb_ords)
+      d = clib.mad_tpsa_desc_newk(mo, nv, vo, mvo, nk, ko, mko)
     else
-      d = clib.mad_tpsa_desc_new(nv, vo, mvo)
+      d = clib.mad_tpsa_desc_new(mo, nv, vo)
     end
 
     -- create & init tpsa
@@ -136,8 +147,8 @@ function M.init(var_ords, mvo, knb_ords, mko)
   end
 
   error ("Error " .. tostring(err) .. ": invalid tpsa constructor argument. Use:\n"..
-         "\ttpsa({var_orders}, max_var_order) OR\n"..
-         "\ttpsa({var_orders}, max_var_order, {knb_orders}, max_knb_order)\n")
+         "\ttpsa({var_orders}, max_order) OR\n"..
+         "\ttpsa({var_orders}, max_order, {knb_orders}, max_var_order, max_knb_order)\n")
 end
 
 function M:new()
