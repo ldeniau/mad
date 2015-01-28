@@ -147,27 +147,35 @@ local function poly_mul(a,b,c, start,stop,D)
   end
 end
 
-local function hpoly_sym_mul(a,b,c, l,ico)
-  for icl=1,#l        do
-  for ip =1,#l[icl],2 do
-    local ia, ib, ic = l[icl][ip], l[icl][ip+1], icl+ico
-    c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
-  end end
+local function hpoly_sym_mul(a,b,c, l,iao,ibo)
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
+      if ic > 0 then
+        c[ic] = c[ic] + a[ia]*b[ib] + a[ib]*b[ia]
+      end
+    end
+  end
 end
 
-local function hpoly_asym_mul(a,b,c, l,ico)
-  for icl=1,#l        do
-  for ip =1,#l[icl],2 do
-    local ia, ib, ic = l[icl][ip], l[icl][ip+1], icl+ico
-    c[ic] = c[ic] + a[ia]*b[ib]
-  end end
+local function hpoly_asym_mul(a,b,c, l,iao,ibo)
+  for ial=1,#l do -- row
+    for ibl=1,#l[ial] do -- col
+      local ia, ib, ic = ial+iao, ibl+ibo, l[ial][ibl]
+      if ic > 0 then
+        c[ic] = c[ic] + a[ia]*b[ib]
+      end
+    end
+  end
 end
 
-local function hpoly_diag_mul(a,b,c, l)
-  local di = l.di
-  for idi=1,#di,2 do
-    local ic, iab = di[idi], di[idi+1]
-    c[ic] = c[ic] + a[iab]*b[iab]
+local function hpoly_diag_mul(a,b,c, l,iao,ibo)
+  local si = l.si
+  for j=1,#si do
+    local ia, ib, ic = j+iao, j+ibo, si[j]
+    if ic > 0 then
+      c[ic] = c[ic] + a[ia]*b[ib]
+    end
   end
 end
 
@@ -185,18 +193,18 @@ local function poly_mul2(a, b, c, D)
       if a._NZ[oa] and b._NZ[ob] and
          a._NZ[ob] and b._NZ[oa] then
         c._NZ[oc] = true
-        hpoly_sym_mul(a,b,c, L[oa][ob],p[oc]-1)
+        hpoly_sym_mul(a,b,c, L[oa][ob], p[oa]-1, p[ob]-1)
       elseif a._NZ[oa] and b._NZ[ob] then
         c._NZ[oc] = true
-        hpoly_asym_mul(a,b,c, L[oa][ob],p[oc]-1)
+        hpoly_asym_mul(a,b,c, L[oa][ob], p[oa]-1, p[ob]-1)
       elseif a._NZ[ob] and b._NZ[oa] then
         c._NZ[oc] = true
-        hpoly_asym_mul(b,a,c, L[oa][ob],p[oc]-1)
+        hpoly_asym_mul(b,a,c, L[oa][ob], p[oa]-1, p[ob]-1)
       end
     end
 
     if a._NZ[ho] and b._NZ[ho] then
-      hpoly_diag_mul(a,b,c, L[ho][ho])
+      hpoly_diag_mul(a,b,c, L[ho][ho], p[ho]-1, p[ho]-1)
     end
   end
 end
@@ -356,7 +364,7 @@ local function table_check(D)
 
   if D.Nc~= #Tv                        then return 1e6+0 end
   for i=2,#a do
-    if H[i][1] ~= (H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
+    if H[i][1] ~= (H[i-1][a[i-1]+1] and H[i-1][a[i-1]+1] or H[i-1][a[i-1]]+1)
                                        then return 1e6+i end
   end
   for i=1,#D.Tv do
@@ -403,17 +411,21 @@ local function clear_H(D)
 end
 
 local function solve_H(D)
-  local a, o, Tv, H = D.A, D.O, D.Tv, D.H
+  local a, o, f, Tv, H = D.A, D.O, D.F, D.Tv, D.H
   local sa = mono_acc(a)
 
   -- solve system of equations
   for i=#a-1,2,-1 do -- variables
     for j=a[i]+2,min(sa[i],o) do -- orders (unknown)
       -- solve the linear (!) equation of one unknown
-      local b    = nxt_by_unk(a,i,j)      -- build monomial for last unkown of H
-      local idx0 = index_H(H,b)           -- this makes the indexing equation linear
-      local idx1 = find_index(Tv,b,idx0)  -- is linear search slow?
-      H[i][j] = idx1 - idx0
+      local b = nxt_by_unk(a,i,j)           -- build monomial for last unkown of H
+      if mono_isvalid(b, a, o, f) then
+        local idx0 = index_H(H,b)           -- this makes the indexing equation linear
+        local idx1 = find_index(Tv,b,idx0)  -- is linear search slow?
+        H[i][j] = idx1 - idx0
+      else
+        H[i][j] = 0
+      end
     end
   end
 end
@@ -469,29 +481,41 @@ local function set_H(D)
   end
 end
 
+local function fill_L(oa, ob, D)
+  local lc, ps, pe = {}, D.To.ps, D.To.pe
+  for ia=ps[oa],pe[oa] do
+    local ial = ia-ps[oa]+1 -- shift to 1
+    lc[ial] = {}
+    for ib=ps[ob],min(ia,pe[ob]) do
+      local ibl = ib-ps[ob]+1 -- shift to 1
+      lc[ial][ibl] = -1
+    end
+    if oa==ob then
+      lc.si = lc.si or {}
+      lc.si[ial] = -1
+    end
+  end
+  return lc
+end
+
+
 local function build_L(oa, ob, D)
-  local lc, di, oc, To, index, insert = {}, {}, oa+ob, D.To, D.index, table.insert
-  local ps, pe = To.ps, To.pe
-  for ia=ps[oa],   pe[oa]      do
-  for ib=ps[ob],min(ia,pe[ob]) do
+  local lc, To, index = fill_L(oa,ob,D), D.To, D.index
+  local ps = To.ps
+  for ial=1,#lc      do
+  for ibl=1,#lc[ial] do
+    local ia, ib = ial+ps[oa]-1, ibl+ps[ob]-1
     local m = mono_add(To[ia], To[ib])
     if mono_isvalid(m, D.A, D.O, D.F) then
-      local ic = index(m) - ps[oc] + 1   -- ic is index, so shift to 1
-      lc[ic] = lc[ic] or {}
       if ia ~= ib then
-        insert(lc[ic], ia)
-        insert(lc[ic], ib)
---        or
---        local l = #lc[ic]
---        lc[ic][l+1] = ia
---        lc[ic][l+2] = ib
-      else
-        di[#di+1] = ic + ps[oc] - 1      -- not an index, so not shifted
-        di[#di+1] = ia
+        lc[ial][ibl] = index(m)
+      else                   -- symmetric indexes
+        lc.si = lc.si or {}
+        lc.si[ial] = index(m)
       end
     end
-  end end
-  if oa == ob then lc.di = di end
+  end
+  end
   return lc
 end
 
