@@ -81,6 +81,12 @@ ffi.cdef[[
   void  mad_tpsa_acot    (const T *a, T *c);
   void  mad_tpsa_tanh    (const T *a, T *c);
   void  mad_tpsa_coth    (const T *a, T *c);
+  void  mad_tpsa_asinh   (const T *a, T *c);
+  void  mad_tpsa_acosh   (const T *a, T *c);
+  void  mad_tpsa_atanh   (const T *a, T *c);
+  void  mad_tpsa_acoth   (const T *a, T *c);
+
+  void  mad_tpsa_erf     (const T *a, T *c);
 
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
@@ -346,6 +352,26 @@ end
 
 function M.coth(a, c)
   clib.mad_tpsa_coth(a,c)
+end
+
+function M.asinh(a, c)
+  clib.mad_tpsa_asinh(a,c)
+end
+
+function M.acosh(a, c)
+  clib.mad_tpsa_acosh(a,c)
+end
+
+function M.atanh(a, c)
+  clib.mad_tpsa_atanh(a,c)
+end
+
+function M.acoth(a, c)
+  clib.mad_tpsa_acoth(a,c)
+end
+
+function M.erf(a, c)
+  clib.mad_tpsa_erf(a,c)
 end
 
 -- debugging -------------------------------------------------------------------

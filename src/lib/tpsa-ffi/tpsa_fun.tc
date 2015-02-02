@@ -317,13 +317,13 @@ mad_tpsa_tan(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sin(a0), ca = cos(a0);
-  expansion_coef[0] =  sa                / ca;
-  expansion_coef[1] =   1                / ca/ca;
-  expansion_coef[2] =  sa                / ca/ca/ca;
-  expansion_coef[3] =  (ca*ca + 3*sa*sa) / ca/ca/ca/ca       /3;
-  expansion_coef[4] =  (2*sa + sa*sa*sa) / ca/ca/ca/ca/ca    /3;
+  expansion_coef[0] =  sa                     / ca;
+  expansion_coef[1] =   1                     / ca/ca;
+  expansion_coef[2] =  sa                     / ca/ca/ca;
+  expansion_coef[3] =  (  ca*ca + 3*sa*sa)    / ca/ca/ca/ca       /3;
+  expansion_coef[4] =  (2*sa    +   sa*sa*sa) / ca/ca/ca/ca/ca    /3;
   expansion_coef[5] =  (2*ca*ca + 3*ca*ca*sa*sa + 10*sa*sa + 5*sa*sa*sa*sa)
-                                         / ca/ca/ca/ca/ca/ca /15;
+                                              / ca/ca/ca/ca/ca/ca /15;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -343,13 +343,13 @@ mad_tpsa_cot(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sin(a0), ca = cos(a0);
-  expansion_coef[0] = ca                 / sa;
-  expansion_coef[1] = -1                 / sa/sa;
-  expansion_coef[2] = ca                 / sa/sa/sa;
-  expansion_coef[3] = -(sa*sa + 3*ca*ca) / sa/sa/sa/sa       /3;
-  expansion_coef[4] =  (2*ca + ca*ca*ca) / sa/sa/sa/sa/sa    /3;
+  expansion_coef[0] = ca                  / sa;
+  expansion_coef[1] = -1                  / sa/sa;
+  expansion_coef[2] = ca                  / sa/sa/sa;
+  expansion_coef[3] = -(sa*sa +  3*ca*ca) / sa/sa/sa/sa       /3;
+  expansion_coef[4] =  (2*ca  + ca*ca*ca) / sa/sa/sa/sa/sa    /3;
   expansion_coef[5] = -(2*sa*sa + 3*sa*sa*ca*ca + 10*ca*ca + 5*ca*ca*ca*ca)
-                                         / sa/sa/sa/sa/sa/sa /15;
+                                          / sa/sa/sa/sa/sa/sa /15;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -370,12 +370,12 @@ mad_tpsa_asin(const T *a, T *c)
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
   expansion_coef[0] = asin(a0);
                xcf1 = 1/sqrt(1 - a0*a0);
-  expansion_coef[1] =                       xcf1;
-  expansion_coef[2] =           a0        * xcf1*xcf1*xcf1                     / 2;
-  expansion_coef[3] = (1    + 2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
-  expansion_coef[4] = (3*a0 + 2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
-  expansion_coef[5] = (3 + 24*a0*a0 + 8*a0*a0*a0*a0)
-                      *           xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 40;
+  expansion_coef[1] =                        xcf1;
+  expansion_coef[2] =            a0        * xcf1*xcf1*xcf1                     / 2;
+  expansion_coef[3] = (1    +  2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
+  expansion_coef[4] = (3*a0 +  2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
+  expansion_coef[5] = (3    + 24*a0*a0 + 8*a0*a0*a0*a0)
+                      *            xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 40;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -395,13 +395,13 @@ mad_tpsa_acos(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
   expansion_coef[0] = acos(a0);
-               xcf1 = 1/sqrt(1 - a0*a0);
-  expansion_coef[1] = -                      xcf1;
-  expansion_coef[2] = -          a0        * xcf1*xcf1*xcf1                     / 2;
-  expansion_coef[3] = -(1    + 2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
-  expansion_coef[4] = -(3*a0 + 2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
-  expansion_coef[5] = -(3 + 24*a0*a0 + 8*a0*a0*a0*a0)
-                      *            xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 40;
+               xcf1 =  1/sqrt(1 - a0*a0);
+  expansion_coef[1] = -                       xcf1;
+  expansion_coef[2] = -           a0        * xcf1*xcf1*xcf1                     / 2;
+  expansion_coef[3] = -(1    +  2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
+  expansion_coef[4] = -(3*a0 +  2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
+  expansion_coef[5] = -(3    + 24*a0*a0 + 8*a0*a0*a0*a0)
+                      *             xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 40;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -420,12 +420,12 @@ mad_tpsa_atan(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
   expansion_coef[0] = atan(a0);
-               xcf1 = 1/(1 + a0*a0);
-  expansion_coef[1] =                                  xcf1;
-  expansion_coef[2] = -a0                            * xcf1*xcf1;
-  expansion_coef[3] = (a0*a0 - 1.0/3)                * xcf1*xcf1*xcf1;
-  expansion_coef[4] = (a0 - a0*a0*a0)                * xcf1*xcf1*xcf1*xcf1;
-  expansion_coef[5] = (1.0/5 +a0*a0*a0*a0 - 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
+               xcf1 = 1 / (1 +  a0*a0);
+  expansion_coef[1] =                                    xcf1;
+  expansion_coef[2] = -a0                              * xcf1*xcf1;
+  expansion_coef[3] = -(1.0/3 - a0*a0)                 * xcf1*xcf1*xcf1;
+  expansion_coef[4] =  (a0    - a0*a0*a0)              * xcf1*xcf1*xcf1*xcf1;
+  expansion_coef[5] =  (1.0/5 + a0*a0*a0*a0 - 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -445,11 +445,11 @@ mad_tpsa_acot(const T *a, T *c)
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
   expansion_coef[0] = 2*atan(1) - atan(a0);
                xcf1 = 1/(1 + a0*a0);
-  expansion_coef[1] = -                                 xcf1;
-  expansion_coef[2] =   a0                            * xcf1*xcf1;
-  expansion_coef[3] = -(a0*a0 - 1.0/3)                * xcf1*xcf1*xcf1;
-  expansion_coef[4] = -(a0 - a0*a0*a0)                * xcf1*xcf1*xcf1*xcf1;
-  expansion_coef[5] = -(1.0/5 +a0*a0*a0*a0 - 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
+  expansion_coef[1] = -                                  xcf1;
+  expansion_coef[2] =           a0                     * xcf1*xcf1;
+  expansion_coef[3] =  (1.0/3 - a0*a0)                 * xcf1*xcf1*xcf1;
+  expansion_coef[4] = -(a0    - a0*a0*a0)              * xcf1*xcf1*xcf1*xcf1;
+  expansion_coef[5] = -(1.0/5 + a0*a0*a0*a0 - 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -468,13 +468,13 @@ mad_tpsa_tanh(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sinh(a0), ca = cosh(a0);
-  expansion_coef[0] = sa                 / ca;
-  expansion_coef[1] =  1                 / ca/ca;
-  expansion_coef[2] = -sa                / ca/ca/ca;
-  expansion_coef[3] = (-ca*ca + 3*sa*sa) / ca/ca/ca/ca       /3;
-  expansion_coef[4] = (2*sa - sa*sa*sa)  / ca/ca/ca/ca/ca    /3;
+  expansion_coef[0] = sa                  / ca;
+  expansion_coef[1] =  1                  / ca/ca;
+  expansion_coef[2] = -sa                 / ca/ca/ca;
+  expansion_coef[3] = (-ca*ca +  3*sa*sa) / ca/ca/ca/ca       /3;
+  expansion_coef[4] = (2*sa   - sa*sa*sa) / ca/ca/ca/ca/ca    /3;
   expansion_coef[5] = (2*ca*ca - 3*ca*ca*sa*sa - 10*sa*sa + 5*sa*sa*sa*sa)
-                                         / ca/ca/ca/ca/ca/ca /15;
+                                          / ca/ca/ca/ca/ca/ca /15;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -494,18 +494,152 @@ mad_tpsa_coth(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sinh(a0), ca = cosh(a0);
-  expansion_coef[0] = ca                 / sa;
-  expansion_coef[1] = -1                 / sa/sa;
-  expansion_coef[2] = ca                 / sa/sa/sa;
-  expansion_coef[3] = (sa*sa - 3*ca*ca)  / sa/sa/sa/sa       /3;
-  expansion_coef[4] = (2*ca + ca*ca*ca)  / sa/sa/sa/sa/sa    /3;
-  expansion_coef[5] = (2*sa*sa + 3*sa*sa*ca*ca - 10*ca*ca - 5*ca*ca*ca*ca)
-                                         / sa/sa/sa/sa/sa/sa /15;
+  expansion_coef[0] = ca                      / sa;
+  expansion_coef[1] = -1                      / sa/sa;
+  expansion_coef[2] = ca                      / sa/sa/sa;
+  expansion_coef[3] = (sa*sa    - 3*ca*ca)    / sa/sa/sa/sa       /3;
+  expansion_coef[4] = ( 2*ca    +   ca*ca*ca) / sa/sa/sa/sa/sa    /3;
+  expansion_coef[5] = ( 2*sa*sa + 3*sa*sa*ca*ca - 10*ca*ca - 5*ca*ca*ca*ca)
+                                              / sa/sa/sa/sa/sa/sa /15;
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
 
+void
+mad_tpsa_asinh(const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_asinh\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
 
+  ord_t mo = min_ord(a->mo,a->desc->trunc);
+  ensure(mo <= 5);
+
+  num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
+  expansion_coef[0] = asinh(a0);
+               xcf1 = 1/sqrt(1 + a0*a0);
+  expansion_coef[1] =                        xcf1;
+  expansion_coef[2] = -          a0        * xcf1*xcf1*xcf1                     / 2;
+  expansion_coef[3] = (-1   +  2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
+  expansion_coef[4] = (3*a0 -  2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
+  expansion_coef[5] = (3    - 24*a0*a0 + 8*a0*a0*a0*a0)
+                      *           xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1  / 40;
+
+  fixed_point_iteration(a,c,mo,expansion_coef);
+}
+
+void
+mad_tpsa_acosh(const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_acosh\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+  ensure(a->coef[0] > 1);
+
+  ord_t mo = min_ord(a->mo,a->desc->trunc);
+  ensure(mo <= 5);
+
+  num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
+  expansion_coef[0] = acosh(a0);
+               xcf1 = -1/sqrt(1 - a0*a0);
+  expansion_coef[1] =                        xcf1;
+  expansion_coef[2] = -        a0          * xcf1*xcf1*xcf1                     / 2;
+  expansion_coef[3] = (1     + 2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
+  expansion_coef[4] = (-3*a0 - 2*a0*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 8;
+  expansion_coef[5] = (3     + 24*a0*a0 + 8*a0*a0*a0*a0)
+                      *            xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1*xcf1 / 40;
+
+  fixed_point_iteration(a,c,mo,expansion_coef);
+}
+
+void
+mad_tpsa_atanh(const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_atanh\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+  ensure(fabs(a->coef[0]) < 1);
+
+  ord_t mo = min_ord(a->mo,a->desc->trunc);
+  ensure(mo <= 5);
+
+  num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
+  expansion_coef[0] = atanh(a0);
+               xcf1 = 1 / (1 - a0*a0);
+  expansion_coef[1] =                                   xcf1;
+  expansion_coef[2] = a0                              * xcf1*xcf1;
+  expansion_coef[3] = (1.0/3 + a0*a0)                 * xcf1*xcf1*xcf1;
+  expansion_coef[4] = (a0    + a0*a0*a0)              * xcf1*xcf1*xcf1*xcf1;
+  expansion_coef[5] = (1.0/5 + a0*a0*a0*a0 + 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
+
+  fixed_point_iteration(a,c,mo,expansion_coef);
+}
+
+void
+mad_tpsa_acoth(const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_acoth\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+  ensure(fabs(a->coef[0]) > 1);
+
+  ord_t mo = min_ord(a->mo,a->desc->trunc);
+  ensure(mo <= 5);
+
+  num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
+  expansion_coef[0] = atanh(1/a0);
+               xcf1 = 1 / (-1 + a0*a0);
+  expansion_coef[1] = -                                  xcf1;
+  expansion_coef[2] =   a0                             * xcf1*xcf1;
+  expansion_coef[3] = (-1.0/3 - a0*a0)                 * xcf1*xcf1*xcf1;
+  expansion_coef[4] = (a0     + a0*a0*a0)              * xcf1*xcf1*xcf1*xcf1;
+  expansion_coef[5] = (-1.0/5 - a0*a0*a0*a0 - 2*a0*a0) * xcf1*xcf1*xcf1*xcf1*xcf1;
+
+  fixed_point_iteration(a,c,mo,expansion_coef);
+}
+
+void
+mad_tpsa_erf(const T *a, T *c)
+{
+  // ERF(X) is the integral from 0 to x from [2/sqrt(PI) * exp(-x*x)]
+#ifdef TRACE
+  printf("tpsa_erf\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+
+  ord_t mo = min_ord(a->mo,a->desc->trunc);
+  ensure(mo <= 5);
+
+  num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
+  // coeff from Berz's TPSALib
+  num_t e1 = exp(-a0*a0),
+        a1 =   .254829592,
+        a2 = - .284496736,
+        a3 =  1.421413741,
+        a4 = -1.453152027,
+        a5 =  1.061405429,
+        p  =   .3275911,
+        rpi4 = sqrt(atan(1.0)),
+        t  = 1 / (1 + p*a0),
+        e2 = 1 - t*(a1+t*(a2+t*(a3+t*(a4+t*a5))))*e1;
+  expansion_coef[0] = e2;
+  expansion_coef[1] =                                        e1 / rpi4;
+  expansion_coef[2] = -                                   a0*e1 / rpi4;
+  expansion_coef[3] = (-1             +  2*a0*a0)      /   3*e1 / rpi4;
+  expansion_coef[4] = (12*a0          -  8*a0*a0*a0)   /  24*e1 / rpi4;
+  expansion_coef[5] = (16*a0*a0*a0*a0 - 48*a0*a0 + 12) / 120*e1 / rpi4;
+
+  fixed_point_iteration(a,c,mo,expansion_coef);
+}
 
 #undef T
 #undef D

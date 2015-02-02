@@ -249,7 +249,12 @@ local function check_fun_with_berz(mod)
 
   if factory.no <= 5 then
     funcs = {'tan' , 'cot', 'asin', 'acos', 'atan', 'acot', 'sinh', 'cosh',
-             'tanh', 'coth'}
+             'tanh', 'coth', 'asinh', 'atanh', 'erf'}
+    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
+
+    funcs = {'acosh', 'acoth'}
+    t_in:setCoeff(factory.To[0], 1.1)
+    b_in:setCoeff(factory.To[0], 1.1)
     check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
   end
 

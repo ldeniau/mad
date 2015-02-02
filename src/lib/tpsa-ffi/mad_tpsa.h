@@ -59,6 +59,12 @@ void  mad_tpsa_atan    (const T *a, T *c);
 void  mad_tpsa_acot    (const T *a, T *c);
 void  mad_tpsa_tanh    (const T *a, T *c);
 void  mad_tpsa_coth    (const T *a, T *c);
+void  mad_tpsa_asinh   (const T *a, T *c);
+void  mad_tpsa_acosh   (const T *a, T *c);
+void  mad_tpsa_atanh   (const T *a, T *c);
+void  mad_tpsa_acoth   (const T *a, T *c);
+
+void  mad_tpsa_erf     (const T *a, T *c);
 
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);

@@ -296,6 +296,26 @@ function tpsa.coth(a, b)
   berzLib.dafun_(chrArr(5, 'coth'), a.idx, b.idx)
 end
 
+function tpsa.asinh(a, b)
+  berzLib.dafun_(chrArr(5, 'asnh'), a.idx, b.idx)
+end
+
+function tpsa.acosh(a, b)
+  berzLib.dafun_(chrArr(5, 'acsh'), a.idx, b.idx)
+end
+
+function tpsa.atanh(a, b)
+  berzLib.dafun_(chrArr(5, 'atnh'), a.idx, b.idx)
+end
+
+function tpsa.acoth(a, b)
+  berzLib.dafun_(chrArr(5, 'acth'), a.idx, b.idx)
+end
+
+function tpsa.erf(a, b)
+  berzLib.dafun_(chrArr(5, 'erf '), a.idx, b.idx)
+end
+
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
   if not dst then dst = src:new() end
