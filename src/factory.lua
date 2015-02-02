@@ -225,7 +225,7 @@ end
 
 -- --- FUN ---------------------------------------------------------------------
 local function args_fun()
-  return M.full(), M.new_instance()
+  return M.full(0.9), M.new_instance()
 end
 
 --------------------------------------------------------------------------------
@@ -246,15 +246,15 @@ function M.get_args(fct_name)
     setCoeff = function() return M.To         , val            end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
-    mul      = args_bin_op,
+    mul      = args_bin_op,     -- returns t1, t2, t_out; t1,t2 filled, t_out empty
     add      = args_bin_op,
     sub      = args_bin_op,
 
     subst    = args_subst,
-    compose_raw = args_compose,
-    minv_raw = args_minv,
+    compose_raw = args_compose, -- returns size_a, ma, size_b, mb, size_c, mc, refs
+    minv_raw = args_minv,       -- returns size_a, ma,             size_c, mc, refs
 
-    fun      = args_fun,
+    fun      = args_fun,        -- returns t_in, t_out; t_in filled, t_out empty
     inv      = args_fun,
     sqrt     = args_fun,
 

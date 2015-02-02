@@ -264,6 +264,38 @@ function tpsa.cot(a, b)
   berzLib.dafun_(chrArr(5, 'cot '), a.idx, b.idx)
 end
 
+function tpsa.asin(a, b)
+  berzLib.dafun_(chrArr(5, 'asin'), a.idx, b.idx)
+end
+
+function tpsa.acos(a, b)
+  berzLib.dafun_(chrArr(5, 'acos'), a.idx, b.idx)
+end
+
+function tpsa.sinh(a, b)
+  berzLib.dafun_(chrArr(5, 'sinh'), a.idx, b.idx)
+end
+
+function tpsa.cosh(a, b)
+  berzLib.dafun_(chrArr(5, 'cosh'), a.idx, b.idx)
+end
+
+function tpsa.atan(a, b)
+  berzLib.dafun_(chrArr(5, 'atan'), a.idx, b.idx)
+end
+
+function tpsa.acot(a, b)
+  berzLib.dafun_(chrArr(5, 'acot'), a.idx, b.idx)
+end
+
+function tpsa.tanh(a, b)
+  berzLib.dafun_(chrArr(5, 'tanh'), a.idx, b.idx)
+end
+
+function tpsa.coth(a, b)
+  berzLib.dafun_(chrArr(5, 'coth'), a.idx, b.idx)
+end
+
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
   if not dst then dst = src:new() end

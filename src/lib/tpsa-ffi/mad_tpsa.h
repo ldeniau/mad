@@ -45,12 +45,20 @@ void  mad_tpsa_log     (const T *a, T *c);
 void  mad_tpsa_sin     (const T *a, T *c);
 void  mad_tpsa_cos     (const T *a, T *c);
 void  mad_tpsa_sincos  (const T *a, T *c);
+void  mad_tpsa_sinh    (const T *a, T *c);
+void  mad_tpsa_cosh    (const T *a, T *c);
 void  mad_tpsa_sirx    (const T *a, T *c);
 void  mad_tpsa_corx    (const T *a, T *c);
 void  mad_tpsa_sidx    (const T *a, T *c);
 
 void  mad_tpsa_tan     (const T *a, T *c);
 void  mad_tpsa_cot     (const T *a, T *c);
+void  mad_tpsa_asin    (const T *a, T *c);
+void  mad_tpsa_acos    (const T *a, T *c);
+void  mad_tpsa_atan    (const T *a, T *c);
+void  mad_tpsa_acot    (const T *a, T *c);
+void  mad_tpsa_tanh    (const T *a, T *c);
+void  mad_tpsa_coth    (const T *a, T *c);
 
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);

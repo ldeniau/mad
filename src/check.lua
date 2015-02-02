@@ -51,29 +51,32 @@ local function check_coeff()
   check_coeff_consistency("setm"    , "getm"    , in_vals,  3)
 end
 
-local function identical_value(v1, v2, eps, name1, name2, val_name)
+local function identical_value(v1, v2, eps, name1, name2, val_name, abs_or_rel)
+  abs_or_rel = abs_or_rel or "relative"  -- check relative error by default
   local minV = min(v1,v2) == 0 and 1 or min(v1,v2)
 
-  if abs((v1-v2)/minV) > eps then
-    printf("%s_%s = %.18f\n%s_%s = %.18f\n",
-           name1, val_name, v1, name2, val_name, v2)
+  local err = 0
+  if     abs_or_rel == 'relative' then err = abs((v1-v2)/minV)
+  elseif abs_or_rel == 'absolute' then err = abs(v1-v2)
+  end
+
+  if err > eps then
+    printf("%s_%s = %.18f\n%s_%s = %.18f\n%s_err = %e\n",
+           name1, val_name, v1, name2, val_name, v2, abs_or_rel, err)
     return false
   end
   return true
 end
 
-local function check_identical(t1, t2, eps, To, fct_name)
+local function check_identical(t1, t2, eps, To, fct_name, abs_or_rel)
   for m=0,#To do
     local v1, v2 = t1:getCoeff(To[m]), t2:getCoeff(To[m])
 
-    -- get the min for computing relative error
-    local minV = min(v1,v2) == 0 and 1 or min(v1,v2)
-
-    if not identical_value(v1, v2, eps, t1.name, t2.name, "coeff") then
+    if not identical_value(v1, v2, eps, t1.name, t2.name, "coeff", abs_or_rel) then
       printf("\n mono: ")
       mono_print(To[m])
       printf("\n")
-      if #To < 50 then
+      if #To < 30 then
         t1:print()
         t2:print()
       end
@@ -217,8 +220,10 @@ local function check_set_of_fun(func_names, mod, t_in, t_out, b_in, b_out)
     mod [fun](t_in,t_out)
     berz[fun](b_in,b_out)
 
-    check_identical(t_in , b_in , 1e-6, factory.To, fun)
-    check_identical(t_out, b_out, 1e-6, factory.To, fun)
+--    check_identical(t_in , b_in , 1e-6, factory.To, fun, 'absolute')
+--    check_identical(t_out, b_out, 1e-6, factory.To, fun, 'absolute')
+    check_identical(t_in , b_in , 1e-6, factory.To, fun, 'relative')
+    check_identical(t_out, b_out, 1e-6, factory.To, fun, 'relative')
 
     fprintf(M.mod_file , "\n==== %s =======================\n", fun)
     fprintf(M.berz_file, "\n==== %s =======================\n", fun)
@@ -243,7 +248,8 @@ local function check_fun_with_berz(mod)
   check_set_of_fun(funcs,mod,t_in_zero,t_out,b_in_zero,b_out)
 
   if factory.no <= 5 then
-    funcs = {'tan', 'cot'}
+    funcs = {'tan' , 'cot', 'asin', 'acos', 'atan', 'acot', 'sinh', 'cosh',
+             'tanh', 'coth'}
     check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
   end
 

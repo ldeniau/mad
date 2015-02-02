@@ -67,12 +67,20 @@ ffi.cdef[[
   void  mad_tpsa_sin     (const T *a, T *c);
   void  mad_tpsa_cos     (const T *a, T *c);
   void  mad_tpsa_sincos  (const T *a, T *c);
+  void  mad_tpsa_sinh    (const T *a, T *c);
+  void  mad_tpsa_cosh    (const T *a, T *c);
   void  mad_tpsa_sirx    (const T *a, T *c);
   void  mad_tpsa_corx    (const T *a, T *c);
   void  mad_tpsa_sidx    (const T *a, T *c);
 
   void  mad_tpsa_tan     (const T *a, T *c);
   void  mad_tpsa_cot     (const T *a, T *c);
+  void  mad_tpsa_asin    (const T *a, T *c);
+  void  mad_tpsa_acos    (const T *a, T *c);
+  void  mad_tpsa_atan    (const T *a, T *c);
+  void  mad_tpsa_acot    (const T *a, T *c);
+  void  mad_tpsa_tanh    (const T *a, T *c);
+  void  mad_tpsa_coth    (const T *a, T *c);
 
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
@@ -284,6 +292,14 @@ function M.cos(a, c)
   clib.mad_tpsa_cos(a,c)
 end
 
+function M.sinh(a, c)
+  clib.mad_tpsa_sinh(a,c)
+end
+
+function M.cosh(a, c)
+  clib.mad_tpsa_cosh(a,c)
+end
+
 function M.sincos(a, c)
   clib.mad_tpsa_sincos(a,c)
 end
@@ -308,7 +324,29 @@ function M.cot(a, c)
   clib.mad_tpsa_cot(a,c)
 end
 
+function M.asin(a, c)
+  clib.mad_tpsa_asin(a,c)
+end
 
+function M.acos(a, c)
+  clib.mad_tpsa_acos(a,c)
+end
+
+function M.atan(a, c)
+  clib.mad_tpsa_atan(a,c)
+end
+
+function M.acot(a, c)
+  clib.mad_tpsa_acot(a,c)
+end
+
+function M.tanh(a, c)
+  clib.mad_tpsa_tanh(a,c)
+end
+
+function M.coth(a, c)
+  clib.mad_tpsa_coth(a,c)
+end
 
 -- debugging -------------------------------------------------------------------
 
