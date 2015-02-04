@@ -148,6 +148,19 @@ local function check_der_with_berz(mod)
   factory.setup(mod)  -- restore original
 end
 
+local function check_poisson_with_berz(mod)
+  local ma, mb, mr, n = factory.get_args("poisson")
+  mod.poisson(ma, mb, mr, n)
+
+  factory.setup(berz)
+  local ba, bb, br, _ = factory.get_args("poisson")
+  berz.poisson(ba, bb, br, n)
+
+  check_identical(mr, br, 1e-6, factory.To, "poisson")
+
+  factory.setup(mod)  -- restore original
+end
+
 local function check_abs_with_berz(mod)
   local t, b, t_norm , b_norm , t_norm2, b_norm2, min_norm, t_pos, b_pos,
         t_cmp1, t_cmp2, b_cmp1, b_cmp2
@@ -285,6 +298,7 @@ function M.do_all_checks(mod, nv, no)
   check_bin_with_berz(mod)
   check_subst_with_berz(mod)
   check_der_with_berz(mod)
+  check_poisson_with_berz(mod)
   check_abs_with_berz(mod)
   check_fun_with_berz(mod)
   check_minv_with_berz(mod)

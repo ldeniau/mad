@@ -48,6 +48,7 @@ ffi.cdef[[
   void dasub_(int *t1, int *t2, int *r);           // r = t1 - t2
   void damul_(int *t1, int *t2, int *r);           // r = t1 * t2
   void dadiv_(int *t1, int *t2, int *r);           // r = t1 / t2
+  void dapoi_(int *t1, int *t2, int *r, int *n);   // r = [t1, t2]; 2*n = #phasevars
   void dasqr_(int *t , int *r);                    // r = t ^ 2
 
   // mr = m1 o m2  -- m1, m2, mr = compatible arrays of TPSAs
@@ -149,7 +150,11 @@ function tpsa.sqr(t1, t2, r)
   berzLib.dasqr_(t1.idx, t2.idx, r.idx)
 end
 
-function tpsa.cct(a, b, c)
+function tpsa.poisson(a,b,c,n)
+  berzLib.dapoi_(a.idx, b.idx, c.idx, intPtr(n))
+end
+
+function tpsa.compose(a, b, c)
   -- a, b, c should be compatible arrays of TPSAs, starting from 1
 
   local aIdxs, bIdxs, cIdxs = intArr(#a), intArr(#b), intArr(#c)

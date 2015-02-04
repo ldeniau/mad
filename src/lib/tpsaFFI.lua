@@ -92,14 +92,15 @@ ffi.cdef[[
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
+  void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
-  void  mad_tpsa_scale   (num_t ca, const T *a,                       T *c);
-  void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
   void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);
+  void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
+  void  mad_tpsa_scale   (num_t ca, const T *a,                       T *c);
 
-  void  mad_tpsa_compose (int   sa, const T* ma[], int sb, const T* mb[], int sc, T* mc[]);
-  void  mad_tpsa_minv    (int   sa, const T *ma[],                        int sc, T *mc[]);
-  void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,       T *mc[], int row_select[]);
+  void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc, T *mc[]);
+  void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
+  void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
 
   void  mad_tpsa_print   (const T *t);
 
@@ -200,11 +201,37 @@ function M.truncate(t, o)
   return clib.mad_tpsa_desc_trunc(t.desc, o)
 end
 
-function M.mul(a, b, c)
-  -- c should be different from a and b
-  clib.mad_tpsa_mul(a,b,c)
+function M.abs(a)
+  return clib.mad_tpsa_abs(a)
 end
 
+function M.abs2(a)
+  return clib.mad_tpsa_abs2(a)
+end
+
+function M.comp(a, b)
+  return clib.mad_tpsa_comp(a, b)
+end
+
+-- OPERATIONS ------------------------------------------------------------------
+-- --- UNARY -------------------------------------------------------------------
+function M.rand(a, low, high, seed)
+  clib.mad_tpsa_rand(a, low, high, seed)
+end
+
+function M.der(src, var, dst)
+  clib.mad_tpsa_der(src, var, dst)
+end
+
+function M.pos(src, dst)
+  clib.mad_tpsa_pos(src, dst)
+end
+
+function M.scale(val, src, dst)
+  clib.mad_tpsa_scale(val, src, dst)
+end
+
+-- --- BINARY ------------------------------------------------------------------
 function M.add(a, b, c)
   -- c should be different from a and b
   clib.mad_tpsa_add(a, b, c)
@@ -214,6 +241,31 @@ function M.sub(a, b, c)
   -- c should be different from a and b
   clib.mad_tpsa_sub(a, b, c)
 end
+
+function M.mul(a, b, c)
+  -- c should be different from a and b
+  clib.mad_tpsa_mul(a,b,c)
+end
+
+function M.pow(a, p)
+  local r = a:new()
+  clib.mad_tpsa_pow(a, r, p)
+  return r
+end
+
+function M.poisson(a, b, c, n)
+  clib.mad_tpsa_poisson(a, b, c, n)
+end
+
+function M.axpby(v1, a, v2, b, c)
+  clib.mad_tpsa_axpb(v1, a, v2, b, c)
+end
+
+function M.axpb(v, a, b, c)
+  clib.mad_tpsa_axpb(v, a, b, c)
+end
+
+-- MAPS ------------------------------------------------------------------------
 
 function M.compose(ma, mb, mc)
   -- ma, mb, mc -- compatible lua arrays of TPSAs
@@ -232,40 +284,6 @@ function M.pminv(ma, mc, rows)
   local cma, cmc = tpsa_carr(#ma, ma), tpsa_arr(#mc, mc)
   local sel = ffi.new("int[?]", #rows, rows)
   clib.mad_tpsa_pminv(#ma, cma, #mc, cmc, sel)
-end
-
-function M.pow(a, p)
-  local r = a:new()
-  clib.mad_tpsa_pow(a, r, p)
-  return r
-end
-
-function M.abs(a)
-  return clib.mad_tpsa_abs(a)
-end
-
-function M.abs2(a)
-  return clib.mad_tpsa_abs2(a)
-end
-
-function M.rand(a, low, high, seed)
-  clib.mad_tpsa_rand(a, low, high, seed)
-end
-
-function M.der(src, var, dst)
-  clib.mad_tpsa_der(src, var, dst)
-end
-
-function M.pos(src, dst)
-  clib.mad_tpsa_pos(src, dst)
-end
-
-function M.comp(a, b)
-  return clib.mad_tpsa_comp(a, b)
-end
-
-function M.cma(v, a, b, c)
-  clib.mad_tpsa_cma(v, a, b, c)
 end
 
 -- FUNCTIONS -------------------------------------------------------------------

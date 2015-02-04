@@ -209,7 +209,7 @@ mad_tpsa_print(const T *t)
   printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
   ord_t mo = min_ord(t->mo, t->desc->trunc);
   for (int i=0; i < d->hpoly_To_idx[mo+1]; ++i)
-    if (t->coef[i])
+    if (bget(t->nz,d->ords[i]) && t->coef[i])
       printf("[%d]=%.2f ", i, t->coef[i]);
   printf(" }\n");
 }

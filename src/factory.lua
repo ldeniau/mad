@@ -180,44 +180,36 @@ end
 
 -- --- MINV --------------------------------------------------------------------
 
-local function args_minv_tpsa(refs, rand)
+local function args_minv_tpsa(refs)
   ffi.cdef("typedef struct tpsa T")
   local cma, cmc = ffi.new("const T* [?]", M.nv), ffi.new("T* [?]", M.nv)
 
   for i=1,M.nv do
-    refs.ma[i], refs.mc[i] = M.new_instance(), M.new_instance()
-    cma[i-1]  , cmc[i-1]   = refs.ma[i]      , refs.mc[i]
-
-    for m=1,#M.To do
-      refs.ma[i]:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,1) interval
-    end
+    refs.ma[i], refs.mc[i] = M.rand()  , M:new_instance()
+    cma[i-1]  , cmc[i-1]   = refs.ma[i], refs.mc[i]
   end
   return M.nv, cma, M.nv, cmc, refs
 end
 
-local function args_minv_berz(refs, rand)
+local function args_minv_berz(refs, t)
   local intArr = ffi.typeof("int [?]")
   local cma, cmc = intArr(M.nv), intArr(M.nv)
 
   for i=1,M.nv do
-    refs.ma[i], refs.mc[i] = M.new_instance() , M.new_instance()
+    refs.ma[i], refs.mc[i] = M.rand()         , M.new_instance()
     cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
-
-    for m=1,#M.To do
-      refs.ma[i]:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,1) interval
-    end
   end
   return intArr(1,M.nv), cma, intArr(1,M.nv), cmc, refs
 end
 
 local function args_minv()
   local refs = { ma={}, mc={} }
-  local rand = math.random
   math.randomseed(M.seed)
+
   if M.mod.name == "berz" then
-    return args_minv_berz(refs, rand)
+    return args_minv_berz(refs)
   elseif M.mod.name == "tpsa" then
-    return args_minv_tpsa(refs, rand)
+    return args_minv_tpsa(refs)
   else
     error("Map inversion not implemented")
   end
@@ -246,6 +238,7 @@ function M.get_args(fct_name)
     setCoeff = function() return M.To         , val            end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
+    poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
     mul      = args_bin_op,     -- returns t1, t2, t_out; t1,t2 filled, t_out empty
     add      = args_bin_op,
     sub      = args_bin_op,
@@ -341,6 +334,18 @@ function M.full(startVal, inc)
   return M.ord(ords, startVal, inc)
 end
 
+-- returns a tpsa filled with random numbers
+function M.rand(seed_)
+  if seed_ then
+    math.randomseed(seed_)
+  end
+  local rand = math.random
+  local t = M.new_instance()
+  for m=1,#M.To do
+    t:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,2) interval
+  end
+  return t
+end
 
 -- returns a tpsa filled up to its maximum order
 function M.build_full()  -- same as t:pow(no)

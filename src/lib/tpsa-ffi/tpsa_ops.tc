@@ -156,7 +156,7 @@ num_t
 mad_tpsa_comp(const T *a, const T *b)
 {
   assert(a && b);
-  assert(a->desc == b->desc);
+  ensure(a->desc == b->desc);
   num_t norm = 0;
   ord_t amo = min_ord(a->mo, a->desc->trunc),
         bmo = min_ord(b->mo, b->desc->trunc);
@@ -173,7 +173,7 @@ void
 mad_tpsa_pos(const T *a, T *c)
 {
   assert(a);
-  assert(a->desc == c->desc);
+  ensure(a->desc == c->desc);
   c->mo = min_ord(a->mo, a->desc->trunc);
   for (int i = 0; i < c->desc->hpoly_To_idx[c->mo+1]; ++i)
     c->coef[i] = fabs(a->coef[i]);
@@ -184,7 +184,7 @@ void
 mad_tpsa_der(const T *a, int var, T *c)
 {
   assert(a && c);
-  assert(var > 0 && var <= a->desc->nv);
+  ensure(var > 0 && var <= a->desc->nv);
 
   if (a->mo == 1) {
     c->mo = 0;
@@ -202,13 +202,14 @@ mad_tpsa_der(const T *a, int var, T *c)
     c->coef[i] = 0;
 
   var--;    // monos are 0-indexed
+  ord_t der_mono[d->nv];
   for (int o = 1; o <= c->mo+1; ++o)
     if (bget(a->nz,o))
       for (int m = pi[o]; m < pi[o+1]; ++m)
         if (a->coef[m] && d->To[m][var]) {
-          d->To[m][var]--;
-          idx_der = desc_get_idx(d, d->nv, d->To[m]);
-          d->To[m][var]++;
+          mono_cpy(d->nv,d->To[m],der_mono);
+          der_mono[var]--;
+          idx_der = desc_get_idx(d, d->nv, der_mono);
           c->coef[idx_der] = a->coef[m] * d->To[m][var];
           c->nz = bset(c->nz, o-1);
         }
@@ -222,7 +223,7 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
   printf("tpsa_axpby\n");
 #endif
   assert(a && b && c);
-  assert(a->desc == b->desc && b->desc == c->desc);
+  ensure(a->desc == b->desc && b->desc == c->desc);
 
   ord_t amo = min_ord(a->mo, a->desc->trunc),
         bmo = min_ord(b->mo, b->desc->trunc);
@@ -260,7 +261,7 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   printf("tpsa_add\n");
 #endif
   assert(a && b && c);
-  assert(a->desc == b->desc && a->desc == c->desc);
+  ensure(a->desc == b->desc && a->desc == c->desc);
 
   mad_tpsa_axpby(1.0, a, 1.0, b, c);
 }
@@ -272,7 +273,7 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   printf("tpsa_sub\n");
 #endif
   assert(a && b && c);
-  assert(a->desc == b->desc && a->desc == c->desc);
+  ensure(a->desc == b->desc && a->desc == c->desc);
   mad_tpsa_axpby(1.0, a, -1.0, b, c);
 }
 
@@ -283,7 +284,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   printf("tpsa_mul\n");
 #endif
   assert(a && b && c);
-  assert(a->desc == b->desc && a->desc == c->desc);
+  ensure(a->desc == b->desc && a->desc == c->desc);
 
   if (a->desc->mo == 1) {
     num_t a0 = a->coef[0], b0 = b->coef[0];
@@ -306,7 +307,7 @@ void
 mad_tpsa_scale(num_t v, const T *a, T *c)
 {
   assert(a && c);
-  assert(a->desc == c->desc);
+  ensure(a->desc == c->desc);
   c->mo = min_ord(a->mo,a->desc->trunc);
   c->nz = a->nz & ~(-1 << (c->mo+1));  // apply truncation
   for (int i = 0; i < c->desc->hpoly_To_idx[c->mo+1]; ++i)
@@ -320,8 +321,37 @@ mad_tpsa_axpb(num_t v, const T *a, const T *b, T *c)
   printf("tpsa_mul_constant %lf\n", v);
 #endif
   assert(a && b && c);
-  assert(a->desc == b->desc && b->desc == c->desc);
+  ensure(a->desc == b->desc && b->desc == c->desc);
   mad_tpsa_axpby(v, a, 1.0, b, c);
+}
+
+void
+mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
+{
+  // C = [A,B] (POISSON BRACKET, 2*n: No of PHASEVARS
+  assert(a && b && c);
+  ensure(a->desc == b->desc && b->desc == c->desc);
+
+  T *is[4];
+  for (int i = 0; i < 4; ++i)
+    is[i] = mad_tpsa_newd(a->desc);
+
+  for (int i = 1; i <= n; ++i) {
+    mad_tpsa_der(a, 2*i - 1, is[0]);
+    mad_tpsa_der(b, 2*i    , is[1]);
+    mad_tpsa_mul(is[0],is[1],is[2]);
+    mad_tpsa_add(is[3],is[2],is[0]);
+    mad_tpsa_copy(is[0],is[3]);
+
+    mad_tpsa_der(a, 2*i    , is[0]);
+    mad_tpsa_der(b, 2*i - 1, is[1]);
+    mad_tpsa_mul(is[0],is[1],is[2]);
+    mad_tpsa_sub(is[3],is[2],is[0]);
+    mad_tpsa_copy(is[0],is[3]);
+  }
+  mad_tpsa_copy(is[3], c);
+  for (int i = 0; i < 4; ++i)
+    mad_tpsa_del(is[i]);
 }
 
 void
@@ -331,8 +361,8 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   printf("tpsa_pow %p to %d\n", (void*)a, p);
 #endif
   assert(a && orig_res);
-  assert(a->desc == orig_res->desc);
-  assert(p >= 0);
+  ensure(a->desc == orig_res->desc);
+  ensure(p >= 0);
 
   if (p == 0) {
     mad_tpsa_clean(orig_res);
