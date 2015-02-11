@@ -39,7 +39,7 @@ local function melem_leq(a,b)
 end
 
 local function mono_isvalid(m, a, o, f)
-  return mono_sum(m) <= o and melem_leq(m,a) and (f and f(m,a) or true)
+  return mono_sum(m) <= o and melem_leq(m,a) and f(m,a)
 end
 
 local function mono_print(m, file)
@@ -67,6 +67,7 @@ end
 local function table_by_ords(nv, no, ords, f)
   local t = initMons(nv)
   local a = ords or mono_val(nv, no)
+        f = f or function() return true end
 
   local j
   for ord=2,no do
