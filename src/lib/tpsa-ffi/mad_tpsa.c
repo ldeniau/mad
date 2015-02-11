@@ -43,6 +43,18 @@ print_wf(const T *t)
   printf(" ]\n");
 }
 
+void
+mad_tpsa_print_compact(const T *t)
+{
+  D *d = t->desc;
+  printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
+  ord_t mo = min_ord(t->mo, t->desc->trunc);
+  for (int i=0; i < d->hpoly_To_idx[mo+1]; ++i)
+    if (bget(t->nz,d->ords[i]) && t->coef[i])
+      printf("[%d]=%.2f ", i, t->coef[i]);
+  printf(" }\n");
+}
+
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 // --- --- TOOLS --------------------------------------------------------------
@@ -118,8 +130,7 @@ mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
   assert(t && m);
   assert(n <= t->desc->nv);
 #ifdef TRACE
-  printf("set coeff in %p with val %.2f for mon ", (void*)t, v);
-  mono_print(n, m); printf("\n");
+  printf("set_mono: "); mono_print(n, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
   mad_tpsa_seti(t,i,v);
@@ -138,7 +149,7 @@ void
 mad_tpsa_seti(T *t, int i, num_t v)
 {
 #ifdef TRACE
-  printf("mad_tpsa_seti for %p i=%d v=%lf\n", (void*)t, i, v);
+  printf("set_idx for %p i=%d v=%lf\n", (void*)t, i, v);
 #endif
   assert(t);
   D *d = t->desc;
@@ -202,22 +213,9 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
   a->nz = (1 << (a->mo+1)) - 1;
 }
 
-void
-mad_tpsa_print(const T *t)
-{
-  D *d = t->desc;
-  printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
-  ord_t mo = min_ord(t->mo, t->desc->trunc);
-  for (int i=0; i < d->hpoly_To_idx[mo+1]; ++i)
-    if (bget(t->nz,d->ords[i]) && t->coef[i])
-      printf("[%d]=%.2f ", i, t->coef[i]);
-  printf(" }\n");
-}
-
-#undef T
-#undef D
-
 // --- --- OPERATIONS ---------------------------------------------------------
+#include "tpsa_io.tc"
+
 #include "tpsa_ops.tc"
 
 #include "tpsa_fun.tc"
@@ -226,4 +224,3 @@ mad_tpsa_print(const T *t)
 
 #include "tpsa_minv.tc"
 
-#undef TRACE

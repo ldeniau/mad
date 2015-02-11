@@ -58,7 +58,8 @@ ffi.cdef[[
   void dainv_(int *m1, int *s1, int *mr, int *sr); // mr = ma ^ -1
   void dapin_(int *m1, int *s1, int *mr, int *sr, int *row_select); // partial inversion
 
-  void dapri_(int *idx, int *dest);                // print TPSA at idx on stream dest
+  void dapri_(int *idx, int *dest);                // print         TPSA at idx on   stream dest
+  void darea_(int *idx, int *src);                 // read into the TPSA at idx from stream src
 ]]
 
 -- Fortran only takes pointers, so define their type
@@ -69,8 +70,9 @@ local dblPtr = typeof("double [1]")
 local chrArr = typeof("char   [?]")
 
 -- Create pointers to some useful literals
-local zero_i, one_i, six_i = intPtr(0),   intPtr(1), intPtr(6)
-local zero_d, one_d        = dblPtr(0.0), dblPtr(1.0)
+local zero_i, one_i = intPtr(0),   intPtr(1)
+local zero_d, one_d = dblPtr(0.0), dblPtr(1.0)
+local in_stream, out_stream = intPtr(5), intPtr(6)  -- stdin = unit 5, stdout = unit 6
 
 
 local tpsa = { name = "berz", mono_t = intArr, _cnt = 0 }
@@ -354,7 +356,11 @@ function tpsa.destroy(t)
 end
 
 function tpsa.print(t)
-   berzLib.dapri_(t.idx, six_i)     -- prints on stdout, represented by 6 in Fortran
+   berzLib.dapri_(t.idx, out_stream)  -- prints on stdout
+end
+
+function tpsa.read(t)
+   berzLib.darea_(t.idx, in_stream)   -- reads from stdin
 end
 
 -- interface for benchmarking --------------------------------------------------

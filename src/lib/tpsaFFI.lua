@@ -12,6 +12,9 @@ local clib = ffi.load(PATH .. "/tpsa-ffi/libtpsa-ffi.so")
 ffi.cdef[[
   // --- types -----------------------------------------------------------------
 
+  struct _IO_FILE;
+  typedef struct _IO_FILE FILE;
+
   typedef double           num_t;
   typedef unsigned char    ord_t;
   typedef unsigned int     bit_t;
@@ -102,7 +105,9 @@ ffi.cdef[[
   void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
   void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
 
-  void  mad_tpsa_print   (const T *t);
+  void  mad_tpsa_read    (      T *t, FILE *stream_);
+  void  mad_tpsa_print   (const T *t, FILE *stream_);
+  void  mad_tpsa_print_compact   (const T *t);
 
   // ---------------------------------------------------------------------------
 ]]
@@ -212,6 +217,15 @@ end
 function M.comp(a, b)
   return clib.mad_tpsa_comp(a, b)
 end
+
+function M.print(a, file)
+  clib.mad_tpsa_print(a,file)
+end
+
+function M.read(a, file)
+  clib.mad_tpsa_read(a,file)
+end
+
 
 -- OPERATIONS ------------------------------------------------------------------
 -- --- UNARY -------------------------------------------------------------------
@@ -394,7 +408,7 @@ end
 
 -- debugging -------------------------------------------------------------------
 
-M.print = clib.mad_tpsa_print
+M.debug = clib.mad_tpsa_print_compact
 
 -- interface for benchmarking --------------------------------------------------
 
