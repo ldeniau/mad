@@ -195,7 +195,7 @@ make_monos(D *d)
   const int max_init_alloc = 20000;  // to fit (6,12)
   d->nc = max_nc(d->nv, d->mo);
   int nv = d->nv, need_realloc = 0;
-  if (d->nc > max_init_alloc) {
+  if (d->nc > max_init_alloc || d->nc < 0) {  // nc < 0 on overflow in max_nc
     need_realloc = 1;
     d->nc = max_init_alloc;
   }
@@ -687,8 +687,7 @@ desc_build(D *d)
   tbl_set_L(d);
 
 #ifdef TRACE
-  tbl_print(d->nv,d->nc,d->To);
-  printf("  Total desc size: %d bytes\n", d->size);
+  printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
 #endif
 
   int err = tbl_check(d);
