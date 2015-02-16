@@ -304,10 +304,42 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 }
 
 void
+mad_tpsa_div(const T *a, const T *b, T *c)
+{
+ #ifdef TRACE
+  printf("tpsa_div\n");
+#endif
+  assert(a && b && c);
+  ensure(a->desc == b->desc && a->desc == c->desc);
+
+  D *d = a->desc;
+  if (d->mo == 1) {
+    num_t b0 = b->coef[0];
+    num_t c0 = a->coef[0] / b0;
+    for (int i = 1; i <= d->nv; ++i)
+      c->coef[i] = (a->coef[i] - b->coef[i]*c0)/b0;
+    c->coef[0] = c0;
+    c->nz = badd(a->nz,b->nz);
+    c->mo = 1;
+    return;
+  }
+
+  T *tmp = mad_tpsa_newd(d);
+  mad_tpsa_inv(b,tmp);
+  mad_tpsa_mul(a,tmp,c);
+  mad_tpsa_del(tmp);
+}
+
+void
 mad_tpsa_scale(num_t v, const T *a, T *c)
 {
   assert(a && c);
   ensure(a->desc == c->desc);
+  if (v == 0) {
+    mad_tpsa_clean(c);
+    return;
+  }
+
   c->mo = min_ord(a->mo,a->desc->trunc);
   c->nz = a->nz & ~(-1 << (c->mo+1));  // apply truncation
   for (int i = 0; i < c->desc->hpoly_To_idx[c->mo+1]; ++i)

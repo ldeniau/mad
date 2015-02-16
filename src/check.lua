@@ -89,7 +89,7 @@ end
 
 local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
-  local funcs = {"mul", "add", "sub"}
+  local funcs = {"mul", "add", "sub"} -- TODO: add "div" (without error)
   -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
   local t1s, t2s, trs = {}, {}, {}
   local b1s, b2s, brs = {}, {}, {}

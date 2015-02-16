@@ -655,7 +655,7 @@
 !
       ind = 1
 c
-c     
+c
 c      write(*,*) 'Allocating DA vector'
       do i=1,l
         if(ic(i).gt.0.and.ic(i).le.nda) then
@@ -4887,12 +4887,15 @@ c      write(*,*) 'Allocating DA vector'
 !
   10  continue
       iin = iin + 1
-      read(iunit,'(I6,2X,G20.14,I5,4X,18(2I2,1X))')                     &
+!      format G20.14 doesn't match dapri format; cipri.tom 11.02.2015
+!      read(iunit,'(I6,2X,G20.14,I5,4X,18(2I2,1X))')                     &
+      read(iunit,'(I6,2X,G21.14,I5,4X,18(2I2,1X))')                     &
      &ii,c,io,(j(i),i=1,inva)
 !
       if(ii.eq.0) goto 20
 !ETIENNE
-      read(iunit,*) c
+! this is extra and inconsistent with dapri; cipri.tom 11.02.2015
+!      read(iunit,*) c
 !ETIENNE
       if(ii.ne.iin) then
         iwarin = 1

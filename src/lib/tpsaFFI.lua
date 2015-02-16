@@ -94,6 +94,7 @@ ffi.cdef[[
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
+  void  mad_tpsa_div     (const T *a, const T *b, T *c);
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
   void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
@@ -261,6 +262,10 @@ function M.mul(a, b, c)
   clib.mad_tpsa_mul(a,b,c)
 end
 
+function M.div(a, b, c)
+  clib.mad_tpsa_div(a,b,c)
+end
+
 function M.pow(a, p)
   local r = a:new()
   clib.mad_tpsa_pow(a, r, p)
@@ -277,6 +282,73 @@ end
 
 function M.axpb(v, a, b, c)
   clib.mad_tpsa_axpb(v, a, b, c)
+end
+
+-- --- OVERLOADING -------------------------------------------------------------
+function MT.__add(a, b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    clib.mad_tpsa_seti(c,0,c.coef[0]+a)
+  elseif type(b) == "number" then
+    c = a:cpy()
+    clib.mad_tpsa_seti(c,0,c.coef[0]+b)
+  elseif ffi.istype(a,b) then
+    c = a:new()
+    clib.mad_tpsa_add(a,b,c)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__sub(a, b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    clib.mad_tpsa_seti(c,0,a-c.coef[0])
+  elseif type(b) == "number" then
+    c = a:cpy()
+    clib.mad_tpsa_seti(c,0,c.coef[0]-b)
+  elseif ffi.istype(a,b) then
+    c = a:new()
+    clib.mad_tpsa_sub(a,b,c)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__mul(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    clib.mad_tpsa_scale(a,c,c)
+  elseif type(b) == "number" then
+    c = a:cpy()
+    clib.mad_tpsa_scale(b,c,c)
+  elseif ffi.istype(a,b) then
+    c = a:new()
+    clib.mad_tpsa_mul(a,b,c)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__div(a,b)
+  local c
+  if type(a) == "number" then
+    error("NYI")
+  elseif type(b) == "number" then
+    error("NYI")
+  elseif ffi.istype(a,b) then
+    c = a:new()
+    clib.mad_tpsa_div(a,b,c)
+  else
+    error("Incompatible operands")
+  end
+  return c
 end
 
 -- MAPS ------------------------------------------------------------------------
