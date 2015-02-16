@@ -4,6 +4,7 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_blas.h>
 
 #define T struct tpsa
 #define D struct tpsa_desc
@@ -11,35 +12,51 @@
 // --- LOCAL FUNCTIONS --------------------------------------------------------
 
 static inline void
-split_and_inv(int nv, const T *ma[nv], T *lin_inv[nv], T *nonlin[nv], int pi[])
+split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
 {
-  assert(ma && lin_inv && nonlin);
-  gsl_matrix *mat_lin = gsl_matrix_alloc(nv,nv),
-             *mat_inv = gsl_matrix_alloc(nv,nv);
+  int nv = d->nv, cv = d->knb_start, nk = nv - cv;             // #vars, #canonical vars, #knobs
+  gsl_matrix *mat_var  =      gsl_matrix_calloc(cv,cv),        // canonical vars
+             *mat_vari =      gsl_matrix_alloc (cv,cv),        // inverse of vars
+             *mat_knb  = nk ? gsl_matrix_calloc(cv,nk) : NULL, // knobs
+             *mat_knbi = nk ? gsl_matrix_alloc (cv,nk) : NULL; // 'inverse' of knobs
 
-  for (int i = 0; i < nv; ++i) {
-    assert(bget(ma[i]->nz,1));   // row cannot be 0
-    for (int v = 0; v < nv; ++v)
-      gsl_matrix_set(mat_lin, i,v, ma[i]->coef[v+1]);
+  // split linear, -nonlinear
+  for (int i = 0; i < cv; ++i) {
+    if (bget(ma[i]->nz,1)) {
+      int v = 0;
+      for (; v < cv; ++v) gsl_matrix_set(mat_var, i,v   , ma[i]->coef[v+1]);
+      for (; v < nv; ++v) gsl_matrix_set(mat_knb, i,v-cv, ma[i]->coef[v+1]);
+    }
 
-    for (int o = 2; o <= ma[i]->mo; ++o)
-      if (bget(ma[i]->nz,o))
-        for (int c = pi[o]; c < pi[o+1]; ++c)
-          mad_tpsa_seti(nonlin[i], c, -1 * ma[i]->coef[c]);
+    mad_tpsa_copy(ma[i], nonlin[i]);
+    nonlin[i]->nz = bclr(nonlin[i]->nz,1);  // clear linear part
+    mad_tpsa_scale(-1,nonlin[i],nonlin[i]);
   }
 
-  // invert linear part
-  gsl_permutation *p = gsl_permutation_alloc(nv);
+  // invert linear
+  gsl_permutation *p = gsl_permutation_alloc(cv);
   int signum;
-  gsl_linalg_LU_decomp(mat_lin, p, &signum);
-  gsl_linalg_LU_invert(mat_lin, p, mat_inv);
+  gsl_linalg_LU_decomp(mat_var, p, &signum);
+  gsl_linalg_LU_invert(mat_var, p, mat_vari);
   gsl_permutation_free(p);
 
-  for (int i = 0; i < nv; ++i)
-  for (int j = 0; j < nv; ++j)
-    mad_tpsa_seti(lin_inv[i], j+1, gsl_matrix_get(mat_inv,i,j));
-  gsl_matrix_free(mat_lin);
-  gsl_matrix_free(mat_inv);
+  if (nk != 0) {
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans,
+                   -1.0, mat_vari, mat_knb,
+                    0.0, mat_knbi);
+  }
+
+  // copy result into TPSA
+  for (int i = 0; i < cv; ++i) {
+    for (int v = 0; v < cv; ++v)
+      mad_tpsa_seti(lin_inv[i], v    +1, gsl_matrix_get(mat_vari, i,v));
+    for (int k = 0; k < nk; ++k)
+      mad_tpsa_seti(lin_inv[i], k+cv +1, gsl_matrix_get(mat_knbi, i,k));
+  }
+  gsl_matrix_free(mat_var);
+  gsl_matrix_free(mat_knb);
+  gsl_matrix_free(mat_vari);
+  gsl_matrix_free(mat_knbi);
 }
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
@@ -59,13 +76,13 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
     tmp[i]     = mad_tpsa_newd(d);
   }
 
-  split_and_inv(sa, ma, lin_inv, nonlin, d->hpoly_To_idx);
+  split_and_inv(d, ma, lin_inv, nonlin);
+
+  // iteratively compute higher orders of the inverse
+  // MC (OF ORDER I) = AL^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I-1) ]
 
   for (int i = 0; i < sa; ++i)
     mad_tpsa_copy(lin_inv[i], mc[i]);
-
-  // iteratively compute higher orders of the inverse
-  // MC (OF ORDER I) = AL^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I) ]
 
   for (int o = 2; o <= d->mo; ++o) {
     d->trunc = o;

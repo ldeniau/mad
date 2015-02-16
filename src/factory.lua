@@ -53,7 +53,7 @@ end
 -- LOCALS ----------------------------------------------------------------------
 
 local function initMons(nv)
-  local t = { ps={ [0]=0, [1]=1 }, pe={ [0]=0, [1]=nv } }
+  local t = { ps={ [0]=0, [1]=1, [2]=nv+1 }, pe={ [0]=0, [1]=nv } }
 
   t[0] = mono_val(nv, 0)
   for i=1,nv do
@@ -80,11 +80,11 @@ local function table_by_ords(nv, no, ords, f)
           t[#t+1] = m
         end
         j = j+1
-      until m[i] > a[i] or m[i] >= ord
+      until m[i] > a[i] or m[i] >= ord or j > t.pe[ord-1]
 
     end
-    t.ps[ord] = j
-    t.pe[ord] = #t
+    t.pe[ord  ] = #t
+    t.ps[ord+1] = #t+1
   end
   return t
 end
