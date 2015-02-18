@@ -1,0 +1,61 @@
+'const' protects against rewrite
+'real' does nothing
+variables can store only 'real' values
+
+ident ::= [_A-Za-z][_A-Za-z0-9$.]*
+attribute ::= expr
+            |  identifier = expr
+            |  identifier := expr
+
+command[,] attribute... ;  // procedure (call with no returned value)
+label: command, attribute... ; // function (call with returned value)
+
+the labelled version stores the returned value in a 'global' variable of the same name.
+
+Examples:
+
+HCORRECTOR: HKICKER;
+creates a global variable HCORRECTOR, storing the returned value of the command HKICKER
+
+MCBCH : HCORRECTOR, L := l.MCBCH, Kmax := Kmax_MCBCH, Kmin := Kmin_MCBCH, Calib := Kmax_MCBCH / Imax_MCBCH;
+
+Example for sequence:
+
+LHCB1 : SEQUENCE, refer = CENTRE, L = LHCLENGTH;
+IP1:OMK,                           at= pIP1+IP1OFS.B1*DS;
+  MBAS2.1R1:MBAS2,                 at= 1.5+(0-IP1OFS.B1)*DS, mech_sep= 0, slot_id= 2209454,    from= IP1;
+  TAS.1R1:TAS,                     at= 20.015+(0-IP1OFS.B1)*DS, mech_sep= 0, slot_id= 102103,  from= IP1;
+ ENDSEQUENCE;
+
+marker = require"mad.element".marker
+
+-- OMK : MARKER, L := l.OMK;
+OMK = marker 'OMK' { l=_M['l.OMK'] }
+OMK = marker 'OMK' { l=l__OMK }
+
+LHCB1 = sequence 'LHCB1' { refer='center', l=LHCLENGTH }
+
+LHCB1
++ { OMK   'IP1'       {},                                           at= pIP1+IP1OFS__B1*DS                  },
++ { MBAS2 'MBAS2.1R1' {mech_sep= 0, slot_id= 2209454},              at= 1.5+(0-IP1OFS__B1)*DS,    from='IP1'},
++ { TAS   'TAS.1R1'   {mech_sep= 0, slot_id= 102103},               at= 20.015+(0-IP1OFS__B1)*DS, from='IP1'},
++ ...
+:done()
+
+-- MCD.8R1.B1,                KNL := {0, 0, 0, 0,kcd.a12b1*l.MCD}, polarity=+1;
+LHCB1['MCD.8R1.B1']:set {KNL={0, 0, 0, 0,kcd__a12b1*l__MCD}, polarity=+1 }
+
+MCD__8R1__B1:set { KNL={0, 0, 0, 0,kcd__a12b1*l__MCD}, polarity=+1 }
+
+
+
+LHCB1
+:add(pIP1+_M['IP1OFS.B1']*DS,                   OMK   'IP1'       {})
+:add(1.5+(0-_M['IP1OFS.B1'])*DS,    'IP1',      MBAS2 'MBAS2.1R1' {mech_sep= 0, slot_id= 2209454})
+:add(20.015+(0-_M['IP1OFS.B1'])*DS, 'IP1',      TAS   'TAS.1R1'   {mech_sep= 0, slot_id= 102103})
+...
+:done()
+
+
+
+MCS.C23L2.B1 -> MCS_C23L2_B1

@@ -1,0 +1,33 @@
+# specifies patterns of files which should never be tracked
+
+# Output files #
+################
+*.out
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.pyc
+*.pyo
+*.o
+*.so
+
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor generated files #
+##########################
+*~
+*.bak*
+*.swp

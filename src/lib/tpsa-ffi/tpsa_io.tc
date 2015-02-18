@@ -1,0 +1,122 @@
+#ifndef TPSA_IO_TEMPLATE
+#define TPSA_IO_TEMPLATE
+
+// --- LOCAL FUNCTIONS -------------------------------------------------------
+
+static inline void
+read_ords(int n, ord_t ords[n], FILE *stream)
+{
+  assert(ords && stream);
+  for (int i = 0; i < n; ++i)
+    ensure(fscanf(stream, "%hhu", ords+i) == 1);
+}
+
+static inline void
+print_ords(int n, ord_t ords[n], FILE *stream)
+{
+  assert(ords && stream);
+  for (int i = 0; i+1 < n; i += 2)
+    fprintf(stream, "  %hhu %hhu", ords[i], ords[i+1]);
+  if (n % 2)
+    fprintf(stream, "  %hhu"     , ords[n-1]);
+}
+
+static inline void
+read_header(T *a, FILE *stream)
+{
+  assert(a && stream);
+  char buf[50];
+  // 1st line -- discarded (empty)
+  ensure(fgets(buf, 50, stream));
+
+  struct tpsa_desc *d = a->desc;
+  ord_t mo, ords[d->nv], mvo, mko;
+  int rk, nv, read_cnt = 0;
+
+  // 2nd line
+  read_cnt = fscanf(stream, "%*11c, NO =%5hhu, NV =%5d, RNK =%5d", &mo, &nv, &rk);
+  ensure(fgets(buf, 50, stream));
+  if (read_cnt < 2) {
+    printf("ERROR WHILE READING TPSA: Could not read (NO,NV)\n");
+    return;
+  }
+
+  // 3rd line
+  if (read_cnt == 3) {             // GTPSA -- process 3rd line
+    ensure(fscanf(stream, "%*11c MVO =%5hhu,MKO =%5hhu, ORDS:", &mvo, &mko) == 2);
+    read_ords(nv,ords,stream);
+  }
+  else {                           // TPSA  -- ignore  3rd line; default values
+    rk = nv; mvo = mo; mko = 0;
+    mono_set(nv,ords,mo);
+  }
+  ensure(fgets(buf, 50, stream));  // finish 3rd line
+
+  // discard extra lines
+  ensure(fgets(buf, 50, stream));
+  ensure(fgets(buf, 50, stream));
+
+  ensure(d == get_desc(mo,nv,ords,rk,mvo,mko));  // consistency check
+}
+
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
+
+void
+mad_tpsa_read(T *a, FILE *stream_)
+{
+  assert(a);
+
+  if (!stream_)
+    stream_ = stdin;
+  read_header(a,stream_);
+
+  num_t c;
+  int nv = a->desc->nv;
+  ord_t o, ords[nv];
+  mad_tpsa_clean(a);
+  while (fscanf(stream_, "%*d %21lG %hhu", &c, &o) == 2) {
+    read_ords(nv,ords,stream_);
+    mad_tpsa_setm(a,nv,ords,c);
+    ensure(mono_sum(nv,ords) == o);  // consistency check
+  }
+}
+
+void
+mad_tpsa_print(const T *a, FILE *stream_)
+{
+  assert(a);
+
+  if (!stream_)
+    stream_ = stdout;
+  D *d = a->desc;
+
+  // print header
+  char name[11] = "-UNNAMED--";
+  fprintf(stream_, "\n %10s, NO =%5d, NV =%5d, RNK =%5d", name,d->mo,d->nv,d->knb_start);
+  fprintf(stream_, "\n %10s MVO =%5hhu,MKO =%5hhu, ORDS:", "",d->mvo, d->mko);
+  print_ords(d->nv,d->a,stream_);
+  fprintf(stream_, "\n *********************************************");
+
+  if (!a->nz) {
+    fprintf(stream_, "\n   ALL COMPONENTS ZERO \n");
+    return;
+  }
+
+  fprintf(stream_, "\n    I  COEFFICIENT          ORDER   EXPONENTS");
+  int idx = 1;
+  for (int c = 0; c < d->nc; ++c)
+    if (bget(a->nz,d->ords[c]) && fabs(a->coef[c]) > 1e-10) {
+      fprintf(stream_, "\n%6d  %21.14lE%5hhu   ", idx, a->coef[c], d->ords[c]);
+      print_ords(d->nv, d->To[c], stream_);
+      idx++;
+    }
+  fprintf(stream_, "\n\n");
+}
+
+#undef TRACE
+
+#undef T
+#undef D
+
+
+#endif

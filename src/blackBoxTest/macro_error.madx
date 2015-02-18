@@ -1,0 +1,607 @@
+!-------------------------------HISTORY-----------------------------------------
+!! S. Fartoukh Feb. 2009: macros for error generation in the new D1/IT
+!  bug corrected in reset_MQX_corr 12/05/2009 (the IT correction was always on)
+!! S. Fartoukh March 2012 update the error assignement routine for an arbitrary ref radius (defined in the error table) 
+!  and the resetIT corrector routine for new IT correctors
+!-------------------------------------------------------------------------------
+
+ON_ALL_MULT: macro = {
+ ON_A1s =  1 ; ON_A1r =  1 ; ON_B1s =  1 ; ON_B1r =  1;
+ ON_A2s =  1 ; ON_A2r =  1 ; ON_B2s =  1 ; ON_B2r =  1;
+ ON_A3s =  1 ; ON_A3r =  1 ; ON_B3s =  1 ; ON_B3r =  1;
+ ON_A4s =  1 ; ON_A4r =  1 ; ON_B4s =  1 ; ON_B4r =  1;
+ ON_A5s =  1 ; ON_A5r =  1 ; ON_B5s =  1 ; ON_B5r =  1;
+ ON_A6s =  1 ; ON_A6r =  1 ; ON_B6s =  1 ; ON_B6r =  1;
+ ON_A7s =  1 ; ON_A7r =  1 ; ON_B7s =  1 ; ON_B7r =  1;
+ ON_A8s =  1 ; ON_A8r =  1 ; ON_B8s =  1 ; ON_B8r =  1;
+ ON_A9s =  1 ; ON_A9r =  1 ; ON_B9s =  1 ; ON_B9r =  1;
+ ON_A10s =  1; ON_A10r =  1; ON_B10s =  1; ON_B10r =  1;
+ ON_A11s =  1; ON_A11r =  1; ON_B11s =  1; ON_B11r =  1;
+ ON_A12s =  1; ON_A12r =  1; ON_B12s =  1; ON_B12r =  1;
+ ON_A13s =  1; ON_A13r =  1; ON_B13s =  1; ON_B13r =  1;
+ ON_A14s =  1; ON_A14r =  1; ON_B14s =  1; ON_B14r =  1;
+ ON_A15s =  1; ON_A15r =  1; ON_B15s =  1; ON_B15r =  1;
+};
+
+
+define_uncertainty(TYPM) : macro ={
+
+!Define the uncertainty for a given magnet type TYPM and/or aperture
+
+if (NRJ<4999.99)
+{
+b1ss_U  =  b1U_TYPM_inj  * TGAUSS(1.5) / 1.5; a1ss_U  =  a1U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b2ss_U  =  b2U_TYPM_inj  * TGAUSS(1.5) / 1.5; a2ss_U  =  a2U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b3ss_U  =  b3U_TYPM_inj  * TGAUSS(1.5) / 1.5; a3ss_U  =  a3U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b4ss_U  =  b4U_TYPM_inj  * TGAUSS(1.5) / 1.5; a4ss_U  =  a4U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b5ss_U  =  b5U_TYPM_inj  * TGAUSS(1.5) / 1.5; a5ss_U  =  a5U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b6ss_U  =  b6U_TYPM_inj  * TGAUSS(1.5) / 1.5; a6ss_U  =  a6U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b7ss_U  =  b7U_TYPM_inj  * TGAUSS(1.5) / 1.5; a7ss_U  =  a7U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b8ss_U  =  b8U_TYPM_inj  * TGAUSS(1.5) / 1.5; a8ss_U  =  a8U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b9ss_U  =  b9U_TYPM_inj  * TGAUSS(1.5) / 1.5; a9ss_U  =  a9U_TYPM_inj  * TGAUSS(1.5) / 1.5;
+b10ss_U =  b10U_TYPM_inj * TGAUSS(1.5) / 1.5; a10ss_U =  a10U_TYPM_inj * TGAUSS(1.5) / 1.5;
+b11ss_U =  b11U_TYPM_inj * TGAUSS(1.5) / 1.5; a11ss_U =  a11U_TYPM_inj * TGAUSS(1.5) / 1.5;
+b12ss_U =  b12U_TYPM_inj * TGAUSS(1.5) / 1.5; a12ss_U =  a12U_TYPM_inj * TGAUSS(1.5) / 1.5;
+b13ss_U =  b13U_TYPM_inj * TGAUSS(1.5) / 1.5; a13ss_U =  a13U_TYPM_inj * TGAUSS(1.5) / 1.5;
+b14ss_U =  b14U_TYPM_inj * TGAUSS(1.5) / 1.5; a14ss_U =  a14U_TYPM_inj * TGAUSS(1.5) / 1.5;
+b15ss_U =  b15U_TYPM_inj * TGAUSS(1.5) / 1.5; a15ss_U =  a15U_TYPM_inj * TGAUSS(1.5) / 1.5;
+};
+
+if (NRJ>4999.99)
+{
+b1ss_U  =  b1U_TYPM_col  * TGAUSS(1.5) / 1.5; a1ss_U  =  a1U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b2ss_U  =  b2U_TYPM_col  * TGAUSS(1.5) / 1.5; a2ss_U  =  a2U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b3ss_U  =  b3U_TYPM_col  * TGAUSS(1.5) / 1.5; a3ss_U  =  a3U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b4ss_U  =  b4U_TYPM_col  * TGAUSS(1.5) / 1.5; a4ss_U  =  a4U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b5ss_U  =  b5U_TYPM_col  * TGAUSS(1.5) / 1.5; a5ss_U  =  a5U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b6ss_U  =  b6U_TYPM_col  * TGAUSS(1.5) / 1.5; a6ss_U  =  a6U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b7ss_U  =  b7U_TYPM_col  * TGAUSS(1.5) / 1.5; a7ss_U  =  a7U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b8ss_U  =  b8U_TYPM_col  * TGAUSS(1.5) / 1.5; a8ss_U  =  a8U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b9ss_U  =  b9U_TYPM_col  * TGAUSS(1.5) / 1.5; a9ss_U  =  a9U_TYPM_col  * TGAUSS(1.5) / 1.5;
+b10ss_U =  b10U_TYPM_col * TGAUSS(1.5) / 1.5; a10ss_U =  a10U_TYPM_col * TGAUSS(1.5) / 1.5;
+b11ss_U =  b11U_TYPM_col * TGAUSS(1.5) / 1.5; a11ss_U =  a11U_TYPM_col * TGAUSS(1.5) / 1.5;
+b12ss_U =  b12U_TYPM_col * TGAUSS(1.5) / 1.5; a12ss_U =  a12U_TYPM_col * TGAUSS(1.5) / 1.5;
+b13ss_U =  b13U_TYPM_col * TGAUSS(1.5) / 1.5; a13ss_U =  a13U_TYPM_col * TGAUSS(1.5) / 1.5;
+b14ss_U =  b14U_TYPM_col * TGAUSS(1.5) / 1.5; a14ss_U =  a14U_TYPM_col * TGAUSS(1.5) / 1.5;
+b15ss_U =  b15U_TYPM_col * TGAUSS(1.5) / 1.5; a15ss_U =  a15U_TYPM_col * TGAUSS(1.5) / 1.5;
+};
+
+};
+
+
+new_magnetfamily(TYPM) : macro ={
+
+!Calculate the actual average (bn,an) of a given single bore magnet family TYPM 
+!for a given seed and at a GIVEN NRJ given in the sample job
+
+exec define_uncertainty(TYPM);
+
+if (NRJ<4999.99)
+{
+b1ss  = b1M_TYPM_inj  + b1ss_U ; a1ss  = a1M_TYPM_inj  +  a1ss_U ;
+b2ss  = b2M_TYPM_inj  + b2ss_U ; a2ss  = a2M_TYPM_inj  +  a2ss_U ;
+b3ss  = b3M_TYPM_inj  + b3ss_U ; a3ss  = a3M_TYPM_inj  +  a3ss_U ;
+b4ss  = b4M_TYPM_inj  + b4ss_U ; a4ss  = a4M_TYPM_inj  +  a4ss_U ;
+b5ss  = b5M_TYPM_inj  + b5ss_U ; a5ss  = a5M_TYPM_inj  +  a5ss_U ;
+b6ss  = b6M_TYPM_inj  + b6ss_U ; a6ss  = a6M_TYPM_inj  +  a6ss_U ;
+b7ss  = b7M_TYPM_inj  + b7ss_U ; a7ss  = a7M_TYPM_inj  +  a7ss_U ;
+b8ss  = b8M_TYPM_inj  + b8ss_U ; a8ss  = a8M_TYPM_inj  +  a8ss_U ;
+b9ss  = b9M_TYPM_inj  + b9ss_U ; a9ss  = a9M_TYPM_inj  +  a9ss_U ;
+b10ss = b10M_TYPM_inj + b10ss_U; a10ss = a10M_TYPM_inj +  a10ss_U;
+b11ss = b11M_TYPM_inj + b11ss_U; a11ss = a11M_TYPM_inj +  a11ss_U;
+b12ss = b12M_TYPM_inj + b12ss_U; a12ss = a12M_TYPM_inj +  a12ss_U;
+b13ss = b13M_TYPM_inj + b13ss_U; a13ss = a13M_TYPM_inj +  a13ss_U;
+b14ss = b14M_TYPM_inj + b14ss_U; a14ss = a14M_TYPM_inj +  a14ss_U;
+b15ss = b15M_TYPM_inj + b15ss_U; a15ss = a15M_TYPM_inj +  a15ss_U;
+};
+
+if (NRJ>4999.99)
+{
+b1ss  = b1M_TYPM_col  + b1ss_U ; a1ss  = a1M_TYPM_col  +  a1ss_U ;
+b2ss  = b2M_TYPM_col  + b2ss_U ; a2ss  = a2M_TYPM_col  +  a2ss_U ;
+b3ss  = b3M_TYPM_col  + b3ss_U ; a3ss  = a3M_TYPM_col  +  a3ss_U ;
+b4ss  = b4M_TYPM_col  + b4ss_U ; a4ss  = a4M_TYPM_col  +  a4ss_U ;
+b5ss  = b5M_TYPM_col  + b5ss_U ; a5ss  = a5M_TYPM_col  +  a5ss_U ;
+b6ss  = b6M_TYPM_col  + b6ss_U ; a6ss  = a6M_TYPM_col  +  a6ss_U ;
+b7ss  = b7M_TYPM_col  + b7ss_U ; a7ss  = a7M_TYPM_col  +  a7ss_U ;
+b8ss  = b8M_TYPM_col  + b8ss_U ; a8ss  = a8M_TYPM_col  +  a8ss_U ;
+b9ss  = b9M_TYPM_col  + b9ss_U ; a9ss  = a9M_TYPM_col  +  a9ss_U ;
+b10ss = b10M_TYPM_col + b10ss_U; a10ss = a10M_TYPM_col +  a10ss_U;
+b11ss = b11M_TYPM_col + b11ss_U; a11ss = a11M_TYPM_col +  a11ss_U;
+b12ss = b12M_TYPM_col + b12ss_U; a12ss = a12M_TYPM_col +  a12ss_U;
+b13ss = b13M_TYPM_col + b13ss_U; a13ss = a13M_TYPM_col +  a13ss_U;
+b14ss = b14M_TYPM_col + b14ss_U; a14ss = a14M_TYPM_col +  a14ss_U;
+b15ss = b15M_TYPM_col + b15ss_U; a15ss = a15M_TYPM_col +  a15ss_U;
+};
+
+};
+
+
+new_magnetfamily_MB(TYPM) : macro ={
+
+!Calculate the actual average (bn,an) of a given 2-in-1 dipole family type TYPM 
+!for a given seed and at a GIVEN NRJ given in the sample job
+
+exec define_uncertainty (TYPM);
+
+if (NRJ<4999.99)
+{
+b1ss_V1  = b1M_TYPM_V1_inj  + b1ss_U ; a1ss_V1  = a1M_TYPM_V1_inj  + a1ss_U ;
+b2ss_V1  = b2M_TYPM_V1_inj  + b2ss_U ; a2ss_V1  = a2M_TYPM_V1_inj  + a2ss_U ;
+b3ss_V1  = b3M_TYPM_V1_inj  + b3ss_U ; a3ss_V1  = a3M_TYPM_V1_inj  + a3ss_U ;
+b4ss_V1  = b4M_TYPM_V1_inj  + b4ss_U ; a4ss_V1  = a4M_TYPM_V1_inj  + a4ss_U ;
+b5ss_V1  = b5M_TYPM_V1_inj  + b5ss_U ; a5ss_V1  = a5M_TYPM_V1_inj  + a5ss_U ;
+b6ss_V1  = b6M_TYPM_V1_inj  + b6ss_U ; a6ss_V1  = a6M_TYPM_V1_inj  + a6ss_U ;
+b7ss_V1  = b7M_TYPM_V1_inj  + b7ss_U ; a7ss_V1  = a7M_TYPM_V1_inj  + a7ss_U ;
+b8ss_V1  = b8M_TYPM_V1_inj  + b8ss_U ; a8ss_V1  = a8M_TYPM_V1_inj  + a8ss_U ;
+b9ss_V1  = b9M_TYPM_V1_inj  + b9ss_U ; a9ss_V1  = a9M_TYPM_V1_inj  + a9ss_U ;
+b10ss_V1 = b10M_TYPM_V1_inj + b10ss_U; a10ss_V1 = a10M_TYPM_V1_inj + a10ss_U;
+b11ss_V1 = b11M_TYPM_V1_inj + b11ss_U; a11ss_V1 = a11M_TYPM_V1_inj + a11ss_U;
+b12ss_V1 = b12M_TYPM_V1_inj + b12ss_U; a12ss_V1 = a12M_TYPM_V1_inj + a12ss_U;
+b13ss_V1 = b13M_TYPM_V1_inj + b13ss_U; a13ss_V1 = a13M_TYPM_V1_inj + a13ss_U;
+b14ss_V1 = b14M_TYPM_V1_inj + b14ss_U; a14ss_V1 = a14M_TYPM_V1_inj + a14ss_U;
+b15ss_V1 = b15M_TYPM_V1_inj + b15ss_U; a15ss_V1 = a15M_TYPM_V1_inj + a15ss_U;
+};
+
+if (NRJ>4999.99)
+{
+b1ss_V1  = b1M_TYPM_V1_col  + b1ss_U ; a1ss_V1  = a1M_TYPM_V1_col  + a1ss_U ; 
+b2ss_V1  = b2M_TYPM_V1_col  + b2ss_U ; a2ss_V1  = a2M_TYPM_V1_col  + a2ss_U ; 
+b3ss_V1  = b3M_TYPM_V1_col  + b3ss_U ; a3ss_V1  = a3M_TYPM_V1_col  + a3ss_U ; 
+b4ss_V1  = b4M_TYPM_V1_col  + b4ss_U ; a4ss_V1  = a4M_TYPM_V1_col  + a4ss_U ; 
+b5ss_V1  = b5M_TYPM_V1_col  + b5ss_U ; a5ss_V1  = a5M_TYPM_V1_col  + a5ss_U ; 
+b6ss_V1  = b6M_TYPM_V1_col  + b6ss_U ; a6ss_V1  = a6M_TYPM_V1_col  + a6ss_U ; 
+b7ss_V1  = b7M_TYPM_V1_col  + b7ss_U ; a7ss_V1  = a7M_TYPM_V1_col  + a7ss_U ; 
+b8ss_V1  = b8M_TYPM_V1_col  + b8ss_U ; a8ss_V1  = a8M_TYPM_V1_col  + a8ss_U ; 
+b9ss_V1  = b9M_TYPM_V1_col  + b9ss_U ; a9ss_V1  = a9M_TYPM_V1_col  + a9ss_U ; 
+b10ss_V1 = b10M_TYPM_V1_col + b10ss_U; a10ss_V1 = a10M_TYPM_V1_col + a10ss_U; 
+b11ss_V1 = b11M_TYPM_V1_col + b11ss_U; a11ss_V1 = a11M_TYPM_V1_col + a11ss_U; 
+b12ss_V1 = b12M_TYPM_V1_col + b12ss_U; a12ss_V1 = a12M_TYPM_V1_col + a12ss_U; 
+b13ss_V1 = b13M_TYPM_V1_col + b13ss_U; a13ss_V1 = a13M_TYPM_V1_col + a13ss_U; 
+b14ss_V1 = b14M_TYPM_V1_col + b14ss_U; a14ss_V1 = a14M_TYPM_V1_col + a14ss_U; 
+b15ss_V1 = b15M_TYPM_V1_col + b15ss_U; a15ss_V1 = a15M_TYPM_V1_col + a15ss_U; 
+};
+
+
+/*
+! Redefine the uncertainty for aperture 2
+exec define_uncertainty (TYPM);
+*/
+
+if (NRJ<4999.99)
+{
+b1ss_V2  = b1M_TYPM_V2_inj  + b1ss_U ; a1ss_V2  = a1M_TYPM_V2_inj  - a1ss_U ;
+b2ss_V2  = b2M_TYPM_V2_inj  - b2ss_U ; a2ss_V2  = a2M_TYPM_V2_inj  + a2ss_U ;
+b3ss_V2  = b3M_TYPM_V2_inj  + b3ss_U ; a3ss_V2  = a3M_TYPM_V2_inj  - a3ss_U ;
+b4ss_V2  = b4M_TYPM_V2_inj  - b4ss_U ; a4ss_V2  = a4M_TYPM_V2_inj  + a4ss_U ;
+b5ss_V2  = b5M_TYPM_V2_inj  + b5ss_U ; a5ss_V2  = a5M_TYPM_V2_inj  - a5ss_U ;
+b6ss_V2  = b6M_TYPM_V2_inj  - b6ss_U ; a6ss_V2  = a6M_TYPM_V2_inj  + a6ss_U ;
+b7ss_V2  = b7M_TYPM_V2_inj  + b7ss_U ; a7ss_V2  = a7M_TYPM_V2_inj  - a7ss_U ;
+b8ss_V2  = b8M_TYPM_V2_inj  - b8ss_U ; a8ss_V2  = a8M_TYPM_V2_inj  + a8ss_U ;
+b9ss_V2  = b9M_TYPM_V2_inj  + b9ss_U ; a9ss_V2  = a9M_TYPM_V2_inj  - a9ss_U ;
+b10ss_V2 = b10M_TYPM_V2_inj - b10ss_U; a10ss_V2 = a10M_TYPM_V2_inj + a10ss_U;
+b11ss_V2 = b11M_TYPM_V2_inj + b11ss_U; a11ss_V2 = a11M_TYPM_V2_inj - a11ss_U;
+b12ss_V2 = b12M_TYPM_V2_inj - b12ss_U; a12ss_V2 = a12M_TYPM_V2_inj + a12ss_U;
+b13ss_V2 = b13M_TYPM_V2_inj + b13ss_U; a13ss_V2 = a13M_TYPM_V2_inj - a13ss_U;
+b14ss_V2 = b14M_TYPM_V2_inj - b14ss_U; a14ss_V2 = a14M_TYPM_V2_inj + a14ss_U;
+b15ss_V2 = b15M_TYPM_V2_inj + b15ss_U; a15ss_V2 = a15M_TYPM_V2_inj - a15ss_U;
+};
+
+if (NRJ>4999.99)
+{
+b1ss_V2  = b1M_TYPM_V2_col  + b1ss_U ; a1ss_V2  = a1M_TYPM_V2_col  - a1ss_U ; 
+b2ss_V2  = b2M_TYPM_V2_col  - b2ss_U ; a2ss_V2  = a2M_TYPM_V2_col  + a2ss_U ; 
+b3ss_V2  = b3M_TYPM_V2_col  + b3ss_U ; a3ss_V2  = a3M_TYPM_V2_col  - a3ss_U ; 
+b4ss_V2  = b4M_TYPM_V2_col  - b4ss_U ; a4ss_V2  = a4M_TYPM_V2_col  + a4ss_U ; 
+b5ss_V2  = b5M_TYPM_V2_col  + b5ss_U ; a5ss_V2  = a5M_TYPM_V2_col  - a5ss_U ; 
+b6ss_V2  = b6M_TYPM_V2_col  - b6ss_U ; a6ss_V2  = a6M_TYPM_V2_col  + a6ss_U ; 
+b7ss_V2  = b7M_TYPM_V2_col  + b7ss_U ; a7ss_V2  = a7M_TYPM_V2_col  - a7ss_U ; 
+b8ss_V2  = b8M_TYPM_V2_col  - b8ss_U ; a8ss_V2  = a8M_TYPM_V2_col  + a8ss_U ; 
+b9ss_V2  = b9M_TYPM_V2_col  + b9ss_U ; a9ss_V2  = a9M_TYPM_V2_col  - a9ss_U ; 
+b10ss_V2 = b10M_TYPM_V2_col - b10ss_U; a10ss_V2 = a10M_TYPM_V2_col + a10ss_U; 
+b11ss_V2 = b11M_TYPM_V2_col + b11ss_U; a11ss_V2 = a11M_TYPM_V2_col - a11ss_U; 
+b12ss_V2 = b12M_TYPM_V2_col - b12ss_U; a12ss_V2 = a12M_TYPM_V2_col + a12ss_U; 
+b13ss_V2 = b13M_TYPM_V2_col + b13ss_U; a13ss_V2 = a13M_TYPM_V2_col - a13ss_U; 
+b14ss_V2 = b14M_TYPM_V2_col - b14ss_U; a14ss_V2 = a14M_TYPM_V2_col + a14ss_U; 
+b15ss_V2 = b15M_TYPM_V2_col + b15ss_U; a15ss_V2 = a15M_TYPM_V2_col - a15ss_U; 
+};
+
+
+};
+
+
+new_magnetfamily_MQ(TYPM) : macro ={
+
+!Calculate the actual average (bn,an) of a given 2-in-1 quadrupole family type TYPM 
+!for a given seed and at a GIVEN NRJ given in the sample job
+
+exec define_uncertainty (TYPM);
+
+if (NRJ<4999.99)
+{
+b1ss_V1  = b1M_TYPM_V1_inj  + b1ss_U ; a1ss_V1  = a1M_TYPM_V1_inj  + a1ss_U ;
+b2ss_V1  = b2M_TYPM_V1_inj  + b2ss_U ; a2ss_V1  = a2M_TYPM_V1_inj  + a2ss_U ;
+b3ss_V1  = b3M_TYPM_V1_inj  + b3ss_U ; a3ss_V1  = a3M_TYPM_V1_inj  + a3ss_U ;
+b4ss_V1  = b4M_TYPM_V1_inj  + b4ss_U ; a4ss_V1  = a4M_TYPM_V1_inj  + a4ss_U ;
+b5ss_V1  = b5M_TYPM_V1_inj  + b5ss_U ; a5ss_V1  = a5M_TYPM_V1_inj  + a5ss_U ;
+b6ss_V1  = b6M_TYPM_V1_inj  + b6ss_U ; a6ss_V1  = a6M_TYPM_V1_inj  + a6ss_U ;
+b7ss_V1  = b7M_TYPM_V1_inj  + b7ss_U ; a7ss_V1  = a7M_TYPM_V1_inj  + a7ss_U ;
+b8ss_V1  = b8M_TYPM_V1_inj  + b8ss_U ; a8ss_V1  = a8M_TYPM_V1_inj  + a8ss_U ;
+b9ss_V1  = b9M_TYPM_V1_inj  + b9ss_U ; a9ss_V1  = a9M_TYPM_V1_inj  + a9ss_U ;
+b10ss_V1 = b10M_TYPM_V1_inj + b10ss_U; a10ss_V1 = a10M_TYPM_V1_inj + a10ss_U;
+b11ss_V1 = b11M_TYPM_V1_inj + b11ss_U; a11ss_V1 = a11M_TYPM_V1_inj + a11ss_U;
+b12ss_V1 = b12M_TYPM_V1_inj + b12ss_U; a12ss_V1 = a12M_TYPM_V1_inj + a12ss_U;
+b13ss_V1 = b13M_TYPM_V1_inj + b13ss_U; a13ss_V1 = a13M_TYPM_V1_inj + a13ss_U;
+b14ss_V1 = b14M_TYPM_V1_inj + b14ss_U; a14ss_V1 = a14M_TYPM_V1_inj + a14ss_U;
+b15ss_V1 = b15M_TYPM_V1_inj + b15ss_U; a15ss_V1 = a15M_TYPM_V1_inj + a15ss_U;
+};
+
+if (NRJ>4999.99)
+{
+b1ss_V1  = b1M_TYPM_V1_col  + b1ss_U ; a1ss_V1  = a1M_TYPM_V1_col  + a1ss_U ; 
+b2ss_V1  = b2M_TYPM_V1_col  + b2ss_U ; a2ss_V1  = a2M_TYPM_V1_col  + a2ss_U ; 
+b3ss_V1  = b3M_TYPM_V1_col  + b3ss_U ; a3ss_V1  = a3M_TYPM_V1_col  + a3ss_U ; 
+b4ss_V1  = b4M_TYPM_V1_col  + b4ss_U ; a4ss_V1  = a4M_TYPM_V1_col  + a4ss_U ; 
+b5ss_V1  = b5M_TYPM_V1_col  + b5ss_U ; a5ss_V1  = a5M_TYPM_V1_col  + a5ss_U ; 
+b6ss_V1  = b6M_TYPM_V1_col  + b6ss_U ; a6ss_V1  = a6M_TYPM_V1_col  + a6ss_U ; 
+b7ss_V1  = b7M_TYPM_V1_col  + b7ss_U ; a7ss_V1  = a7M_TYPM_V1_col  + a7ss_U ; 
+b8ss_V1  = b8M_TYPM_V1_col  + b8ss_U ; a8ss_V1  = a8M_TYPM_V1_col  + a8ss_U ; 
+b9ss_V1  = b9M_TYPM_V1_col  + b9ss_U ; a9ss_V1  = a9M_TYPM_V1_col  + a9ss_U ; 
+b10ss_V1 = b10M_TYPM_V1_col + b10ss_U; a10ss_V1 = a10M_TYPM_V1_col + a10ss_U; 
+b11ss_V1 = b11M_TYPM_V1_col + b11ss_U; a11ss_V1 = a11M_TYPM_V1_col + a11ss_U; 
+b12ss_V1 = b12M_TYPM_V1_col + b12ss_U; a12ss_V1 = a12M_TYPM_V1_col + a12ss_U; 
+b13ss_V1 = b13M_TYPM_V1_col + b13ss_U; a13ss_V1 = a13M_TYPM_V1_col + a13ss_U; 
+b14ss_V1 = b14M_TYPM_V1_col + b14ss_U; a14ss_V1 = a14M_TYPM_V1_col + a14ss_U; 
+b15ss_V1 = b15M_TYPM_V1_col + b15ss_U; a15ss_V1 = a15M_TYPM_V1_col + a15ss_U; 
+};
+
+
+/*
+! Redefine the uncertainty for aperture 2
+exec define_uncertainty (TYPM);
+*/
+
+if (NRJ<4999.99)
+{
+b1ss_V2  = b1M_TYPM_V2_inj  - b1ss_U ; a1ss_V2  = a1M_TYPM_V2_inj  + a1ss_U ;
+b2ss_V2  = b2M_TYPM_V2_inj  + b2ss_U ; a2ss_V2  = a2M_TYPM_V2_inj  - a2ss_U ;
+b3ss_V2  = b3M_TYPM_V2_inj  - b3ss_U ; a3ss_V2  = a3M_TYPM_V2_inj  + a3ss_U ;
+b4ss_V2  = b4M_TYPM_V2_inj  + b4ss_U ; a4ss_V2  = a4M_TYPM_V2_inj  - a4ss_U ;
+b5ss_V2  = b5M_TYPM_V2_inj  - b5ss_U ; a5ss_V2  = a5M_TYPM_V2_inj  + a5ss_U ;
+b6ss_V2  = b6M_TYPM_V2_inj  + b6ss_U ; a6ss_V2  = a6M_TYPM_V2_inj  - a6ss_U ;
+b7ss_V2  = b7M_TYPM_V2_inj  - b7ss_U ; a7ss_V2  = a7M_TYPM_V2_inj  + a7ss_U ;
+b8ss_V2  = b8M_TYPM_V2_inj  + b8ss_U ; a8ss_V2  = a8M_TYPM_V2_inj  - a8ss_U ;
+b9ss_V2  = b9M_TYPM_V2_inj  - b9ss_U ; a9ss_V2  = a9M_TYPM_V2_inj  + a9ss_U ;
+b10ss_V2 = b10M_TYPM_V2_inj + b10ss_U; a10ss_V2 = a10M_TYPM_V2_inj - a10ss_U;
+b11ss_V2 = b11M_TYPM_V2_inj - b11ss_U; a11ss_V2 = a11M_TYPM_V2_inj + a11ss_U;
+b12ss_V2 = b12M_TYPM_V2_inj + b12ss_U; a12ss_V2 = a12M_TYPM_V2_inj - a12ss_U;
+b13ss_V2 = b13M_TYPM_V2_inj - b13ss_U; a13ss_V2 = a13M_TYPM_V2_inj + a13ss_U;
+b14ss_V2 = b14M_TYPM_V2_inj + b14ss_U; a14ss_V2 = a14M_TYPM_V2_inj - a14ss_U;
+b15ss_V2 = b15M_TYPM_V2_inj - b15ss_U; a15ss_V2 = a15M_TYPM_V2_inj + a15ss_U;
+};
+
+if (NRJ>4999.99)
+{
+b1ss_V2  = b1M_TYPM_V2_col  - b1ss_U ; a1ss_V2  = a1M_TYPM_V2_col  + a1ss_U ; 
+b2ss_V2  = b2M_TYPM_V2_col  + b2ss_U ; a2ss_V2  = a2M_TYPM_V2_col  - a2ss_U ; 
+b3ss_V2  = b3M_TYPM_V2_col  - b3ss_U ; a3ss_V2  = a3M_TYPM_V2_col  + a3ss_U ; 
+b4ss_V2  = b4M_TYPM_V2_col  + b4ss_U ; a4ss_V2  = a4M_TYPM_V2_col  - a4ss_U ; 
+b5ss_V2  = b5M_TYPM_V2_col  - b5ss_U ; a5ss_V2  = a5M_TYPM_V2_col  + a5ss_U ; 
+b6ss_V2  = b6M_TYPM_V2_col  + b6ss_U ; a6ss_V2  = a6M_TYPM_V2_col  - a6ss_U ; 
+b7ss_V2  = b7M_TYPM_V2_col  - b7ss_U ; a7ss_V2  = a7M_TYPM_V2_col  + a7ss_U ; 
+b8ss_V2  = b8M_TYPM_V2_col  + b8ss_U ; a8ss_V2  = a8M_TYPM_V2_col  - a8ss_U ; 
+b9ss_V2  = b9M_TYPM_V2_col  - b9ss_U ; a9ss_V2  = a9M_TYPM_V2_col  + a9ss_U ; 
+b10ss_V2 = b10M_TYPM_V2_col + b10ss_U; a10ss_V2 = a10M_TYPM_V2_col - a10ss_U; 
+b11ss_V2 = b11M_TYPM_V2_col - b11ss_U; a11ss_V2 = a11M_TYPM_V2_col + a11ss_U; 
+b12ss_V2 = b12M_TYPM_V2_col + b12ss_U; a12ss_V2 = a12M_TYPM_V2_col - a12ss_U; 
+b13ss_V2 = b13M_TYPM_V2_col - b13ss_U; a13ss_V2 = a13M_TYPM_V2_col + a13ss_U; 
+b14ss_V2 = b14M_TYPM_V2_col + b14ss_U; a14ss_V2 = a14M_TYPM_V2_col - a14ss_U; 
+b15ss_V2 = b15M_TYPM_V2_col - b15ss_U; a15ss_V2 = a15M_TYPM_V2_col + a15ss_U; 
+};
+
+};
+
+new_magnetindividual(TYPM,iap) : macro ={
+
+!Calculate the actual (bn,an) of a given magnet belonging to family TYPM
+!for a given seed and at a GIVEN NRJ given in the sample job
+!iap=0/1/2 for single bore/outer/inner
+
+iapaux=iap;
+
+if(iapaux==0) {system,"echo 'single bore magnet'";};
+if(iapaux==1) {system,"echo '2-in-1 magnet: outer channel'";};
+if(iapaux==2) {system,"echo '2-in-1 magnet: inner channel'";};
+
+if(iapaux==1){
+b1ss  = b1ss_V1 ;a1ss  = a1ss_V1 ;
+b2ss  = b2ss_V1 ;a2ss  = a2ss_V1 ;
+b3ss  = b3ss_V1 ;a3ss  = a3ss_V1 ;
+b4ss  = b4ss_V1 ;a4ss  = a4ss_V1 ;
+b5ss  = b5ss_V1 ;a5ss  = a5ss_V1 ;
+b6ss  = b6ss_V1 ;a6ss  = a6ss_V1 ;
+b7ss  = b7ss_V1 ;a7ss  = a7ss_V1 ;
+b8ss  = b8ss_V1 ;a8ss  = a8ss_V1 ;
+b9ss  = b9ss_V1 ;a9ss  = a9ss_V1 ;
+b10ss = b10ss_V1;a10ss = a10ss_V1;
+b11ss = b11ss_V1;a11ss = a11ss_V1;
+b12ss = b12ss_V1;a12ss = a12ss_V1;
+b13ss = b13ss_V1;a13ss = a13ss_V1;
+b14ss = b14ss_V1;a14ss = a14ss_V1;
+b15ss = b15ss_V1;a15ss = a15ss_V1;
+};
+
+if(iapaux==2){
+b1ss  = b1ss_V2 ;a1ss  = a1ss_V2 ;
+b2ss  = b2ss_V2 ;a2ss  = a2ss_V2 ;
+b3ss  = b3ss_V2 ;a3ss  = a3ss_V2 ;
+b4ss  = b4ss_V2 ;a4ss  = a4ss_V2 ;
+b5ss  = b5ss_V2 ;a5ss  = a5ss_V2 ;
+b6ss  = b6ss_V2 ;a6ss  = a6ss_V2 ;
+b7ss  = b7ss_V2 ;a7ss  = a7ss_V2 ;
+b8ss  = b8ss_V2 ;a8ss  = a8ss_V2 ;
+b9ss  = b9ss_V2 ;a9ss  = a9ss_V2 ;
+b10ss = b10ss_V2;a10ss = a10ss_V2;
+b11ss = b11ss_V2;a11ss = a11ss_V2;
+b12ss = b12ss_V2;a12ss = a12ss_V2;
+b13ss = b13ss_V2;a13ss = a13ss_V2;
+b14ss = b14ss_V2;a14ss = a14ss_V2;
+b15ss = b15ss_V2;a15ss = a15ss_V2;
+};
+
+
+if (NRJ<4999.99)
+{
+b1ssr   = 1E-4 * (ON_B1S  * b1ss   + ON_B1R  * b1R_TYPM_inj   * TGAUSS(3.) );
+b2ssr   = 1E-4 * (ON_B2S  * b2ss   + ON_B2R  * b2R_TYPM_inj   * TGAUSS(3.) );
+b3ssr   = 1E-4 * (ON_B3S  * b3ss   + ON_B3R  * b3R_TYPM_inj   * TGAUSS(3.) );
+b4ssr   = 1E-4 * (ON_B4S  * b4ss   + ON_B4R  * b4R_TYPM_inj   * TGAUSS(3.) );
+b5ssr   = 1E-4 * (ON_B5S  * b5ss   + ON_B5R  * b5R_TYPM_inj   * TGAUSS(3.) );
+b6ssr   = 1E-4 * (ON_B6S  * b6ss   + ON_B6R  * b6R_TYPM_inj   * TGAUSS(3.) );
+b7ssr   = 1E-4 * (ON_B7S  * b7ss   + ON_B7R  * b7R_TYPM_inj   * TGAUSS(3.) );
+b8ssr   = 1E-4 * (ON_B8S  * b8ss   + ON_B8R  * b8R_TYPM_inj   * TGAUSS(3.) );
+b9ssr   = 1E-4 * (ON_B9S  * b9ss   + ON_B9R  * b9R_TYPM_inj   * TGAUSS(3.) );
+b10ssr  = 1E-4 * (ON_B10S * b10ss  + ON_B10R * b10R_TYPM_inj  * TGAUSS(3.) );
+b11ssr  = 1E-4 * (ON_B11S * b11ss  + ON_B11R * b11R_TYPM_inj  * TGAUSS(3.) );
+b12ssr  = 1E-4 * (ON_B12S * b12ss  + ON_B12R * b12R_TYPM_inj  * TGAUSS(3.) );
+b13ssr  = 1E-4 * (ON_B13S * b13ss  + ON_B13R * b13R_TYPM_inj  * TGAUSS(3.) );
+b14ssr  = 1E-4 * (ON_B14S * b14ss  + ON_B14R * b14R_TYPM_inj  * TGAUSS(3.) );
+b15ssr  = 1E-4 * (ON_B15S * b15ss  + ON_B15R * b15R_TYPM_inj  * TGAUSS(3.) );
+
+a1ssr	= 1E-4 * (ON_A1S  * a1ss   + ON_A1R  * a1R_TYPM_inj   * TGAUSS(3.) );
+a2ssr	= 1E-4 * (ON_A2S  * a2ss   + ON_A2R  * a2R_TYPM_inj   * TGAUSS(3.) );
+a3ssr	= 1E-4 * (ON_A3S  * a3ss   + ON_A3R  * a3R_TYPM_inj   * TGAUSS(3.) );
+a4ssr	= 1E-4 * (ON_A4S  * a4ss   + ON_A4R  * a4R_TYPM_inj   * TGAUSS(3.) );
+a5ssr	= 1E-4 * (ON_A5S  * a5ss   + ON_A5R  * a5R_TYPM_inj   * TGAUSS(3.) );
+a6ssr	= 1E-4 * (ON_A6S  * a6ss   + ON_A6R  * a6R_TYPM_inj   * TGAUSS(3.) );
+a7ssr	= 1E-4 * (ON_A7S  * a7ss   + ON_A7R  * a7R_TYPM_inj   * TGAUSS(3.) );
+a8ssr	= 1E-4 * (ON_A8S  * a8ss   + ON_A8R  * a8R_TYPM_inj   * TGAUSS(3.) );
+a9ssr	= 1E-4 * (ON_A9S  * a9ss   + ON_A9R  * a9R_TYPM_inj   * TGAUSS(3.) );
+a10ssr  = 1E-4 * (ON_A10S * a10ss  + ON_A10R * a10R_TYPM_inj  * TGAUSS(3.) );
+a11ssr  = 1E-4 * (ON_A11S * a11ss  + ON_A11R * a11R_TYPM_inj  * TGAUSS(3.) );
+a12ssr  = 1E-4 * (ON_A12S * a12ss  + ON_A12R * a12R_TYPM_inj  * TGAUSS(3.) );
+a13ssr  = 1E-4 * (ON_A13S * a13ss  + ON_A13R * a13R_TYPM_inj  * TGAUSS(3.) );
+a14ssr  = 1E-4 * (ON_A14S * a14ss  + ON_A14R * a14R_TYPM_inj  * TGAUSS(3.) );
+a15ssr  = 1E-4 * (ON_A15S * a15ss  + ON_A15R * a15R_TYPM_inj  * TGAUSS(3.) );
+};
+if (NRJ>4999.99)
+{
+b1ssr   = 1E-4 * (ON_B1S  * b1ss   + ON_B1R  * b1R_TYPM_col   * TGAUSS(3.) );
+b2ssr   = 1E-4 * (ON_B2S  * b2ss   + ON_B2R  * b2R_TYPM_col   * TGAUSS(3.) );
+b3ssr   = 1E-4 * (ON_B3S  * b3ss   + ON_B3R  * b3R_TYPM_col   * TGAUSS(3.) );
+b4ssr   = 1E-4 * (ON_B4S  * b4ss   + ON_B4R  * b4R_TYPM_col   * TGAUSS(3.) );
+b5ssr   = 1E-4 * (ON_B5S  * b5ss   + ON_B5R  * b5R_TYPM_col   * TGAUSS(3.) );
+b6ssr   = 1E-4 * (ON_B6S  * b6ss   + ON_B6R  * b6R_TYPM_col   * TGAUSS(3.) );
+b7ssr   = 1E-4 * (ON_B7S  * b7ss   + ON_B7R  * b7R_TYPM_col   * TGAUSS(3.) );
+b8ssr   = 1E-4 * (ON_B8S  * b8ss   + ON_B8R  * b8R_TYPM_col   * TGAUSS(3.) );
+b9ssr   = 1E-4 * (ON_B9S  * b9ss   + ON_B9R  * b9R_TYPM_col   * TGAUSS(3.) );
+b10ssr  = 1E-4 * (ON_B10S * b10ss  + ON_B10R * b10R_TYPM_col  * TGAUSS(3.) );
+b11ssr  = 1E-4 * (ON_B11S * b11ss  + ON_B11R * b11R_TYPM_col  * TGAUSS(3.) );
+b12ssr  = 1E-4 * (ON_B12S * b12ss  + ON_B12R * b12R_TYPM_col  * TGAUSS(3.) );
+b13ssr  = 1E-4 * (ON_B13S * b13ss  + ON_B13R * b13R_TYPM_col  * TGAUSS(3.) );
+b14ssr  = 1E-4 * (ON_B14S * b14ss  + ON_B14R * b14R_TYPM_col  * TGAUSS(3.) );
+b15ssr  = 1E-4 * (ON_B15S * b15ss  + ON_B15R * b15R_TYPM_col  * TGAUSS(3.) );
+
+a1ssr	= 1E-4 * (ON_A1S  * a1ss   + ON_A1R  * a1R_TYPM_col   * TGAUSS(3.) );
+a2ssr	= 1E-4 * (ON_A2S  * a2ss   + ON_A2R  * a2R_TYPM_col   * TGAUSS(3.) );
+a3ssr	= 1E-4 * (ON_A3S  * a3ss   + ON_A3R  * a3R_TYPM_col   * TGAUSS(3.) );
+a4ssr	= 1E-4 * (ON_A4S  * a4ss   + ON_A4R  * a4R_TYPM_col   * TGAUSS(3.) );
+a5ssr	= 1E-4 * (ON_A5S  * a5ss   + ON_A5R  * a5R_TYPM_col   * TGAUSS(3.) );
+a6ssr	= 1E-4 * (ON_A6S  * a6ss   + ON_A6R  * a6R_TYPM_col   * TGAUSS(3.) );
+a7ssr	= 1E-4 * (ON_A7S  * a7ss   + ON_A7R  * a7R_TYPM_col   * TGAUSS(3.) );
+a8ssr	= 1E-4 * (ON_A8S  * a8ss   + ON_A8R  * a8R_TYPM_col   * TGAUSS(3.) );
+a9ssr	= 1E-4 * (ON_A9S  * a9ss   + ON_A9R  * a9R_TYPM_col   * TGAUSS(3.) );
+a10ssr  = 1E-4 * (ON_A10S * a10ss  + ON_A10R * a10R_TYPM_col  * TGAUSS(3.) );
+a11ssr  = 1E-4 * (ON_A11S * a11ss  + ON_A11R * a11R_TYPM_col  * TGAUSS(3.) );
+a12ssr  = 1E-4 * (ON_A12S * a12ss  + ON_A12R * a12R_TYPM_col  * TGAUSS(3.) );
+a13ssr  = 1E-4 * (ON_A13S * a13ss  + ON_A13R * a13R_TYPM_col  * TGAUSS(3.) );
+a14ssr  = 1E-4 * (ON_A14S * a14ss  + ON_A14R * a14R_TYPM_col  * TGAUSS(3.) );
+a15ssr  = 1E-4 * (ON_A15S * a15ss  + ON_A15R * a15R_TYPM_col  * TGAUSS(3.) );
+
+};
+
+!value,b1ssr,b2ssr,b3ssr,b4ssr,b5ssr,b6ssr,b7ssr,b8ssr,
+!      b9ssr,b10ssr,b11ssr,b12ssr,b13ssr,b14ssr,b15ssr,
+!      a1ssr,a2ssr,a3ssr,a4ssr,a5ssr,a6ssr,a7ssr,a8ssr,
+!      a9ssr,a10ssr,a11ssr,a12ssr,a13ssr,a14ssr,a15ssr;
+				   
+};
+
+errorgenerate_dip(TYPM) : macro ={
+
+Refradius=Rr_TYPM;value,Refradius;
+
+Efcomp,  radius = Refradius, order= 0,
+dknr:={b1ssr,b2ssr,b3ssr,b4ssr,b5ssr,b6ssr,b7ssr,b8ssr,
+       b9ssr,b10ssr,b11ssr,b12ssr,b13ssr,b14ssr,b15ssr},
+dksr:={a1ssr,a2ssr,a3ssr,a4ssr,a5ssr,a6ssr,a7ssr,a8ssr,
+       a9ssr,a10ssr,a11ssr,a12ssr,a13ssr,a14ssr,a15ssr};
+       
+};
+
+errorgenerate_dip_inv(TYPM) : macro ={
+
+Refradius=Rr_TYPM;value,Refradius;
+
+Efcomp,  radius = Refradius, order= 0,
+dknr:={b1ssr,-b2ssr,b3ssr,-b4ssr,b5ssr,-b6ssr,b7ssr,-b8ssr,
+       b9ssr,-b10ssr,b11ssr,-b12ssr,b13ssr,-b14ssr,b15ssr},
+dksr:={-a1ssr,a2ssr,-a3ssr,a4ssr,-a5ssr,a6ssr,-a7ssr,a8ssr,
+       -a9ssr,a10ssr,-a11ssr,a12ssr,-a13ssr,a14ssr,-a15ssr};
+       
+};
+
+errorgenerate_quad(TYPM) : macro ={
+
+Refradius=Rr_TYPM;value,Refradius;
+
+Efcomp,  radius = Refradius, order= 1,
+dknr:={b1ssr,b2ssr,b3ssr,b4ssr,b5ssr,b6ssr,b7ssr,b8ssr,
+       b9ssr,b10ssr,b11ssr,b12ssr,b13ssr,b14ssr,b15ssr},
+dksr:={a1ssr,a2ssr,a3ssr,a4ssr,a5ssr,a6ssr,a7ssr,a8ssr,
+       a9ssr,a10ssr,a11ssr,a12ssr,a13ssr,a14ssr,a15ssr};
+       
+};
+
+errorgenerate_quad_inv(TYPM) : macro ={
+
+Refradius=Rr_TYPM;value,Refradius;
+
+Efcomp,  radius = Refradius, order= 1,
+dknr:={-b1ssr,b2ssr,-b3ssr,b4ssr,-b5ssr,b6ssr,-b7ssr,b8ssr,
+       -b9ssr,b10ssr,-b11ssr,b12ssr,-b13ssr,b14ssr,-b15ssr},
+dksr:={a1ssr,-a2ssr,a3ssr,-a4ssr,a5ssr,-a6ssr,a7ssr,-a8ssr,
+       a9ssr,-a10ssr,a11ssr,-a12ssr,a13ssr,-a14ssr,a15ssr};
+       
+};
+
+show_error_newHLmagnet : macro ={
+select,flag=error,clear;
+select,flag=error,pattern="^MBXA\..*\.\..*$";
+select,flag=error,pattern="^MBXB\..*\.\..*$";
+select,flag=error,pattern="^MBRD\..*\.\..*$";
+select,flag=error,pattern="^MQXC\..*\.\..*$";
+select,flag=error,pattern="^MQXD\..*\.\..*$";
+select,flag=error,pattern="^MQYY\..*\.\..*$";
+select,flag=error,pattern="^MQYL\..*\.\..*$";
+esave;
+};
+
+reset_MB_corr : macro ={
+
+if(mylhcbeam==1)
+{
+system," echo 'Reset settings of all arc correctors for beam 1'";
+dKQTF.a12b1:=0.;dKQTD.a12b1:=0.;
+dKQTF.a23b1:=0.;dKQTD.a23b1:=0.;
+dKQTF.a34b1:=0.;dKQTD.a34b1:=0.;
+dKQTF.a45b1:=0.;dKQTD.a45b1:=0.;
+dKQTF.a56b1:=0.;dKQTD.a56b1:=0.;
+dKQTF.a67b1:=0.;dKQTD.a67b1:=0.;
+dKQTF.a78b1:=0.;dKQTD.a78b1:=0.;
+dKQTF.a81b1:=0.;dKQTD.a81b1:=0.;
+
+KQS.A23b1:=0.;
+KQS.A45b1:=0.;
+KQS.A67b1:=0.;
+KQS.A81b1:=0.;
+KQS.R1b1:=0;KQS.L2b1:=0.;
+KQS.R3b1:=0;KQS.L4b1:=0.;
+KQS.R5b1:=0;KQS.L6b1:=0.;
+KQS.R7b1:=0;KQS.L8b1:=0.;
+
+KSS.a12b1:=0.;KCS.a12b1:=0.;KCO.a12b1:=0.;KCD.a12b1:=0.;
+KSS.a23b1:=0.;KCS.a23b1:=0.;KCO.a23b1:=0.;KCD.a23b1:=0.;
+KSS.a34b1:=0.;KCS.a34b1:=0.;KCO.a34b1:=0.;KCD.a34b1:=0.;
+KSS.a45b1:=0.;KCS.a45b1:=0.;KCO.a45b1:=0.;KCD.a45b1:=0.;
+KSS.a56b1:=0.;KCS.a56b1:=0.;KCO.a56b1:=0.;KCD.a56b1:=0.;
+KSS.a67b1:=0.;KCS.a67b1:=0.;KCO.a67b1:=0.;KCD.a67b1:=0.;
+KSS.a78b1:=0.;KCS.a78b1:=0.;KCO.a78b1:=0.;KCD.a78b1:=0.;
+KSS.a81b1:=0.;KCS.a81b1:=0.;KCO.a81b1:=0.;KCD.a81b1:=0.;
+};
+
+if(mylhcbeam > 1)
+{
+system," echo 'Reset settings of all arc correctors for beam 2/4'";
+dKQTF.a12b2:=0.;dKQTD.a12b2:=0.;
+dKQTF.a23b2:=0.;dKQTD.a23b2:=0.;
+dKQTF.a34b2:=0.;dKQTD.a34b2:=0.;
+dKQTF.a45b2:=0.;dKQTD.a45b2:=0.;
+dKQTF.a56b2:=0.;dKQTD.a56b2:=0.;
+dKQTF.a67b2:=0.;dKQTD.a67b2:=0.;
+dKQTF.a78b2:=0.;dKQTD.a78b2:=0.;
+dKQTF.a81b2:=0.;dKQTD.a81b2:=0.;
+
+KQS.A12b2:=0.;
+KQS.A34b2:=0.;
+KQS.A56b2:=0.;
+KQS.A78b2:=0.;
+KQS.R2b2:=0;KQS.L3b2:=0.;
+KQS.R4b2:=0;KQS.L5b2:=0.;
+KQS.R6b2:=0;KQS.L7b2:=0.;
+KQS.R8b2:=0;KQS.L1b2:=0.;
+
+KSS.a12b2:=0.;KCS.a12b2:=0.;KCO.a12b2:=0.;KCD.a12b2:=0.;
+KSS.a23b2:=0.;KCS.a23b2:=0.;KCO.a23b2:=0.;KCD.a23b2:=0.;
+KSS.a34b2:=0.;KCS.a34b2:=0.;KCO.a34b2:=0.;KCD.a34b2:=0.;
+KSS.a45b2:=0.;KCS.a45b2:=0.;KCO.a45b2:=0.;KCD.a45b2:=0.;
+KSS.a56b2:=0.;KCS.a56b2:=0.;KCO.a56b2:=0.;KCD.a56b2:=0.;
+KSS.a67b2:=0.;KCS.a67b2:=0.;KCO.a67b2:=0.;KCD.a67b2:=0.;
+KSS.a78b2:=0.;KCS.a78b2:=0.;KCO.a78b2:=0.;KCD.a78b2:=0.;
+KSS.a81b2:=0.;KCS.a81b2:=0.;KCO.a81b2:=0.;KCD.a81b2:=0.;
+};
+
+};
+
+reset_MQX_corr : macro ={
+
+system," echo 'Reset settings of all triplet correctors'";
+!a2
+KQSX3.L1:=0;KQSX3.R1:=0;
+KQSX3.L2:=0;KQSX3.R2:=0;
+KQSX3.L5:=0;KQSX3.R5:=0;
+KQSX3.L8:=0;KQSX3.R8:=0;
+!a3
+KCSSX3.L1:=0;KCSSX3.R1:=0;
+KCSSX3.L2:=0;KCSSX3.R2:=0;
+KCSSX3.L5:=0;KCSSX3.R5:=0;
+KCSSX3.L8:=0;KCSSX3.R8:=0;
+!a4
+KCOSX3.L1:=0;KCOSX3.R1:=0;
+KCOSX3.L2:=0;KCOSX3.R2:=0;
+KCOSX3.L5:=0;KCOSX3.R5:=0;
+KCOSX3.L8:=0;KCOSX3.R8:=0;
+!a5
+KCDSX3.L1:=0;KCDSX3.R1:=0;
+KCDSX3.L2:=0;KCDSX3.R2:=0; ! DO NOT EXIST
+KCDSX3.L5:=0;KCDSX3.R5:=0;
+KCDSX3.L8:=0;KCDSX3.R8:=0; ! DO NOT EXIST
+!a6
+KCTSX3.L1:=0;KCTSX3.R1:=0;
+KCTSX3.L2:=0;KCTSX3.R2:=0; ! DO NOT EXIST
+KCTSX3.L5:=0;KCTSX3.R5:=0;
+KCTSX3.L8:=0;KCTSX3.R8:=0; ! DO NOT EXIST
+!b3
+KCSX3.L1:=0;KCSX3.R1:=0;
+KCSX3.L2:=0;KCSX3.R2:=0;
+KCSX3.L5:=0;KCSX3.R5:=0;
+KCSX3.L8:=0;KCSX3.R8:=0;
+!b4
+KCOX3.L1:=0;KCOX3.R1:=0;
+KCOX3.L2:=0;KCOX3.R2:=0;
+KCOX3.L5:=0;KCOX3.R5:=0;
+KCOX3.L8:=0;KCOX3.R8:=0;
+!b5
+KCDX3.L1:=0;KCDX3.R1:=0;
+KCDX3.L2:=0;KCDX3.R2:=0; ! DO NOT EXIST
+KCDX3.L5:=0;KCDX3.R5:=0;
+KCDX3.L8:=0;KCDX3.R8:=0; ! DO NOT EXIST
+!b6
+KCTX3.L1:=0;KCTX3.R1:=0;
+KCTX3.L2:=0;KCTX3.R2:=0;
+KCTX3.L5:=0;KCTX3.R5:=0;
+KCTX3.L8:=0;KCTX3.R8:=0;
+
+};
+
+

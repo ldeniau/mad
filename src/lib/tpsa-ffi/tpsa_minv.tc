@@ -1,0 +1,143 @@
+#ifndef TPSA_MINV_TEMPLATE
+#define TPSA_MINV_TEMPLATE
+
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_blas.h>
+
+#define T struct tpsa
+#define D struct tpsa_desc
+
+// --- LOCAL FUNCTIONS --------------------------------------------------------
+
+static inline void
+split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
+{
+  int nv = d->nv, cv = d->knb_start, nk = nv - cv;             // #vars, #canonical vars, #knobs
+  gsl_matrix *mat_var  =      gsl_matrix_calloc(cv,cv),        // canonical vars
+             *mat_vari =      gsl_matrix_alloc (cv,cv),        // inverse of vars
+             *mat_knb  = nk ? gsl_matrix_calloc(cv,nk) : NULL, // knobs
+             *mat_knbi = nk ? gsl_matrix_alloc (cv,nk) : NULL; // 'inverse' of knobs
+
+  // split linear, -nonlinear
+  for (int i = 0; i < cv; ++i) {
+    if (bget(ma[i]->nz,1)) {
+      int v = 0;
+      for (; v < cv; ++v) gsl_matrix_set(mat_var, i,v   , ma[i]->coef[v+1]);
+      for (; v < nv; ++v) gsl_matrix_set(mat_knb, i,v-cv, ma[i]->coef[v+1]);
+    }
+
+    mad_tpsa_copy(ma[i], nonlin[i]);
+    nonlin[i]->nz = bclr(nonlin[i]->nz,1);  // clear linear part
+    mad_tpsa_scale(-1,nonlin[i],nonlin[i]);
+  }
+
+  // invert linear
+  gsl_permutation *p = gsl_permutation_alloc(cv);
+  int signum;
+  gsl_linalg_LU_decomp(mat_var, p, &signum);
+  gsl_linalg_LU_invert(mat_var, p, mat_vari);
+  gsl_permutation_free(p);
+
+  if (nk != 0) {
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans,
+                   -1.0, mat_vari, mat_knb,
+                    0.0, mat_knbi);
+  }
+
+  // copy result into TPSA
+  for (int i = 0; i < cv; ++i) {
+    for (int v = 0; v < cv; ++v)
+      mad_tpsa_seti(lin_inv[i], v    +1, gsl_matrix_get(mat_vari, i,v));
+    for (int k = 0; k < nk; ++k)
+      mad_tpsa_seti(lin_inv[i], k+cv +1, gsl_matrix_get(mat_knbi, i,k));
+  }
+  gsl_matrix_free(mat_var);
+  gsl_matrix_free(mat_knb);
+  gsl_matrix_free(mat_vari);
+  gsl_matrix_free(mat_knbi);
+}
+
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
+
+void
+mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
+{
+  assert(ma && mc);
+  ensure(sa == sc);
+  check_same_desc(sa,ma,sc,mc);
+
+  D *d = ma[0]->desc;
+  T *lin_inv[sa], *nonlin[sa], *tmp[sa];
+  for (int i = 0; i < sa; ++i) {
+    lin_inv[i] = mad_tpsa_newd(d);
+    nonlin[i]  = mad_tpsa_newd(d);
+    tmp[i]     = mad_tpsa_newd(d);
+  }
+
+  split_and_inv(d, ma, lin_inv, nonlin);
+
+  // iteratively compute higher orders of the inverse
+  // MC (OF ORDER I) = AL^-1 o [ I - ANL (NONLINEAR) o MC (OF ORDER I-1) ]
+
+  for (int i = 0; i < sa; ++i)
+    mad_tpsa_copy(lin_inv[i], mc[i]);
+
+  for (int o = 2; o <= d->mo; ++o) {
+    d->trunc = o;
+    mad_tpsa_compose(sa, (const T**)nonlin,  sa, (const T**)mc,  sa, tmp);
+
+    for (int v = 0; v < sa; ++v)
+      mad_tpsa_seti(tmp[v], v+1, tmp[v]->coef[v+1] + 1);    // add I
+
+    mad_tpsa_compose(sa, (const T**)lin_inv, sa, (const T**)tmp, sa, mc);
+  }
+
+  // cleanup
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_del(lin_inv[i]);
+    mad_tpsa_del(nonlin[i]);
+    mad_tpsa_del(tmp[i]);
+  }
+}
+
+void
+mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
+{
+  assert(ma && mc);
+  check_same_desc(sa,ma,sc,mc);
+
+  D *d = ma[0]->desc;
+  // split input map into rows that are inverted and rows that are not
+  T *mUsed[sa], *mUnused[sa], *mInv[sa];
+  for (int i = 0; i < sa; ++i) {
+    mUsed  [i] = mad_tpsa_newd(d);
+    mUnused[i] = mad_tpsa_newd(d);
+    mInv   [i] = mad_tpsa_newd(d);
+
+    if (row_select[i]) {
+      mad_tpsa_copy(ma[i],mUsed[i]);
+      mad_tpsa_seti(mUnused[i], i+1, 1.0);
+    }
+    else {
+      mad_tpsa_seti(mUsed[i], i+1, 1.0);
+      mad_tpsa_copy(ma[i],mUnused[i]);
+    }
+    mad_tpsa_seti(mUsed  [i],0,0.0);
+    mad_tpsa_seti(mUnused[i],0,0.0);
+  }
+
+  mad_tpsa_minv(sa,(const T**)mUsed,sa,mInv);
+  mad_tpsa_compose(sa,(const T**)mUnused,sa,(const T**)mInv,sc,mc);
+
+  for (int i = 0; i < sa; ++i) {
+    mad_tpsa_del(mUsed[i]);
+    mad_tpsa_del(mUnused[i]);
+    mad_tpsa_del(mInv[i]);
+  }
+}
+
+#undef T
+#undef D
+#endif

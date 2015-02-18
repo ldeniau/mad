@@ -1,0 +1,85 @@
+--[[ Sequence internal storage representation
+
+ sequ        shadow           element
++-----+     +-------+        +--------+ 
+| [1] | --> | s_pos |        | name   |
+|     |     | i_pos |        | l, kn  |
+|     |     | class |        | ...    |
++-----+     +-------+        +--------+ 
+| [2] |            \           ^     \
+|     |         |- -\- - - - -/- - - -\- - -| --> metatable links
+|     |              v       /         v
++-----+           +------------+      +-------+
+  ...             | __index    |      | name  |
+                  | __newindex |      | l,kn  |
+                  +------------+      +-------+
+                                       class
+
+where shadow:class() == shadow:getmetatable().__index:getmetatable()
+sequ[i]         --> shadow element
+sequ.elem_name  --> shadow element (maybe array of)
+--]]
+
+-- sequence constructors (same as element, similar to objects)
+
+seq = sequence 'name' { params, ... }   -- named, has start/end markers
+seq = sequence { params, ... }          -- unamed, no start/end markers
+
+where ... can be (elem|list|sequ)*
+
+-- construction of shadow element (implementation)
+
+-- vector part
+seq[i] = setmetatable({i_pos=i,s_pos=s,class=shcls}, {__index=elem,__newindex=elem})
+-- dict part
+seq[elem.name]=seq[i]
+
+-- method for adding elements|lists|subsequences incrementally
+
+:add{ ... }
+:add{[at=pos, [from='name', [refer='refer' | refpos='name']]] [element=]elem|list|sequ}	-- named params
+:add(elem|list|sequ [, pos [, 'name'[, 'refer' | 'name']]])                    		-- positional params
+
++  elem|list|sequ
++  { [at=pos, [from='name', [refer='center',]]] elem|list|sequ }
+
+where
+- 'from' in {'uniq_name_in_seq', 'previous', 'next', 'start', 'end'} (default is 'start')
+- 'refer' in {'entry', 'center', 'exit'} (default is 'center')
+- 'refpos' is 'uniq_name_in_subseq'
+
+-- method for closing sequence and computing s_pos, i_pos
+
+:done()
+
+-- access to seq properties
+
+seq.property
+seq['property']
+
+-- access to element always returns shadow element
+
+seq.elem_name       -- by name
+seq['elem_name']    -- by name
+seq[index]          -- by index
+
+-- read lookup (recursive until found)
+
+prop = seq.elem_name.property         -- by name
+prop = seq['elem_name']['property']   -- by name
+
+prop = seq[elem_index].property       -- by index
+prop = seq[elem_index]['property']    -- by index
+
+-- write lookup (1 level bypassed)
+
+seq.elem_name.property = prop          -- by name
+seq['elem_name']['property'] = prop    -- by name
+
+seq[elem_index].property = prop        -- by index
+seq[elem_index]['property'] = prop     -- by index
+
+-- creating new keys in shadow elements
+
+rawset(seq['elem_name'], 'property', prop)   -- by name
+rawset(seq[elem_index] , 'property', prop)   -- by index

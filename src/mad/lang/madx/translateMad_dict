@@ -1,0 +1,167 @@
+#!/usr/bin/env luajit
+
+local re = require"lib.lpeg.re"
+
+local grammar = [=[
+    main <- (''=>setup)(!'command_def' .)* 'command_def[]'sp s'='sp readstrings? (s';'sp s/''=>error) -> main
+
+    readstrings <- (s'"'sp (command)* ss'"'sp)                                                  -> createTable
+    command     <- (ident ss':'sp ident^4 (attr (ss','sp attr)*)? ss';'sp)                      -> command
+    attr        <- (ident ss'='sp ss'['sp ident (ss','sp default (ss','sp default)?)? ss']'sp)  -> attr
+    default     <- ((ss'{'sp {|value (ss','sp value)*|} ss'}'sp) / value )
+
+-- basic lexems
+
+    value       <- decnum / 'false' / 'true' / 'none' -> 'nil' / ((''->'"') ident (''->'"')) -> "%1%2%3"
+    ident       <- ss {word}sp
+    word        <- [^]%s,=;[:}{]+
+    
+    decnum      <- {~((num ('.' num / '.'->'.0')?) / (('.'->'0.') num)) ([eE] sign? num)?~}
+    num         <- [0-9]+
+    sign        <- [-+]
+    any         <- ch / nl
+    ss          <- (ws / ('"' s '"'))*
+    s           <- (ws / nl / cmt)*
+
+-- comments
+
+    cmt    <- ( (('//') ( ch* (nl/!.) )) / ('/*' (!'*/' any)* '*/' ) )
+
+-- saving position
+    sp     <- (''=>savePos)
+]=]
+-- escape characters, must be outside long strings
+.. "ws <- [ \t\r]"
+.. "ch <- [^\n]"
+.. "nl <- [\n] -> newLine"
+
+local defs = { }
+
+defs._line = 0
+defs._lastPos = 0
+defs._maxPos = 0
+local ch
+
+function defs.savePos(_, pos)
+    defs._lastPos = pos
+    if pos > defs._maxPos then defs._maxPos = pos end
+    return true
+end
+
+function defs.setup(str, pos)
+    local line = defs._line
+    local ofs  = 0
+    while ofs < pos do
+        local a, b = string.find(str, "\n", ofs)
+        if a then
+            ofs = a + 1
+            line = line + 1
+        else
+            break
+        end
+    end
+    defs._line = line
+    defs._lastPos = line
+    defs._maxPos = line
+    return true
+end
+
+function defs.newLine()
+    defs._line = defs._line + 1
+end
+
+function defs.error(str, pos)
+    local loc = string.sub(str, pos, pos)
+    if loc == '' then
+        error("Unexpected end of input while parsing file",2)
+    else
+        local strtbl = {}
+        for val in string.gmatch(str,"([^\n]*)\n") do
+            strtbl[#strtbl+1] = val
+        end
+        local line = 0
+        local col = 0
+        local ofs = 0
+        for i = 1, #strtbl do
+            col = defs._maxPos - ofs
+            ofs = ofs + string.len(strtbl[i]) + 1
+            line = i
+            if ofs > defs._maxPos then
+                break
+            end
+        end
+        local _, stop = string.find(str, '%s*', defs._maxPos)
+        if stop == string.len(str) then
+            error("Unfinished rule on line "..tostring(line)..'\n'..strtbl[line],2)
+        else
+            local lasttok = string.match(str, '(%w+)', defs._maxPos) or string.match(str, '(.)', defs._maxPos)
+            local errlineStart, errlineEnd = string.sub(strtbl[line],1,col-1), string.sub(strtbl[line],col)
+            error("Unexpected token '"..(lasttok or '').."' on line "..tostring(line)..'\n  -"'..errlineStart.."^"..errlineEnd..'"',2)
+        end
+    end
+end
+
+function defs.main (tbl)
+    return tbl
+end
+
+function defs.createTable ( ... )
+    local val = {}
+    for _,v in ipairs{...} do
+        val[v.name] = v.value
+    end
+    return val
+end
+
+function defs.command ( name,_,_,_,_,... )
+    local val = {}
+    for _,v in ipairs{...} do
+        val[v.name] = v.value
+    end
+    return { name = name, value = val}
+end
+
+function defs.attr ( name, typ, absent, present )
+    return { name = name, value = { type = typ, absent = absent, present = present, isarray = absent and type(absent) == 'table' } }
+end
+
+local parser = re.compile(grammar, defs)
+
+function toLuaTable(filename)
+    local file = assert(io.open(filename, 'r'))
+	local str = file:read('*a')
+	file:close()
+	return parser:match(str)
+end
+
+local function writeTblToFile(tbl, file)
+    if type(tbl) == 'table' then
+        file:write'{'
+        for k,v in pairs(tbl) do
+            if type(k) == 'number' then
+                file:write('['..k..']')
+            else
+                file:write('["'..k..'"]')
+            end
+            file:write'='
+            writeTblToFile(v,file)
+            file:write',\n'
+        end
+        file:write'}'
+    else
+        file:write(tostring(tbl))
+    end
+end
+
+function toLuaFile(cFileName, luaFileName)
+    local luaFileName = luaFileName or "mad/lang/madx/mad_dict.lua"
+    local tbl = toLuaTable(cFileName)
+    print(tbl)
+    local file = assert(io.open(luaFileName, 'w'))
+    file:write'return '
+    writeTblToFile(tbl, file)
+    file:flush()
+    file:close()
+end
+
+toLuaFile(arg[1],arg[2])

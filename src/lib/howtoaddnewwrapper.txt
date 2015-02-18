@@ -1,0 +1,10 @@
+--[[
+Wrapper for xxx.so.
+Requires and returns xxx.so, keeping the cpath as it is.
+]]
+
+local pcp = package.cpath
+package.cpath = ";;./lib/path/to/xxx.so;.\\lib\\path\\to\\xxx.dll;"
+local xxx = require"xxx"
+package.cpath = pcp
+return xxx
