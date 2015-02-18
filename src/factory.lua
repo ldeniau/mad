@@ -216,6 +216,13 @@ local function args_minv()
   end
 end
 
+local function args_pminv()
+  local sa, ma, sc, mc, refs = args_minv()
+  local sel_rows = ffi.new("int[?]", M.nv)
+  for i=1,M.nv do sel_rows[i] = i % 2 end
+  return sa, ma, sc, mc, sel_rows, refs
+end
+
 -- --- FUN ---------------------------------------------------------------------
 local function args_fun()
   return M.full(0.9), M.new_instance()
@@ -248,6 +255,7 @@ function M.get_args(fct_name)
     subst    = args_subst,
     compose_raw = args_compose, -- returns size_a, ma, size_b, mb, size_c, mc, refs
     minv_raw = args_minv,       -- returns size_a, ma,             size_c, mc, refs
+    pminv_raw   = args_pminv,   -- returns size_a, ma,             size_c, mc, selected_rows, refs
 
     fun      = args_fun,        -- returns t_in, t_out; t_in filled, t_out empty
     inv      = args_fun,

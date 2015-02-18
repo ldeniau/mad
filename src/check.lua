@@ -230,7 +230,18 @@ local function check_minv_with_berz(mod)
   berz.minv_raw(sba, ba, sbc, bc)
 
   for i=1,sc do
-    check_identical(m_refs.mc[i], b_refs.mc[i], 1e-4, factory.To, 'minv')
+    check_identical(m_refs.ma[i], b_refs.ma[i], 1e-17, factory.To, 'minv_input')
+    check_identical(m_refs.mc[i], b_refs.mc[i], 1e-12, factory.To, 'minv')
+  end
+
+  -- partial inversion
+  local sel_rows = require"ffi".new("int[?]", sc)
+  for i=0,sc-1 do sel_rows[i] = i % 2 end
+  mod.pminv_raw(sa,ma,sc,mc,sel_rows)
+  berz.pminv_raw(sba,ba,sbc,bc,sel_rows)
+
+  for i=1,sc do
+    check_identical(m_refs.mc[i], b_refs.mc[i], 1e-1 ^ (14-factory.no), factory.To, 'pminv')
   end
 
   factory.setup(mod)  -- restore original

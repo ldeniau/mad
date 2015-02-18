@@ -164,7 +164,7 @@ mad_tpsa_seti(T *t, int i, num_t v)
     t->nz = bset(t->nz, o);
     int *pi = d->hpoly_To_idx;
     for (int c = pi[o]; c < pi[o+1]; ++c)
-      t->coef[i] = 0;
+      t->coef[c] = 0;
   }
   t->mo = o > t->mo ? o : t->mo;
   t->coef[i] = v;

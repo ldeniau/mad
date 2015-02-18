@@ -106,7 +106,7 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 void
 mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
 {
-  assert(ma && mc);
+  assert(ma && mc && row_select);
   check_same_desc(sa,ma,sc,mc);
 
   D *d = ma[0]->desc;
