@@ -18,6 +18,7 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
   int l_size = (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa] + 1) / 2, oc = oa + oa;
   (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
+  // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
   for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
   for (idx_t ia = ib + 1; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_triang(ib-ibo, ia-iao);
@@ -30,6 +31,7 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
     }
   }
 
+  // symm: c[2 2] = a[1 1] * b[1 1]
   for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_triang(ia-iao, ia-iao);
     assert(0 <= il && il < l_size);
@@ -298,7 +300,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 
   num_t a0 = a->coef[0], b0 = b->coef[0];
   mad_tpsa_axpby(b0, a, a0, b, c);
-  c->coef[0] -= a0 * b0;                 // was done twice in lin
+  c->coef[0] -= a0 * b0;                 // was done twice in axpby
 
   hpoly_mul(a, b, c);
 }

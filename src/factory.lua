@@ -110,7 +110,7 @@ end
 -- use functions return to avoid unpack which is not compiled
 
 local function args_bin_op()
-  return M.full(), M.full(), M.new_instance()
+  return M.rand(M.seed), M.rand(), M.new_instance()
 end
 
 -- --- SUBST -------------------------------------------------------------------
@@ -343,7 +343,7 @@ function M.rand(seed_)
   end
   local rand = math.random
   local t = M.new_instance()
-  for m=1,#M.To do
+  for m=0,#M.To do
     t:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,2) interval
   end
   return t

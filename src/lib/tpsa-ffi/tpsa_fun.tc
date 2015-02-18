@@ -34,7 +34,6 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
   mad_tpsa_del(pow);
   mad_tpsa_del(acp);
   mad_tpsa_del(tmp);
-
 }
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------

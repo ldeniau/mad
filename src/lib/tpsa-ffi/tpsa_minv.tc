@@ -29,6 +29,7 @@ split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
     }
 
     mad_tpsa_copy(ma[i], nonlin[i]);
+    nonlin[i]->nz = bclr(nonlin[i]->nz,0);  // ignore 0 ord, if any
     nonlin[i]->nz = bclr(nonlin[i]->nz,1);  // clear linear part
     mad_tpsa_scale(-1,nonlin[i],nonlin[i]);
   }

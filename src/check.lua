@@ -61,7 +61,7 @@ local function identical_value(v1, v2, eps, name1, name2, val_name, abs_or_rel)
   end
 
   if err > eps then
-    printf("%s_%s = %.18f\n%s_%s = %.18f\n%s_err = %e\n",
+    printf("%s_%s = %.18e\n%s_%s = %.18e\n%s_err = %e\n",
            name1, val_name, v1, name2, val_name, v2, abs_or_rel, err)
     return false
   end
@@ -89,17 +89,17 @@ end
 
 local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
-  local funcs = {"mul", "add", "sub"} -- TODO: add "div" (without error)
+  local funcs = {[0]="div", "mul", "add", "sub"}
   -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
   local t1s, t2s, trs = {}, {}, {}
   local b1s, b2s, brs = {}, {}, {}
 
-  for fi=1,#funcs do
+  for fi=0,#funcs do
     t1s[fi], t2s[fi], trs[fi] = factory.get_args(funcs[fi])
   end
 
   factory.setup(berz)
-  for fi=1,#funcs do
+  for fi=0,#funcs do
     b1s[fi], b2s[fi], brs[fi] = factory.get_args(funcs[fi])
   end
 
@@ -116,6 +116,15 @@ local function check_bin_with_berz(mod)
     factory.print_all(M.mod_file , {t1s[fi], t2s[fi], trs[fi]})
     factory.print_all(M.berz_file, {b1s[fi], b2s[fi], brs[fi]})
   end
+
+  -- treat `div` separately because it's error scales with order
+  mod [funcs[0]](t1s[0], t2s[0], trs[0])
+  berz[funcs[0]](b1s[0], b2s[0], brs[0])
+  check_identical(trs[0], brs[0], 1e-1 ^ (16-factory.no), factory.To, funcs[0])
+  fprintf(M.mod_file , "\n==== %s =======================\n", funcs[0])
+  fprintf(M.berz_file, "\n==== %s =======================\n", funcs[0])
+  factory.print_all(M.mod_file , {t1s[0], t2s[0], trs[0]})
+  factory.print_all(M.berz_file, {b1s[0], b2s[0], brs[0]})
 
   factory.setup(mod)  -- restore original
 end
