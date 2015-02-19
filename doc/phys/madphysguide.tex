@@ -1,0 +1,73 @@
+\documentclass[12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+\setlength{\parindent}{4em}
+\setlength{\parskip}{1em}
+%\renewcommand{\baselinestretch}{2.0}
+
+%subsubsubsection
+\newcommand{\subsubsubsection}[1]{\vskip10pt{\noindent\normalsize{\bf {#1}}}\vskip10pt}
+%symbols
+\input{symbols.tex}
+
+
+
+
+\begin{document}
+\bibliographystyle{unsrt}
+
+%TITLE PAGE
+\title{
+	{VERY MAD PHYSICS GUIDE}\\
+	{\large CERN}\\
+	{\includegraphics{images.jpg}}
+}
+\author{I. Tecker, L. Deniau}
+\date{18 Feb 2015}
+\maketitle
+\thispagestyle{empty}
+
+
+\chapter*{Abstract}
+%Abstract goes here
+%\begin{flushleft}
+\par
+MAD-X is a general-purpose tool for charged-particle optics design and studies in alternating-gradient accelerators and beam lines. It can handle medium size to very large accelerators and solves various problems on such machines. MAD-X is the successor of MAD-8 and was specially adapted to the needs of the design of the LHC. The PTC library of E. Forest was also embedded in MAD-X as an addition to better support small and low energy accelerators. 
+\par
+This document outlines the physical models used in MAD-X. It should help the physicist in understanding the precise function of the program, and appreciate possible limits of validity. 
+\par
+Comments and corrections from readers are most welcome. They may be sent to the email address: mad@cern.ch
+%\end{flushleft}
+%end of abstract
+
+\thispagestyle{empty}
+
+
+%TABLE OF CONTENTS
+\newpage
+\pagenumbering{roman}
+\tableofcontents
+
+%CHAPTERS
+
+\clearpage
+\newpage
+\pagenumbering{arabic}
+
+\chapter{Conventions}
+\input{reference_sys.tex}
+\chapter{Hamiltonian}
+\input{test_2.tex}
+
+\clearpage
+\bibliographystyle{unsrt}   % this means that the order of references
+			    % is dtermined by the order in which the
+			    % \cite and \nocite commands appear
+\bibliography{mybib}
+
+%\bibliographystyle{plain}
+
+\end{document}
+
