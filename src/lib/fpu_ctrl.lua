@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local bit = require('bit')
-local band, bor, bnot, lshift = bit.band, bit.bor, bit.bnot, bit.lshift
+local band, bor, bnot = bit.band, bit.bor, bit.bnot
+local rshift, lshift = bit.rshift, bit.lshift
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -48,6 +49,27 @@ local rounding_val = {
   [ 3  ]  = 'RZ',
 }
 
+local flags2name = {
+  ['FZ']  =  'Flush To Zero',
+  ['R+']  =  'Round Positive',
+  ['R-']  =  'Round Negative',
+  ['RZ']  =  'Round To Zero',
+  ['RN']  =  'Round To Nearest',
+  ['PM']  =  'Precision Mask',
+  ['UM']  =  'Underflow Mask',
+  ['OM']  =  'Overflow Mask',
+  ['ZM']  =  'Divide By Zero Mask',
+  ['DM']  =  'Denormal Mask',
+  ['IM']  =  'Invalid Operation Mask',
+  ['DAZ'] =  'Denormals Are Zero',
+  ['PE']  =  'Precision Flag',
+  ['UE']  =  'Underflow Flag',
+  ['OE']  =  'Overflow Flag',
+  ['ZE']  =  'Divide By Zero Flag',
+  ['DE']  =  'Denormal Flag',
+  ['IE']  =  'Invalid Operation Flag'
+}
+
 function M.set(flag)
   if not flags2bit[flag] then
     error "Incorrect flag"
@@ -55,10 +77,24 @@ function M.set(flag)
 
   local csr = fpuLib.getcsr()
   if flag:sub(1,1) == 'R' then
-    csr = band(csr, bnot(lshift(3,flags2bit[flag])))  -- clean 13,14
+    csr = band(csr, bnot(lshift(3,flags2bit[flag])))  -- clear 13,14
     csr = bor (csr, lshift(rounding_val[flag],flags2bit[flag]))
   else
     csr = bor(csr, lshift(1,flags2bit[flag]))
+  end
+  fpuLib.setcsr(csr)
+end
+
+function M.clear(flag)
+  if not flags2bit[flag] then
+    error "Incorrect flag"
+  end
+
+  local csr = fpuLib.getcsr()
+  if flag:sub(1,1) == 'R' then
+    csr = band(csr, bnot(lshift(3,flags2bit[flag])))  -- clear 13,14
+  else
+    csr = band(csr, bnot(lshift(1,flags2bit[flag])))
   end
   fpuLib.setcsr(csr)
 end
@@ -69,13 +105,18 @@ function M.get()
   for flag,bit in pairs(flags2bit) do
     if bit ~= 13 and bit ~= 14 and
        band(csr, lshift(1,flags2bit[flag])) ~= 0 then
-      flags[flag] = true
+      flags[flag] = flags2name[flag]
     end
   end
 
-  local round = band(csr, lshift(3,flags2bit['RN']))
-  flags[rounding_val[round]] = true
+  local round = band(3, rshift(csr,flags2bit['RN']))
+  local rounding_flag = rounding_val[round]
+  flags[rounding_flag] = flags2name[rounding_flag]
   return flags
+end
+
+function M.get_raw()
+  return fpuLib.getcsr()
 end
 
 return M

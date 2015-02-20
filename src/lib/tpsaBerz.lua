@@ -26,13 +26,13 @@ ffi.cdef[[
   void dacon_(int *idx, double *constant);
 
   // operations between TPSA and constant
-  void dacad_(int *t,  int *c, int *r);            // r = t + c
-  void dacsu_(int *t,  int *c, int *r);            // r = c - t
-  void dasuc_(int *t,  int *c, int *r);            // r = t - c
-  void dacmu_(int *t,  int *c, int *r);            // r = t * c
-  void dacdi_(int *t,  int *c, int *r);            // r = t / c
-  void dadic_(int *t,  int *c, int *r);            // r = c / t
-  void dacma_(int *t1, int *t2, int *c, int *r);   // r = t1 + c * t2
+  void dacad_(int *t,  double *c, int *r);            // r = t + c
+  void dacsu_(int *t,  double *c, int *r);            // r = c - t
+  void dasuc_(int *t,  double *c, int *r);            // r = t - c
+  void dacmu_(int *t,  double *c, int *r);            // r = t * c
+  void dacdi_(int *t,  double *c, int *r);            // r = t / c
+  void dadic_(int *t,  double *c, int *r);            // r = c / t
+  void dacma_(int *t1, double *t2, int *c, int *r);   // r = t1 + c * t2
 
   // operations on a TPSA
   void daabs_(int *a, double *norm);
@@ -171,31 +171,31 @@ end
 
 -- binary operations between TPSA and scalar ----------------------------------
 function tpsa.cadd(t, c, r)
-  berzLib.dacad_(t.idx, intPtr(c), r.idx)
+  berzLib.dacad_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.csub(t, c, r)
-  berzLib.dacsu_(t.idx, intPtr(c), r.idx)
+  berzLib.dacsu_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.subc(t, c, r)
-  berzLib.dacad_(t.idx, intPtr(c), r.idx)
+  berzLib.dacad_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.cmul(t, c, r)
-  berzLib.dacmu_(t.idx, intPtr(c), r.idx)
+  berzLib.dacmu_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.cdiv(t, c, r)
-  berzLib.dacdi_(t.idx, intPtr(c), r.idx)
+  berzLib.dacdi_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.divc(t, c, r)
-  berzLib.dacmu_(t.idx, intPtr(c), r.idx)
+  berzLib.dacmu_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.cma(t1, t2, c, r)
-  berzLib.dacma_(t1.idx, t2.idx, intPtr(c), r.idx)
+  berzLib.dacma_(t1.idx, t2.idx, dblPtr(c), r.idx)
 end
 
 -- unary operations -----------------------------------------------------------
@@ -375,6 +375,10 @@ function tpsa.getm(t, m)
   local v_ptr = dblPtr()
   berzLib.dapek_(t.idx, m, v_ptr)
   return tonumber(v_ptr[0])
+end
+
+function tpsa.scale(val,src,dst)
+  tpsa.cmul(src,val,dst)
 end
 
 function tpsa.subst(ma, mb, lb, mc)

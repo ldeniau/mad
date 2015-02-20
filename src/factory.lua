@@ -110,7 +110,7 @@ end
 -- use functions return to avoid unpack which is not compiled
 
 local function args_bin_op()
-  return M.rand(M.seed), M.rand(), M.new_instance()
+  return M.full(), M.full(), M.new_instance()
 end
 
 -- --- SUBST -------------------------------------------------------------------
@@ -280,7 +280,8 @@ function M.setup(mod, nv, no)
   end
   if mod ~= M.mod then
     M.mod = mod
-  end
+    math.randomseed(M.seed)
+ end
   M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
 end
 
