@@ -42,6 +42,14 @@ ffi.cdef[[
   void ad_abs_  (const TVEC *iv, double *r);
   void ad_derivative_(const TVEC *isrc, unsigned int *expo, const TVEC *idst);
 
+  // functions
+  void ad_sqrt_(const TVEC* iv, const TVEC* iret);
+  void ad_exp_ (const TVEC* iv, const TVEC* iret);
+  void ad_log_ (const TVEC* iv, const TVEC* iret);
+  void ad_sin_ (const TVEC* iv, const TVEC* iret);
+  void ad_cos_ (const TVEC* iv, const TVEC* iret);
+
+
   void ad_print_(const TVEC *iv);
 ]]
 
@@ -156,6 +164,28 @@ function tpsa.cct(a, b, c)
     yangLib.ad_subst_(a[i].idx, bIdxs, bSize, c[i].idx)
   end
 end
+
+-- FUNCTIONS -------------------------------------------------------------------
+function tpsa.sin(a, c)
+  yangLib.ad_sin_(a.idx, c.idx)
+end
+
+function tpsa.cos(a, c)
+  yangLib.ad_cos_(a.idx, c.idx)
+end
+
+function tpsa.log(a, c)
+  yangLib.ad_log_(a.idx, c.idx)
+end
+
+function tpsa.exp(a, c)
+  yangLib.ad_exp_(a.idx, c.idx)
+end
+
+function tpsa.sqrt(a, c)
+  yangLib.ad_sqrt_(a.idx, c.idx)
+end
+
 
 function tpsa.destroy(t)
   yangLib.ad_free_(t.idx)

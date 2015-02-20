@@ -333,6 +333,34 @@ mad_tpsa_div(const T *a, const T *b, T *c)
 }
 
 void
+mad_tpsa_cdiv(num_t v, const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_constant_div\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+
+  mad_tpsa_scale(1/v,a,c);
+}
+
+void
+mad_tpsa_divc(num_t v, const T *a, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_div_constant\n");
+#endif
+  assert(a && c);
+  ensure(a->desc == c->desc);
+  ensure(v != 0.0);
+
+  T *tmp = mad_tpsa_new(a);
+  mad_tpsa_cdiv(v,a,tmp);
+  mad_tpsa_inv(tmp,c);
+  mad_tpsa_del(tmp);
+}
+
+void
 mad_tpsa_scale(num_t v, const T *a, T *c)
 {
   assert(a && c);

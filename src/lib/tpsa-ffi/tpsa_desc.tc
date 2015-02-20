@@ -707,7 +707,7 @@ static inline int
 desc_equ(const D *d1, const D *d2)
 {
   assert(d1 && d2);
-  return    d1->nv  == d2->nv  && d1->knb_start == d2->knb_start
+  return    d1->nv == d2->nv && d1->knb_start == d2->knb_start
          && d1->mo == d2->mo && d1->mvo == d2->mvo && d1->mko == d2->mko
          && mono_equ(d1->nv, d1->a, d2->a);
 }

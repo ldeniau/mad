@@ -95,6 +95,8 @@ ffi.cdef[[
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
   void  mad_tpsa_div     (const T *a, const T *b, T *c);
+  void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
+  void  mad_tpsa_cdiv    (num_t    v, const T *a, T *c);
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
   void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
@@ -246,6 +248,14 @@ function M.scale(val, src, dst)
   clib.mad_tpsa_scale(val, src, dst)
 end
 
+function M.cdiv(val, src, dst)
+  clib.mad_tpsa_cdiv(val,src,dst)
+end
+
+function M.divc(val, src, dst)
+  clib.mad_tpsa_divc(val,src,dst)
+end
+
 -- --- BINARY ------------------------------------------------------------------
 function M.add(a, b, c)
   -- c should be different from a and b
@@ -339,9 +349,11 @@ end
 function MT.__div(a,b)
   local c
   if type(a) == "number" then
-    error("NYI")
+    c = b:new()
+    clib.mad_tpsa_cdiv(a,b,c)
   elseif type(b) == "number" then
-    error("NYI")
+    c = a:new()
+    clib.mad_tpsa_divc(b,a,c)
   elseif ffi.istype(a,b) then
     c = a:new()
     clib.mad_tpsa_div(a,b,c)
