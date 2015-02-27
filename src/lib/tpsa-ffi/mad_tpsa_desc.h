@@ -12,8 +12,8 @@ D*    mad_tpsa_desc_newk (ord_t mo, int nv, const ord_t var_ords[nv], ord_t mvo,
                                     int nk, const ord_t knb_ords[nk], ord_t mko);
 void  mad_tpsa_desc_del  (      D *d);
 
-int   mad_tpsa_desc_nc   (const D *d);
-ord_t mad_tpsa_desc_trunc(      D *d, ord_t *to);
+int   mad_tpsa_desc_nc   (const D *d, const ord_t *ord_);
+ord_t mad_tpsa_desc_trunc(      D *d, const ord_t *to_ );
 #undef D
 
 // -----------------------------------------------------------------------------

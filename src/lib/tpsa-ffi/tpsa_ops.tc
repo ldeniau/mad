@@ -105,7 +105,7 @@ hpoly_mul(const T *a, const T *b, T *c)
   bit_t   nza = a->nz  ,  nzb = b->nz;
   num_t *cc  = c->coef;
 
-  ord_t new_mo = imin(a->mo + b->mo, dc->trunc);
+  ord_t new_mo = min_ord(a->mo + b->mo, c->to, dc->trunc);
   for (int i = ps[c->mo+1]; i < ps[new_mo+1]; ++i)
     cc[i] = 0;
   c->mo = new_mo;
@@ -154,14 +154,16 @@ hpoly_mul(const T *a, const T *b, T *c)
 
 #include <math.h>
 
+#ifdef UNUSED
+/* tpsa_i and tpsa_interface don't have dacom */
 num_t
 mad_tpsa_comp(const T *a, const T *b)
 {
   assert(a && b);
   ensure(a->desc == b->desc);
   num_t norm = 0;
-  ord_t amo = min_ord(a->mo, a->desc->trunc),
-        bmo = min_ord(b->mo, b->desc->trunc);
+  ord_t amo = min_ord(a->mo, a->to, a->desc->trunc),
+        bmo = min_ord(b->mo, b->to, b->desc->trunc);
   int len_a = a->desc->hpoly_To_idx[amo+1],
       len_b = b->desc->hpoly_To_idx[bmo+1],
       i     = 0;
@@ -181,10 +183,14 @@ mad_tpsa_pos(const T *a, T *c)
     c->coef[i] = fabs(a->coef[i]);
   c->nz = btrunc(a->nz,c->mo);
 }
+#endif // unused
 
 void
 mad_tpsa_der(const T *a, int var, T *c)
 {
+#ifdef TRACE
+  printf("mad_tpsa_der\n");
+#endif
   assert(a && c);
   ensure(var > 0 && var <= a->desc->nv);
 
@@ -198,11 +204,13 @@ mad_tpsa_der(const T *a, int var, T *c)
   D *d = a->desc;
   int idx_der = -1, *pi = d->hpoly_To_idx;
 
-  c->mo = min_ord(a->mo-1,a->desc->trunc);
+  // prepare destination; minimal cleanup
+  c->mo = min_ord(a->mo-1, c->to, d->trunc);
   c->nz = 0;
   for (int i = 0; i < pi[c->mo+1]; ++i)
     c->coef[i] = 0;
 
+  // TODO: go through c rather than a and use L matrix
   var--;    // monos are 0-indexed
   ord_t der_mono[d->nv];
   for (int o = 1; o <= c->mo+1; ++o)
@@ -227,33 +235,28 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
   assert(a && b && c);
   ensure(a->desc == b->desc && b->desc == c->desc);
 
-  ord_t amo = min_ord(a->mo, a->desc->trunc),
-        bmo = min_ord(b->mo, b->desc->trunc);
-  if (amo > bmo) {  // swap so that a is the shortest
-    const T *tmp = a;    num_t ctmp = c1;    ord_t otmp = amo;
-    a = b;               c1 = c2;            amo = bmo;
-    b = tmp;             c2 = ctmp;          bmo = otmp;
-  }
-
   if (!c1 && !c2) {
-    c->nz = c->mo = 0;
+    mad_tpsa_clean(c);
     return;
   }
-  bit_t cnz = 0;
-  if (c1) {
-    c->mo = amo;
-    cnz = a->nz;
-  }
-  if (c2) {
-    c->mo = bmo;
-    cnz = badd(cnz, b->nz);
-  }
-  c->nz = btrunc(cnz, c->mo);
+
+  D *d = a->desc;
+  ord_t max_ab = a->mo > b->mo ? a->mo : b->mo;
+  c->mo = min_ord(max_ab, c->to, d->trunc);
+  c->nz = btrunc(badd(a->nz,b->nz), c->mo);
 
   const num_t *ca = a->coef, *cb = b->coef;
-  int i = 0, *pi = a->desc->hpoly_To_idx;
-  for ( ; i < pi[amo+1]; ++i) c->coef[i] = c1*ca[i] + c2*cb[i];
-  for ( ; i < pi[bmo+1]; ++i) c->coef[i] =            c2*cb[i];
+  int *pi = d->hpoly_To_idx;
+  for (int o = 0; o <= c->mo; ++o)
+    if (bget(a->nz,o) && bget(b->nz,o))
+      for (int i = pi[o]; i < pi[o+1]; ++i)
+        c->coef[i] = c1*ca[i] + c2*cb[i];
+    else if (bget(a->nz,o))
+      for (int i = pi[o]; i < pi[o+1]; ++i)
+        c->coef[i] = c1*ca[i];
+    else if (bget(b->nz,o))
+      for (int i = pi[o]; i < pi[o+1]; ++i)
+        c->coef[i] =            c2*cb[i];
 }
 
 void
@@ -288,16 +291,6 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   assert(a && b && c);
   ensure(a->desc == b->desc && a->desc == c->desc);
 
-  if (a->desc->mo == 1) {
-    num_t a0 = a->coef[0], b0 = b->coef[0];
-    c->coef[0] = a0 * b0;
-    for (int i = 1; i <= a->desc->nv; ++i)
-      c->coef[i] = a0*b->coef[i] + b0*a->coef[i];
-    c->nz = (b0 ? a->nz : 0) | (a0 ? b->nz : 0);
-    c->mo = a->mo > b->mo ? a->mo : b->mo;
-    return;
-  }
-
   num_t a0 = a->coef[0], b0 = b->coef[0];
   mad_tpsa_axpby(b0, a, a0, b, c);
   c->coef[0] -= a0 * b0;                 // was done twice in axpby
@@ -313,20 +306,17 @@ mad_tpsa_div(const T *a, const T *b, T *c)
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && a->desc == c->desc);
+  ensure(b->coef[0] != 0);
 
   D *d = a->desc;
-  if (d->mo == 1) {
-    num_t b0 = b->coef[0];
-    num_t c0 = a->coef[0] / b0;
-    for (int i = 1; i <= d->nv; ++i)
-      c->coef[i] = (a->coef[i] - b->coef[i]*c0)/b0;
-    c->coef[0] = c0;
-    c->nz = badd(a->nz,b->nz);
-    c->mo = 1;
+  if (d->trunc == 0 || c->to == 0) {
+    c->mo = 0;
+    c->nz = bset(0,0);  // has ord 0
+    c->coef[0] = a->coef[0] / b->coef[0];
     return;
   }
 
-  T *tmp = mad_tpsa_newd(d);
+  T *tmp = mad_tpsa_newd(d,&d->trunc);
   mad_tpsa_inv(b,tmp);
   mad_tpsa_mul(a,tmp,c);
   mad_tpsa_del(tmp);
@@ -363,6 +353,9 @@ mad_tpsa_divc(num_t v, const T *a, T *c)
 void
 mad_tpsa_scale(num_t v, const T *a, T *c)
 {
+#ifdef TRACE
+  printf("tpsa_scale %lf\n", v);
+#endif
   assert(a && c);
   ensure(a->desc == c->desc);
   if (v == 0) {
@@ -370,17 +363,20 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
     return;
   }
 
-  c->mo = min_ord(a->mo,a->desc->trunc);
-  c->nz = a->nz & ~(-1 << (c->mo+1));  // apply truncation
-  for (int i = 0; i < c->desc->hpoly_To_idx[c->mo+1]; ++i)
-    c->coef[i] = v * a->coef[i];
+  D *d = a->desc;
+  c->mo = min_ord(a->mo, c->to, d->trunc);
+  c->nz = btrunc(a->nz,c->mo);
+  for (int o = 0; o <= c->mo; ++o)
+    if (bget(a->nz,o))
+      for (int i = d->hpoly_To_idx[o]; i < d->hpoly_To_idx[o+1]; ++i)
+        c->coef[i] = v * a->coef[i];
 }
 
 void
 mad_tpsa_axpb(num_t v, const T *a, const T *b, T *c)
 {
 #ifdef TRACE
-  printf("tpsa_mul_constant %lf\n", v);
+  printf("tpsa_axpb %lf\n", v);
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && b->desc == c->desc);
@@ -396,7 +392,7 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
 
   T *is[4];
   for (int i = 0; i < 4; ++i)
-    is[i] = mad_tpsa_newd(a->desc);
+    is[i] = mad_tpsa_newd(a->desc,&a->desc->trunc);
 
   for (int i = 1; i <= n; ++i) {
     mad_tpsa_der(a, 2*i - 1, is[0]);
@@ -416,6 +412,7 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
     mad_tpsa_del(is[i]);
 }
 
+#ifdef UNUSED
 void
 mad_tpsa_pow(const T *a, T *orig_res, int p)
 {
@@ -459,7 +456,9 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   if (r       != orig_res) mad_tpsa_del(r);
   if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
 }
+#endif // UNUSED
 
+#undef TRACE
 #undef T
 #undef D
 #endif

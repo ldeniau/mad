@@ -23,7 +23,7 @@ ffi.cdef[[
 
   struct tpsa { // warning: must be kept identical to LuaJit definition
     D      *desc;
-    int     mo;
+    ord_t   mo, to; // max ord, trunc ord
     bit_t   nz;
     num_t   coef[?];
   };
@@ -37,8 +37,8 @@ ffi.cdef[[
                                       int nk, const ord_t knb_ords[], ord_t mko);
   void  mad_tpsa_desc_del  (      D *d);
 
-  int   mad_tpsa_desc_nc   (const D *d);
-  ord_t mad_tpsa_desc_trunc(      D *d, ord_t *to);
+  int   mad_tpsa_desc_nc   (const D *d, const ord_t *ord_);
+  ord_t mad_tpsa_desc_trunc(      D *d, const ord_t *to_ );
 
   // --- --- TPSA --------------------------------------------------------------
 
@@ -116,14 +116,17 @@ ffi.cdef[[
 ]]
 
 -- define types just once as use their constructor
-local mono_t   = typeof("ord_t[?]")
 local desc_t   = typeof("D       ")
 local tpsa_t   = typeof("T       ")
-local tpsa_carr = typeof("const T*   [?]")
+local mono_t   = typeof("const ord_t[?]")
+local ord_ptr  = typeof("const ord_t[1]")
 local tpsa_arr = typeof("T*   [?]")
+local tpsa_carr = typeof("const T*   [?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
+
+ffi.metatype("struct tpsa", MT)
 
 -- helpers ---------------------------------------------------------------------
 local function arr_max(a)
@@ -157,17 +160,11 @@ function M.init(var_ords, mo, knb_ords, mvo, mko)
       d = clib.mad_tpsa_desc_new(mo, nv, vo)
     end
 
-    -- create & init tpsa
-    local nc = clib.mad_tpsa_desc_nc(d)
+    -- return a template
+    local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(mo))
     local t  = tpsa_t(nc)  -- automatically initialized with 0s
     t.desc   = d
-
-    -- set metatable for type (just once)
-    if not M._mt_is_set then
-      ffi.metatype("struct tpsa", MT)
-      M._mt_is_set = true
-    end
-
+    t.to     = mo
     return t
   end
 
@@ -176,17 +173,22 @@ function M.init(var_ords, mo, knb_ords, mvo, mko)
          "\ttpsa({var_orders}, max_order, {knb_orders}, max_var_order, max_knb_order)\n")
 end
 
-function M:new()
-  local nc = clib.mad_tpsa_desc_nc(self.desc)
+function M:new(trunc_ord)
+  if not trunc_ord then error("use t.same() or specify truncation order") end
+
+  local nc = clib.mad_tpsa_desc_nc(self.desc, ord_ptr(trunc_ord))
   local t  = tpsa_t(nc)  -- automatically initialized with 0s
+  t.to = trunc_ord
   t.desc   = self.desc
   return t
 end
 
-M.same = M.new
+function M:same()
+  return self:new(self.to)
+end
 
 function M.cpy(src, dst)
-  if not dst then dst = src:new() end
+  if not dst then dst = src:same() end
   clib.mad_tpsa_copy(src, dst)
   return dst
 end
@@ -203,10 +205,9 @@ function M.getCoeff(t, m)
   return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
 end
 
-function M.truncate(t, o)
+function M.global_truncation(t, o)
   -- use without `o` to get current truncation order
-  o = o and ffi.new("ord_t [1]", o)
-  return clib.mad_tpsa_desc_trunc(t.desc, o)
+  return clib.mad_tpsa_desc_trunc(t.desc, ord_ptr(o))
 end
 
 function M.abs(a)
@@ -238,10 +239,6 @@ end
 
 function M.der(src, var, dst)
   clib.mad_tpsa_der(src, var, dst)
-end
-
-function M.pos(src, dst)
-  clib.mad_tpsa_pos(src, dst)
 end
 
 function M.scale(val, src, dst)
@@ -277,7 +274,7 @@ function M.div(a, b, c)
 end
 
 function M.pow(a, p)
-  local r = a:new()
+  local r = a:same()
   clib.mad_tpsa_pow(a, r, p)
   return r
 end
@@ -304,7 +301,7 @@ function MT.__add(a, b)
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,c.coef[0]+b)
   elseif ffi.istype(a,b) then
-    c = a:new()
+    c = a:same()
     clib.mad_tpsa_add(a,b,c)
   else
     error("Incompatible operands")
@@ -321,7 +318,7 @@ function MT.__sub(a, b)
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,c.coef[0]-b)
   elseif ffi.istype(a,b) then
-    c = a:new()
+    c = a:same()
     clib.mad_tpsa_sub(a,b,c)
   else
     error("Incompatible operands")
@@ -338,7 +335,7 @@ function MT.__mul(a,b)
     c = a:cpy()
     clib.mad_tpsa_scale(b,c,c)
   elseif ffi.istype(a,b) then
-    c = a:new()
+    c = a:same()
     clib.mad_tpsa_mul(a,b,c)
   else
     error("Incompatible operands")
@@ -349,13 +346,13 @@ end
 function MT.__div(a,b)
   local c
   if type(a) == "number" then
-    c = b:new()
+    c = b:same()
     clib.mad_tpsa_cdiv(a,b,c)
   elseif type(b) == "number" then
-    c = a:new()
+    c = a:same()
     clib.mad_tpsa_divc(b,a,c)
   elseif ffi.istype(a,b) then
-    c = a:new()
+    c = a:same()
     clib.mad_tpsa_div(a,b,c)
   else
     error("Incompatible operands")

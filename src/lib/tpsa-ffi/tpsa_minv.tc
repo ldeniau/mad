@@ -10,6 +10,16 @@
 #define D struct tpsa_desc
 
 // --- LOCAL FUNCTIONS --------------------------------------------------------
+static inline void
+check_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
+{
+  ensure(sa == sc);
+  ensure(sa == ma[0]->desc->knb_start); // 'square' matrix, ignoring knobs
+  check_same_desc(sa,ma);
+  check_same_desc(sc,(const T**)mc);
+  ensure(ma[0]->desc == mc[0]->desc);
+}
+
 
 static inline void
 split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
@@ -20,13 +30,11 @@ split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
              *mat_knb  = nk ? gsl_matrix_calloc(cv,nk) : NULL, // knobs
              *mat_knbi = nk ? gsl_matrix_alloc (cv,nk) : NULL; // 'inverse' of knobs
 
-  // split linear, -nonlinear
+  // split linear, (-1 * nonlinear)
   for (int i = 0; i < cv; ++i) {
-    if (bget(ma[i]->nz,1)) {
-      int v = 0;
-      for (; v < cv; ++v) gsl_matrix_set(mat_var, i,v   , ma[i]->coef[v+1]);
-      for (; v < nv; ++v) gsl_matrix_set(mat_knb, i,v-cv, ma[i]->coef[v+1]);
-    }
+    int v = 0;
+    for (; v < cv; ++v) gsl_matrix_set(mat_var, i,v   , ma[i]->coef[v+1]);
+    for (; v < nv; ++v) gsl_matrix_set(mat_knb, i,v-cv, ma[i]->coef[v+1]);
 
     mad_tpsa_copy(ma[i], nonlin[i]);
     nonlin[i]->nz = bclr(nonlin[i]->nz,0);  // ignore 0 ord, if any
@@ -66,15 +74,17 @@ void
 mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 {
   assert(ma && mc);
-  ensure(sa == sc);
-  check_same_desc(sa,ma,sc,mc);
+  check_minv(sa,ma,sc,mc);
+  for (int i = 0; i < sa; ++i)
+    ensure(bget(ma[i]->nz,1));
 
   D *d = ma[0]->desc;
   T *lin_inv[sa], *nonlin[sa], *tmp[sa];
+  ord_t one = 1;
   for (int i = 0; i < sa; ++i) {
-    lin_inv[i] = mad_tpsa_newd(d);
-    nonlin[i]  = mad_tpsa_newd(d);
-    tmp[i]     = mad_tpsa_newd(d);
+    lin_inv[i] = mad_tpsa_newd(d,&one);
+    nonlin[i]  = mad_tpsa_new (ma[i]);
+    tmp[i]     = mad_tpsa_new (ma[i]);
   }
 
   split_and_inv(d, ma, lin_inv, nonlin);
@@ -107,23 +117,29 @@ void
 mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
 {
   assert(ma && mc && row_select);
-  check_same_desc(sa,ma,sc,mc);
+  check_minv(sa,ma,sc,mc);
+  for (int i = 0; i < sa; ++i)
+    if (row_select[i])
+      ensure(bget(ma[i]->nz,1));
 
   D *d = ma[0]->desc;
   // split input map into rows that are inverted and rows that are not
   T *mUsed[sa], *mUnused[sa], *mInv[sa];
+  ord_t one = 1;
   for (int i = 0; i < sa; ++i) {
-    mUsed  [i] = mad_tpsa_newd(d);
-    mUnused[i] = mad_tpsa_newd(d);
-    mInv   [i] = mad_tpsa_newd(d);
-
     if (row_select[i]) {
+      mUsed  [i] = mad_tpsa_new (ma[i]);
+      mInv   [i] = mad_tpsa_new (ma[i]);
+      mUnused[i] = mad_tpsa_newd(d,&one);
       mad_tpsa_copy(ma[i],mUsed[i]);
       mad_tpsa_seti(mUnused[i], i+1, 1.0);
     }
     else {
-      mad_tpsa_seti(mUsed[i], i+1, 1.0);
+      mUsed  [i] = mad_tpsa_newd(d,&one);
+      mInv   [i] = mad_tpsa_newd(d,&one);
+      mUnused[i] = mad_tpsa_new (ma[i]);
       mad_tpsa_copy(ma[i],mUnused[i]);
+      mad_tpsa_seti(mUsed[i], i+1, 1.0);
     }
     mad_tpsa_seti(mUsed  [i],0,0.0);
     mad_tpsa_seti(mUnused[i],0,0.0);

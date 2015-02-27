@@ -15,7 +15,7 @@ struct tpsa_desc {
            knb_start, // index in `a` where the knobs start
            size;      // bytes used by current desc
   ord_t    mo,mvo,mko,// maximum orders: overall, canonical vars, knobs
-           trunc,     // truncation order for operations
+           trunc,     // truncation order for operations; always <= mo
           *a,         // alphas (max order for each var)
           *monos,     // 'matrix' storing the monomials (sorted by ord)
           *ords,      // order of each mono of To
@@ -30,9 +30,16 @@ struct tpsa_desc {
 // --- HELPERS ----------------------------------------------------------------
 
 static inline ord_t
-min_ord(ord_t a, ord_t b)
+min_ord2(ord_t a, ord_t b)
 {
   return a<b ? a : b;
+}
+
+
+static inline ord_t
+min_ord(ord_t a, ord_t b, ord_t c)
+{
+  return min_ord2(a, min_ord2(b,c));
 }
 
 static inline int
@@ -790,19 +797,20 @@ mad_tpsa_desc_del(D *d)
 }
 
 int
-mad_tpsa_desc_nc(const D *d)
+mad_tpsa_desc_nc(const D *d, const ord_t *ord_)
 {
   assert(d);
-  return d->nc;
+  ensure(*ord_ <= d->mo);
+  return d->hpoly_To_idx[*ord_+1];
 }
 
 ord_t
-mad_tpsa_desc_trunc(D *d, ord_t *to_)
+mad_tpsa_desc_trunc(D *d, const ord_t *to_)
 {
   assert(d);
   ord_t orig = d->trunc;
   if (to_) {
-    assert(*to_ <= d->mo);
+    ensure(*to_ <= d->mo);
     d->trunc = *to_;
   }
   return orig;

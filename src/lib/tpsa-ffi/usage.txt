@@ -1,0 +1,119 @@
+
+Data structure
+==============
+
+Descriptor
+----------
+
+struct tpsa_desc {
+  int      nv, nc,    // number of vars, number of coeff
+           knb_start, // index in `a` where the knobs start
+           size;      // bytes used by current desc
+  ord_t    mo,mvo,mko,// maximum orders: overall, canonical vars, knobs
+           trunc,     // truncation order for operations
+          *a,         // alphas (max order for each var)
+          *monos,     // 'matrix' storing the monomials (sorted by ord)
+          *ords,      // order of each mono of To
+         **To,        // Table by orders -- pointers to monos, sorted by order
+         **Tv;        // Table by vars   -- pointers to monos, sorted by vars
+  idx_t   *hpoly_To_idx,  // poly start in To
+          *tv2to, *to2tv, // lookup tv->to, to->tv
+          *H,         // indexing matrix, in Tv
+         **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
+};
+
+
+
+TPSA
+-------------
+
+struct tpsa { // warning: must be kept identical to LuaJit definition
+  D      *desc;
+  ord_t   mo, to; // max ord, trunc ord
+  bit_t   nz;
+  num_t   coef[];
+};
+
+desc -- pointer to a shared descriptor; immutable
+
+to   -- truncation order; immutable
+     -- 0 <= to <= desc->mo
+     -- coefficients are only allocated up to this polynomial, inclusive
+     -- writing or reading an index from a higher order results in error
+
+mo   -- state of current maximum order
+     -- modifies according to operations performed on tpsa
+     -- used to avoid un-necessary computation
+     -- 0 <= mo <= to
+
+nz   -- state of non-zero polynomials
+     -- used to avoid computation on unused polynomials
+     -- type: bit-array; each bit corresponds 1-to-1 to an order
+     -- to be used through functions in utils: bset, bget, bclr, badd, btrunc
+     -- note: when clearing ord 0, also set coef[0] = 0 because ord0 is not checked
+        when performing computations
+
+
+Constructor
+===========
+
+Descriptor
+----------
+a) without knobs:
+D*    mad_tpsa_desc_new  (ord_t mo, int nv, const ord_t var_ords[nv])
+    -- var_ords[i] <= mo
+
+b) with knobs:
+D*    mad_tpsa_desc_newk (ord_t mo, int nv, const ord_t var_ords[nv], ord_t mvo,
+                                    int nk, const ord_t knb_ords[nk], ord_t mko);
+    -- mko <= mvo <= mo
+    -- var_ords[i] <= mvo
+    -- knb_ords[i] <= mko
+    -- EXCEPTIONS: ({3,3}, 5, {1,1,1}, 3, 2) but ({3,3}, 5, {1,1,1}, 5, 2) works
+
+TPSA
+----
+a) T* mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
+    -- allocates a TPSA for the descriptor d, with capacity for orders up to trunc_ord_
+    -- if trunc_ord_ is NULL, then d->mo is used
+
+b) T* mad_tpsa_new(const T *t)
+    -- allocates a TPSA of the same kind as t (same descriptor, same truncation order)
+
+
+
+Operations
+===========
+
+Peek & Poke
+-----------
+
+A) higher level: based on monomial
+----------------------------------
+
+num_t mad_tpsa_getm(const T *t, int n, const ord_t m[n])
+    -- gets the value of the coefficient given by the monomial m
+    -- n = lenght of monomial m
+    -- if n < desc->nv then the rest of m is considered to be filled with 0s
+    -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->to ]
+
+void mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
+    -- sets the coefficient given by the monomial m to the value of v
+    -- same considerations as getm
+
+
+B) lower level: based on index
+----------------------------------
+int mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
+    -- get an index associated with the monomial m
+    -- if n=len(m) < desc->nv then the rest of m is considered to be filled with 0s
+    -- the index may not be valid for the tpsa t (i.e. may be out of range)
+
+num_t mad_tpsa_geti(const T *t, int i)
+    -- gets the value of the coefficient at index i
+    -- returns 0 if ord(mono(i)) > t->to
+
+num_t mad_tpsa_seti(const T *t, int i, num_t v)
+    -- sets the coefficient at index i to value v
+    -- ERROR  -- if i is outside of the range of t [ ord(mono(i)) > t->to ]
+              -- if i is outside the current truncation order [ desc->trunc ] (should be warning ?)

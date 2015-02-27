@@ -51,6 +51,8 @@ ffi.cdef[[
   void dapoi_(int *t1, int *t2, int *r, int *n);   // r = [t1, t2]; 2*n = #phasevars
   void dasqr_(int *t , int *r);                    // r = t ^ 2
 
+
+  // MAPS
   // mr = m1 o m2  -- m1, m2, mr = compatible arrays of TPSAs
   //               -- s1, s2, s4 = number of vectors in m1, m2, mr
   void dacct_(int *m1, int *s1, int *m2, int *s2, int *mr, int *sr);
@@ -58,8 +60,12 @@ ffi.cdef[[
   void dainv_(int *m1, int *s1, int *mr, int *sr); // mr = ma ^ -1
   void dapin_(int *m1, int *s1, int *mr, int *sr, int *row_select); // partial inversion
 
+  // IO
   void dapri_(int *idx, int *dest);                // print         TPSA at idx on   stream dest
   void darea_(int *idx, int *src);                 // read into the TPSA at idx from stream src
+
+  // UTILS
+  void danot_(int *new_nocut);
 ]]
 
 -- Fortran only takes pointers, so define their type
@@ -103,6 +109,12 @@ end
 
 function tpsa.new(t)
   return create(t.nv, t.no)
+end
+
+tpsa.same = tpsa.new
+
+function tpsa.destroy(t)
+  berzLib.dadal_(t.idx, one_i)
 end
 
 function tpsa.setConst(t, val)
@@ -156,18 +168,6 @@ function tpsa.poisson(a,b,c,n)
   berzLib.dapoi_(a.idx, b.idx, c.idx, intPtr(n))
 end
 
-function tpsa.compose(a, b, c)
-  -- a, b, c should be compatible arrays of TPSAs, starting from 1
-
-  local aIdxs, bIdxs, cIdxs = intArr(#a), intArr(#b), intArr(#c)
-  local aSize, bSize, cSize = intPtr(#a), intPtr(#b), intPtr(#c)
-  for i=1,#a do aIdxs[i-1] = a[i].idx[0] end
-  for i=1,#b do bIdxs[i-1] = b[i].idx[0] end
-  for i=1,#c do cIdxs[i-1] = c[i].idx[0] end
-
-  berzLib.dacct_(aIdxs, aSize, bIdxs, bSize, cIdxs, cSize)
-end
-
 
 -- binary operations between TPSA and scalar ----------------------------------
 function tpsa.cadd(t, c, r)
@@ -191,7 +191,7 @@ function tpsa.cdiv(t, c, r)
 end
 
 function tpsa.divc(t, c, r)
-  berzLib.dacmu_(t.idx, dblPtr(c), r.idx)
+  berzLib.dadic_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.cma(t1, t2, c, r)
@@ -330,6 +330,8 @@ function tpsa.der(src, var, dst)
   return dst
 end
 
+
+-- MAPS -----------------------------------------------------------------------
 function tpsa.minv(ma, mr)
   -- ma, mr = arrays of TPSAs
   local aIdxs, rIdxs = intArr(#ma), intArr(#mr)
@@ -351,16 +353,30 @@ function tpsa.pminv(ma, mr, rows)
   berzLib.dapin_(aIdxs, aSize, rIdxs, rSize, sel)
 end
 
-function tpsa.destroy(t)
-  berzLib.dadal_(t.idx, one_i)
+function tpsa.compose(a, b, c)
+  -- a, b, c should be compatible arrays of TPSAs, starting from 1
+
+  local aIdxs, bIdxs, cIdxs = intArr(#a), intArr(#b), intArr(#c)
+  local aSize, bSize, cSize = intPtr(#a), intPtr(#b), intPtr(#c)
+  for i=1,#a do aIdxs[i-1] = a[i].idx[0] end
+  for i=1,#b do bIdxs[i-1] = b[i].idx[0] end
+  for i=1,#c do cIdxs[i-1] = c[i].idx[0] end
+
+  berzLib.dacct_(aIdxs, aSize, bIdxs, bSize, cIdxs, cSize)
 end
 
+-- IO --------------------------------------------------------------------------
 function tpsa.print(t)
    berzLib.dapri_(t.idx, out_stream)  -- prints on stdout
 end
 
 function tpsa.read(t)
    berzLib.darea_(t.idx, in_stream)   -- reads from stdin
+end
+
+-- UTILS -----------------------------------------------------------------------
+function tpsa.global_truncation(ord)
+  berzLib.danot_(intPtr(ord))
 end
 
 -- interface for benchmarking --------------------------------------------------

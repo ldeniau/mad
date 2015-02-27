@@ -121,7 +121,7 @@ local function args_subst_tpsa(t, nv, refs, size_a)
 
   local cma, cmb, cmc = tpsa_carr(size_a), tpsa_carr(nv), tpsa_arr(size_a)
   for i=1,size_a do
-    refs.ma[i], refs.mc[i] = t:cpy()   , t:new()
+    refs.ma[i], refs.mc[i] = t:cpy()   , t:same()
     cma[i-1]  , cmc[i-1]   = refs.ma[i], refs.mc[i]
   end
   for i=1,nv do
@@ -138,7 +138,7 @@ local function args_subst_berz(t, nv, refs, size_a)
 
   local cma, cmb, cmc = intArr(size_a), intArr(nv), intArr(size_a)
   for i=1,size_a do
-    refs.ma[i], refs.mc[i] = t:cpy()          , t:new()
+    refs.ma[i], refs.mc[i] = t:cpy()          , t:same()
     cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
   end
   for i=1,nv do
@@ -156,7 +156,7 @@ local function args_subst_yang(t, nv, refs, size_a)
   local uintArr = ffi.typeof("unsigned int[?]")
 
   local cma, cmb, cmc = uintArr(1), uintArr(nv), uintArr(1)
-  refs.ma[1], refs.mc[1] = t                , t:new()
+  refs.ma[1], refs.mc[1] = t                , t:same()
   cma[0]    , cmc[0]     = refs.ma[1].idx[0], refs.mc[1].idx[0]
   for i=1,nv do
     refs.mb[i] = t:cpy()
@@ -233,7 +233,7 @@ end
 -- INTERFACE -------------------------------------------------------------------
 
 function M.new_instance()
-  return M.t:new()
+  return M.t:same()
 end
 
 function M.get_args(fct_name)

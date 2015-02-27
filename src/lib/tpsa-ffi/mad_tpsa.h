@@ -13,7 +13,7 @@ struct tpsa_desc;
 
 #define T struct tpsa
 
-T*    mad_tpsa_newd    (struct tpsa_desc *d);  // to use const?
+T*    mad_tpsa_newd    (struct tpsa_desc *d, const ord_t *trunc_ord_);  // to use const d ?
 
 T*    mad_tpsa_new     (const T *t);
 T*    mad_tpsa_clone   (const T *t); // new + copy
@@ -34,8 +34,8 @@ num_t mad_tpsa_abs2    (const T *t);
 void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
 
 void  mad_tpsa_der     (const T *a, int var,    T *c);
-void  mad_tpsa_pos     (const T *a,             T *c);
-num_t mad_tpsa_comp    (const T *a, const T *b);
+// void  mad_tpsa_pos     (const T *a,             T *c);
+// num_t mad_tpsa_comp    (const T *a, const T *b);
 
 void  mad_tpsa_inv     (const T *a, T *c);
 void  mad_tpsa_sqrt    (const T *a, T *c);
@@ -72,7 +72,7 @@ void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 void  mad_tpsa_div     (const T *a, const T *b, T *c);
 void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
 void  mad_tpsa_cdiv    (num_t    v, const T *a, T *c);
-void  mad_tpsa_pow     (const T *a,             T *c, int p);
+// void  mad_tpsa_pow     (const T *a,             T *c, int p);
 void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
 void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);

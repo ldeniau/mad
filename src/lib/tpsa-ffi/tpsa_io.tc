@@ -22,14 +22,14 @@ print_ords(int n, ord_t ords[n], FILE *stream)
 }
 
 static inline void
-read_header(T *a, FILE *stream)
+read_header(T *t, FILE *stream)
 {
-  assert(a && stream);
+  assert(t && stream);
   char buf[50];
   // 1st line -- discarded (empty)
   ensure(fgets(buf, 50, stream));
 
-  struct tpsa_desc *d = a->desc;
+  struct tpsa_desc *d = t->desc;
   ord_t mo, ords[d->nv], mvo, mko;
   int rk, nv, read_cnt = 0;
 
@@ -62,33 +62,35 @@ read_header(T *a, FILE *stream)
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 void
-mad_tpsa_read(T *a, FILE *stream_)
+mad_tpsa_read(T *t, FILE *stream_)
 {
-  assert(a);
+  assert(t);
 
   if (!stream_)
     stream_ = stdin;
-  read_header(a,stream_);
+  read_header(t,stream_);
 
   num_t c;
-  int nv = a->desc->nv;
+  int nv = t->desc->nv;
   ord_t o, ords[nv];
-  mad_tpsa_clean(a);
+  mad_tpsa_clean(t);
   while (fscanf(stream_, "%*d %21lG %hhu", &c, &o) == 2) {
     read_ords(nv,ords,stream_);
-    mad_tpsa_setm(a,nv,ords,c);
     ensure(mono_sum(nv,ords) == o);  // consistency check
+    if (o > t->to)  // TODO: give warning ?
+      break;        // printed by increasing orders
+    mad_tpsa_setm(t,nv,ords,c);
   }
 }
 
 void
-mad_tpsa_print(const T *a, FILE *stream_)
+mad_tpsa_print(const T *t, FILE *stream_)
 {
-  assert(a);
+  assert(t);
 
   if (!stream_)
     stream_ = stdout;
-  D *d = a->desc;
+  D *d = t->desc;
 
   // print header
   char name[11] = "-UNNAMED--";
@@ -97,7 +99,7 @@ mad_tpsa_print(const T *a, FILE *stream_)
   print_ords(d->nv,d->a,stream_);
   fprintf(stream_, "\n *********************************************");
 
-  if (!a->nz) {
+  if (!t->nz) {
     fprintf(stream_, "\n   ALL COMPONENTS ZERO \n");
     return;
   }
@@ -105,8 +107,8 @@ mad_tpsa_print(const T *a, FILE *stream_)
   fprintf(stream_, "\n    I  COEFFICIENT          ORDER   EXPONENTS");
   int idx = 1;
   for (int c = 0; c < d->nc; ++c)
-    if (bget(a->nz,d->ords[c]) && fabs(a->coef[c]) > 1e-10) {
-      fprintf(stream_, "\n%6d  %21.14lE%5hhu   ", idx, a->coef[c], d->ords[c]);
+    if (bget(t->nz,d->ords[c]) && fabs(t->coef[c]) > 1e-10) {
+      fprintf(stream_, "\n%6d  %21.14lE%5hhu   ", idx, t->coef[c], d->ords[c]);
       print_ords(d->nv, d->To[c], stream_);
       idx++;
     }
