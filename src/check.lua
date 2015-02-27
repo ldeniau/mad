@@ -166,7 +166,7 @@ local function check_poisson_with_berz(mod)
   local ba, bb, br, _ = factory.get_args("poisson")
   berz.poisson(ba, bb, br, n)
 
-  check_identical(mr, br, 1e-6, factory.To, "poisson")
+  check_identical(mr, br, 1e-1 ^ (16-factory.no), factory.To, "poisson","absolute")
 
   factory.setup(mod)  -- restore original
 end

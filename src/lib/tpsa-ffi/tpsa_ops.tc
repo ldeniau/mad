@@ -55,6 +55,7 @@ hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int o
   int l_size  = ia_size*ib_size, oc = oa+ob;
   (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
+  // oa > ob so longer loop is inside
   for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
   for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
@@ -79,6 +80,7 @@ hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int 
   int l_size  = ia_size*ib_size, oc = oa+ob;
   (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
+  // oa > ob so longer loop is inside
   for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
   for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
     int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
@@ -202,27 +204,83 @@ mad_tpsa_der(const T *a, int var, T *c)
   }
 
   D *d = a->desc;
-  int idx_der = -1, *pi = d->hpoly_To_idx;
 
   // prepare destination; minimal cleanup
-  c->mo = min_ord(a->mo-1, c->to, d->trunc);
-  c->nz = 0;
-  for (int i = 0; i < pi[c->mo+1]; ++i)
+  ord_t c_mo = min_ord(a->mo-1, c->to, d->trunc);
+  c->mo = c->nz = 0;
+  for (int i = 0; i < d->hpoly_To_idx[c_mo+1]; ++i)
     c->coef[i] = 0;
 
-  // TODO: go through c rather than a and use L matrix
+  // ord 0
+  num_t val = 0;
+  if ((val = mad_tpsa_geti(a,var))) {
+    c->coef[0] = val;
+    c->nz = bset(0,0);  // set ord 0
+  }
+
+  if (a->mo == 1)
+    return;
+
+  #define DER_USING_L_MATRIX
+  #ifdef DER_USING_L_MATRIX
+  // get source indexes from L[oc][1], oc = [1..c_mo]
+  const num_t *ca = a->coef;
+
+  // ord 1  -- triangular lc
+  ord_t oc = 1, ho = d->mo/2;
+  idx_t ia, *lc = d->L[oc*ho + 1], *pi = d->hpoly_To_idx;
+  if (bget(a->nz,2)) {
+    for (int ic = pi[oc]; ic < var; ++ic) {
+      ia = lc[ hpoly_idx_triang(ic-pi[oc], var-pi[1]) ];
+      if (ia >= 0) {
+        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
+        mad_tpsa_seti(c,ic,ca[ia]);
+      }
+    }
+    ia = lc[ hpoly_idx_triang(var-pi[1],var-pi[1]) ];
+    mad_tpsa_seti(c,var,2*ca[ia]);
+
+    for (int ic = var+1; ic < pi[oc+1]; ++ic) {
+      ia = lc[ hpoly_idx_triang(var-pi[1], ic-pi[oc]) ];
+      if (ia >= 0) {
+        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
+        mad_tpsa_seti(c,ic,ca[ia]);
+      }
+    }
+  }
+
+  // ords [2..c_mo]  -- rectangular lc
+  int ord_size = -1;
+  for (oc = 2; oc <= c_mo; ++oc)
+    if (bget(a->nz,oc+1)) {
+      lc = d->L[oc*ho + 1];
+      ord_size = pi[oc+1] - pi[oc];
+      for (int ic = pi[oc]; ic < pi[oc+1]; ++ic) {
+        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], ord_size) ];
+        if (ia >= 0) {
+          assert(pi[oc+1] <= ia && ia < pi[oc+2]);
+          mad_tpsa_seti(c,ic, d->To[ia][var-1] * ca[ia]);
+        }
+      }
+    }
+  #else  // not DER_USING_L_MATRIX
+
+  // #ifdef UNUSED
+  // TODO: switch between the two methods depending on NV ?
+  idx_t idx_der = -1, *pi = d->hpoly_To_idx;
   var--;    // monos are 0-indexed
   ord_t der_mono[d->nv];
-  for (int o = 1; o <= c->mo+1; ++o)
+  for (int o = 1; o <= c_mo+1; ++o)
     if (bget(a->nz,o))
       for (int m = pi[o]; m < pi[o+1]; ++m)
         if (a->coef[m] && d->To[m][var]) {
           mono_cpy(d->nv,d->To[m],der_mono);
           der_mono[var]--;
           idx_der = desc_get_idx(d, d->nv, der_mono);
-          c->coef[idx_der] = a->coef[m] * d->To[m][var];
-          c->nz = bset(c->nz, o-1);
+          mad_tpsa_seti(c,idx_der, a->coef[m] * d->To[m][var]);
         }
+  #endif // DER_USING_L_MATRIX
+  #undef DER_USING_L_MATRIX
 }
 
 void
@@ -394,6 +452,7 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
   for (int i = 0; i < 4; ++i)
     is[i] = mad_tpsa_newd(a->desc,&a->desc->trunc);
 
+  FILE *fout = fopen("tpsa.out", "w");
   for (int i = 1; i <= n; ++i) {
     mad_tpsa_der(a, 2*i - 1, is[0]);
     mad_tpsa_der(b, 2*i    , is[1]);
@@ -407,6 +466,8 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
     mad_tpsa_sub(is[3],is[2],is[0]);
     mad_tpsa_copy(is[0],is[3]);
   }
+
+  fclose(fout);
   mad_tpsa_copy(is[3], c);
   for (int i = 0; i < 4; ++i)
     mad_tpsa_del(is[i]);
