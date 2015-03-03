@@ -1,5 +1,5 @@
 local ffi = require('ffi')
-local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
+local setmetatable, tonumber, type, typeof = setmetatable, tonumber, type, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -84,7 +84,6 @@ local in_stream, out_stream = intPtr(5), intPtr(6)  -- stdin = unit 5, stdout = 
 local tpsa = { name = "berz", mono_t = intArr, _cnt = 0 }
 local MT   = { __index = tpsa }
 
-
 local function create(nv, no)
   local r = {}
   r.nv, r.no = nv, no
@@ -125,13 +124,15 @@ function tpsa.setCoeff(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
-  local cmon = intArr(#mon, mon)
+  local cmon = intArr(t.nv, mon)
+  for i=#mon,t.nv-1 do cmon[i] = 0 end
   berzLib.dapok_(t.idx, cmon, dblPtr(val))
 end
 
 function tpsa.getCoeff(t, mon)
   -- monomial = see setCoeff
-  local cmon, val = intArr(#mon, mon), dblPtr()
+  local cmon, val = intArr(t.nv, mon), dblPtr()
+  for i=#mon,t.nv-1 do cmon[i] = 0 end
   berzLib.dapek_(t.idx, cmon, val)
   return tonumber(val[0])
 end
@@ -377,6 +378,75 @@ end
 -- UTILS -----------------------------------------------------------------------
 function tpsa.global_truncation(ord)
   berzLib.danot_(intPtr(ord))
+end
+
+-- OVERLOADING -----------------------------------------------------------------
+function MT.__add(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    berzLib.dacad_(b.idx, dblPtr(a), c.idx)
+  elseif type(b) == "number" then
+    c = a:cpy()
+    berzLib.dacad_(a.idx, dblPtr(b), c.idx)
+  elseif type(a) == type(b) then
+    c = a:same()
+    berzLib.daadd_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__sub(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    berzLib.dasuc_(b.idx, dblPtr(a), c.idx)
+  elseif type(b) == "number" then
+    c = a:cpy()
+    berzLib.dacsu_(a.idx, dblPtr(b), c.idx)
+  elseif type(a) == type(b) then
+    c = a:same()
+    berzLib.dasub_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__mul(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:same()
+    berzLib.dacmu_(b.idx, dblPtr(a), c.idx)
+  elseif type(b) == "number" then
+    c = a:same()
+    berzLib.dacmu_(a.idx, dblPtr(b), c.idx)
+  elseif type(a) == type(b) then
+    c = a:same()
+    berzLib.damul_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__div(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:same()
+    berzLib.dadic_(b.idx, dblPtr(a), c.idx)
+  elseif type(b) == "number" then
+    c = a:same()
+    berzLib.dacdi_(a.idx, dblPtr(b), c.idx)
+  elseif type(a) == type(b) then
+    c = a:same()
+    berzLib.dadiv_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
 end
 
 -- interface for benchmarking --------------------------------------------------

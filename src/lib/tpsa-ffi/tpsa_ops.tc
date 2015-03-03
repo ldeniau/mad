@@ -400,7 +400,6 @@ mad_tpsa_divc(num_t v, const T *a, T *c)
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(v != 0.0);
 
   T *tmp = mad_tpsa_new(a);
   mad_tpsa_cdiv(v,a,tmp);

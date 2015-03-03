@@ -1,5 +1,5 @@
 local ffi = require('ffi')
-local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
+local setmetatable, tonumber, type, typeof = setmetatable, tonumber, type, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -33,9 +33,18 @@ ffi.cdef[[
   void ad_pok_  (const TVEC *idx, int *c, size_t *n, double *x);
   void ad_const_(const TVEC *idx, const double *r);  // sets the constant term
 
+  // binary operations
   void ad_mult_ (const TVEC *ivlhs, const TVEC *ivrhs, TVEC *ivdst);
   void ad_add_  (const TVEC *ivdst, const TVEC *ivsrc);
   void ad_sub_  (const TVEC *ivdst, const TVEC *ivsrc);
+  void ad_div_  (const TVEC *ilhs , const TVEC *irhs, TVEC *idst);
+
+  // binary with const
+  void ad_add_const_ (const TVEC *iv, double *c);
+  void ad_mult_const_(const TVEC *iv, double *c);
+  void ad_div_c_     (const TVEC *iv, const double *c);
+  void ad_c_div_     (const TVEC *iv, const double *c, TVEC *ivret);
+
   void ad_subst_(const TVEC *iv, const TVEC *ibv, const TNVND *nbv,
                  const TVEC *iret);
 
@@ -103,6 +112,8 @@ function tpsa.new(t)
   return create(t.nv[0], t.mo)
 end
 
+tpsa.same = tpsa.new
+
 function tpsa.setConst(t, val)
   yangLib.ad_const_(t.idx, dblPtr(val))
 end
@@ -145,13 +156,13 @@ function tpsa.mul(t1, t2, r)
 end
 
 function tpsa.add(t1, t2, t3)
-  yangLib.ad_add_ (t2.idx, t1.idx)
-  yangLib.ad_copy_(t2.idx, t3.idx)
+  yangLib.ad_copy_(t1.idx, t3.idx)
+  yangLib.ad_add_ (t3.idx, t2.idx)
 end
 
 function tpsa.sub(t1, t2, t3)
-  yangLib.ad_sub_ (t2.idx, t1.idx)
-  yangLib.ad_copy_(t2.idx, t3.idx)
+  yangLib.ad_copy_(t1.idx, t3.idx)
+  yangLib.ad_sub_ (t3.idx, t2.idx)
 end
 
 function tpsa.cct(a, b, c)
@@ -194,6 +205,78 @@ end
 function tpsa.print(t)
   yangLib.ad_print_(t.idx)
 end
+
+-- OVERLOADING -----------------------------------------------------------------
+function MT.__add(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    yangLib.ad_mult_const_(c.idx, dblPtr(-1))
+    yangLib.ad_add_const_(c.idx, dblPtr(a))
+  elseif type(b) == "number" then
+    c = a:cpy()
+    yangLib.ad_add_const_(c.idx, dblPtr(b))
+  elseif type(a) == type(b) then
+    c = a:same()
+    tpsa.sub(a, b, c)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__sub(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    yangLib.ad_mult_const_(c.idx, dblPtr(-1))
+    yangLib.ad_add_const_(c.idx, dblPtr(a))
+  elseif type(b) == "number" then
+    c = a:cpy()
+    yangLib.ad_add_const_(c.idx, dblPtr(-b))
+  elseif type(a) == type(b) then
+    c = a:same()
+    tpsa.sub(a, b, c)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__mul(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:cpy()
+    yangLib.ad_mult_const_(c.idx, dblPtr(a))
+  elseif type(b) == "number" then
+    c = a:cpy()
+    yangLib.ad_mult_const_(c.idx, dblPtr(b))
+  elseif type(a) == type(b) then
+    c = a:same()
+    yangLib.ad_mult_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
+function MT.__div(a,b)
+  local c
+  if type(a) == "number" then
+    c = b:same()
+    yangLib.ad_c_div_(b.idx, dblPtr(a), c.idx)
+  elseif type(b) == "number" then
+    c = a:cpy()
+    yangLib.ad_div_c_(c.idx, dblPtr(b))
+  elseif type(a) == type(b) then
+    c = a:same()
+    yangLib.ad_div_(a.idx, b.idx, c.idx)
+  else
+    error("Incompatible operands")
+  end
+  return c
+end
+
 
 -- interface for benchmarking --------------------------------------------------
 

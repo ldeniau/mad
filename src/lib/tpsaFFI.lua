@@ -312,8 +312,9 @@ end
 function MT.__sub(a, b)
   local c
   if type(a) == "number" then
-    c = b:cpy()
-    clib.mad_tpsa_seti(c,0,a-c.coef[0])
+    c = b:same()
+    clib.mad_tpsa_scale(-1, b, c)
+    clib.mad_tpsa_seti(c,0,c.coef[0]+a)
   elseif type(b) == "number" then
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,c.coef[0]-b)
@@ -329,11 +330,11 @@ end
 function MT.__mul(a,b)
   local c
   if type(a) == "number" then
-    c = b:cpy()
-    clib.mad_tpsa_scale(a,c,c)
+    c = b:same()
+    clib.mad_tpsa_scale(a,b,c)
   elseif type(b) == "number" then
-    c = a:cpy()
-    clib.mad_tpsa_scale(b,c,c)
+    c = a:same()
+    clib.mad_tpsa_scale(b,a,c)
   elseif ffi.istype(a,b) then
     c = a:same()
     clib.mad_tpsa_mul(a,b,c)
@@ -347,10 +348,10 @@ function MT.__div(a,b)
   local c
   if type(a) == "number" then
     c = b:same()
-    clib.mad_tpsa_cdiv(a,b,c)
+    clib.mad_tpsa_divc(a,b,c)
   elseif type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_divc(b,a,c)
+    clib.mad_tpsa_cdiv(b,a,c)
   elseif ffi.istype(a,b) then
     c = a:same()
     clib.mad_tpsa_div(a,b,c)

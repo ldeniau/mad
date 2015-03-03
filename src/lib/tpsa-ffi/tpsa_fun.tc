@@ -48,7 +48,7 @@ mad_tpsa_inv(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] != 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = 1.0 / a0;
   for (int o = 1; o <= mo; ++o)
@@ -68,7 +68,7 @@ mad_tpsa_sqrt(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] > 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = sqrt(a0);
   for (int o = 1; o <= mo; ++o)
@@ -88,7 +88,7 @@ mad_tpsa_isrt(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] > 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = 1.0/sqrt(a0);
   for (int o = 1; o <= mo; ++o)
@@ -107,7 +107,7 @@ mad_tpsa_exp(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = exp(a0);
   for (int o = 1; o <= mo; ++o)
@@ -127,7 +127,7 @@ mad_tpsa_log(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] > 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = log(a0);
   expansion_coef[1] = 1/a0;
@@ -147,7 +147,7 @@ mad_tpsa_sin(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = sin(a0);
   expansion_coef[1] = cos(a0);
@@ -167,7 +167,7 @@ mad_tpsa_cos(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] =  cos(a0);
   expansion_coef[1] = -sin(a0);
@@ -186,7 +186,7 @@ mad_tpsa_sinh(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = sinh(a0);
   expansion_coef[1] = cosh(a0);
@@ -207,7 +207,7 @@ mad_tpsa_sincos(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = 0.5 * sin(2*a0);
   expansion_coef[1] =       cos(2*a0);
@@ -226,7 +226,7 @@ mad_tpsa_cosh(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1], a0 = a->coef[0];
   expansion_coef[0] = cosh(a0);
   expansion_coef[1] = sinh(a0);
@@ -247,7 +247,7 @@ mad_tpsa_sirx(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] == 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1];
   expansion_coef[0] = 1.0;
   for (int o = 1; o <= mo; ++o)
@@ -267,7 +267,7 @@ mad_tpsa_corx(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] == 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1];
   expansion_coef[0] = 1.0;
   for (int o = 1; o <= mo; ++o)
@@ -287,7 +287,7 @@ mad_tpsa_sidx(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] == 0);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   num_t expansion_coef[mo+1];
   expansion_coef[0] = 1.0;
   expansion_coef[1] = 0.0;
@@ -311,7 +311,7 @@ mad_tpsa_tan(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(cos(a->coef[0])) > 1e-10);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
@@ -337,7 +337,7 @@ mad_tpsa_cot(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(sin(a->coef[0])) > 1e-10);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
@@ -363,7 +363,7 @@ mad_tpsa_asin(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(a->coef[0]) < 1);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -389,7 +389,7 @@ mad_tpsa_acos(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(a->coef[0]) < 1);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -414,7 +414,7 @@ mad_tpsa_atan(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -438,7 +438,7 @@ mad_tpsa_acot(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -462,7 +462,7 @@ mad_tpsa_tanh(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
@@ -488,7 +488,7 @@ mad_tpsa_coth(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(sinh(a->coef[0])) > 1e-10);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
@@ -513,7 +513,7 @@ mad_tpsa_asinh(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -539,7 +539,7 @@ mad_tpsa_acosh(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(a->coef[0] > 1);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -565,7 +565,7 @@ mad_tpsa_atanh(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(a->coef[0]) < 1);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -590,7 +590,7 @@ mad_tpsa_acoth(const T *a, T *c)
   ensure(a->desc == c->desc);
   ensure(fabs(a->coef[0]) > 1);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
@@ -615,7 +615,7 @@ mad_tpsa_erf(const T *a, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  ord_t mo = min_ord(a->mo,c->to,a->desc->trunc);
+  ord_t mo = min_ord2(c->to,a->desc->trunc);
   ensure(mo <= 5);
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
