@@ -87,6 +87,8 @@ Operations
 
 Peek & Poke
 -----------
+void mad_tpsa_setConst(T *t, num_t c)
+    -- set t as constant c
 
 A) higher level: based on monomial
 ----------------------------------

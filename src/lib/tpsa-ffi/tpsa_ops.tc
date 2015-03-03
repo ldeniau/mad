@@ -196,13 +196,6 @@ mad_tpsa_der(const T *a, int var, T *c)
   assert(a && c);
   ensure(var > 0 && var <= a->desc->nv);
 
-  if (a->mo == 1) {
-    c->mo = 0;
-    if ((c->coef[0] = a->coef[var])) c->nz = bset(c->nz, 0);
-    else                             c->nz = 0;
-    return;
-  }
-
   D *d = a->desc;
 
   // prepare destination; minimal cleanup

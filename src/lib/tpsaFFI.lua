@@ -46,6 +46,7 @@ ffi.cdef[[
   void  mad_tpsa_clean   (      T *t);
   void  mad_tpsa_del     (      T *t);
 
+  void  mad_tpsa_setConst(      T *t,        num_t v);
   void  mad_tpsa_seti    (      T *t, int i, num_t v);
   void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t v);
 
@@ -198,7 +199,7 @@ function M.setCoeff(t, m, v)
 end
 
 function M.setConst(t, v)
-  clib.mad_tpsa_seti(t, 0, v)
+  clib.mad_tpsa_setConst(t, v)
 end
 
 function M.getCoeff(t, m)

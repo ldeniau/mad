@@ -21,6 +21,7 @@ void  mad_tpsa_copy    (const T *src, T *dst);
 void  mad_tpsa_clean   (      T *t);
 void  mad_tpsa_del     (      T *t);
 
+void  mad_tpsa_setConst(      T *t,        num_t v);
 void  mad_tpsa_seti    (      T *t, int i, num_t v);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
 

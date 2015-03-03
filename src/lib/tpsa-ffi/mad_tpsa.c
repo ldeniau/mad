@@ -183,6 +183,15 @@ mad_tpsa_seti(T *t, int i, num_t v)
   t->coef[i] = v;
 }
 
+void
+mad_tpsa_setConst(T *t, num_t v)
+{
+  assert(t);
+  t->mo = 0;
+  t->nz = 1;
+  t->coef[0] = v;
+}
+
 int
 mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
 {

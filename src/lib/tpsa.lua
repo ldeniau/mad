@@ -8,7 +8,6 @@ local packages = {
 
 
 local M = {}
-local MT = { __index = M }
 
 local tpsa
 local curr_loaded = {}
@@ -20,7 +19,7 @@ function M.set_package(name)
   end
   tpsa = require(folder_of_this_file .. packages[name])
   curr_loaded =  { name=name }
-  setmetatable(M, getmetatable(tpsa))
+  setmetatable(M, { __index = tpsa })
 end
 
 function M.init(nv,no,var_ords,knb_ords,mvo,mko)
@@ -32,6 +31,7 @@ function M.init(nv,no,var_ords,knb_ords,mvo,mko)
       for i=1,nv do var_ords[i] = no end
     end
     curr_loaded.t = tpsa.init(var_ords, no, knb_ords, mvo, mko)
+    curr_loaded.ords = var_ords
   else
     curr_loaded.t = tpsa.init(nv,no)
   end
