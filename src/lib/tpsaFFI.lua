@@ -179,7 +179,7 @@ function M:new(trunc_ord)
 
   local nc = clib.mad_tpsa_desc_nc(self.desc, ord_ptr(trunc_ord))
   local t  = tpsa_t(nc)  -- automatically initialized with 0s
-  t.to = trunc_ord
+  t.to     = trunc_ord
   t.desc   = self.desc
   return t
 end

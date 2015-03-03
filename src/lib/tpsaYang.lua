@@ -165,7 +165,7 @@ function tpsa.sub(t1, t2, t3)
   yangLib.ad_sub_ (t3.idx, t2.idx)
 end
 
-function tpsa.cct(a, b, c)
+function tpsa.compose(a, b, c)
   -- a, b, c should be compatible arrays of TPSAs, starting from 1
 
   local bIdxs, bSize = uintArr(#b), uintPtr(#b)

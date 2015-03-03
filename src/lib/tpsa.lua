@@ -31,15 +31,30 @@ function M.init(nv,no,var_ords,knb_ords,mvo,mko)
       for i=1,nv do var_ords[i] = no end
     end
     curr_loaded.t = tpsa.init(var_ords, no, knb_ords, mvo, mko)
-    curr_loaded.ords = var_ords
+    curr_loaded.var_ords = var_ords
   else
     curr_loaded.t = tpsa.init(nv,no)
   end
+  curr_loaded.nv = nv
   return curr_loaded.t
 end
 
 function M.new()
   return curr_loaded.t:same()
+end
+
+function M.get_map()
+  local map = {}
+  if curr_loaded.name == "mad" then
+    for i=1,curr_loaded.nv do
+      map[i] = curr_loaded.t:new(curr_loaded.var_ords[i])
+    end
+  else
+    for i=1,curr_loaded.nv do
+      map[i] = curr_loaded.t:new()
+    end
+  end
+  return map
 end
 
 
