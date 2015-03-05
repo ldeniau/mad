@@ -1,7 +1,9 @@
 local tpsa = require "lib.tpsa"
 
 local nv, no = 6, 3
-local var_ords = { 2, 2, 2, 2, 0, 0, 1, 1 }
+--local var_ords = { 2, 2, 2, 2, 0, 0 }  -- EXCEPTION
+local var_ords = { 2, 2, 2, 2, 1, 1 }
+local knb_ords = { 1,1 }
 
 --[=[
 
@@ -18,4 +20,8 @@ tpsa.init(nv,vo,nk,ko) -> {ko ... nk times}
 
 ]=]
 
-tpsa.init(nv,no,var_ords,knb_ords,mvo,mko)
+tpsa.set_package("ffi")
+--tpsa.init(nv,no)
+--tpsa.init(nv,no,#knb_ords,2)
+local t = tpsa.init(var_ords)
+t:print()

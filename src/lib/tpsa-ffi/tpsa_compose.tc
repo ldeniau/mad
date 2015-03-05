@@ -167,7 +167,7 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 
   struct compose_ctx ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
                              .da=da, .mb=mb, .ords=ords  };
-  ctx.knb_coef = mad_tpsa_newd(da,&da->mko);
+  ctx.knb_coef = mad_tpsa_newd(da,&da->ko);
   ctx.tmp      = mad_tpsa_newd(da,&da->trunc);
 
   // do composition from root of tree, ord 0

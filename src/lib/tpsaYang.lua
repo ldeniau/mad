@@ -88,7 +88,7 @@ end
 
 -- should be called before any other tpsa function
 function tpsa.init(nv, no)
-  local errStr = "Invalid Yang tpsa initializer. Use tpsa.init(nv, no) or tpsa({var_names}, no)"
+  local errStr = "Invalid Yang tpsa initializer. Use tpsa.init(nv, no) or tpsa({vars}, no)"
 
   if     type(nv) == "table"  then nv = #nv
   elseif type(nv) ~= "number" then error(errStr) end

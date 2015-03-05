@@ -14,7 +14,7 @@ struct tpsa_desc {
   int      nv, nc,    // number of vars, number of coeff
            knb_start, // index in `a` where the knobs start
            size;      // bytes used by current desc
-  ord_t    mo,mvo,mko,// maximum orders: overall, canonical vars, knobs
+  ord_t    mo, ko,    // maximum orders: for vars, for knobs
            trunc,     // truncation order for operations; always <= mo
           *a,         // alphas (max order for each var)
           *monos,     // 'matrix' storing the monomials (sorted by ord)
@@ -76,8 +76,8 @@ desc_mono_isvalid(const D *d, int n, const ord_t m[n])
   assert(d && m);
   int ks = d->knb_start;
   return    ( n <= d->nv )
-         && (         mono_sum(n ,m) <= d->mo)
-         && (n > ks ? mono_sum(ks,m) <= d->mvo && mono_sum(n-ks,m+ks) <= d->mko
+         && (         mono_sum(n   ,m)    <= d->mo)
+         && (n > ks ? mono_sum(n-ks,m+ks) <= d->ko
                     : 1)
          && mono_leq(n,m,d->a);
 }
@@ -649,26 +649,27 @@ static D  *Ds[TPSA_DESC_NUM];
 static int last_desc_idx = -1;
 
 static inline D*
-desc_init(ord_t mo, int nv, const ord_t ords[nv], int ks, ord_t mvo, ord_t mko)
+desc_init(int nv, const ord_t ords[nv], ord_t vo, int ks, ord_t ko)
 {
 #ifdef TRACE
-  printf("desc_ini nv=%d mo=%d ks=%d mvo=%d mko=%d var_ords=",nv,mo,ks,mvo,mko);
+  printf("desc_ini nv=%d ks=%d vo=%d ko=%d var_ords=",nv,ks,vo,ko);
   mono_print(nv,ords);
   printf("\n");
 #endif
 
   assert(ords);
-  ensure(mvo <= mo && mko <= mo);
-  for (int v =  0; v < ks; ++v) ensure(ords[v] > 0 && ords[v] <= mvo);
-  for (int v = ks; v < nv; ++v) ensure(ords[v] > 0 && ords[v] <= mko);
+  ensure(vo >= ko);
+  for (int v =  0; v < ks; ++v) ensure(ords[v] <= vo);
+  for (int v = ks; v < nv; ++v) ensure(ords[v] <= ko);
+  ensure(mono_sum(ks    ,ords  ) >= vo);
+  ensure(mono_sum(nv-ks,ords+ks) >= ko);
 
   D *d = malloc(sizeof *d);
   assert(d);
   d->nv    = nv;
-  d->mo    = mo;
-  d->mvo   = mvo;
-  d->mko   = mko;
-  d->trunc = mo;
+  d->mo    = vo;
+  d->ko    = ko;
+  d->trunc = vo;
   d->knb_start = ks;
   d->size = sizeof(d);
 
@@ -715,7 +716,7 @@ desc_equ(const D *d1, const D *d2)
 {
   assert(d1 && d2);
   return    d1->nv == d2->nv && d1->knb_start == d2->knb_start
-         && d1->mo == d2->mo && d1->mvo == d2->mvo && d1->mko == d2->mko
+         && d1->mo == d2->mo && d1->ko == d2->ko
          && mono_equ(d1->nv, d1->a, d2->a);
 }
 
@@ -730,10 +731,10 @@ desc_search(const D *d)
 }
 
 static inline D*
-get_desc(ord_t mo, int nv, const ord_t ords[nv], int ks, ord_t mvo, ord_t mko)
+get_desc(int nv, const ord_t ords[nv], ord_t vo, int ks, ord_t ko)
 {
   assert(ords);
-  D *d = desc_init(mo,nv,ords,ks,mvo,mko);
+  D *d = desc_init(nv,ords,vo,ks,ko);
   D *existing_desc = desc_search(d);
   if (existing_desc) {
     free(d->a);
@@ -747,22 +748,22 @@ get_desc(ord_t mo, int nv, const ord_t ords[nv], int ks, ord_t mvo, ord_t mko)
 // --- Public Functions -------------------------------------------------------
 
 D*
-mad_tpsa_desc_new(ord_t mvo, int nv, const ord_t var_ords[nv])
+mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], ord_t vo)
 {
   assert(var_ords);
-  return get_desc(mvo,nv,var_ords,nv,mvo,0);
+  return get_desc(nv,var_ords,nv,vo,0);
 }
 
 D*
-mad_tpsa_desc_newk(ord_t mo, int nv, const ord_t var_ords[nv], ord_t mvo,
-                             int nk, const ord_t knb_ords[nk], ord_t mko)
+mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], ord_t vo,
+                   int nk, const ord_t knb_ords[nk], ord_t ko)
 {
   assert(var_ords && knb_ords);
   ord_t ords[nv+nk];
   int io = 0;
   for (int i = 0; i < nv; ++i) ords[io++] = var_ords[i];
   for (int i = 0; i < nk; ++i) ords[io++] = knb_ords[i];
-  return get_desc(mo, nv+nk, ords, nv, mvo, mko);
+  return get_desc(nv+nk, ords, vo, nv, ko);
 }
 
 void

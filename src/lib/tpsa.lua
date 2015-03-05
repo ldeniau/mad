@@ -1,8 +1,9 @@
 local ffi = require"ffi"
 
 local packages = {
-  mad  = "tpsaFFI",
-  berz = "tpsaPTC",
+  ffi  = "tpsaFFI",
+  mad  = "..tpsa",
+  berz = "tpsaBerz",
   yang = "tpsaYang"
 }
 
@@ -15,27 +16,44 @@ local curr_loaded = {}
 local folder_of_this_file = (...):match("(.-)[^%.]+$")
 function M.set_package(name)
   if not packages[name] then
-    error("Unrecognized package title: " .. name .. ". Use one of: mad, yang, berz")
+    error("Unrecognized package title: " .. name .. ". Use one of: ffi, mad, yang, berz")
   end
-  tpsa = require(folder_of_this_file .. packages[name])
+
+  if name == "mad" then
+    tpsa = require("mad.tpsa")
+  else
+    tpsa = require(folder_of_this_file .. packages[name])
+  end
+
   curr_loaded =  { name=name }
   setmetatable(M, { __index = tpsa })
 end
 
-function M.init(nv,no,var_ords,knb_ords,mvo,mko)
+function M.init(vars,no,knobs,ko)  -- same as tpsaFFI.init
   if not curr_loaded.name then
     error("Set a package first")
-  elseif curr_loaded.name == "mad" then
-    if not var_ords then
-      var_ords = {}
-      for i=1,nv do var_ords[i] = no end
+  elseif curr_loaded.name == "ffi" then
+    curr_loaded.t = tpsa.init(vars,no,knobs,ko)
+
+  elseif curr_loaded.name =="mad" then
+    if type(vars) == "number" then
+      print("WARNING: mad package needs different initializer. Adjusting...")
+      local nv = #vars
+      vars = {}
+      for i=1,nv do vars[i] = no end
     end
-    curr_loaded.t = tpsa.init(var_ords, no, knb_ords, mvo, mko)
-    curr_loaded.var_ords = var_ords
+    curr_loaded.t = tpsa.init(vars,vars,no)
+
   else
-    curr_loaded.t = tpsa.init(nv,no)
+    if type(vars) == "table" or knobs or ko then
+      print("WARNING: Currently loaded package [" .. curr_loaded.name ..
+            "] does not support generalised initialisation. Adjusting constructor...")
+      vars = #vars
+    end
+
+    curr_loaded.t = tpsa.init(vars,no)
   end
-  curr_loaded.nv = nv
+  curr_loaded.vars = vars
   return curr_loaded.t
 end
 
@@ -45,13 +63,13 @@ end
 
 function M.get_map()
   local map = {}
-  if curr_loaded.name == "mad" then
-    for i=1,curr_loaded.nv do
-      map[i] = curr_loaded.t:new(curr_loaded.var_ords[i])
+  if curr_loaded.name == "mad" and type(curr_loaded.vars) == "table" then
+    for i=1,#curr_loaded.vars do
+      map[i] = curr_loaded.t:new(curr_loaded.vars[i])
     end
   else
-    for i=1,curr_loaded.nv do
-      map[i] = curr_loaded.t:new()
+    for i=1,curr_loaded.vars do
+      map[i] = curr_loaded.t:same()
     end
   end
   return map

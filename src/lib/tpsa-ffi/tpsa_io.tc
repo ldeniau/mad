@@ -30,25 +30,32 @@ read_header(T *t, FILE *stream)
   ensure(fgets(buf, 50, stream));
 
   struct tpsa_desc *d = t->desc;
-  ord_t mo, ords[d->nv], mvo, mko;
+  ord_t mo, ords[d->nv], ko;
   int rk, nv, read_cnt = 0;
 
   // 2nd line
-  read_cnt = fscanf(stream, "%*11c, NO =%5hhu, NV =%5d, RNK =%5d", &mo, &nv, &rk);
+  read_cnt = fscanf(stream, "%*11c, NO =%5hhu, NV =%5d, RNK =%5d, KO =%5hhu\n ORDS: ",
+                    &mo, &nv, &rk, &ko);
   ensure(fgets(buf, 50, stream));
   if (read_cnt < 2) {
-    printf("ERROR WHILE READING TPSA: Could not read (NO,NV)\n");
+    printf("ERROR WHILE READING TPSA HEADER: Could not read (NO,NV)\n");
     return;
   }
 
   // 3rd line
-  if (read_cnt == 3) {             // GTPSA -- process 3rd line
-    ensure(fscanf(stream, "%*11c MVO =%5hhu,MKO =%5hhu, ORDS:", &mvo, &mko) == 2);
+  if (read_cnt == 4) {             // GTPSA -- process 3rd line
+    read_cnt = fscanf(stream, " ORDS: ");
+    printf("GTPSA read_cnt=%d\n", read_cnt);
+    ensure(!feof(stream) && !ferror(stream));
     read_ords(nv,ords,stream);
   }
-  else {                           // TPSA  -- ignore  3rd line; default values
-    rk = nv; mvo = mo; mko = 0;
+  else if (read_cnt == 2) {        // TPSA  -- ignore  3rd line; default values
+    rk = nv; ko = 0;
     mono_set(nv,ords,mo);
+  }
+  else {
+    printf("ERROR WHILE READING TPSA HEADER: Could not read KO\n");
+    return;
   }
   ensure(fgets(buf, 50, stream));  // finish 3rd line
 
@@ -56,7 +63,7 @@ read_header(T *t, FILE *stream)
   ensure(fgets(buf, 50, stream));
   ensure(fgets(buf, 50, stream));
 
-  ensure(d == get_desc(mo,nv,ords,rk,mvo,mko));  // consistency check
+  ensure(d == get_desc(nv,ords,mo,rk,ko));  // consistency check
 }
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
@@ -94,10 +101,10 @@ mad_tpsa_print(const T *t, FILE *stream_)
 
   // print header
   char name[11] = "-UNNAMED--";
-  fprintf(stream_, "\n %10s, NO =%5d, NV =%5d, RNK =%5d", name,d->mo,d->nv,d->knb_start);
-  fprintf(stream_, "\n %10s MVO =%5hhu,MKO =%5hhu, ORDS:", "",d->mvo, d->mko);
+  fprintf(stream_, "\n %10s, NO =%5d, NV =%5d, RNK =%5d, KO =%5hhu\n ORDS: ",
+          name,d->mo,d->nv,d->knb_start,d->ko);
   print_ords(d->nv,d->a,stream_);
-  fprintf(stream_, "\n *********************************************");
+  fprintf(stream_, "\n *******************************************************");
 
   if (!t->nz) {
     fprintf(stream_, "\n   ALL COMPONENTS ZERO \n");

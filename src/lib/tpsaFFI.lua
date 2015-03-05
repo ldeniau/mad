@@ -141,7 +141,7 @@ local function arr_max(a)
   for i=2,#a do
     if a[i] > m then m = a[i] end
   end
-  return m
+  return m or 0
 end
 
 local function arr_sum(a)
@@ -161,14 +161,14 @@ local function get_bounded(val, array, var_name, array_name)
   local s = arr_sum(array)
   local warn_str = "Warning: %s. Constructor has been adjusted"
   if val > s then
-    val = s        -- put the maximum available
-    local lower_bound_msg = "%s < max(%s)"
-    print(warn_str:format(lower_bound_msg:format(var_name, array_name)))
+    local upper_bound_msg = "%s > sum(%s)"
+    val = s        -- limit to the maximum available
+    print(warn_str:format(upper_bound_msg:format(var_name, array_name)))
 
   elseif val < m then
     val = m        -- put the least necessary
-    local upper_bound_msg = "%s > sum(%s)"
-    print(warn_str:format(upper_bound_msg:format(var_name, array_name)))
+    local lower_bound_msg = "%s < max(%s)"
+    print(warn_str:format(lower_bound_msg:format(var_name, array_name)))
   end
   return val
 end
@@ -243,7 +243,7 @@ function M.init(...)
     elseif type(arg[1]) == "number" and type(arg[2]) == "number" and
            type(arg[3]) == "number" and type(arg[4]) == "number" then
       vars , vo = arr_val(arg[1],arg[2]), arg[2]
-      knobs, vo = arr_val(arg[3],arg[4]), arg[4]
+      knobs, ko = arr_val(arg[3],arg[4]), arg[4]
     else
       error(err_str:format(constructor_as_string[5] .. " or " .. constructor_as_string[7]))
     end
@@ -251,8 +251,9 @@ function M.init(...)
     error("Too many arguments to TPSA constructor. Usage: " .. constructor_as_string[0])
   end
 
-  vo = get_bounded(vo,vars,"vo","vars")
-  ko = get_bounded(vo,vars,"ko","knobs")
+  knobs = knobs or {}
+  vo = get_bounded(vo,vars ,"vo","vars")
+  ko = get_bounded(ko,knobs,"ko","knobs")
   if vo < ko then error("vo < ko") end
 
   local nv, nk = #vars, #knobs
