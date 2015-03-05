@@ -238,11 +238,12 @@ contains
     !frs if(eps.le.zero) eps=c_1d_38
     !      if(EPS.le.zero) eps=c_1d_90
     !frs epsmac=c_1d_7
-    C_%STABLE_DA=.true.
-    write(*,*), "here"
-    c_%watch_user=.false.
+    ! initialize flags cipri.tom 03.03.15
+    c_%CHECK_STABLE => CHECK_STABLE
+    c_%WATCH_USER => WATCH_USER
+    c_%stable_da => stable_da
+    !
     if((.not.C_%STABLE_DA)) then
-       write(*,*), "here"
        if(c_%watch_user) then
           write(6,*) "big problem in dabnew ", sqrt(crash)
        endif
@@ -1266,18 +1267,19 @@ contains
     return
   end subroutine daeps
   !
-  subroutine dapek(ina,jv,cjj)
+  subroutine dapek(ina,jj,cjj)
     implicit none
     !     ****************************
     !
     !     THIS SUBROUTINE DETERMINES THE COEFFICIENT OF THE ARRAY
     !     OF EXPONENTS JJ AND RETURNS IT IN CJJ
     !
+    !     JJ SHOULD HAVE LENGTH NV
     !-----------------------------------------------------------------------------
     !
     integer i,ibase,ic,ic1,ic2,icu,icz,ii_1,illa,ilma,ina,inoa,inva,ipek,ipoa,&
          iu,iz,jj1,mchk,ipause,mypauses
-    integer,dimension(:)::jv     ! 2002.12.4
+    ! integer,dimension(:)::jv     ! 2002.12.4 -- removed 2015.02.05
     integer,dimension(lnv)::jj
     real(dp) cjj
     !
@@ -1287,10 +1289,12 @@ contains
        endif
        return
     endif
-    jj=0
-    do i=1,size(jv)
-       jj(i)=jv(i)
-    enddo
+    ! cipri.tom 05.03.15 -- size(jv) incompatible with array passed from lua
+    ! jj=0
+    ! do i=1,size(jv)
+    !    jj(i)=jv(i)
+    ! enddo
+    !
     call dainf(ina,inoa,inva,ipoa,ilma,illa)
     if((.not.C_%STABLE_DA)) then
        if(c_%watch_user) then
@@ -1395,18 +1399,19 @@ contains
     !
   end subroutine dapek
   !
-  subroutine dapok(ina,jv,cjj)
+  subroutine dapok(ina,jj,cjj)
     implicit none
     !     ****************************
     !
     !     THIS SUBROUTINE SETS THE COEFFICIENT OF THE ARRAY
     !     OF EXPONENTS JJ TO THE VALUE CJJ
     !
+    !     JJ SHOULD HAVE LENGTH NV
     !-----------------------------------------------------------------------------
     !
     integer i,ic,ic1,ic2,icu,icz,ii,illa,ilma,ina,inoa,inva,ipoa,ipok,&
          iu,iz,jj1,mchk,ipause,mypauses
-    integer,dimension(:)::jv     ! 2002.12.4
+    ! integer,dimension(:)::jv     ! 2002.12.4 -- removed 2015.03.05
     integer,dimension(lnv)::jj
     real(dp) cjj
     !
@@ -1416,10 +1421,11 @@ contains
        endif
        return
     endif
-    jj=0
-    do i=1,size(jv)
-       jj(i)=jv(i)
-    enddo
+    ! cipri.tom 05.03.15 -- size(jv) incompatible with array passed from lua
+    ! jj=0
+    ! do i=1,size(jv)
+    !    jj(i)=jv(i)
+    ! enddo
     !
     call dainf(ina,inoa,inva,ipoa,ilma,illa)
     if((.not.C_%STABLE_DA)) then
@@ -4494,7 +4500,7 @@ contains
     if(inva.eq.0) then
        write(iunit,'(A)') '    I  VALUE  '
        do i = ipoa,ipoa+illa-1
-          write(iunit,'(I6,2X,G20.13)') i-ipoa, cc(i)
+          write(iunit,'(I6,2X,G21.14)') i-ipoa, cc(i)
        enddo
     elseif(nomax.eq.1) then
        if(illa.ne.0) write(iunit,'(A)') '    I  COEFFICIENT          ORDER   EXPONENTS'
@@ -4508,8 +4514,10 @@ contains
              j(i-1)=1
              ioa=1
           endif
-          write(iunit,'(I6,2X,G20.13,I5,4X,18(2i2,1X))') iout,cc(ipoa+i-1),ioa,(j(iii),iii=1,nvmax)
-          write(iunit,*) cc(ipoa+i-1)
+          if(abs(cc(ipoa+i-1)).gt.eps) then
+            write(iunit,'(I6,2X,G21.14,I5,4X,18(2i2,1X))') iout,cc(ipoa+i-1),ioa,(j(iii),iii=1,nvmax)
+          ! write(iunit,*) cc(ipoa+i-1)
+          endif
        enddo
     else
        if(illa.ne.0) write(iunit,'(A)') '    I  COEFFICIENT          ORDER   EXPONENTS'
@@ -4522,9 +4530,9 @@ contains
              if(abs(cc(ii)).gt.eps) then
                 !ETIENNE
                 iout = iout+1
-                write(iunit,'(I6,2X,G20.13,I5,4X,18(2i2,1X))') iout,cc(ii),ioa,(j(iii),iii=1,nvmax)
+                write(iunit,'(I6,2X,G21.14,I5,4X,18(2i2,1X))') iout,cc(ii),ioa,(j(iii),iii=1,nvmax)
                 !ETIENNE
-                write(iunit,*) cc(ii)
+                !write(iunit,*) cc(ii)
              endif
              !ETIENNE
              !
@@ -4791,11 +4799,11 @@ contains
     !
 10  continue
     iin = iin + 1
-    read(iunit,'(I6,2X,G20.13,I5,4X,18(2i2,1X))') ii,c,io,(j(i),i=1,inva)
+    read(iunit,'(I6,2X,G21.14,I5,4X,18(2i2,1X))') ii,c,io,(j(i),i=1,inva)
     !
     if(ii.eq.0) goto 20
     !ETIENNE
-    read(iunit,*) c
+    ! read(iunit,*) c ! removed 2015.03.05 cipri.tom removed from write, where it was extra
     !ETIENNE
     if(ii.ne.iin) then
        iwarin = 1

@@ -2,7 +2,7 @@ local ffi = require"ffi"
 
 local packages = {
   mad  = "tpsaFFI",
-  berz = "tpsaBerz",
+  berz = "tpsaPTC",
   yang = "tpsaYang"
 }
 
