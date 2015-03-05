@@ -138,35 +138,115 @@ local function arr_max(a)
   return m
 end
 
+local function arr_sum(a)
+  local s = a[1]
+  for i=2,#a do
+    s = s + a[i]
+  end
+  return s
+end
+
+local function get_bounded(val, array, lower_msg, upper_msg)
+  local s = arr_sum(array)
+  local m = arr_max(array)
+  local warn_str = "Warning: %s. Constructor has been adjusted"
+  if val > s then
+    val = s        -- put the maximum available
+    print(warn_str:format(upper_msg))
+  elseif val < m then
+    val = m        -- put the least necessary
+    print(warn_str:format(lower_msg))
+  end
+  return val
+end
+
+
+
 -- functions -------------------------------------------------------------------
 
--- constructors of tpsa:
---   tpsa({var_orders}, max_order)
---   tpsa({var_orders}, max_order,
---        {knb_orders}, max_var_order, max_knb_order)
-function M.init(var_ords, mo, knb_ords, mvo, mko)
-  local err, knobs = false, false
-  if not is_list(var_ords) or type(mo) ~= 'number' then err = 1
-  elseif knb_ords and not is_list(knb_ords)        then err = 2
-  else  -- no problem, continue building
-    -- get a descriptor
-    local d
-    local nv, vo = #var_ords, mono_t(#var_ords, var_ords)
-    if knb_ords then
-      local nk, ko = #knb_ords, mono_t(#knb_ords, knb_ords)
-      mvo = mvo or arr_max(var_ords)
-      mko = mko or arr_max(knb_ords)
-      d = clib.mad_tpsa_desc_newk(mo, nv, vo, mvo, nk, ko, mko)
-    else
-      d = clib.mad_tpsa_desc_new(mo, nv, vo)
-    end
+-- tpsa.init({vars} [, vo [, {knobs} [, ko]]])
+local constructor_as_string = {
+  [1] = "tpsa.init({vars})",
+  [2] = "tpsa.init({vars}, vo)",
+  [3] = "tpsa.init({vars}, {knobs})",
+  [4] = "tpsa.init({vars}, vo, {knobs})",
+  [5] = "tpsa.init({vars}, vo, {knobs}, ko)",
 
-    -- return a template
-    local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(mo))
-    local t  = tpsa_t(nc)  -- automatically initialized with 0s
-    t.desc   = d
-    t.to     = mo
-    return t
+  [6] = "tpsa.init(nv,no)",
+  [7] = "tpsa.init(nv,no,nk,ko)"
+
+}
+
+function M.init(vars, vo, knobs, ko)
+  local err_str  = "Invalid constructor. Did you mean: %s ?"
+  local type = type
+  local nv, nk
+  -- shortcuts
+  if type(vars) == "number" and type(vo) == "number" then
+    nv = vars
+    vars = mono_t(nv,vo)
+
+    -- case 7: tpsa.init(nv,no,nk,ko)
+    if knobs and type(knobs) == "number" and type(ko) == "number" then
+      nk = knobs
+      knobs = mono_t(nk,knobs)
+
+    -- case 6: tpsa.init(nv,no)
+    elseif not knobs and not ko then
+      nk = 0
+      knobs = ord_ptr()
+
+    else error(err_str:format(constructor_as_string[7])) end
+
+  -- explicit vars [cases 1-5]
+  elseif type(vars) == "table" then
+    nv = #vars
+    vars = mono_t(nv,vars)
+
+    -- case 3: tpsa.init({vars}, {knobs})
+    if type(vo) == "table" and not knobs and not ko then
+      knobs = mono_t(#vo,vo)
+      ko = arr_max(vo)
+      vo = arr_max(vars)
+
+    -- cases 2,4,5: tpsa.init({vars}, vo, ...)
+    elseif type(vo) == "number" then
+      vo = get_bounded(vo,vars,"vo < max(vars)","vo > sum(vars)")
+
+      -- case 2: tpsa.init({vars}, vo)
+      if not knobs then
+        nk = 0
+        knobs = ord_ptr()
+      elseif type(knobs) ~= "table" then
+        error(err_str:format(constructor_as_string[4]))
+
+      -- cases 4,5: tpsa.init({vars}, vo, {knobs}, ...)
+      else
+        -- case 4: tpsa.init({vars}, vo, {knobs})
+        if not ko then
+          ko = arr_max(knobs)
+        elseif type(ko) ~= "number" then
+          error(err_str:format(constructor_as_string[5]))
+        else
+          ko = get_bounded(ko,knobs,"ko < max(knobs)","ko > sum(knobs)")
+        end
+        nk = #knobs
+        knobs = mono_t(nk,knobs)
+      end
+    else
+      error(err_str:format(constructor_as_string[2]))
+    end
+  else
+    error(err_str:format(constructor_as_string[1]))
+  end
+  assert(
+
+  -- return a template
+  local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(mo))
+  local t  = tpsa_t(nc)  -- automatically initialized with 0s
+  t.desc   = d
+  t.to     = mo
+  return t
   end
 
   error ("Error " .. tostring(err) .. ": invalid tpsa constructor argument. Use:\n"..
