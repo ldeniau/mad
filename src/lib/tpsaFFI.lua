@@ -32,9 +32,9 @@ ffi.cdef[[
 
   // --- --- DESC --------------------------------------------------------------
 
-  D*    mad_tpsa_desc_new  (ord_t mo, int nv, const ord_t var_ords[]);
-  D*    mad_tpsa_desc_newk (ord_t mo, int nv, const ord_t var_ords[], ord_t mvo, // with knobs
-                                      int nk, const ord_t knb_ords[], ord_t mko);
+  D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t vo);
+  D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t vo, // with knobs
+                            int nk, const ord_t knb_ords[], ord_t ko);
   void  mad_tpsa_desc_del  (      D *d);
 
   int   mad_tpsa_desc_nc   (const D *d, const ord_t *ord_);
@@ -130,6 +130,12 @@ local MT   = { __index = M }
 ffi.metatype("struct tpsa", MT)
 
 -- helpers ---------------------------------------------------------------------
+local function arr_val(l,v)
+  local t = {}
+  for i=1,l do t[i] = v end
+  return t
+end
+
 local function arr_max(a)
   local m = a[1]
   for i=2,#a do
@@ -146,16 +152,23 @@ local function arr_sum(a)
   return s
 end
 
-local function get_bounded(val, array, lower_msg, upper_msg)
-  local s = arr_sum(array)
+local function get_bounded(val, array, var_name, array_name)
   local m = arr_max(array)
+  if not val then
+    return m
+  end
+
+  local s = arr_sum(array)
   local warn_str = "Warning: %s. Constructor has been adjusted"
   if val > s then
     val = s        -- put the maximum available
-    print(warn_str:format(upper_msg))
+    local lower_bound_msg = "%s < max(%s)"
+    print(warn_str:format(lower_bound_msg:format(var_name, array_name)))
+
   elseif val < m then
     val = m        -- put the least necessary
-    print(warn_str:format(lower_msg))
+    local upper_bound_msg = "%s > sum(%s)"
+    print(warn_str:format(upper_bound_msg:format(var_name, array_name)))
   end
   return val
 end
@@ -164,94 +177,94 @@ end
 
 -- functions -------------------------------------------------------------------
 
--- tpsa.init({vars} [, vo [, {knobs} [, ko]]])
 local constructor_as_string = {
-  [1] = "tpsa.init({vars})",
-  [2] = "tpsa.init({vars}, vo)",
-  [3] = "tpsa.init({vars}, {knobs})",
-  [4] = "tpsa.init({vars}, vo, {knobs})",
-  [5] = "tpsa.init({vars}, vo, {knobs}, ko)",
+  [0] = [==[
+    tpsa.init({vars} [, vo [, {knobs} [, ko]]])
+    tpsa.init(nv, no [, nk [,ko]])
+  ]==],                                       -- ALWAYS: sum(vars) >= vo >= ko
+  [1] = "tpsa.init({vars})",                  -- vo = max(vars)
+  [2] = "tpsa.init({vars}, vo)",              -- vo in [max(vars), sum(vars)]
+  [3] = "tpsa.init({vars}, {knobs})",         -- vo = max(vars); ko = max(knobs)
+  [4] = "tpsa.init({vars}, vo, {knobs})",     -- [2] for vo; ko = max(knobs)
+  [5] = "tpsa.init({vars}, vo, {knobs}, ko)", -- [2] for vo; ko in [max(knobs), sum(knobs)]
 
-  [6] = "tpsa.init(nv,no)",
-  [7] = "tpsa.init(nv,no,nk,ko)"
+  [6] = "tpsa.init(nv,no)",                   -- vars = {no,no,..,no}, nv times
+  [7] = "tpsa.init(nv,no,nk,ko)"              -- [6] and [1] for vo; same for ko
 
 }
 
-function M.init(vars, vo, knobs, ko)
+function M.init(...)
   local err_str  = "Invalid constructor. Did you mean: %s ?"
   local type = type
-  local nv, nk
-  -- shortcuts
-  if type(vars) == "number" and type(vo) == "number" then
-    nv = vars
-    vars = mono_t(nv,vo)
+  local vars, knobs, vo, ko
 
-    -- case 7: tpsa.init(nv,no,nk,ko)
-    if knobs and type(knobs) == "number" and type(ko) == "number" then
-      nk = knobs
-      knobs = mono_t(nk,knobs)
+  local arg = {...}
+  -- case 1: tpsa.init({vars})
+  if #arg == 1 then
+    if type(arg[1]) ~= "table" then error(err_str:format(constructor_as_string[1])) end
+    vars = arg[1]
 
+  elseif #arg == 2 then
     -- case 6: tpsa.init(nv,no)
-    elseif not knobs and not ko then
-      nk = 0
-      knobs = ord_ptr()
-
-    else error(err_str:format(constructor_as_string[7])) end
-
-  -- explicit vars [cases 1-5]
-  elseif type(vars) == "table" then
-    nv = #vars
-    vars = mono_t(nv,vars)
-
-    -- case 3: tpsa.init({vars}, {knobs})
-    if type(vo) == "table" and not knobs and not ko then
-      knobs = mono_t(#vo,vo)
-      ko = arr_max(vo)
-      vo = arr_max(vars)
-
-    -- cases 2,4,5: tpsa.init({vars}, vo, ...)
-    elseif type(vo) == "number" then
-      vo = get_bounded(vo,vars,"vo < max(vars)","vo > sum(vars)")
+    if type(arg[1]) == "number" then
+      if type(arg[2]) ~= "number" then error(err_str:format(constructor_as_string[6])) end
+      vars = arr_val(arg[1],arg[2])
+    elseif type(arg[1]) == "table" then
+      vars  = arg[1]
 
       -- case 2: tpsa.init({vars}, vo)
-      if not knobs then
-        nk = 0
-        knobs = ord_ptr()
-      elseif type(knobs) ~= "table" then
-        error(err_str:format(constructor_as_string[4]))
+      if type(arg[2]) == "number" then
+        vo = get_bounded(arg[2],vars,"vo < max(vars)","vo > sum(vars)")
 
-      -- cases 4,5: tpsa.init({vars}, vo, {knobs}, ...)
+      -- case 3: tpsa.init({vars}, {knobs})
+      elseif type(arg[2]) == "table" then
+        knobs = arg[2]
       else
-        -- case 4: tpsa.init({vars}, vo, {knobs})
-        if not ko then
-          ko = arr_max(knobs)
-        elseif type(ko) ~= "number" then
-          error(err_str:format(constructor_as_string[5]))
-        else
-          ko = get_bounded(ko,knobs,"ko < max(knobs)","ko > sum(knobs)")
-        end
-        nk = #knobs
-        knobs = mono_t(nk,knobs)
+        error(err_str:format(constructor_as_string[2] .. " or " .. constructor_as_string[3]))
       end
+    end
+
+  elseif #arg == 3 then
+    -- case 4: tpsa.init({vars}, vo, {knobs})
+    if type(arg[1]) ~= "table" or type(arg[2]) ~= "number" or type(arg[3]) ~= "table" then
+        error(err_str:format(constructor_as_string[4]))
+    end
+    vars, knobs = arg[1], arg[3]
+    vo = get_bounded(arg[2],vars,"vo < max(vars)","vo > sum(vars)")
+
+  elseif #arg == 4 then
+    -- case 5: tpsa.init({vars}, vo, {knobs}, ko)
+    if type(arg[1]) == "table" and type(arg[2]) == "number" and
+       type(arg[3]) == "table" and type(arg[4]) == "number" then
+      vars , vo = arg[1], arg[2]
+      knobs, ko = arg[3], get_bounded(arg[4],arg[3], "ko < max(knobs)","ko > sum(knobs)")
+
+    -- case 7: tpsa.init(nv,no,nk,ko)
+    elseif type(arg[1]) == "number" and type(arg[2]) == "number" and
+           type(arg[3]) == "number" and type(arg[4]) == "number" then
+      vars , vo = arr_val(arg[1],arg[2]), arg[2]
+      knobs, vo = arr_val(arg[3],arg[4]), arg[4]
     else
-      error(err_str:format(constructor_as_string[2]))
+      error(err_str:format(constructor_as_string[5] .. " or " .. constructor_as_string[7]))
     end
   else
-    error(err_str:format(constructor_as_string[1]))
+    error("Too many arguments to TPSA constructor. Usage: " .. constructor_as_string[0])
   end
-  assert(
+
+  vo = get_bounded(vo,vars,"vo","vars")
+  ko = get_bounded(vo,vars,"ko","knobs")
+  if vo < ko then error("vo < ko") end
+
+  local nv, nk = #vars, #knobs
+  vars, knobs = mono_t(nv, vars), mono_t(nk, knobs)
+  local d = clib.mad_tpsa_desc_newk(nv,vars,vo, nk,knobs,ko)
 
   -- return a template
-  local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(mo))
+  local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(vo))
   local t  = tpsa_t(nc)  -- automatically initialized with 0s
   t.desc   = d
-  t.to     = mo
+  t.to     = vo
   return t
-  end
-
-  error ("Error " .. tostring(err) .. ": invalid tpsa constructor argument. Use:\n"..
-         "\ttpsa({var_orders}, max_order) OR\n"..
-         "\ttpsa({var_orders}, max_order, {knb_orders}, max_var_order, max_knb_order)\n")
 end
 
 function M:new(trunc_ord)
