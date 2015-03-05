@@ -11,6 +11,9 @@ c_dabnew.o:                 c_dabnew.f90                b_da_arrays_all.o
 	gfortran -c -O3  -fPIC $< -o $@
 
 clean:
+	rm -f c_dabnew.o libdabnew.so
+
+clean-all:
 	rm -f *.o *.so *.mod
 
 

@@ -72,7 +72,7 @@ end
 tpsa.same = tpsa.new
 
 function tpsa.destroy(t)
-  berzLib.dadal(t.idx, one_i)
+  berzLib.dadal1(t.idx)
 end
 
 function tpsa.setConst(t, val)
