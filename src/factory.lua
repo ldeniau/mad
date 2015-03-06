@@ -241,9 +241,9 @@ function M.get_args(fct_name)
 
   local args = {
     getm     = function() return make_To_ffi(),      M.nv      end,
-    getCoeff = function() return M.To                          end,
+    get      = function() return M.To                          end,
     setm     = function() return make_To_ffi(), val, M.nv      end,
-    setCoeff = function() return M.To         , val            end,
+    set      = function() return M.To         , val            end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
@@ -252,9 +252,9 @@ function M.get_args(fct_name)
     add      = args_bin_op,
     sub      = args_bin_op,
 
-    subst    = args_subst,
+    subst       = args_subst,
     compose_raw = args_compose, -- returns size_a, ma, size_b, mb, size_c, mc, refs
-    minv_raw = args_minv,       -- returns size_a, ma,             size_c, mc, refs
+    minv_raw    = args_minv,    -- returns size_a, ma,             size_c, mc, refs
     pminv_raw   = args_pminv,   -- returns size_a, ma,             size_c, mc, selected_rows, refs
 
     fun      = args_fun,        -- returns t_in, t_out; t_in filled, t_out empty
@@ -298,7 +298,7 @@ function M.print(file, t)
   fprintf(file, "\nCOEFFICIENT                \tEXPONENTS\n")
 
   for m=0,#To do
-    local v = t:getCoeff(To[m])
+    local v = t:get(To[m])
     if v ~= 0 then
       fprintf(file, "%20.10E\t", v)
       mono_print(To[m], file)
@@ -332,7 +332,7 @@ function M.ord(ord, startVal, inc)
   for o=1,#ord do
     if ord[o] > M.no then error("Specified ord is greater than no") end
     for m=To.ps[ord[o]],To.pe[ord[o]] do
-      t:setCoeff(To[m], startVal)
+      t:set(To[m], startVal)
       startVal = startVal + inc
     end
   end
@@ -353,7 +353,7 @@ function M.rand(seed_)
   local rand = math.random
   local t = M.new_instance()
   for m=0,#M.To do
-    t:setCoeff(M.To[m], rand(0,1) + rand())  -- doubles in (0,2) interval
+    t:set(M.To[m], rand(0,1) + rand())  -- doubles in (0,2) interval
   end
   return t
 end

@@ -9,7 +9,7 @@ struct tpsa_desc {
   int      nv, nc,    // number of vars, number of coeff
            knb_start, // index in `a` where the knobs start
            size;      // bytes used by current desc
-  ord_t    mo,mvo,mko,// maximum orders: overall, canonical vars, knobs
+  ord_t    mo, ko,    // maximum orders: for vars, for knobs
            trunc,     // truncation order for operations
           *a,         // alphas (max order for each var)
           *monos,     // 'matrix' storing the monomials (sorted by ord)
@@ -60,16 +60,16 @@ Constructor
 Descriptor
 ----------
 a) without knobs:
-D*    mad_tpsa_desc_new  (ord_t mo, int nv, const ord_t var_ords[nv])
+D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[nv], ord_t vo)
     -- var_ords[i] <= mo
 
 b) with knobs:
-D*    mad_tpsa_desc_newk (ord_t mo, int nv, const ord_t var_ords[nv], ord_t mvo,
-                                    int nk, const ord_t knb_ords[nk], ord_t mko);
-    -- mko <= mvo <= mo
-    -- var_ords[i] <= mvo
-    -- knb_ords[i] <= mko
-    -- EXCEPTIONS: ({3,3}, 5, {1,1,1}, 3, 2) but ({3,3}, 5, {1,1,1}, 5, 2) works
+D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t vo,
+                          int nk, const ord_t knb_ords[nk], ord_t ko);
+    -- vo in [max(var_ords), sum(var_ords)]
+    -- ko in [max(knb_ords), sum(knb_ords)]
+    -- vo >= ko
+    -- EXCEPTIONS: var_ords= { 2, 2, 2, 2, 0, 0 }
 
 TPSA
 ----

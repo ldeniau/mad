@@ -18,9 +18,9 @@ typedef struct tpsa_t tpsa_t;
   void tpsa_copy(tpsa_t* src, tpsa_t* dest);
 
   void tpsa_setConst(tpsa_t*, double val);
-  void tpsa_setCoeff(tpsa_t*, const unsigned char* mon,
+  void tpsa_set(tpsa_t*, const unsigned char* mon,
                      const int monLen, const double val);
-  double tpsa_getCoeff(const tpsa_t*, const unsigned char* mon,
+  double tpsa_get(const tpsa_t*, const unsigned char* mon,
                        const int monLen);
 
   void tpsa_add(tpsa_t* op1, tpsa_t* op2, tpsa_t* res);
@@ -51,18 +51,18 @@ function tpsa.setConst(t, value)
 end
 
 
-function tpsa.setCoeff(t, monomial, coeff)
+function tpsa.set(t, monomial, coeff)
   -- monomial = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
   local exps = uchrPtr(#monomial, monomial)    -- build the mon
-  mapLib.tpsa_setCoeff(t, exps, #monomial, coeff)
+  mapLib.tpsa_set(t, exps, #monomial, coeff)
 end
 
 
-function tpsa.getCoeff(t, monomial)
-  -- monomial = see setCoeff
-  return mapLib.tpsa_getCoeff(t, uchrPtr(#monomial, monomial), #monomial)
+function tpsa.get(t, monomial)
+  -- monomial = see set
+  return mapLib.tpsa_get(t, uchrPtr(#monomial, monomial), #monomial)
 end
 
 

@@ -40,15 +40,15 @@ local function check_coeff()
 
   in_vals = factory.mono_val(#factory.To, 0)  -- initially all should be 0
   in_vals[0] = 0
-  check_coeff_consistency(nil,        "getm"    , in_vals, -1)
-  check_coeff_consistency(nil,        "getCoeff", in_vals, -2)
+  check_coeff_consistency(nil,    "getm", in_vals, -1)
+  check_coeff_consistency(nil,    "get" , in_vals, -2)
 
   in_vals = factory.mono_val(#factory.To)     -- randoms
   in_vals[0] = 1 + rand()
-  check_coeff_consistency("setCoeff", "getCoeff", in_vals,  0)
-  check_coeff_consistency("setCoeff", "getm"    , in_vals,  1)
-  check_coeff_consistency("setm"    , "getCoeff", in_vals,  2)
-  check_coeff_consistency("setm"    , "getm"    , in_vals,  3)
+  check_coeff_consistency("set" , "get" , in_vals,  0)
+  check_coeff_consistency("set" , "getm", in_vals,  1)
+  check_coeff_consistency("setm", "get" , in_vals,  2)
+  check_coeff_consistency("setm", "getm", in_vals,  3)
 end
 
 local function identical_value(v1, v2, eps, name1, name2, val_name, abs_or_rel)
@@ -70,7 +70,7 @@ end
 
 local function check_identical(t1, t2, eps, To, fct_name, abs_or_rel)
   for m=0,#To do
-    local v1, v2 = t1:getCoeff(To[m]), t2:getCoeff(To[m])
+    local v1, v2 = t1:get(To[m]), t2:get(To[m])
 
     if not identical_value(v1, v2, eps, t1.name, t2.name, "coeff", abs_or_rel) then
       printf("\n mono: ")
@@ -286,8 +286,8 @@ local function check_fun_with_berz(mod)
     check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
 
     funcs = {'acosh', 'acoth'}
-    t_in:setCoeff(factory.To[0], 1.1)
-    b_in:setCoeff(factory.To[0], 1.1)
+    t_in:set(factory.To[0], 1.1)
+    b_in:set(factory.To[0], 1.1)
     check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
   end
 

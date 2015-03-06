@@ -47,7 +47,7 @@ void tpsa_setConst(tpsa_t* p, double val) {
  *
  *  Monomial should be an array of bytes with the exponents of each var  \
  *  e.g {1, 0, 2, 2} means x * z^2 * t^2           */
-void tpsa_setCoeff(tpsa_t* p, const unsigned char* mon, const int monLen,
+void tpsa_set(tpsa_t* p, const unsigned char* mon, const int monLen,
                    const double val) {
     vector<int> t(p->vars.size());    // make it the right size
     copy(mon, mon + monLen, t.begin());
@@ -56,8 +56,8 @@ void tpsa_setCoeff(tpsa_t* p, const unsigned char* mon, const int monLen,
 
 
 /** Returns the coefficient of the specified monomial from the tpsa
- *  See setCoeff for definition of mon */
-double tpsa_getCoeff(const tpsa_t* p, const unsigned char* mon, const int monLen) {
+ *  See set for definition of mon */
+double tpsa_get(const tpsa_t* p, const unsigned char* mon, const int monLen) {
     vector<int> t(p->vars.size());    // make it the right size
     copy(mon, mon + monLen, t.begin());
     auto val = p->terms.find(t);

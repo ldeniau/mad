@@ -79,7 +79,7 @@ function tpsa.setConst(t, val)
   berzLib.dacon(t.idx, dblPtr(val))
 end
 
-function tpsa.setCoeff(t, mon, val)
+function tpsa.set(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
@@ -88,8 +88,8 @@ function tpsa.setCoeff(t, mon, val)
   berzLib.dapok(t.idx, cmon, dblPtr(val))
 end
 
-function tpsa.getCoeff(t, mon)
-  -- monomial = see setCoeff
+function tpsa.get(t, mon)
+  -- monomial = see set
   local cmon, val = intArr(t.nv, mon), dblPtr()
   for i=#mon,t.nv-1 do cmon[i] = 0 end
   berzLib.dapek(t.idx, cmon, val)

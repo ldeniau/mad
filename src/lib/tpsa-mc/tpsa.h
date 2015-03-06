@@ -14,11 +14,11 @@ extern "C" {
     tpsa_t* tpsa_create(int nv, int mo);
     void tpsa_destroy(tpsa_t*);
     void tpsa_copy(tpsa_t* src, tpsa_t* dest);
-    
+
     void tpsa_setConst(tpsa_t*, double val);
-    void tpsa_setCoeff(tpsa_t*, const unsigned char* mon,
+    void tpsa_set(tpsa_t*, const unsigned char* mon,
                        const int monLen, const double val);
-    double tpsa_getCoeff(const tpsa_t*, const unsigned char* mon,
+    double tpsa_get(const tpsa_t*, const unsigned char* mon,
                          const int monLen);
 
     void tpsa_add(tpsa_t* op1, tpsa_t* op2, tpsa_t* res);

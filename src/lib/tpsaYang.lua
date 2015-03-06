@@ -118,15 +118,15 @@ function tpsa.setConst(t, val)
   yangLib.ad_const_(t.idx, dblPtr(val))
 end
 
-function tpsa.setCoeff(t, mon, val)
+function tpsa.set(t, mon, val)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
   local indexes, size = intArr(#mon, mon), sizetPtr(#mon)
   yangLib.ad_pok_(t.idx, indexes, size, dblPtr(val))
 end
 
-function tpsa.getCoeff(t, mon)
-  -- mon = see setCoeff
+function tpsa.get(t, mon)
+  -- mon = see set
   local indexes, size, val = intArr(#mon, mon), sizetPtr(#mon), dblPtr()
   yangLib.ad_pek_(t.idx, indexes, size, val)
 

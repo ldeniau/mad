@@ -118,11 +118,11 @@ function M.fill_ord1(t, nv, startVal, inc)
   if not startVal then startVal = 1.1 end
   if not inc      then inc      = 0.1 end
   local m = mono_val(nv, 0)
-  t:setCoeff(m, startVal)
+  t:set(m, startVal)
   for i=0,nv-1 do
     m[i] = 1
     startVal = startVal + inc
-    t:setCoeff(m, startVal)
+    t:set(m, startVal)
     m[i] = 0
   end
 end
@@ -186,7 +186,7 @@ end
 
 function M.same_coeff(t1, t2, eps, To)
   for m=0,#To do
-    local vt, vb = t1:getCoeff(To[m]), t2:getCoeff(To[m])
+    local vt, vb = t1:get(To[m]), t2:get(To[m])
 
     -- get the min for computing relative error
     local minV = min(vb,vt) == 0 and 1 or min(vb,vt)
@@ -219,7 +219,7 @@ function M.print(t)
   fprintf(f, "\nCOEFFICIENT                \tEXPONENTS\n")
 
   for m=0,#To do
-    local v = t:getCoeff(To[m])
+    local v = t:get(To[m])
     if v ~= 0 then
       fprintf(f, "%20.10E\t", v)
       mono_print(To[m], f)

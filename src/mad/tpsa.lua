@@ -4,7 +4,7 @@ local M = { help={}, test={} }
 
 M.help.self = [[
 NAME
-  mad.tspa -- Truncated Power Series Algebra
+  mad.tpsa -- Truncated Power Series Algebra
 
 SYNOPSIS
 
@@ -638,7 +638,7 @@ function M.cpy(src,dst)
   return dst
 end
 
-function M.getCoeff(t, m)
+function M.get(t, m)
   if type(m) == "number" then
     return t[m] or 0
   else
@@ -646,7 +646,7 @@ function M.getCoeff(t, m)
   end
 end
 
-function M.setCoeff(t, m, v)
+function M.set(t, m, v)
   local D = t._T.D
   local o, i = D.To.o, D.index(m)
   if o[i] >= 2 then error("NYI. Poke only order 1 and use mul") end
@@ -662,7 +662,7 @@ end
 
 function M.setConst(t, v)
   local m = mono_val(#t._T.V, 0)
-  t:setCoeff(m, v)
+  t:set(m, v)
 end
 
 function M.mul(a, b, c)
