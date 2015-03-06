@@ -53,7 +53,7 @@ ffi.cdef[[
   num_t mad_tpsa_geti    (const T *t, int i);
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
 
-  int   mad_tpsa_idx     (const T *t, int n, const ord_t m[]);
+  int   mad_tpsa_get_idx (const T *t, int n, const ord_t m[]);
 
   num_t mad_tpsa_abs     (const T *t);
   num_t mad_tpsa_abs2    (const T *t);
@@ -295,15 +295,15 @@ function M.setConst(t, v)
   clib.mad_tpsa_setConst(t, v)
 end
 
-function M.get_mono_idx(t, m)
-  return clib.mad_tpsa_idx(t,mono_t(#m,m))
+function M.get_idx(t,m)
+  return clib.mad_tpsa_get_idx(t,#m,mono_t(#m,m))
 end
 
-function M.getIndex(t,i)
+function M.get_at(t,i)
   return clib.mad_tpsa_geti(t,i)
 end
 
-function M.setIndex(t,i,v)
+function M.set_at(t,i,v)
   clib.mad_tpsa_seti(t,i,v)
 end
 
