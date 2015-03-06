@@ -282,7 +282,7 @@ function M.setup(mod, nv, no)
     M.mod = mod
     math.randomseed(M.seed)
  end
-  M.t = M.mod.init(mono_val(M.nv,M.no), M.no)
+  M.t = M.mod.init(M.nv,M.no)
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------

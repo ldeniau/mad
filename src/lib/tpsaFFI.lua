@@ -163,12 +163,12 @@ local function get_bounded(val, array, var_name, array_name)
   if val > s then
     local upper_bound_msg = "%s > sum(%s)"
     val = s        -- limit to the maximum available
-    print(warn_str:format(upper_bound_msg:format(var_name, array_name)))
+    io.stderr:write(warn_str:format(upper_bound_msg:format(var_name, array_name)))
 
   elseif val < m then
     val = m        -- put the least necessary
     local lower_bound_msg = "%s < max(%s)"
-    print(warn_str:format(lower_bound_msg:format(var_name, array_name)))
+    io.stderr:write(warn_str:format(lower_bound_msg:format(var_name, array_name)))
   end
   return val
 end

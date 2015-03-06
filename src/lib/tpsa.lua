@@ -16,7 +16,8 @@ local curr_loaded = {}
 local folder_of_this_file = (...):match("(.-)[^%.]+$")
 function M.set_package(name)
   if not packages[name] then
-    error("Unrecognized package title: " .. name .. ". Use one of: ffi, mad, yang, berz")
+    error("Unrecognized package title: " .. (name or "[missing title]") ..
+          ". Use one of: ffi, mad, yang, berz")
   end
 
   if name == "mad" then
@@ -37,7 +38,7 @@ function M.init(vars,no,knobs,ko)  -- same as tpsaFFI.init
 
   elseif curr_loaded.name =="mad" then
     if type(vars) == "number" then
-      print("WARNING: mad package needs different initializer. Adjusting...")
+      io.stderr:write("WARNING: mad package needs different initializer. Adjusting...\n")
       local nv = #vars
       vars = {}
       for i=1,nv do vars[i] = no end
@@ -46,8 +47,8 @@ function M.init(vars,no,knobs,ko)  -- same as tpsaFFI.init
 
   else
     if type(vars) == "table" or knobs or ko then
-      print("WARNING: Currently loaded package [" .. curr_loaded.name ..
-            "] does not support generalised initialisation. Adjusting constructor...")
+      io.stderr:write("WARNING: Currently loaded package [" .. curr_loaded.name ..
+            "] does not support generalised initialisation. Adjusting...\n")
       vars = #vars
     end
 
