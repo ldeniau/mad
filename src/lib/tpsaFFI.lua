@@ -214,7 +214,7 @@ function M.init(...)
 
       -- case 2: tpsa.init({vars}, vo)
       if type(arg[2]) == "number" then
-        vo = get_bounded(arg[2],vars,"vo < max(vars)","vo > sum(vars)")
+        vo = arg[2]
 
       -- case 3: tpsa.init({vars}, {knobs})
       elseif type(arg[2]) == "table" then
@@ -229,15 +229,14 @@ function M.init(...)
     if type(arg[1]) ~= "table" or type(arg[2]) ~= "number" or type(arg[3]) ~= "table" then
         error(err_str:format(constructor_as_string[4]))
     end
-    vars, knobs = arg[1], arg[3]
-    vo = get_bounded(arg[2],vars,"vo < max(vars)","vo > sum(vars)")
+    vars, vo, knobs = arg[1], arg[2], arg[3]
 
   elseif #arg == 4 then
     -- case 5: tpsa.init({vars}, vo, {knobs}, ko)
     if type(arg[1]) == "table" and type(arg[2]) == "number" and
        type(arg[3]) == "table" and type(arg[4]) == "number" then
       vars , vo = arg[1], arg[2]
-      knobs, ko = arg[3], get_bounded(arg[4],arg[3], "ko < max(knobs)","ko > sum(knobs)")
+      knobs, ko = arg[3], arg[4]
 
     -- case 7: tpsa.init(nv,no,nk,ko)
     elseif type(arg[1]) == "number" and type(arg[2]) == "number" and

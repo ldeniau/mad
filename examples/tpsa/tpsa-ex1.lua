@@ -21,7 +21,10 @@ tpsa.init(nv,vo,nk,ko) -> {ko ... nk times}
 ]=]
 
 tpsa.set_package("ffi")
---tpsa.init(nv,no)
---tpsa.init(nv,no,#knb_ords,2)
-local t = tpsa.init(var_ords)
+local t
+--t = tpsa.init(nv,no)
+--t = tpsa.init(nv,no,#knb_ords,2)
+--t = tpsa.init(var_ords, 3)
+--t = tpsa.init(var_ords, 3, {2,1,1})
+t = tpsa.init(var_ords, 3, {1,1,1}, 4)
 t:print()
