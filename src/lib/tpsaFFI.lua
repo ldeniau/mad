@@ -344,7 +344,9 @@ function M.rand(a, low, high, seed)
 end
 
 function M.der(src, var, dst)
+  dst = dst or src:same()
   clib.mad_tpsa_der(src, var, dst)
+  return dst
 end
 
 function M.scale(val, src, dst)
@@ -379,13 +381,15 @@ function M.div(a, b, c)
   clib.mad_tpsa_div(a,b,c)
 end
 
-function M.pow(a, p)
-  local r = a:same()
-  clib.mad_tpsa_pow(a, r, p)
-  return r
-end
+-- unused yet
+--function M.pow(a, p)
+--  local r = a:same()
+--  clib.mad_tpsa_pow(a, r, p)
+--  return r
+--end
 
 function M.poisson(a, b, c, n)
+  c = c or a:same()
   clib.mad_tpsa_poisson(a, b, c, n)
 end
 

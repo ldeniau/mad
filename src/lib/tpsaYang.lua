@@ -147,7 +147,9 @@ end
 
 
 function tpsa.der(src, var, dst)
+  dst = dst or src:same()
   yangLib.ad_derivative_(src.idx, uintPtr(var-1), dst.idx)
+  return dst
 end
 
 function tpsa.mul(t1, t2, r)
@@ -196,7 +198,6 @@ end
 function tpsa.sqrt(a, c)
   yangLib.ad_sqrt_(a.idx, c.idx)
 end
-
 
 function tpsa.destroy(t)
   yangLib.ad_free_(t.idx)

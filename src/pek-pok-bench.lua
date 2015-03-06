@@ -15,7 +15,7 @@ local function timeit(fun, nl, t, ...)
 end
 
 local function bench(mod_name, fct_name, filename)
-  local NV, NO, NL = factory.read_params(fct_name,filename)
+  local NV, NO, NL = factory.read_params(filename)
 
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
   printf(header_fmt)

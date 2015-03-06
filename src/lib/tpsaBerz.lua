@@ -326,7 +326,7 @@ end
 
 function tpsa.der(src, var, dst)
   -- derivate `src` with respect to variable `var`, storing the result in `dst`
-  if not dst then dst = src:new() end
+  dst = dst or src:same()
   berzLib.dader_(intPtr(var), src.idx, dst.idx)
   return dst
 end
