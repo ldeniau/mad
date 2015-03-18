@@ -73,9 +73,10 @@ ffi.cdef[[
   void  mad_tpsa_log     (const T *a, T *c);
   void  mad_tpsa_sin     (const T *a, T *c);
   void  mad_tpsa_cos     (const T *a, T *c);
-  void  mad_tpsa_sincos  (const T *a, T *c);
   void  mad_tpsa_sinh    (const T *a, T *c);
   void  mad_tpsa_cosh    (const T *a, T *c);
+  void  mad_tpsa_sincos  (const T *a, T *s, T *c);
+  void  mad_tpsa_sincosh (const T *a, T *s, T *c);
   void  mad_tpsa_sirx    (const T *a, T *c);
   void  mad_tpsa_corx    (const T *a, T *c);
   void  mad_tpsa_sidx    (const T *a, T *c);
@@ -539,8 +540,12 @@ function M.cosh(a, c)
   clib.mad_tpsa_cosh(a,c)
 end
 
-function M.sincos(a, c)
-  clib.mad_tpsa_sincos(a,c)
+function M.sincos(a, s, c)
+  clib.mad_tpsa_sincos(a,s,c)
+end
+
+function M.sincosh(a, s, c)
+  clib.mad_tpsa_sincosh(a,s,c)
 end
 
 function M.sirx(a, c)

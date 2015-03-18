@@ -113,7 +113,8 @@ mad_tpsa_clean(T *t)
 {
   assert(t);
   // do a hard clean; TODO: check if setting nz to 0 suffices
-  for (int i = 0; i < t->desc->hpoly_To_idx[t->to+1]; ++i) t->coef[i] = 0;
+  for (int i = 0; i < t->desc->hpoly_To_idx[t->to+1]; ++i)
+    t->coef[i] = 0;
   t->nz = t->mo = 0;
 }
 

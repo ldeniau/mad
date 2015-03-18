@@ -13,11 +13,10 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
 #ifdef TRACE
   printf("fixed_point\n");
 #endif
-  assert(a && c);
+  assert(a && c && expansion_coef);
   ensure(a->desc == c->desc);
 
-  mad_tpsa_clean(c);
-  mad_tpsa_seti(c,0,expansion_coef[0]);
+  mad_tpsa_setConst(c,expansion_coef[0]);
 
   T *pow = mad_tpsa_new(c),
     *acp = mad_tpsa_new(c),
@@ -30,6 +29,31 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
     mad_tpsa_mul(acp,pow,tmp);
     mad_tpsa_copy(tmp,pow);
     mad_tpsa_axpb(expansion_coef[i],pow,c,c);
+  }
+
+  mad_tpsa_del(pow);
+  mad_tpsa_del(acp);
+  mad_tpsa_del(tmp);
+}
+
+static inline void
+sincos_fixed_point(const T *a, T *s, T *c, ord_t smo, num_t sin_coef[smo+1], ord_t cmo, num_t cos_coef[cmo+1])
+{
+  assert(a && s && c && sin_coef && cos_coef);
+  T *pow = mad_tpsa_new(a),
+    *acp = mad_tpsa_new(a),
+    *tmp = mad_tpsa_new(a);
+  mad_tpsa_setConst(pow,1.0);
+  mad_tpsa_copy(a,acp);
+  mad_tpsa_seti(acp,0,0.0);
+
+  int max_iter = imax(smo,cmo);
+  for (int i = 1; i <= max_iter; ++i) {
+    mad_tpsa_mul(acp,pow,tmp);
+    mad_tpsa_copy(tmp,pow);
+
+    if (i <= smo) mad_tpsa_axpb(sin_coef[i],pow,s,s);
+    if (i <= cmo) mad_tpsa_axpb(cos_coef[i],pow,c,c);
   }
   mad_tpsa_del(pow);
   mad_tpsa_del(acp);
@@ -178,6 +202,38 @@ mad_tpsa_cos(const T *a, T *c)
 }
 
 void
+mad_tpsa_sincos(const T *a, T *s, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_sincos\n");
+#endif
+  assert(a && s && c);
+  ensure(a->desc == s->desc && a->desc == c->desc);
+
+  ord_t smo = min_ord2(s->to,a->desc->trunc),
+        cmo = min_ord2(c->to,a->desc->trunc);
+
+  // ord 0, 1
+  num_t sin_coef[smo+1], cos_coef[cmo+1];
+  sin_coef[0] =  sin(a->coef[0]);
+  cos_coef[0] =  cos(a->coef[0]);
+  sin_coef[1] =  cos_coef[0];
+  cos_coef[1] = -sin_coef[0];
+  mad_tpsa_setConst(s,sin_coef[0]);
+  mad_tpsa_setConst(c,cos_coef[0]);
+
+  // ords 2..mo
+  for (int o = 2; o <= smo; ++o )
+    sin_coef[o] = -sin_coef[o-2] / (o*(o-1));
+  for (int o = 2; o <= cmo; ++o )
+    cos_coef[o] = -cos_coef[o-2] / (o*(o-1));
+
+
+  // fixed point
+  sincos_fixed_point(a,s,c, smo,sin_coef, cmo,cos_coef);
+}
+
+void
 mad_tpsa_sinh(const T *a, T *c)
 {
 #ifdef TRACE
@@ -192,27 +248,6 @@ mad_tpsa_sinh(const T *a, T *c)
   expansion_coef[1] = cosh(a0);
   for (int o = 2; o <= mo; ++o)
     expansion_coef[o] = expansion_coef[o-2] / (o*(o-1));
-
-  fixed_point_iteration(a,c,mo,expansion_coef);
-}
-
-void
-mad_tpsa_sincos(const T *a, T *c)
-{
-// SIN(A0+P)COS(A0+P) =     SIN(2*A0)*(1/2-(2*P)**2/2!+(2*P)**4/4!-...) +
-//                      1/2*COS(2*A0)*(  P-(2*P)**3/3!+(2*p)**5/5!+...)
-#ifdef TRACE
-  printf("tpsa_sincos\n");
-#endif
-  assert(a && c);
-  ensure(a->desc == c->desc);
-
-  ord_t mo = min_ord2(c->to,a->desc->trunc);
-  num_t expansion_coef[mo+1], a0 = a->coef[0];
-  expansion_coef[0] = 0.5 * sin(2*a0);
-  expansion_coef[1] =       cos(2*a0);
-  for (int o = 2; o <= mo; ++o)
-    expansion_coef[o] = -4 * expansion_coef[o-2] / (o * (o-1));
 
   fixed_point_iteration(a,c,mo,expansion_coef);
 }
@@ -234,6 +269,37 @@ mad_tpsa_cosh(const T *a, T *c)
     expansion_coef[o] = expansion_coef[o-2] / (o*(o-1));
 
   fixed_point_iteration(a,c,mo,expansion_coef);
+}
+
+void
+mad_tpsa_sincosh(const T *a, T *sh, T *ch)
+{
+#ifdef TRACE
+  printf("tpsa_sincos\n");
+#endif
+  assert(a && sh && ch);
+  ensure(a->desc == sh->desc && a->desc == ch->desc);
+
+  ord_t smo = min_ord2(sh->to,a->desc->trunc),
+        cmo = min_ord2(ch->to,a->desc->trunc);
+
+  // ord 0, 1
+  num_t sin_coef[smo+1], cos_coef[cmo+1];
+  sin_coef[0] = sinh(a->coef[0]);
+  cos_coef[0] = cosh(a->coef[0]);
+  sin_coef[1] = cos_coef[0];
+  cos_coef[1] = sin_coef[0];
+  mad_tpsa_setConst(sh,sin_coef[0]);
+  mad_tpsa_setConst(ch,cos_coef[0]);
+
+  // ords 2..mo
+  for (int o = 2; o <= smo; ++o )
+    sin_coef[o] = sin_coef[o-2] / (o*(o-1));
+  for (int o = 2; o <= cmo; ++o )
+    cos_coef[o] = cos_coef[o-2] / (o*(o-1));
+
+  // fixed point
+  sincos_fixed_point(a,sh,ch, smo,sin_coef, cmo,cos_coef);
 }
 
 void
