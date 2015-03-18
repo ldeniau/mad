@@ -293,12 +293,11 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
 
   D *d = a->desc;
   ord_t max_ab = a->mo > b->mo ? a->mo : b->mo;
-  c->mo = min_ord(max_ab, c->to, d->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->mo);
+  ord_t cmo = min_ord(max_ab, c->to, d->trunc);
 
   const num_t *ca = a->coef, *cb = b->coef;
   int *pi = d->hpoly_To_idx;
-  for (int o = 0; o <= c->mo; ++o)
+  for (int o = 0; o <= cmo; ++o)
     if (bget(a->nz,o) && bget(b->nz,o))
       for (int i = pi[o]; i < pi[o+1]; ++i)
         c->coef[i] = c1*ca[i] + c2*cb[i];
@@ -308,6 +307,8 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
     else if (bget(b->nz,o))
       for (int i = pi[o]; i < pi[o+1]; ++i)
         c->coef[i] =            c2*cb[i];
+  c->mo = cmo;
+  c->nz = btrunc(badd(a->nz,b->nz), cmo);
 }
 
 void
@@ -444,7 +445,6 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
   for (int i = 0; i < 4; ++i)
     is[i] = mad_tpsa_newd(a->desc,&a->desc->trunc);
 
-  FILE *fout = fopen("tpsa.out", "w");
   for (int i = 1; i <= n; ++i) {
     mad_tpsa_der(a, 2*i - 1, is[0]);
     mad_tpsa_der(b, 2*i    , is[1]);
@@ -459,7 +459,6 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
     mad_tpsa_copy(is[0],is[3]);
   }
 
-  fclose(fout);
   mad_tpsa_copy(is[3], c);
   for (int i = 0; i < 4; ++i)
     mad_tpsa_del(is[i]);
