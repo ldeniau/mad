@@ -26,13 +26,13 @@ if     arg[4] == "out" then
   t:print()
 elseif arg[4] == "in"  then
   local t = factory.new_instance()
-  t:read()
+  tpsa.read_into(t)
   t:print()
 end
 
 -- I/O with files
-if package == "ffi" and unused then
---if package == "ffi" then
+--if package == "ffi" and unused then
+if package == "ffi" then
   local file = io.open("tpsa.out","w")
   local t = tpsa.init({2,3,3},4,{1,1},2)
   t:rand(-2.0,2.0, os.time())
@@ -40,9 +40,8 @@ if package == "ffi" and unused then
   file:close()
 
   file = io.open("tpsa.out", "r")
-  local new_t = t:new(2)   -- new_t has hard truncation order 2
-  new_t:read(file)
-  new_t:print()            -- should see orders 0,1,2
+  local new_t = tpsa.read(file)
+  new_t:print()
 end
 
 

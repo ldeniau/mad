@@ -245,7 +245,12 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
   a->nz = (1 << (a->mo+1)) - 1;  // set all [0,mo]
 }
 
+#undef T
+#undef D
+#undef TRACE
+
 // --- --- OPERATIONS ---------------------------------------------------------
+
 #include "tpsa_io.tc"
 
 #include "tpsa_ops.tc"

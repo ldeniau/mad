@@ -1,6 +1,9 @@
 #ifndef TPSA_IO_TEMPLATE
 #define TPSA_IO_TEMPLATE
 
+#define T struct tpsa
+#define D struct tpsa_desc
+
 // #define TRACE
 // #define DEBUG
 
@@ -24,67 +27,68 @@ print_ords(int n, ord_t ords[n], FILE *stream)
     fprintf(stream, "  %hhu"     , ords[n-1]);
 }
 
-static inline void
-read_header(T *t, FILE *stream)
+// --- PUBLIC FUNCTIONS -------------------------------------------------------
+
+D*
+mad_tpsa_desc_read(FILE *stream_)
 {
 #ifdef TRACE
-  printf("tpsa_read_header\n");
+  printf("tpsa_desc_read from %p\n", (void*)stream_);
 #endif
+  if (!stream_)
+    stream_ = stdin;
+
   const int BUF_SIZE = 100;
-  assert(t && stream);
   char buf[BUF_SIZE];
   // 1st line -- discarded (empty)
-  ensure(fgets(buf, BUF_SIZE, stream));
+  ensure(fgets(buf, BUF_SIZE, stream_));
 
-  struct tpsa_desc *d = t->desc;
-  ord_t mo, ords[d->nv], ko;
-  int ncv, nk, read_cnt = 0;
+  ord_t mo, ko;
+  int ncv, nk = 0, read_cnt = 0;
 
   // 2nd line
-  read_cnt = fscanf(stream, "%*11c, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d",
+  read_cnt = fscanf(stream_, "%*11c, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d",
                     &mo, &ncv, &ko, &nk);
-  ensure(fgets(buf, BUF_SIZE, stream));
+  ensure(fgets(buf, BUF_SIZE, stream_));
   if (read_cnt < 2) {
     printf("ERROR WHILE READING TPSA HEADER: Could not read (NO,NV)\n");
-    return;
+    return NULL;
   }
   else if (read_cnt == 3) {
     printf("ERROR WHILE READING TPSA HEADER: Could not read NK\n");
-    return;
+    return NULL;
   }
 
   // 3rd line
+  ord_t ords[ncv+nk];
   if (read_cnt == 4) {             // GTPSA -- process 3rd line
-    read_cnt = fscanf(stream, " ORDS: ");
-    ensure(!feof(stream) && !ferror(stream));
-    read_ords(ncv+nk,ords,stream);
+    read_cnt = fscanf(stream_, " ORDS: ");
+    ensure(!feof(stream_) && !ferror(stream_));
+    read_ords(ncv+nk,ords,stream_);
   }
   else if (read_cnt == 2) {        // TPSA  -- ignore  3rd line; default values
     nk = ko = 0;
     mono_set(ncv,ords,mo);
   }
-  ensure(fgets(buf, BUF_SIZE, stream));  // finish 3rd line
+  ensure(fgets(buf, BUF_SIZE, stream_));  // finish 3rd line
 
   // discard extra lines
-  ensure(fgets(buf, BUF_SIZE, stream));
-  ensure(fgets(buf, BUF_SIZE, stream));
+  ensure(fgets(buf, BUF_SIZE, stream_));
+  ensure(fgets(buf, BUF_SIZE, stream_));
 
-  ensure(d == get_desc(ncv+nk,ords,mo,ncv,ko));  // consistency check
+  return get_desc(ncv+nk,ords,mo,ncv,ko);
 }
 
-// --- PUBLIC FUNCTIONS -------------------------------------------------------
-
 void
-mad_tpsa_read(T *t, FILE *stream_)
+mad_tpsa_read_coef(T *t, FILE *stream_)
 {
 #ifdef TRACE
   printf("tpsa_read from %p\n", (void*)stream_);
 #endif
-  assert(t);
+  ensure(t);
 
   if (!stream_)
     stream_ = stdin;
-  read_header(t,stream_);
 
   num_t c;
   int nv = t->desc->nv, read_cnt = -1;
@@ -135,9 +139,9 @@ mad_tpsa_print(const T *t, FILE *stream_)
 }
 
 #undef TRACE
+#undef DEBUG
 
 #undef T
 #undef D
 
-
-#endif
+#endif  // TPSA_IO_TEMPLATE

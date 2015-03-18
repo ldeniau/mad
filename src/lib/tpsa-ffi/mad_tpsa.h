@@ -17,6 +17,7 @@ T*    mad_tpsa_newd    (struct tpsa_desc *d, const ord_t *trunc_ord_);  // to us
 
 T*    mad_tpsa_new     (const T *t);
 T*    mad_tpsa_clone   (const T *t); // new + copy
+
 void  mad_tpsa_copy    (const T *src, T *dst);
 void  mad_tpsa_clean   (      T *t);
 void  mad_tpsa_del     (      T *t);
@@ -84,8 +85,8 @@ void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc
 void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
 void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[sa]);
 
-void  mad_tpsa_read    (      T *t, FILE *stream_);
-void  mad_tpsa_print   (const T *t, FILE *stream_);
+void  mad_tpsa_read_coef(      T *t, FILE *stream_);
+void  mad_tpsa_print    (const T *t, FILE *stream_);
 
 #undef T
 

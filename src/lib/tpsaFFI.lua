@@ -35,10 +35,13 @@ ffi.cdef[[
   D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t vo);
   D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t vo, // with knobs
                             int nk, const ord_t knb_ords[], ord_t ko);
+  D*    mad_tpsa_desc_read (FILE *stream_);
+
   void  mad_tpsa_desc_del  (      D *d);
 
   int   mad_tpsa_desc_nc   (const D *d, const ord_t *ord_);
   ord_t mad_tpsa_desc_trunc(      D *d, const ord_t *to_ );
+  ord_t mad_tpsa_desc_mo   (const D *d);
 
   // --- --- TPSA --------------------------------------------------------------
 
@@ -109,8 +112,8 @@ ffi.cdef[[
   void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
   void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
 
-  void  mad_tpsa_read    (      T *t, FILE *stream_);
-  void  mad_tpsa_print   (const T *t, FILE *stream_);
+  void  mad_tpsa_read_coef(      T *t, FILE *stream_);
+  void  mad_tpsa_print    (const T *t, FILE *stream_);
   void  mad_tpsa_print_compact   (const T *t);
 
   // ---------------------------------------------------------------------------
@@ -173,6 +176,14 @@ local function get_bounded(val, array, var_name, array_name)
   return val
 end
 
+local function allocate(desc, trunc_ord)
+  trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
+  local nc  = clib.mad_tpsa_desc_nc(desc, ord_ptr(trunc_ord))
+  local t   = tpsa_t(nc)  -- automatically initialized with 0s
+  t.to      = trunc_ord
+  t.desc    = desc
+  return t
+end
 
 
 -- functions -------------------------------------------------------------------
@@ -259,26 +270,16 @@ function M.init(...)
   vars, knobs = mono_t(nv, vars), mono_t(nk, knobs)
   local d = clib.mad_tpsa_desc_newk(nv,vars,vo, nk,knobs,ko)
 
-  -- return a template
-  local nc = clib.mad_tpsa_desc_nc(d, ord_ptr(vo))
-  local t  = tpsa_t(nc)  -- automatically initialized with 0s
-  t.desc   = d
-  t.to     = vo
-  return t
+  return allocate(d,vo)
 end
 
 function M:new(trunc_ord)
   if not trunc_ord then error("use t.same() or specify truncation order") end
-
-  local nc = clib.mad_tpsa_desc_nc(self.desc, ord_ptr(trunc_ord))
-  local t  = tpsa_t(nc)  -- automatically initialized with 0s
-  t.to     = trunc_ord
-  t.desc   = self.desc
-  return t
+  return allocate(self.desc, trunc_ord)
 end
 
 function M:same()
-  return self:new(self.to)
+  return allocate(self.desc,self.to)
 end
 
 function M.cpy(src, dst)
@@ -332,10 +333,18 @@ function M.print(a, file)
   clib.mad_tpsa_print(a,file)
 end
 
-function M.read(a, file)
-  clib.mad_tpsa_read(a,file)
+function M.read(file)
+  local d = clib.mad_tpsa_desc_read(file)
+  local t = allocate(d)
+  clib.mad_tpsa_read_coef(t,file)
+  return t
 end
 
+function M.read_into(t, file)
+  -- header is ignored, so make sure input is compatible with t (same nv,nk)
+  clib.mad_tpsa_desc_read(file)
+  clib.mad_tpsa_read_coef(t,file)
+end
 
 -- OPERATIONS ------------------------------------------------------------------
 -- --- UNARY -------------------------------------------------------------------

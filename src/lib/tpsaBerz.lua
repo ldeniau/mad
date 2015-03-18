@@ -371,7 +371,7 @@ function tpsa.print(t)
    berzLib.dapri_(t.idx, out_stream)  -- prints on stdout
 end
 
-function tpsa.read(t)
+function tpsa.read_into(t)
    berzLib.darea_(t.idx, in_stream)   -- reads from stdin
 end
 

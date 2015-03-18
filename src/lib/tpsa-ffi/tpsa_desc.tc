@@ -817,6 +817,13 @@ mad_tpsa_desc_trunc(D *d, const ord_t *to_)
   return orig;
 }
 
+ord_t
+mad_tpsa_desc_mo(const D *d)
+{
+  return d->mo;
+}
+
+
 #undef D
 #undef TRACE
 #undef DEBUG
