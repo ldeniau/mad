@@ -40,14 +40,14 @@ mad_tpsa_desc_read(FILE *stream_)
 
   const int BUF_SIZE = 100;
   char buf[BUF_SIZE];
-  // 1st line -- discarded (empty)
-  ensure(fgets(buf, BUF_SIZE, stream_));
-
   ord_t mo, ko;
   int ncv, nk = 0, read_cnt = 0;
 
-  // 2nd line
-  read_cnt = fscanf(stream_, "%*11c, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d",
+  // discard leading white space and the name (which is 10 chars and comma)
+  read_cnt = fscanf(stream_, " %*11c");
+
+  // 1st line
+  read_cnt = fscanf(stream_, " NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d",
                     &mo, &ncv, &ko, &nk);
   ensure(fgets(buf, BUF_SIZE, stream_));
   if (read_cnt < 2) {
@@ -59,7 +59,7 @@ mad_tpsa_desc_read(FILE *stream_)
     return NULL;
   }
 
-  // 3rd line
+  // 2nd line
   ord_t ords[ncv+nk];
   if (read_cnt == 4) {             // GTPSA -- process 3rd line
     read_cnt = fscanf(stream_, " ORDS: ");
@@ -70,7 +70,7 @@ mad_tpsa_desc_read(FILE *stream_)
     nk = ko = 0;
     mono_set(ncv,ords,mo);
   }
-  ensure(fgets(buf, BUF_SIZE, stream_));  // finish 3rd line
+  ensure(fgets(buf, BUF_SIZE, stream_));  // finish 2nd line
 
   // discard extra lines
   ensure(fgets(buf, BUF_SIZE, stream_));
