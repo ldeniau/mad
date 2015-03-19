@@ -94,7 +94,7 @@ mad_tpsa_read_coef(T *t, FILE *stream_)
   int nv = t->desc->nv, read_cnt = -1;
   ord_t o, ords[nv];
   mad_tpsa_clean(t);
-  while ((read_cnt = fscanf(stream_, "%*d %21lG %hhu", &c, &o)) == 2) {
+  while ((read_cnt = fscanf(stream_, "%*d %lG %hhu", &c, &o)) == 2) {
     #ifdef DEBUG
       printf("cnt=%d c=%.2f o=%d\n", read_cnt, c, o);
     #endif

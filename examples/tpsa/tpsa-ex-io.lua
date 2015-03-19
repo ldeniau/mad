@@ -31,8 +31,8 @@ elseif arg[4] == "in"  then
 end
 
 -- I/O with files
---if package == "ffi" and unused then
-if package == "ffi" then
+if package == "ffi" and unused then
+--if package == "ffi" then
   local file = io.open("tpsa.out","w")
   local t = tpsa.init({2,3,3},4,{1,1},2)
   t:rand(-2.0,2.0, os.time())
