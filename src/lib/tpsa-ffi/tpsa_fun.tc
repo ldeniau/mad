@@ -40,6 +40,10 @@ static inline void
 sincos_fixed_point(const T *a, T *s, T *c, ord_t smo, num_t sin_coef[smo+1], ord_t cmo, num_t cos_coef[cmo+1])
 {
   assert(a && s && c && sin_coef && cos_coef);
+
+  mad_tpsa_setConst(s,sin_coef[0]);
+  mad_tpsa_setConst(c,cos_coef[0]);
+
   T *pow = mad_tpsa_new(a),
     *acp = mad_tpsa_new(a),
     *tmp = mad_tpsa_new(a);
@@ -219,8 +223,6 @@ mad_tpsa_sincos(const T *a, T *s, T *c)
   cos_coef[0] =  cos(a->coef[0]);
   sin_coef[1] =  cos_coef[0];
   cos_coef[1] = -sin_coef[0];
-  mad_tpsa_setConst(s,sin_coef[0]);
-  mad_tpsa_setConst(c,cos_coef[0]);
 
   // ords 2..mo
   for (int o = 2; o <= smo; ++o )
@@ -228,8 +230,6 @@ mad_tpsa_sincos(const T *a, T *s, T *c)
   for (int o = 2; o <= cmo; ++o )
     cos_coef[o] = -cos_coef[o-2] / (o*(o-1));
 
-
-  // fixed point
   sincos_fixed_point(a,s,c, smo,sin_coef, cmo,cos_coef);
 }
 
@@ -289,8 +289,6 @@ mad_tpsa_sincosh(const T *a, T *sh, T *ch)
   cos_coef[0] = cosh(a->coef[0]);
   sin_coef[1] = cos_coef[0];
   cos_coef[1] = sin_coef[0];
-  mad_tpsa_setConst(sh,sin_coef[0]);
-  mad_tpsa_setConst(ch,cos_coef[0]);
 
   // ords 2..mo
   for (int o = 2; o <= smo; ++o )
@@ -298,7 +296,6 @@ mad_tpsa_sincosh(const T *a, T *sh, T *ch)
   for (int o = 2; o <= cmo; ++o )
     cos_coef[o] = cos_coef[o-2] / (o*(o-1));
 
-  // fixed point
   sincos_fixed_point(a,sh,ch, smo,sin_coef, cmo,cos_coef);
 }
 
