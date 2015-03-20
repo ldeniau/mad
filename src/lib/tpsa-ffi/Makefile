@@ -1,4 +1,6 @@
 CC=gcc
+CFLAGS=-std=c99 -Wall -W -pedantic -O3
+CLIBS=-lm -lgsl -lgslcblas
 
 .PHONY: tpsaFFI
 
@@ -7,19 +9,23 @@ tpsaFFI: libtpsa-ffi-$(CC).so
 libtpsa-ffi-$(CC).so: *.c *.tc *.h
 ifeq ($(CC),gcc)
 ifdef OPENMP
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared -fopenmp -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so -lgsl -lgslcblas
+	$(CC) $(CFLAGS) -shared -fopenmp -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so $(CLIBS)
 else
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -shared          -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so -lgsl -lgslcblas
+	$(CC) $(CFLAGS) -shared          -static-libgcc -fPIC *.c -o libtpsa-ffi-$(CC).so $(CLIBS)
 endif
 endif
 ifeq ($(CC),icc)
 ifdef OPENMP
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -dynamiclib -openmp -static-intel -fPIC *.c -o libtpsa-ffi-$(CC).so
+	$(CC) $(CFLAGS) -dynamiclib -openmp -static-intel -fPIC *.c -o libtpsa-ffi-$(CC).so
 else
-	$(CC) -std=c99 -Wall -W -pedantic -O3 -dynamiclib         -static-intel -fPIC *.c -o libtpsa-ffi-$(CC).so
+	$(CC) $(CFLAGS) -dynamiclib         -static-intel -fPIC *.c -o libtpsa-ffi-$(CC).so
 endif
 endif
 	ln -sf libtpsa-ffi-$(CC).so libtpsa-ffi.so
 
+bench_mul:	CFLAGS += -fno-omit-frame-pointer -pg
+bench_mul:	$(wildcard *.c *.tc *.h)
+	$(CC) $(CFLAGS) bench_mul.c mad_*.c -o bench_mul $(CLIBS)
+
 clean:
-	rm -f libtpsa-ffi*.so
+	rm -f libtpsa-ffi*.so bench_mul
