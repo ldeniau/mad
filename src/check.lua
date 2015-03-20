@@ -95,22 +95,22 @@ local function check_bin_with_berz(mod)
   local t1s, t2s, trs = {}, {}, {}
   local b1s, b2s, brs = {}, {}, {}
 
-  for fi=0,#funcs do
+  for fi=1,#funcs do
     t1s[fi], t2s[fi], trs[fi] = factory.get_args(funcs[fi])
   end
 
   factory.setup(berz)
-  for fi=0,#funcs do
+  for fi=1,#funcs do
     b1s[fi], b2s[fi], brs[fi] = factory.get_args(funcs[fi])
   end
 
-  for fi=2,#funcs do
+  for fi=1,#funcs do
     local op_mod  = mod  [funcs[fi]]
     local op_berz = berz [funcs[fi]]
     op_mod (t1s[fi], t2s[fi], trs[fi])
     op_berz(b1s[fi], b2s[fi], brs[fi])
 
-    check_identical(trs[fi], brs[fi], errs[fi], factory.To, funcs[fi], "absolute")
+    check_identical(trs[fi], brs[fi], errs[fi], factory.To, funcs[fi], "relative")
 
     fprintf(M.mod_file , "\n==== %s =======================\n", funcs[fi])
     fprintf(M.berz_file, "\n==== %s =======================\n", funcs[fi])
@@ -324,7 +324,7 @@ function M.do_all_checks(mod, nv, no)
 
   check_fun_with_berz(mod)
   check_poisson_with_berz(mod)
---  check_minv_with_berz(mod)
+  check_minv_with_berz(mod)
 end
 
 M.identical = check_identical

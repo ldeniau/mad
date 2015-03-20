@@ -21,14 +21,14 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
   T *pow = mad_tpsa_new(c),
     *acp = mad_tpsa_new(c),
     *tmp = mad_tpsa_new(c);
-  mad_tpsa_seti(pow,0,1.0);
+  mad_tpsa_setConst(pow,1.0);
   mad_tpsa_copy(a,acp);
   mad_tpsa_seti(acp,0,0.0);
 
   for (int i = 1; i <= iter; ++i) {
     mad_tpsa_mul(acp,pow,tmp);
     mad_tpsa_copy(tmp,pow);
-    mad_tpsa_axpb(expansion_coef[i],pow,c,c);
+    scale_and_accum(expansion_coef[i],pow,c);
   }
 
   mad_tpsa_del(pow);
@@ -56,8 +56,8 @@ sincos_fixed_point(const T *a, T *s, T *c, ord_t smo, num_t sin_coef[smo+1], ord
     mad_tpsa_mul(acp,pow,tmp);
     mad_tpsa_copy(tmp,pow);
 
-    if (i <= smo) mad_tpsa_axpb(sin_coef[i],pow,s,s);
-    if (i <= cmo) mad_tpsa_axpb(cos_coef[i],pow,c,c);
+    if (i <= smo) scale_and_accum(sin_coef[i],pow,s);
+    if (i <= cmo) scale_and_accum(cos_coef[i],pow,c);
   }
   mad_tpsa_del(pow);
   mad_tpsa_del(acp);

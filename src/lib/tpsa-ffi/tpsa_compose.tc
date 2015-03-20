@@ -79,18 +79,16 @@ compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
     for (int i = 0; i < ctx->sa; ++i) {
       T *coef = get_knobs_coef(ctx->ma[i], curr_mono, ctx);
       if (coef->nz) {
-        mad_tpsa_mul(coef    , ctx->ords[o], ctx->tmp);
-        mad_tpsa_add(ctx->tmp, ctx->mc[i]  , ctx->mc[i]);
+        mad_tpsa_mul   (coef, ctx->ords[o], ctx->tmp);
+        scale_and_accum(1.0 , ctx->tmp    , ctx->mc[i]);
       }
     }
   }
   else {                        // no knobs
     for (int i = 0; i < ctx->sa; ++i) {
       num_t coef = mad_tpsa_geti(ctx->ma[i],idx);
-      if (coef) {
-        mad_tpsa_scale(coef    , ctx->ords[o], ctx->tmp);
-        mad_tpsa_add  (ctx->tmp, ctx->mc[i]  , ctx->mc[i]);
-      }
+      if (coef)
+        scale_and_accum(coef, ctx->ords[o], ctx->mc[i]);
     }
   }
 

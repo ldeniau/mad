@@ -49,8 +49,8 @@ mad_tpsa_print_compact(const T *t)
   D *d = t->desc;
   printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
   ord_t mo = min_ord(t->mo, t->to, t->desc->trunc);
-  for (int i=0; i < d->hpoly_To_idx[mo+1]; ++i)
-    if (bget(t->nz,d->ords[i]) && t->coef[i])
+  for (int i = 0; i < d->hpoly_To_idx[mo+1]; ++i)
+    if (t->coef[i])
       printf("[%d]=%.2f ", i, t->coef[i]);
   printf(" }\n");
 }
@@ -80,7 +80,8 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
   t->mo = 0;
   t->to = to;
   t->nz = 0;
-  t->coef[0] = 0;  // init ord 0 by default
+  for (int i = 0; i < needed_coef; ++i)
+    t->coef[i] = 0;
   return t;
 }
 
@@ -99,10 +100,8 @@ mad_tpsa_copy(const T *src, T *dst)
   D *d = src->desc;
   dst->mo = min_ord(src->mo, dst->to, d->trunc);
   dst->nz = btrunc(src->nz, dst->mo);
-  for (int o = 0; o <= dst->mo; ++o)
-    if (bget(dst->nz,o))
-      for (int i = d->hpoly_To_idx[o]; i < d->hpoly_To_idx[o+1]; ++i)
-        dst->coef[i] = src->coef[i];
+  for (int i = 0; i < d->hpoly_To_idx[dst->mo+1]; ++i)
+    dst->coef[i] = src->coef[i];
 #ifdef TRACE
   printf("Copied from %p to %p\n", (void*)src, (void*)dst);
 #endif
@@ -112,7 +111,6 @@ void
 mad_tpsa_clean(T *t)
 {
   assert(t);
-  // do a hard clean; TODO: check if setting nz to 0 suffices
   for (int i = 0; i < t->desc->hpoly_To_idx[t->to+1]; ++i)
     t->coef[i] = 0;
   t->nz = t->mo = 0;
@@ -135,7 +133,7 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   assert(n <= d->nv);
   idx_t i = desc_get_idx(d,n,m);
   ensure(d->ords[i] <= t->to);
-  return bget(t->nz,d->ords[i]) ? t->coef[i] : 0;
+  return t->coef[i];
 }
 
 void
@@ -156,7 +154,7 @@ mad_tpsa_geti(const T *t, int i)
   assert(t);
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc);
-  return (bget(t->nz,d->ords[i]) && d->ords[i] <= t->to) ? t->coef[i] : 0;
+  return d->ords[i] <= t->to ? t->coef[i] : 0;
 }
 
 void
@@ -174,13 +172,8 @@ mad_tpsa_seti(T *t, int i, num_t v)
   }
 
   ord_t o = d->ords[i];
-  if (! bget(t->nz,o)) {  // uninitialized ord
-    t->nz = bset(t->nz, o);
-    int *pi = d->hpoly_To_idx;
-    for (int c = pi[o]; c < pi[o+1]; ++c)
-      t->coef[c] = 0;
-  }
   t->mo = o > t->mo ? o : t->mo;
+  t->nz = bset(t->nz,o);
   t->coef[i] = v;
 }
 

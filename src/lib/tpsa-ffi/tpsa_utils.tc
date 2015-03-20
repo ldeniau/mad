@@ -37,9 +37,9 @@ btrunc (bit_t b, int n)
 }
 
 static inline void
-swap (struct tpsa **a, struct tpsa **b)
+swap (const struct tpsa **a, const struct tpsa **b)
 {
-  struct tpsa *tmp = *a;
+  const struct tpsa *tmp = *a;
   *a = *b;
   *b = tmp;
 }
