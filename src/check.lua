@@ -312,11 +312,14 @@ function M.do_all_checks(mod, nv, no)
   fprintf(M.mod_file , "\n\n== NV= %d, NO= %d =======================", nv, no)
   fprintf(M.berz_file, "\n\n== NV= %d, NO= %d =======================", nv, no)
   factory.setup(mod,nv,no)
+  if mod.name == "mapClass" then return end
+
   check_coeff()
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
-  check_subst_with_berz(mod)
+
+--  check_subst_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
 
@@ -324,7 +327,7 @@ function M.do_all_checks(mod, nv, no)
 
   check_fun_with_berz(mod)
   check_poisson_with_berz(mod)
-  check_minv_with_berz(mod)
+--  check_minv_with_berz(mod)
 end
 
 M.identical = check_identical

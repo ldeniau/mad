@@ -2,102 +2,108 @@
 #include <limits>
 #include <string>
 #include "Pol.h"
+#include "Polmap.h"
 
 typedef Polynom<double> tpsa_t;
+typedef Polmap<double> map_t;
 
 #define TPSA_IMPLEMENTATION
 #include "tpsa.h"
 
 
 const double eps = std::numeric_limits<double>::epsilon();
-const vector<string> vars = {"x1", "x2", "x3", "x4", "x5", "x6",
+const vector<string> vars = {"x", "px", "y", "py", "s", "d",
                              "x7", "x8", "x9", "x10", "x11", "x12"};
 
-// not actually used, just providing the same interface
-void init() {}
-
-/** Allocates a new tpsa with given number of vars and maximum order */
-tpsa_t* tpsa_create(int nv, int mo) {
-    vector<string> v(vars.begin(), vars.begin() + nv);
-    tpsa_t* p = new tpsa_t(mo, eps, v, 0.0);    // initialize with 0
-    return p;
+/* Allocates a new tpsa with given number of vars and maximum order */
+tpsa_t* tpsa_init(int nv, int mo) {
+  assert((unsigned int)nv <= vars.size());
+  vector<string> vars_in_use(vars.begin(),vars.begin()+nv);
+  return new tpsa_t(mo,eps,vars_in_use,0.0);    // initialized with 0s
 }
 
-
-/** Frees the memory used by the tpsa */
-void tpsa_destroy(tpsa_t* p) {
-    delete p;
+/* Frees the memory used by the tpsa */
+void tpsa_destroy(tpsa_t *t) {
+  delete t;
 }
 
-
-/** Makes the contents of `dest` identical to `src` */
-void tpsa_copy(tpsa_t* src, tpsa_t* dest) {
-    *dest = *src;    // does this destroy src ? (Pol.h)
+tpsa_t* tpsa_same(const tpsa_t *t) {
+    return new tpsa_t(t->order,t->eps,t->vars,0.0);
 }
 
-
-/** Sets the constant term of the given tpsa */
-void tpsa_setConst(tpsa_t* p, double val) {
-    vector<int> cst(p->vars.size(), 0);    // {0 0 ... 0} is the constant term
-    p->terms[cst] = val;
+/* Makes a copy of `src`, puts it into `dest_` and returns it
+ * If dest is missing, allocates a new one and returns it
+ */
+tpsa_t* tpsa_copy(const tpsa_t *src, tpsa_t *dest_) {
+  if (!dest_)
+    dest_ = tpsa_same(src);
+  *dest_ = *src;
+  return dest_;
 }
 
-
-/** Sets the coefficient of the specified monomial in the tpsa
+/* Sets the coefficient of the specified monomial in the tpsa
  *
- *  Monomial should be an array of bytes with the exponents of each var  \
+ *  Monomial should be an array of bytes with the exponents of each var
  *  e.g {1, 0, 2, 2} means x * z^2 * t^2           */
-void tpsa_set(tpsa_t* p, const unsigned char* mon, const int monLen,
-                   const double val) {
-    vector<int> t(p->vars.size());    // make it the right size
-    copy(mon, mon + monLen, t.begin());
-    p->terms[t] = val;
+void tpsa_set(tpsa_t *t, int monLen, const unsigned char *mon, double val) {
+  vector<int> vmon(t->vars.size());
+  copy(mon, mon+monLen, vmon.begin());
+  t->terms[vmon] = val;
 }
 
-
-/** Returns the coefficient of the specified monomial from the tpsa
- *  See set for definition of mon */
-double tpsa_get(const tpsa_t* p, const unsigned char* mon, const int monLen) {
-    vector<int> t(p->vars.size());    // make it the right size
-    copy(mon, mon + monLen, t.begin());
-    auto val = p->terms.find(t);
-    return val != p->terms.end() ? val->second : 0.0;
+/* Returns the coefficient of the specified monomial from the tpsa
+ *  See set for definition of mon
+ */
+double tpsa_get(const tpsa_t *t, int monLen, const unsigned char *mon) {
+  vector<int> vmon(t->vars.size());
+  copy(mon, mon+monLen, vmon.begin());
+  auto val = t->terms.find(vmon);
+  return val != t->terms.end() ? val->second : 0.0;
 }
 
-
-/** res = op1 + op2 */
-void tpsa_add(tpsa_t* op1, tpsa_t* op2, tpsa_t* res) {
-    *res = *op1 + *op2;
+void tpsa_add(tpsa_t *a, tpsa_t *b, tpsa_t *c) {
+  *c = *a + *b;
 }
 
-
-/** res = op1 * op2 */
-void tpsa_mul(tpsa_t* op1, tpsa_t* op2, tpsa_t* res) {
-    tpsa_t *a = op1, *b = op2;
-    if (a == res) {
-        a = tpsa_create(a->vars.size(), a->order);
-        tpsa_copy(op1, a);
-    }
-    if (b == res) {
-        b = tpsa_create(b->vars.size(), b->order);
-        tpsa_copy(op2, b);
-    }
-    *res = *a * *b;
+void tpsa_sub(tpsa_t *a, tpsa_t *b, tpsa_t *c) {
+  *c = *a - *b;
 }
 
-
-/** Given 3 arrays of TPSAs (ma, mb, mc), performs mc = ma o mb
- *  ma, mb and mc must have compatible lengths */
-void tpsa_concat(tpsa_t** ma, int aLen, tpsa_t** mb, int bLen,
-                 tpsa_t** mc, int cLen) {
-    // not implemented yet
+void tpsa_mul(tpsa_t *a, tpsa_t *b, tpsa_t *c) {
+  *c = *a * *b;
 }
 
-
-/** Prints the tpsa to stdout */
-void tpsa_print(tpsa_t* p) {
-    p->printpol();
+void tpsa_div(tpsa_t *a, tpsa_t *b, tpsa_t *c) {
+  *c = *a / *b;
 }
 
+void tpsa_print(tpsa_t *t) {
+  t->printpol();
+}
+
+map_t* tpsa_map_create(int nv, tpsa_t *ma[])
+{
+  assert((unsigned int)nv <= vars.size());
+  vector<string> vars_in_use(vars.begin(), vars.begin()+nv);
+  map_t *m = new map_t();
+  for (int i = 0; i < nv; ++i)
+    m->pols[vars[i]] = *ma[i];
+  return m;
+}
+
+void tpsa_map_destroy(map_t *m)
+{
+  delete m;
+}
+
+void tpsa_map_compose(map_t *ma, map_t *mb, map_t *mc)
+{
+  *mc = ma->parallel_composition(*mb);
+}
+
+void tpsa_map_print(map_t *m)
+{
+  m->printpolmap();
+}
 
 

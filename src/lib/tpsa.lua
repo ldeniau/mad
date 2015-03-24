@@ -4,7 +4,8 @@ local packages = {
   ffi  = "tpsaFFI",
   mad  = "..tpsa",
   berz = "tpsaBerz",
-  yang = "tpsaYang"
+  yang = "tpsaYang",
+  mc   = "tpsaMC"
 }
 
 
@@ -17,7 +18,7 @@ local folder_of_this_file = (...):match("(.-)[^%.]+$")
 function M.set_package(name)
   if not packages[name] then
     error("Unrecognized package title: " .. (name or "[missing title]") ..
-          ". Use one of: ffi, mad, yang, berz")
+          ". Use one of: ffi, berz, yang, mc")
   end
 
   if name == "mad" then
@@ -64,7 +65,7 @@ end
 
 function M.get_map()
   local map = {}
-  if curr_loaded.name == "mad" and type(curr_loaded.vars) == "table" then
+  if curr_loaded.name == "ffi" and type(curr_loaded.vars) == "table" then
     for i=1,#curr_loaded.vars do
       map[i] = curr_loaded.t:new(curr_loaded.vars[i])
     end
@@ -73,6 +74,7 @@ function M.get_map()
       map[i] = curr_loaded.t:same()
     end
   end
+
   return map
 end
 
