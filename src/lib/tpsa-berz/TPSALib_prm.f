@@ -14,11 +14,11 @@
 !      parameter (lda=30000, lst=132000000, lea=500000, lia=80000,       &
 !      parameter (lda=30000, lst=100000000, lea=500000, lia=80000,       &
 !     Tracy-3.0, Cygwin
-      parameter (lda=30000, lst=80000000, lea=500000, lia=80000,        &
+      parameter (lda=50, lst=80000000, lea=3200000, lia=500000,          &
 !     RHIC
 !      parameter (lda=50000, lst=130000000, lea=500000, lia=50000,       &
 !      parameter (lda=60000, lst=130000000, lea=800000, lia=80000,       &
-     &           lno=15, lnv=8)
+     &           lno=20, lnv=8)
 
       integer           nda, ndamaxi
       common /fordes/   nda, ndamaxi
