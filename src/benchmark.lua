@@ -3,7 +3,6 @@ local clock, printf = os.clock, factory.printf
 
 local header_fmt = "nv\tno\tnl       \t"
 local line_fmt   = "%d\t%d\t%8d\t"
-local trials = arg[4] or 5
 
 local function timeit(fun, nl, p1, p2, p3, p4, p5, p6, p7)
   local start = clock()
@@ -12,8 +11,9 @@ local function timeit(fun, nl, p1, p2, p3, p4, p5, p6, p7)
 end
 
 -- benchmark the speed of fct_name from module mod_name using parameters from filename
-local function bench(mod_name, fct_name, filename)
+local function bench(mod_name, fct_name, filename, trials)
   local NV, NO, NL = factory.read_params(filename)
+  trials = trials or 5
 
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
   printf(header_fmt)
@@ -59,6 +59,6 @@ if arg[1] == "-h" then
   os.exit()
 end
 
-bench(arg[1], arg[2], arg[3])
+bench(arg[1], arg[2], arg[3], arg[4])
 
 

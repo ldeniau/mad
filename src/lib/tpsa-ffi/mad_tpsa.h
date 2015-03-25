@@ -72,9 +72,10 @@ void  mad_tpsa_erf     (const T *a, T *c);
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
 void  mad_tpsa_mul     (const T *a, const T *b, T *c);
+
 void  mad_tpsa_div     (const T *a, const T *b, T *c);
 void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
-void  mad_tpsa_cdiv    (num_t    v, const T *a, T *c);
+void  mad_tpsa_cdiv    (const T *a, num_t    v, T *c);
 // void  mad_tpsa_pow     (const T *a,             T *c, int p);
 void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
@@ -86,7 +87,8 @@ void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc
 void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
 void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[sa]);
 
-void  mad_tpsa_read_coef(      T *t, FILE *stream_);
+void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
+T*    mad_tpsa_scan     (FILE *stream_);             // TODO
 void  mad_tpsa_print    (const T *t, FILE *stream_);
 
 #undef T

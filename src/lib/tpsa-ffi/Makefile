@@ -4,6 +4,8 @@ override CLIBS  += -lm -lgsl -lgslcblas
 
 .PHONY: tpsaFFI
 
+all: tpsaFFI bench_mul
+
 tpsaFFI: libtpsa-ffi-$(CC).so
 
 libtpsa-ffi-$(CC).so: mad_*.c tpsa_*.tc mad_*.h
@@ -23,7 +25,13 @@ endif
 endif
 	ln -sf libtpsa-ffi-$(CC).so libtpsa-ffi.so
 
-bench_mul:	CFLAGS += -fno-omit-frame-pointer -pg
+ifdef OPENMP
+bench_mul:	override CFLAGS += -fopenmp
+endif
+ifdef PROFILING
+bench_mul:	override CFLAGS += -fno-omit-frame-pointer -pg
+endif
+
 bench_mul:	bench_mul.c mad_*.c tpsa_*.tc mad_*.h
 	$(CC) $(CFLAGS) bench_mul.c mad_*.c -o bench_mul $(CLIBS)
 

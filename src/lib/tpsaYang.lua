@@ -281,17 +281,15 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, m, v)
+function tpsa.setm(t, m, l, v)
   -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
-  local v_ptr = dblPtr(v)
-  yangLib.ad_pok_(t.idx, m, t.nv, v_ptr)
+  yangLib.ad_pok_(t, m, l, v)
 end
 
-function tpsa.getm(t, m)
+function tpsa.getm(t, m, l, res)
   -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
-  local v_ptr = dblPtr()
-  yangLib.ad_pek_(t.idx, m, t.nv, v_ptr)
-  return tonumber(v_ptr[0])
+  yangLib.ad_pek_(t, m, l, res)
+  return res[0]
 end
 
 function tpsa.subst(ma, mb, lb, mc)

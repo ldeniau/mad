@@ -451,16 +451,15 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, m, v)
+function tpsa.setm(t, m, l, v)
   -- m is a t.mono_t (i.e. intArr) of length nv
-  berzLib.dapok_(t.idx, m, dblPtr(v))
+  berzLib.dapok_(t, m, v)
 end
 
-function tpsa.getm(t, m)
+function tpsa.getm(t, m, l, res)
   -- m is a t.mono_t (i.e. intArr) of length nv
-  local v_ptr = dblPtr()
-  berzLib.dapek_(t.idx, m, v_ptr)
-  return tonumber(v_ptr[0])
+  berzLib.dapek_(t, m, res)
+  return res[0]
 end
 
 function tpsa.scale(val,src,dst)

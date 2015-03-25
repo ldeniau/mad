@@ -30,7 +30,7 @@ print_ords(int n, ord_t ords[n], FILE *stream)
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 D*
-mad_tpsa_desc_read(FILE *stream_)
+mad_tpsa_desc_scan(FILE *stream_)
 {
 #ifdef TRACE
   printf("tpsa_desc_read from %p\n", (void*)stream_);
@@ -80,10 +80,10 @@ mad_tpsa_desc_read(FILE *stream_)
 }
 
 void
-mad_tpsa_read_coef(T *t, FILE *stream_)
+mad_tpsa_scan_coef(T *t, FILE *stream_)
 {
 #ifdef TRACE
-  printf("tpsa_read from %p\n", (void*)stream_);
+  printf("tpsa_scan_coef from %p\n", (void*)stream_);
 #endif
   ensure(t);
 
@@ -104,6 +104,14 @@ mad_tpsa_read_coef(T *t, FILE *stream_)
       break;        // printed by increasing orders
     mad_tpsa_setm(t,nv,ords,c);
   }
+}
+
+T*
+mad_tpsa_scan(FILE *stream_)
+{
+  // TODO
+  (void)stream_;
+  ensure(0 && "NOT YET IMPLEMENTED");
 }
 
 void

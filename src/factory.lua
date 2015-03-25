@@ -2,6 +2,8 @@ local ffi = require"ffi"
 
 local M = {}  -- this module
 M.seed = os.time()
+local dbl_ptr    = ffi.typeof("double[1]")
+local size_t_ptr = ffi.typeof("size_t[1]")
 
 -- HELPERS ---------------------------------------------------------------------
 local function fprintf(f, s, ...)
@@ -108,6 +110,19 @@ end
 
 -- ARGUMENTS BUILD -------------------------------------------------------------
 -- use functions return to avoid unpack which is not compiled
+
+-- --- PEEK  -------------------------------------------------------------------
+
+local function args_getm()
+  local args = {             --    raw instance  ,   mono length   , result ptr
+    tpsa = function() return M.new_instance()    ,            M.nv             end,
+    berz = function() return M.new_instance().idx,            M.nv , dbl_ptr() end,
+    yang = function() return M.new_instance().idx, size_t_ptr(M.nv), dbl_ptr() end,
+  }
+  return make_To_ffi(), args[M.mod.name]()
+end
+
+-- --- OPERATIONS --------------------------------------------------------------
 
 local function args_bin_op()
   return M.full(), M.full(), M.new_instance()
@@ -236,14 +251,14 @@ function M.new_instance()
   return M.t:same()
 end
 
-function M.get_args(fct_name)
+function M.get_args(fct_name, t)
   local val = 4.3
 
   local args = {
-    getm     = function() return make_To_ffi(),      M.nv      end,
-    get      = function() return M.To                          end,
-    setm     = function() return make_To_ffi(), val, M.nv      end,
-    set      = function() return M.To         , val            end,
+    getm     = args_getm,
+    setm     = args_setm,
+    get      = function() return M.To      end,
+    set      = function() return M.To, val end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
@@ -263,7 +278,7 @@ function M.get_args(fct_name)
 
     generic  = function() return M.To end
   }
-  return args[fct_name]()
+  return args[fct_name](t)
 end
 
 -- M.setup(mod, nv, no)

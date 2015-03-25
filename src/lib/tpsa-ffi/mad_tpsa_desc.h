@@ -10,7 +10,7 @@
 D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[nv], ord_t vo);
 D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t vo, // with knobs
                           int nk, const ord_t knb_ords[nk], ord_t ko);
-D*    mad_tpsa_desc_read (FILE *stream_);
+D*    mad_tpsa_desc_scan (FILE *stream_);
 
 void  mad_tpsa_desc_del  (      D *d);
 

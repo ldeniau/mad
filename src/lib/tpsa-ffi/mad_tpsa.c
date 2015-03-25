@@ -66,7 +66,7 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
 
   ord_t to = d->mo;
   if (trunc_ord_) {
-    ensure(*trunc_ord_ <= d->mo);
+    ensure(*trunc_ord_ <= d->mo && *trunc_ord_ >= 1);
     to = *trunc_ord_;
   }
 
@@ -77,10 +77,10 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
   t->desc = d;
-  t->mo = 0;
+  t->mo = 1;    // IMPORTANT for mul !!
   t->to = to;
   t->nz = 0;
-  for (int i = 0; i < needed_coef; ++i)
+  for (int i = 0; i <= d->nv; ++i)
     t->coef[i] = 0;
   return t;
 }
@@ -113,7 +113,8 @@ mad_tpsa_clean(T *t)
   assert(t);
   for (int i = 0; i < t->desc->hpoly_To_idx[t->to+1]; ++i)
     t->coef[i] = 0;
-  t->nz = t->mo = 0;
+  t->nz = 0;
+  t->mo = 1;
 }
 
 void
@@ -133,7 +134,7 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   assert(n <= d->nv);
   idx_t i = desc_get_idx(d,n,m);
   ensure(d->ords[i] <= t->to);
-  return t->coef[i];
+  return d->ords[i] <= t->mo ? t->coef[i] : 0;
 }
 
 void
@@ -154,7 +155,8 @@ mad_tpsa_geti(const T *t, int i)
   assert(t);
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc);
-  return d->ords[i] <= t->to ? t->coef[i] : 0;
+  ord_t o = d->ords[i];
+  return o <= t->mo ? t->coef[i] : 0;
 }
 
 void
@@ -185,9 +187,11 @@ void
 mad_tpsa_setConst(T *t, num_t v)
 {
   assert(t);
-  t->mo = 0;
+  t->mo = 1;
   t->nz = 1;
   t->coef[0] = v;
+  for (int i = 1; i <= t->desc->nv; ++i)
+    t->coef[i] = 0;
 }
 
 int

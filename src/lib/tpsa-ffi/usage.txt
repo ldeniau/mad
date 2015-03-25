@@ -37,14 +37,14 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
 desc -- pointer to a shared descriptor; immutable
 
 to   -- truncation order; immutable
-     -- 0 <= to <= desc->mo
+     -- 1 <= to <= desc->mo
      -- coefficients are only allocated up to this polynomial, inclusive
      -- writing or reading an index from a higher order results in error
 
 mo   -- state of current maximum order
      -- modifies according to operations performed on tpsa
      -- used to avoid un-necessary computation
-     -- 0 <= mo <= to
+     -- IMPORTANT: 1 <= mo <= to
 
 nz   -- state of non-zero polynomials
      -- used to avoid computation on unused polynomials

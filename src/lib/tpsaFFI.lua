@@ -618,14 +618,15 @@ M.debug = clib.mad_tpsa_print_compact
 
 -- interface for benchmarking --------------------------------------------------
 
-function M.setm(t, m, v, l)
+function M.setm(t, m, l, v)
   -- m should be a t.mono_t of length l
   clib.mad_tpsa_setm(t, l, m, v)
 end
 
-function M.getm(t, m, l)
+function M.getm(t, m, l, res)
   -- m should be a t.mono_t of length l
-  return tonumber(clib.mad_tpsa_getm(t, l, m))
+  res = clib.mad_tpsa_getm(t, l, m)
+  return res
 end
 
 function M.subst(ma, mb, lb, mc)

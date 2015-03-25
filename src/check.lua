@@ -89,7 +89,8 @@ end
 
 local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
-  local funcs = {[0]="div", "mul", "add", "sub"}
+--  local funcs = {[0]="div", "mul", "add", "sub"}
+  local funcs = {[0]="div", "mul"}
   local errs  = {           1e-14,   0  ,   0  }
   -- tr = t1 *op* t2;    br = b1 *op* b2;     tr == br
   local t1s, t2s, trs = {}, {}, {}
@@ -314,19 +315,19 @@ function M.do_all_checks(mod, nv, no)
   factory.setup(mod,nv,no)
   if mod.name == "mapClass" then return end
 
-  check_coeff()
+--  check_coeff()
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
 
 --  check_subst_with_berz(mod)
-  check_der_with_berz(mod)
-  check_abs_with_berz(mod)
+--  check_der_with_berz(mod)
+--  check_abs_with_berz(mod)
 
-  if mod.name == "yang" then return end
+--  if mod.name == "yang" then return end
 
-  check_fun_with_berz(mod)
-  check_poisson_with_berz(mod)
+--  check_fun_with_berz(mod)
+--  check_poisson_with_berz(mod)
 --  check_minv_with_berz(mod)
 end
 
