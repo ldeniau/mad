@@ -466,11 +466,6 @@ function tpsa.scale(val,src,dst)
   tpsa.cmul(src,val,dst)
 end
 
-function tpsa.subst(ma, mb, lb, mc)
-  -- ma, mc are arrays of 1 tpsa; mb is array of `lb` TPSAs; lb == ma[i].nv
-  berzLib.dacct_(ma, one_i, mb, lb, mc, one_i)
-end
-
 function tpsa.compose_raw(sa, ma, sb, mb, sc, mc)
   berzLib.dacct_(ma, sa, mb, sb, mc, sc)
 end

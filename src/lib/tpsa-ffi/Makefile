@@ -4,9 +4,9 @@ override CLIBS  += -lm -lgsl -lgslcblas
 
 .PHONY: tpsaFFI
 
-all: tpsaFFI bench_mul
-
 tpsaFFI: libtpsa-ffi-$(CC).so
+
+all: tpsaFFI bench_mul
 
 libtpsa-ffi-$(CC).so: mad_*.c tpsa_*.tc mad_*.h
 ifeq ($(CC),gcc)

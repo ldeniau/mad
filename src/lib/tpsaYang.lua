@@ -292,8 +292,10 @@ function tpsa.getm(t, m, l, res)
   return res[0]
 end
 
-function tpsa.subst(ma, mb, lb, mc)
-  yangLib.ad_subst_(ma, mb, lb, mc)
+function tpsa.compose_raw(sa,ma,sb,mb,sc,mc)
+  for i=0,sa-1 do
+    yangLib.ad_subst_(ma+i, mb, sb, mc+i)
+  end
 end
 
 return tpsa

@@ -2,8 +2,9 @@ local ffi = require"ffi"
 
 local M = {}  -- this module
 M.seed = os.time()
-local dbl_ptr    = ffi.typeof("double[1]")
-local size_t_ptr = ffi.typeof("size_t[1]")
+local dbl_ptr  = ffi.typeof("double[1]")
+local int_ptr  = ffi.typeof("int   [1]")
+local uint_ptr = ffi.typeof("unsigned int [1]")
 
 -- HELPERS ---------------------------------------------------------------------
 local function fprintf(f, s, ...)
@@ -130,68 +131,62 @@ end
 
 -- --- SUBST -------------------------------------------------------------------
 
-local function args_subst_tpsa(t, nv, refs, size_a)
+local function make_cmap(t, refs, cmap)
+  for i=1,M.nv do
+    refs[i]   = t:cpy()
+    cmap[i-1] = type(t) == "table" and refs[i].idx[0] or refs[i]
+  end
+end
+
+local function args_subst_tpsa(input_template, refs)
+  local nv = M.nv
   ffi.cdef("typedef struct tpsa T")
-  local tpsa_carr, tpsa_arr  = ffi.typeof("const T* [?]"), ffi.typeof("T* [?]")
+  local tpsa_carr, tpsa_arr  = ffi.typeof("const T* [$]", nv), ffi.typeof("T* [$]", nv)
 
-  local cma, cmb, cmc = tpsa_carr(size_a), tpsa_carr(nv), tpsa_arr(size_a)
-  for i=1,size_a do
-    refs.ma[i], refs.mc[i] = t:cpy()   , t:same()
-    cma[i-1]  , cmc[i-1]   = refs.ma[i], refs.mc[i]
-  end
-  for i=1,nv do
-    refs.mb[i] = t:cpy()
-    cmb[i-1]   = refs.mb[i]
-  end
+  local cma, cmb, cmc = tpsa_carr(), tpsa_carr(), tpsa_arr()
+  make_cmap(input_template  , refs.ma, cma)
+  make_cmap(input_template  , refs.mb, cmb)
+  make_cmap(M.new_instance(), refs.mc, cmc)
 
-  if size_a == 1 then return cma, cmb, nv, cmc, refs end
-  return size_a, cma, nv, cmb, size_a, cmc, refs
+  return nv, cma, nv, cmb, nv, cmc, refs
 end
 
-local function args_subst_berz(t, nv, refs, size_a)
-  local intArr = ffi.typeof("int [?]")
+local function args_subst_berz(input_template, refs)
+  local int_arr, nv_ptr = ffi.typeof("int [$]", M.nv), int_ptr(M.nv)
 
-  local cma, cmb, cmc = intArr(size_a), intArr(nv), intArr(size_a)
-  for i=1,size_a do
-    refs.ma[i], refs.mc[i] = t:cpy()          , t:same()
-    cma[i-1]  , cmc[i-1]   = refs.ma[i].idx[0], refs.mc[i].idx[0]
-  end
-  for i=1,nv do
-    refs.mb[i] = t:cpy()
-    cmb[i-1]   = refs.mb[i].idx[0]
-  end
-  t:destroy()
-  if size_a == 1 then return cma, cmb, intArr(1, {nv}), cmc, refs end
-  return intArr(1, size_a), cma, intArr(1, nv), cmb, intArr(1, size_a), cma, refs
+  local cma, cmb, cmc = int_arr(), int_arr(), int_arr()
+  make_cmap(input_template  , refs.ma, cma)
+  make_cmap(input_template  , refs.mb, cmb)
+  make_cmap(M.new_instance(), refs.mc, cmc)
 
+  return nv_ptr, cma, nv_ptr, cmb, nv_ptr, cmc, refs
 end
 
-local function args_subst_yang(t, nv, refs, size_a)
-  if size_a ~= 1 then error("No compose Yang. Use subst") end
-  local uintArr = ffi.typeof("unsigned int[?]")
+local function args_subst_yang(input_template, refs)
+  local uint_arr = ffi.typeof("unsigned int[$]", M.nv)
 
-  local cma, cmb, cmc = uintArr(1), uintArr(nv), uintArr(1)
-  refs.ma[1], refs.mc[1] = t                , t:same()
-  cma[0]    , cmc[0]     = refs.ma[1].idx[0], refs.mc[1].idx[0]
-  for i=1,nv do
-    refs.mb[i] = t:cpy()
-    cmb[i-1]   = refs.mb[i].idx[0]
-  end
-  return cma, cmb, uintArr(1, {nv}), cmc, refs
+  local cma, cmb, cmc = uint_arr(), uint_arr(), uint_arr()
+  make_cmap(input_template  , refs.ma, cma)
+  make_cmap(input_template  , refs.mb, cmb)
+  make_cmap(M.new_instance(), refs.mc, cmc)
+
+  return M.nv, cma, uint_ptr(M.nv), cmb, M.nv, cmc, refs
 end
 
-local function args_subst(size_a)
+local function args_compose()
   local refs = { ma={}, mb={}, mc={} }  -- save some references to avoid GC
   local args = {
     tpsa = args_subst_tpsa,
     berz = args_subst_berz,
     yang = args_subst_yang,
   }
-  return args[M.mod.name](M.full(), M.nv, refs, size_a or 1)
-end
-
-local function args_compose()
-  return args_subst(M.nv)
+  local templ, rand, val, sgn = M.new_instance(), math.random
+  for m=0,#M.To do
+    val = rand() + 1                  -- [1, 2)
+    sgn = rand() < 0.5 and -1 or 1
+    templ:set(M.To[m], sgn * val)              -- (-2,1] U [1, 2)
+  end
+  return args[M.mod.name](templ, refs)
 end
 
 -- --- MINV --------------------------------------------------------------------
@@ -267,7 +262,6 @@ function M.get_args(fct_name, t)
     add      = args_bin_op,     -- same as ^
     sub      = args_bin_op,     -- same as ^
 
-    subst       = args_subst,
     compose_raw = args_compose, -- returns size_a, ma, size_b, mb, size_c, mc, refs
     minv_raw    = args_minv,    -- returns size_a, ma,             size_c, mc, refs
     pminv_raw   = args_pminv,   -- returns size_a, ma,             size_c, mc, selected_rows, refs

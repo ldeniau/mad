@@ -131,17 +131,23 @@ local function check_bin_with_berz(mod)
   factory.setup(mod)  -- restore original
 end
 
-local function check_subst_with_berz(mod)
-  local ma, mb, lb, mc, ptrs_t, ptrs_b
-  ma, mb, lb, mc, ptrs_t = factory.get_args("subst")
-  mod.subst(ma, mb, lb, mc)
+local function check_compose_with_berz(mod)
+  local sa, ma, sb, mb, sc, mc, ptrs_t, ptrs_b
+  sa, ma, sb, mb, sc, mc, ptrs_t = factory.get_args("compose_raw")
+  mod.compose_raw(sa, ma, sb, mb, sc, mc)
 
   factory.setup(berz)
-  ma, mb, lb, mc, ptrs_b = factory.get_args("subst")
+  sa, ma, sb, mb, sc, mc, ptrs_b = factory.get_args("compose_raw")
+  berz.compose_raw(sa, ma, sb, mb, sc, mc)
 
-  berz.subst(ma, mb, lb, mc)
-
-  check_identical(ptrs_t.mc[1], ptrs_b.mc[1], 1e-13, factory.To, "subst")
+  fprintf(M.mod_file , "\n==== COMPOSE_RAW OUT =======================\n")
+  fprintf(M.berz_file, "\n==== COMPOSE_RAW OUT =======================\n")
+  factory.print_all(M.mod_file , ptrs_t.mc)
+  factory.print_all(M.berz_file, ptrs_b.mc)
+  for i=1,factory.nv do
+    check_identical(ptrs_t.ma[i], ptrs_b.ma[i], 1e-17, factory.To, "compose_raw input", "absolute")
+    check_identical(ptrs_t.mc[i], ptrs_b.mc[i], 1e-5, factory.To, "compose_raw")
+  end
 
   factory.setup(mod)  -- restore original
 end
@@ -320,7 +326,7 @@ function M.do_all_checks(mod, nv, no)
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
 
---  check_subst_with_berz(mod)
+  check_compose_with_berz(mod)
 --  check_der_with_berz(mod)
 --  check_abs_with_berz(mod)
 
