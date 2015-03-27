@@ -1,0 +1,173 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\usepackage{color}
+
+\setlength{\parindent}{4em}
+\setlength{\parskip}{1em}
+\renewcommand{\baselinestretch}{1.}
+
+\usepackage[yyyymmdd,hhmmss]{datetime}
+
+\usepackage{amsmath}
+
+\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\Rot}{rot}
+
+
+\begin{document}
+
+\title{Quadruple Studies}
+\author{Irina Shreyber}
+\date{\ddmmyyyydate\today}
+
+\maketitle
+
+\section{The Hamiltonian}
+Vector potential for quadruple is: 
+\begin{equation}
+\pmb{a} = \left(0, 0, -\frac{k_{0}}{s}(x^{2} + y^{2})\right)
+\end{equation}
+
+which gives the exact Hamiltonian for quadruple (h = 0):
+\begin{align}
+H & = \frac{p_{t}}{\beta_{0}}-\sqrt {\left(p_{t}+\frac{1}{\beta_{0}} \right)^{2} - p_{x}^{2} - p_{y}^{2} -\frac{1}{\beta_{0}^{2}\gamma_{0}^{2}}} +\frac{k_{0}}{2}(x^{2}-y^{2}) \nonumber \\
+&= \frac{p_{t}}{\beta_{0}}-\sqrt {p_{t}^{2}+2\frac{p_{t}}{\beta_{0}} + 1 - p_{x}^{2} - p_{y}^{2} } +\frac{k_{0}}{2}(x^{2}-y^{2})
+\label{eq: Hamiltonian Quad}
+\end{align}
+ 
+
+Then,  with the paraxial approximation by expanding the square root to second order in the dynamical variables we get:
+
+\begin{equation}
+\label{eq: Hamiltonian Quad Taylor All}
+\tilde{H} = \frac{p_{x}^{2}}{2} + \frac{p_{y}^{2}}{2} +  \frac{p_{t}^{2}}{2\beta_{0}^{2}\gamma_{0}^{2}} +\frac{k_{0}}{2}(x^{2}-y^{2}) 
+\end{equation}
+
+In this case we loose the effect of the variation of focusing strength with particle energy in an accelerator beam line ({\it chromaticity}) . To take it into account we can treat the transverse variables $(x, p_{x})$ and $(y, p_{y})$ separately from the longitudinal variables $(z, p_{t})$. This is possible, since if we neglect radiation and certain collective effects, the energy of a particle in a static magnetic field is constant. Therefore, the energy deviation $p_{t}$ of a particle moving through a quadrupole will be constant. We can then expand the Hamiltonian (\ref{eq: Hamiltonian Quad}) to second order in the transverse variables, while maintaining the exact dependence on  $p_{t}$: 
+
+\begin{equation}
+\label{eq: Hamiltonian Quad Taylor Part Exact}
+\tilde{H} = \frac{p_{x}^{2}}{2(1+\delta)} + \frac{p_{y}^{2}}{2(1+\delta)} + \pmb{ \frac{p_{t}}{\beta_{0}} - (1+\delta)}+\frac{k_{0}}{2}(x^{2}-y^{2}) 
+\end{equation}
+
+where 
+
+\begin{equation}
+\label{eq: momentum deviation}
+(1+\delta) = \sqrt{p_{t}^{2} + 2\frac{p_{t}}{\beta_{0}} + 1},
+\end{equation}
+
+and $\delta$ is the momentum deviation. 
+
+If we compare it to Ref[2], Eq.(3)
+\begin{equation}
+\label{eq: Hamiltonian Andrea}
+\tilde{H} = \frac{p_{x}^{2}}{2(1+\delta)} + \frac{p_{y}^{2}}{2(1+\delta)} +  \pmb{\frac{1-\beta_{0}^2}{2\beta_{0}^2}p_{t}^{2}}   +\frac{k_{0}}{2}(x^{2}-y^{2}) 
+\end{equation}
+
+we can see that  the term $\frac{1-\beta_{0}^2}{2\beta_{0}^2}p_{t}^{2}$ in (\ref{eq: Hamiltonian Andrea}) is nothing else but the expansion of the term $\frac{p_{t}}{\beta_{0}} - (1+\delta)$  in (\ref{eq: Hamiltonian Quad Taylor Part Exact}) to the second order.
+
+\section{The Equations of Motions}
+
+For both Hamiltonians, (\ref{eq: Hamiltonian Quad Taylor Part Exact}) and (\ref{eq: Hamiltonian Andrea}), the solutions of the equations of motions in the transverse plane are the same:
+
+\begin{align}
+\frac{dx}{ds} &= \frac{\partial \tilde{H}}{\partial p_{x}} = \frac{p_{x}}{1+\delta} \nonumber \\
+\frac{dp_{x}}{ds} &= -\frac{\partial \tilde{H}}{\partial x} = -k_{0}x \nonumber \\
+\frac{dy}{ds} &= \frac{\partial \tilde{H}}{\partial p_{y}} = \frac{p_{y}}{1+\delta} \nonumber \\
+\frac{dp_{y}}{ds} &= -\frac{\partial \tilde{H}}{\partial y} = k_{0}y \nonumber \\
+\end{align}
+
+whereas the longitudinal ones for $z$ are different due to second order expansion in $p_{t}$. For Hamiltonian (\ref{eq: Hamiltonian Quad Taylor Part Exact}) (we have dropped a constant $\frac{1}{\beta_{0}}$ which has no significance for the dynamics) we have:
+
+\begin{equation}
+\label{eq: Motion PT Andy}
+\frac{dz}{ds} = \frac{\partial \tilde{H}}{\partial p_{t}} = \pmb{-\frac{1}{(1+\delta)}\left(p_{t} +\frac{1}{\beta_{0}}  \right)}        -      \frac{1}{2}\left(p_{t} + \frac{1}{\beta_{0}}\right)\frac{p_{x}^{2}+ p_{y}^{2}}{(1+\delta)^{3}}     \end{equation}
+
+while for Hamiltonian (\ref{eq: Hamiltonian Andrea}) we get:
+
+
+\begin{equation}
+\label{eq: Motion PT Andrea}
+\frac{dz}{ds} = \frac{\partial \tilde{H}}{\partial p_{t}} = \pmb{\frac{1-\beta_{0}^2}{\beta_{0}^2}p_{t}}- \frac{1}{2}\left(p_{t} + \frac{1}{\beta_{0}}\right)\frac{p_{x}^{2}+ p_{y}^{2}}{(1+\delta)^{3}}     
+\end{equation}
+
+
+The equations of motion for $p_{t}$ are obviously the same in both cases:
+
+\begin{equation}
+\label{eq: Motion PT}
+\frac{dp_{t}}{ds} = -\frac{\partial \tilde{H}}{\partial z} = 0 
+\end{equation}
+
+
+\section{The transfer map}
+
+The transfer map of the thick quadruple is obtained by the integration of the equations of motion over the length $L$. 
+We define 
+
+\begin{equation}
+\label{eq: strengh}
+k = \sqrt{\frac{k_{0}}{1+\delta}}
+\end{equation}
+
+\begin{align}
+C= cos (\sqrt{k}L), \qquad &\hat{C}= cosh (\sqrt{k}L), \nonumber \\
+S= sin (\sqrt{k}L), \qquad &\hat{S}= sinh (\sqrt{k}L);\nonumber
+\end{align}
+
+
+The map for the transverse variable (in both cases) reads:
+
+\begin{align}
+%\label{eq: X}
+& x(L) = C\cdot x_{0} + \frac{S}{\sqrt{k}(1+\delta)}\cdot  p_{x_{0}} \\
+%\label{eq: PX}
+&p_{x}(L) =  -\sqrt{k}(1+\delta)S\cdot x_{0} + C\cdot p_{x_{0}} \\
+%\label{eq: Y}
+& y(L) =  \hat{C}\cdot y_{0} + \frac{\hat{S}}{\sqrt{k}(1+\delta)}\cdot  p_{y_{0}} \\
+%\label{eq: PY}
+&p_{y}(L)= \sqrt{k}(1+\delta)\hat{S}\cdot y_{0} + \hat{C}\cdot p_{y_{0}} 
+\end{align}
+
+For the longitudinal variables $p_{t}$ stays the same in both cases, i.e. 
+
+\begin{equation}
+\label{eq: PT}
+p_{t}(L) = p_{t_{0}}
+\end{equation}
+
+For $z$ in case (\ref{eq: Motion PT Andy}) the solution is:
+
+\begin{align*}
+z(L) &=  z_{0} \pmb {-\frac{1}{(1+\delta)}\left(p_{t} +\frac{1}{\beta_{0}}  \right)}  \cdot L \, -\\
+&\frac{1}{2}\frac{p_{t} +\frac{1}{\beta_{0}}}{(1+\delta)^{2}} \cdot \Biggl\{  \frac{1}{2}k_{0}\left[ x^{2}\left( L - \frac{C \cdot S}{\sqrt{k}}\right) - y^{2}\left( L - \frac{\hat{C} \cdot \hat{S}}{\sqrt{k}}\right) \right] \, + \\
+&\frac{1}{2}\frac{1}{(1+\delta)} \left[ p_{x}^{2}\left( L + \frac{C \cdot S}{\sqrt{k}}\right) + p_{y}^{2}\left( L + \frac{\hat{C} \cdot \hat{S}}{\sqrt{k}}\right) \right] \, -\\ 
+& \left[ x\cdot p_{x}\left( 1 - C^{2} \right) + y \cdot p_{y}\left( 1-\hat{C}^{2}\right) \right] \Biggr\}
+%\label{eq: Z Andy}
+\end{align*}
+
+and in case (\ref{eq: Motion PT Andrea}):
+
+\begin{align*}
+z(L) &=  z_{0}+ \pmb {\frac{1-\beta_{0}^2}{\beta_{0}^2}p_{t}} \cdot L + \, \\
+&\frac{1}{2}\frac{p_{t} +\frac{1}{\beta_{0}}}{(1+\delta)^{2}} \cdot \Biggl\{  \frac{1}{2}k_{0}\left[ x^{2}\left( L - \frac{C \cdot S}{\sqrt{k}}\right) - y^{2}\left( L - \frac{\hat{C} \cdot \hat{S}}{\sqrt{k}}\right) \right] \, + \\
+&\frac{1}{2}\frac{1}{(1+\delta)} \left[ p_{x}^{2}\left( L + \frac{C \cdot S}{\sqrt{k}}\right) + p_{y}^{2}\left( L + \frac{\hat{C} \cdot \hat{S}}{\sqrt{k}}\right) \right] \, -\\ 
+& \left[ x\cdot p_{x}\left( 1 - C^{2} \right) + y \cdot p_{y}\left( 1-\hat{C}^{2}\right) \right] \Biggr\}
+%\label{eq:Z Andrea}
+\end{align*}
+
+As one can see, the only difference is the coefficient in front of the linear term which is coming from the choice of the "quasi"-exact solutions for $p_{t}$ or the second-order approximation. It makes sense to replace second-order expansion in $p_{t}$ by the exact solution for the new MAD (?). In this particular case we can easily have the "exact" solution without adding any complication to the calculation.
+
+
+{\it
+\pmb{Reference:}
+
+1. A.Wolski, Beam Dynamics in HEP Accelerators, chapter 3, p.101-105 
+
+
+2. A. Latina, Implementation of a Thick Quadrupole in the MAD-X tracking module
+}
+\end{document}

@@ -1,0 +1,185 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\usepackage{color}
+
+\setlength{\parindent}{4em}
+\setlength{\parskip}{1em}
+\renewcommand{\baselinestretch}{1.}
+
+\usepackage[yyyymmdd,hhmmss]{datetime}
+
+\usepackage{amsmath}
+
+\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\Rot}{rot}
+
+
+\begin{document}
+
+\title{Dipole Studies}
+\author{Irina Shreyber}
+\date{\ddmmyyyydate\today}
+
+\maketitle
+
+\section{The Hamiltonian}
+Vector potential for quadruple is: 
+
+\begin{equation}
+\pmb{A} = \left(0, 0, -B_{0}x + \frac{B_{0}hx^{2}}{2(1+hx)} \right)
+\end{equation}
+
+\begin{equation}
+\pmb{a}= \frac{q}{P_{0}}\pmb{A} = \left(0, 0, -k_{0}x + \frac{k_{0}hx^{2}}{2(1+hx)} \right)
+\end{equation}
+
+where $q$ is the particle charge, $P_{0}$ is the reference momentum, and $k_{0} = \frac{q}{P_{0}B_{0}}$ the normalised field strength.
+
+The exact Hamiltonian for dipole in this case is:
+\begin{align*}
+H & = \frac{p_{t}}{\beta_{0}}-(1+hx)\sqrt {\left(p_{t}+\frac{1}{\beta_{0}} \right)^{2} - p_{x}^{2} - p_{y}^{2} -\frac{1}{\beta_{0}^{2}\gamma_{0}^{2}}} +(1+hx)k_{0}\left(x-\frac{hx^{2}}{2(1+hx)}\right)  \\
+&= \frac{p_{t}}{\beta_{0}}-(1+hx)\sqrt {p_{t}^{2}+2\frac{p_{t}}{\beta_{0}} + 1 - p_{x}^{2} - p_{y}^{2} } +(1+hx)k_{0}\left(x-\frac{hx^{2}}{2(1+hx)}\right)
+\label{eq: Hamiltonian Dipole}
+\end{align*}
+ 
+
+The expanded to the second order in the transverse variables, while maintaining the exact dependence on  $p_{t}$, Hamiltonian: 
+
+\begin{equation}
+\label{eq: Hamiltonian Dipole Taylor Part Exact}
+\tilde{H} = \frac{p_{x}^{2}}{2(1+\delta)} + \frac{p_{y}^{2}}{2(1+\delta)} + \pmb{ \frac{p_{t}}{\beta_{0}} - (1+\delta)} - h(1+\delta)x +k_{0}x\left(1+\frac{1}{2}hx\right)
+\end{equation}
+
+where 
+
+\begin{equation}
+\label{eq: momentum deviation}
+(1+\delta) = \sqrt{p_{t}^{2} + 2\frac{p_{t}}{\beta_{0}} + 1},
+\end{equation}
+
+and $\delta$ is the momentum deviation. 
+
+If we compare it to Ref[2], Eq.(4)
+\begin{equation}
+\label{eq: Hamiltonian Andrea}
+\tilde{H} = \frac{p_{x}^{2}}{2(1+\delta)} + \frac{p_{y}^{2}}{2(1+\delta)} + \pmb{\frac{1-\beta_{0}^2}{2\beta_{0}^2}p_{t}^{2}} - h(1+\delta)x+k_{0}x\left(1+\frac{1}{2}hx\right)
+\end{equation}
+
+we can see that  the term $\frac{1-\beta_{0}^2}{2\beta_{0}^2}p_{t}^{2}$ in (\ref{eq: Hamiltonian Andrea}) is nothing else but the expansion of the term $\frac{p_{t}}{\beta_{0}} - (1+\delta)$  in (\ref{eq: Hamiltonian Dipole Taylor Part Exact}) to the second order.
+
+\section{The Equations of Motions}
+
+For both Hamiltonians, (\ref{eq: Hamiltonian Dipole Taylor Part Exact}) and (\ref{eq: Hamiltonian Andrea}), the solutions of the equations of motions in the transverse plane are the same:
+
+\begin{align}
+\frac{dx}{ds} &= \frac{\partial \tilde{H}}{\partial p_{x}} = \frac{p_{x}}{1+\delta} \nonumber \\
+\frac{dp_{x}}{ds} &= -\frac{\partial \tilde{H}}{\partial x} = -k_{0}(hx+1)+h(1+\delta) \nonumber \\
+\frac{dy}{ds} &= \frac{\partial \tilde{H}}{\partial p_{y}} = \frac{p_{y}}{1+\delta} \nonumber \\
+\frac{dp_{y}}{ds} &= 0 \nonumber \\
+\end{align}
+
+whereas the longitudinal ones for $z$ are different due to second order expansion in $p_{t}$. For Hamiltonian (\ref{eq: Hamiltonian Dipole Taylor Part Exact}) (the constant $\frac{1}{\beta_{0}}$ which has no significance for the dynamics was dropped) we have:
+
+\begin{align}
+\frac{dz}{ds} &= \frac{\partial \tilde{H}}{\partial p_{t}} \nonumber \\
+& = \pmb{-\frac{1}{(1+\delta)}\left(p_{t} +\frac{1}{\beta_{0}}  \right)}  - \frac{p_{t} + \frac{1}{\beta_{0}}}{1+\delta}hx  -   \frac{1}{2}\left(p_{t} + \frac{1}{\beta_{0}}\right)\frac{p_{x}^{2}+ p_{y}^{2}}{(1+\delta)^{3}}  \nonumber \\
+&=\pmb{-\frac{1}{(1+\delta)}\left(p_{t} +\frac{1}{\beta_{0}}  \right)}  - \frac{p_{t} + \frac{1}{\beta_{0}}}{1+\delta}\left(hx  + \frac{1}{2}\frac{p_{x}^{2}+ p_{y}^{2}}{(1+\delta)^{2}}\right)
+\label{eq: Motion Z}
+\end{align}
+
+while for Hamiltonian (\ref{eq: Hamiltonian Andrea}) we get:
+
+
+\begin{equation}
+\label{eq: Motion Z Andrea}
+\frac{dz}{ds} = \frac{\partial \tilde{H}}{\partial p_{t}} = \pmb{\frac{1-\beta_{0}^2}{\beta_{0}^2}p_{t}}- \frac{p_{t} + \frac{1}{\beta_{0}}}{1+\delta}\left(hx  + \frac{1}{2}\frac{p_{x}^{2}+ p_{y}^{2}}{(1+\delta)^{2}}\right)    
+\end{equation}
+
+
+The equations of motion for $p_{t}$ are obviously the same in both cases:
+
+\begin{equation}
+\label{eq: Motion PT}
+\frac{dp_{t}}{ds} = -\frac{\partial \tilde{H}}{\partial z} = 0 
+\end{equation}
+
+
+\section{The transfer map}
+
+The transfer map of the thick dipole is obtained by the integration of the equations of motion over the length $L$. 
+We define 
+
+\begin{equation}
+\label{eq: strengh}
+k = \sqrt{\frac{k_{0}}{1+\delta}}
+\end{equation}
+
+\begin{align}
+C= cos (\sqrt{hk}L), \nonumber \\
+S= sin (\sqrt{hk}L);\nonumber
+\end{align}
+
+
+The map for the transverse variable (in both cases) reads:
+
+\begin{align}
+%\label{eq: X}
+& x(L) = C\cdot x_{0} + \frac{S}{\sqrt{hk}(1+\delta)}\cdot  p_{x_{0}} + \left(\frac{1}{k} - \frac{1}{h}\right)(1-C)\\
+%\label{eq: PX}
+&p_{x}(L) =  -\sqrt{hk}(1+\delta)\cdot S\cdot x_{0} + C\cdot p_{x_{0}} + (1+\delta)\cdot \left(\sqrt{\frac{h}{k}} - \sqrt{\frac{k}{h}}\right)\cdot S \\
+%\label{eq: Y}
+& y(L) =  y_{0} + \frac{ p_{y_{0}}}{(1+\delta)}\cdot L \\
+%\label{eq: PY}
+&p_{y}(L)=  p_{y_{0}} 
+\end{align}
+
+For the longitudinal variables $p_{t}$ stays the same in both cases, i.e. 
+
+\begin{equation}
+\label{eq: PT}
+p_{t}(L) = p_{t_{0}}
+\end{equation}
+
+For $z$ in case (\ref{eq: Motion Z}) the solution is:
+
+\begin{align}
+z(L)& =  \pmb {-\frac{1}{(1+\delta)}\left(p_{t} +\frac{1}{\beta_{0}}  \right)}  \cdot L \nonumber  - \\
+  &\qquad \frac{p_{t_{0}}+\frac{1}{\beta_{0}}}{1+\delta}\left(\frac{\left(h\, k\, x+k-h\right)\sqrt{h}\sqrt{k}S}{h\, k^{2}}-\frac{p_{x_{0}}\left(C-1\right)}{\left(1+\delta\right)k}+\frac{\left(h-k\right)\, L}{k}\right)+ \nonumber \\
+ & \qquad-\frac{1}{2}\left(p_{t_{0}}+\frac{1}{\beta_{0}}\right)\frac{1}{\left(1+\delta\right)^{3}}\cdot\left\{ x_{0}^{2}\right.\cdot h\cdot k_{0}\cdot\left(1+\delta\right)\cdot\left(\frac{L}{2}-\frac{1}{\sqrt{h}\sqrt{k}}\frac{C\cdot S}{2}\right)+ \nonumber\\
+ & \qquad\quad p_{x_{0}}^{2}\left(\frac{L}{2}+\frac{1}{\sqrt{h}\sqrt{k}}\frac{C\cdot S}{2}\right) + \nonumber \\
+ & \qquad\quad  x_{0}\cdot\left(1+\delta\right)\left(-\left(1+\delta\right)\sqrt{k}\frac{C\cdot S}{\sqrt{h}}+\left(1+\delta\right)\sqrt{h}\frac{C\cdot S}{\sqrt{k}}+\left(k_{0}-\left(1+\delta\right)h\right)\cdot L\right) +\nonumber \\
+ & \qquad\quad  p_{x_{0}}\cdot\left(-\frac{\left(1+\delta\right)}{k}\cdot C^{2}+\frac{\left(1+\delta\right)}{h}\cdot C^{2}+\frac{\left(1+\delta\right)}{k}-\frac{\left(1+\delta\right)}{h}\right)+ \nonumber\\
+ & \qquad\quad x_{0}\cdot p_{x_{0}}\cdot\left(1+\delta\right)\left(C^{2}-1\right)+p_{y_{0}}^{2}L+ \nonumber \\
+ & \qquad\quad-\sqrt[3]{\frac{1+\delta}{h}}\sqrt{k_{0}}\cdot\frac{C\cdot S}{2}+\left(1+\delta\right)^{2}\frac{C\cdot S}{\sqrt{h}\sqrt{k}}-\left(1+\delta\right)^{2}\frac{\sqrt{h}}{\sqrt[3]{k}}\frac{C\cdot S}{2}+ \nonumber\\
+ & \qquad\left.+\left(1+\delta\right)^{2}\cdot\frac{k}{2h}L+\left(1+\delta\right)^{2}\frac{h}{2k}L-\left(1+\delta\right)^{2}L\right\} .
+ \label{eq:Z}
+\end{align}
+
+and in case (\ref{eq: Motion Z Andrea}):
+
+\begin{align}
+z & =\pmb {\frac{1-\beta_{0}^{2}}{\beta_{0}^{2}}L\cdot p_{t_{0}}}-\frac{p_{t_{0}}+\frac{1}{\beta_{0}}}{1+\delta}\left(\frac{\left(h\, k\, x+k-h\right)\sqrt{h}\sqrt{k}S}{h\, k^{2}}-\frac{p_{x_{0}}\left(C-1\right)}{\left(1+\delta\right)k}+\frac{\left(h-k\right)\, L}{k}\right)+ \qquad \nonumber \\
+ & \qquad-\frac{1}{2}\left(p_{t_{0}}+\frac{1}{\beta_{0}}\right)\frac{1}{\left(1+\delta\right)^{3}}\cdot\left\{ x_{0}^{2}\right.\cdot h\cdot k_{0}\cdot\left(1+\delta\right)\cdot\left(\frac{L}{2}-\frac{1}{\sqrt{h}\sqrt{k}}\frac{C\cdot S}{2}\right)+ \nonumber \\
+ & \qquad\quad p_{x_{0}}^{2}\left(\frac{L}{2}+\frac{1}{\sqrt{h}\sqrt{k}}\frac{C\cdot S}{2}\right) + \nonumber \\
+ & \qquad\quad  x_{0}\cdot\left(1+\delta\right)\left(-\left(1+\delta\right)\sqrt{k}\frac{C\cdot S}{\sqrt{h}}+\left(1+\delta\right)\sqrt{h}\frac{C\cdot S}{\sqrt{k}}+\left(k_{0}-\left(1+\delta\right)h\right)\cdot L\right) + \nonumber \\
+ & \qquad\quad  p_{x_{0}}\cdot\left(-\frac{\left(1+\delta\right)}{k}\cdot C^{2}+\frac{\left(1+\delta\right)}{h}\cdot C^{2}+\frac{\left(1+\delta\right)}{k}-\frac{\left(1+\delta\right)}{h}\right)+ \nonumber \\
+ & \qquad\quad x_{0}\cdot p_{x_{0}}\cdot\left(1+\delta\right)\left(C^{2}-1\right)+p_{y_{0}}^{2}L+ \nonumber \\
+ & \qquad\quad-\sqrt[3]{\frac{1+\delta}{h}}\sqrt{k_{0}}\cdot\frac{C\cdot S}{2}+\left(1+\delta\right)^{2}\frac{C\cdot S}{\sqrt{h}\sqrt{k}}-\left(1+\delta\right)^{2}\frac{\sqrt{h}}{\sqrt[3]{k}}\frac{C\cdot S}{2}+ \nonumber \\
+ & \qquad\left.+\left(1+\delta\right)^{2}\cdot\frac{k}{2h}L+\left(1+\delta\right)^{2}\frac{h}{2k}L-\left(1+\delta\right)^{2}L\right\} .
+ \label{eq:Z Andrea}
+\end{align}
+
+As one can see, the difference is the coefficient in front of the linear term which is coming from the choice of the "quasi"-exact solutions for $p_{t}$ or the second-order approximation. It makes sense to replace second-order expansion in $p_{t}$ by the exact solution for the new MAD (?). In this particular case we can easily have the "exact" solution without adding any complication to the calculation. 
+
+
+{\it
+\pmb{Reference:}
+
+1. A.Wolski, Beam Dynamics in HEP Accelerators, chapter 3, p.101-105 
+
+
+2. A. Latina, Implementation of a Thick Dipole in the MAD-X tracking module
+}
+\end{document}
