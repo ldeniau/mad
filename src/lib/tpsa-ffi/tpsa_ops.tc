@@ -174,33 +174,19 @@ hpoly_mul(const T *a, const T *b, T *c)
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
-  // int ords_per_thread = c->mo/nb_threads + 1;
-  // int ocs[nb_threads * ords_per_thread];
-  // for (int i = 0; i < nb_threads * ords_per_thread; ++i)
-  //   ocs[i] = -1;
-
-  // int ord = 2;
-  // for (int col = 0; col < ords_per_thread; ++col)
-  //   for (int row = nb_threads - 1; row >= 0 && ord <= c->mo; --row) {
-  //     // ocs[row*ords_per_thread + col] = col & 1 ? c->mo - col/2*nb_threads - row : col/2*nb_threads + 2 + row;
-  //     ocs[row*ords_per_thread + col] = col & 1 ? c->mo - col/2*nb_threads - row : col/2*nb_threads + 2 + row;
-  //     ord++;
-  //   }
-
   int ocs[4][20] = {
               {  2,  3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 0 },
               { 19, 17, 0, },
               { 20 },
               };
-  int TIDs[nb_threads];
   int ops[c->mo+1];
   ops[0] = ops[1] = 0;
 
-  #pragma omp parallel num_threads(nb_threads)
+  #pragma omp parallel for num_threads(nb_threads)
+  for (int t = 0; t < nb_threads; ++t)
   {
-    int t = omp_get_thread_num();
-    // TIDs[t] = t;
-    // TIDs[t] = syscall(SYS_gettid);
+    // int t = omp_get_thread_num();
+    // int tid = omp_get_thread_num();
     for (int i = 0; i < c->mo; ++i) {
       int oc = ocs[t][i];
       ops[oc] = 0;
@@ -238,31 +224,36 @@ hpoly_mul(const T *a, const T *b, T *c)
     }
   }
 
-  // fprintf(stderr, "\n ops: ");
-  // for (int o = 2; o <= c->mo; ++o)
-  //   fprintf(stderr, "[%d]=%d ", o, ops[o]);
-
-  // fprintf(stderr, "\n cumulated ops: ");
-  // int accum = 0;
-  // for (int o = 2; o <= c->mo; ++o) {
-  //   accum += ops[o];
-  //   fprintf(stderr, "[%d]=%d ", o, accum);
-  // }
-
-  // fprintf(stderr, "threads: %d\n", nb_threads);
-  // for (int t = 0; t < nb_threads; ++t) {
-  //   int ops_per_thread = 0;
-  //   fprintf(stderr, "TID:%d\t", TIDs[t]);
-  //   for (int i = 0; i < c->mo && ocs[t][i] > 0; ++i) {
-  //     int ord = ocs[t][i];
-  //     ops_per_thread += ops[ord];
-  //     fprintf(stderr, "%d ", ord);
-  //   }
-  //   fprintf(stderr, "ops=%d\n", ops_per_thread);
-  // }
-
   for (int t = 0; t < nb_threads; ++t)
     c->nz |= c_nzs[t];
+
+  static int printed = 1;
+  if (printed)
+    return;
+
+  printed = 1;
+  fprintf(stderr, "\n ops: ");
+  for (int o = 2; o <= c->mo; ++o)
+    fprintf(stderr, "[%d]=%d ", o, ops[o]);
+
+  fprintf(stderr, "\n cumulated ops: ");
+  int accum = 0;
+  for (int o = 2; o <= c->mo; ++o) {
+    accum += ops[o];
+    fprintf(stderr, "[%d]=%d ", o, accum);
+  }
+
+  fprintf(stderr, "\n mul_threads: %d\n", nb_threads);
+  for (int t = 0; t < nb_threads; ++t) {
+    int ops_per_thread = 0;
+    fprintf(stderr, "%d :\t", t);
+    for (int i = 0; i < c->mo && ocs[t][i] > 0; ++i) {
+      int ord = ocs[t][i];
+      ops_per_thread += ops[ord];
+      fprintf(stderr, "%d ", ord);
+    }
+    fprintf(stderr, "ops=%d\n", ops_per_thread);
+  }
 }
 #endif
 
