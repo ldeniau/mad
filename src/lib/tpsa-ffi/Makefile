@@ -29,7 +29,7 @@ ifdef OPENMP
 bench_mul:	override CFLAGS += -fopenmp
 endif
 ifdef PROFILING
-bench_mul:	override CFLAGS += -fno-omit-frame-pointer -pg
+bench_mul:	override CFLAGS += -fno-omit-frame-pointer -pg -g
 endif
 
 bench_mul:	bench_mul.c mad_*.c tpsa_*.tc mad_*.h

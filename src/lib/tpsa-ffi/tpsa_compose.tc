@@ -42,7 +42,7 @@ static inline T*
 get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
 {
   // extract from `a` all knob children of `pure_mono`, which contains only canonical vars
-  assert(pure_mono && ctx);
+  assert(pure_mono && knb_coef);
   D *d = a->desc;
   ord_t mono[d->nv], knb_mono[d->nv];
   mono_cpy(d->nv, pure_mono, mono);

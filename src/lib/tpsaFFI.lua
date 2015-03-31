@@ -35,7 +35,7 @@ ffi.cdef[[
   D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t vo);
   D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t vo, // with knobs
                             int nk, const ord_t knb_ords[], ord_t ko);
-  D*    mad_tpsa_desc_read (FILE *stream_);
+  D*    mad_tpsa_desc_scan (FILE *stream_);
 
   void  mad_tpsa_desc_del  (      D *d);
 
@@ -113,7 +113,7 @@ ffi.cdef[[
   void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
   void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
 
-  void  mad_tpsa_read_coef(      T *t, FILE *stream_);
+  void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
   void  mad_tpsa_print    (const T *t, FILE *stream_);
   void  mad_tpsa_print_compact   (const T *t);
 
@@ -337,14 +337,14 @@ end
 function M.read(file)
   local d = clib.mad_tpsa_desc_read(file)
   local t = allocate(d)
-  clib.mad_tpsa_read_coef(t,file)
+  clib.mad_tpsa_scan_coef(t,file)
   return t
 end
 
 function M.read_into(t, file)
   -- header is ignored, so make sure input is compatible with t (same nv,nk)
-  clib.mad_tpsa_desc_read(file)
-  clib.mad_tpsa_read_coef(t,file)
+  clib.mad_tpsa_desc_scan(file)
+  clib.mad_tpsa_scan_coef(t,file)
 end
 
 -- OPERATIONS ------------------------------------------------------------------

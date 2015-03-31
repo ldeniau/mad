@@ -20,7 +20,11 @@ double get_time()
 int main(int argc, char *argv[])
 {
   fprintf(stderr, "Usage: ./bench_mul input_file.txt num_loops\n");
-  assert(argc == 3);
+  if (argc != 3) {
+    fprintf(stderr, "Not enough args\n");
+    return 1;
+  }
+
   FILE *fin = fopen(argv[1], "r");
 
   D *da = mad_tpsa_desc_scan(fin);
