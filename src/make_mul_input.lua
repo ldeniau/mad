@@ -1,5 +1,9 @@
 local tpsa, factory = require "lib.tpsa", require "factory"
 
+io.stderr:write([[Usage: luajit make_mul_input.lua nv no [output_file]
+  output_file defaults to ./tpsa.out
+]])
+
 tpsa.set_package("ffi")
 
 local nv, no = tonumber(arg[1]), tonumber(arg[2])
