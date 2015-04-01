@@ -57,68 +57,49 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
   return (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa]);
 }
 
+static inline void
+idx_and_sym_mul(int iab_sum, int ilb, int ia_size, int ib_size,
+                const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+{
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+  (void)oc; (void)l_size;  // avoid warning when compiling without assert
+
+  int ila = iab_sum - ilb;
+  int il = hpoly_idx_rect(ilb,ila,ia_size);
+  assert(0 <= il && il < l_size);
+  idx_t ia = pi[oa] + ila;
+  idx_t ib = pi[ob] + ilb;
+  assert(pi[oa] <= ia && ia < pi[oa+1]);
+  assert(pi[ob] <= ib && ib < pi[ob+1]);
+
+  int ic = l[il];
+  if (ic >= 0) {
+    assert(pi[oc] <= ic && ic < pi[oc+1]);
+    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  }
+}
+
 static inline int
 hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
   int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
-  int chunks_a = ia_size / chunksize[0];
-  int chunks_b = ib_size / chunksize[1];
+  int iab_sum = 0;
+  for ( ; iab_sum < ib_size - 1; ++iab_sum)
+    for (int ilb = 0; ilb < iab_sum; ++ilb)
+      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
 
-  for (int cki = 0; cki < chunks_a; ++cki) {
-    for (int ckj = 0; ckj < chunks_b; ++ckj)
-      for (int i = 0; i < chunksize[0]; ++i)
-        for (int j = 0; j < chunksize[1]; ++j) {
-          idx_t ia = cki*chunksize[0] + i + iao;
-          idx_t ib = ckj*chunksize[1] + j + ibo;
-          assert(pi[oa] <= ia && ia < pi[oa+1]);
-          assert(pi[ob] <= ib && ib < pi[ob+1]);
-          int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-          assert(0 <= il && il < l_size);
+  for ( ; iab_sum < ia_size; ++iab_sum)
+    for (int ilb = 0; ilb < ib_size; ++ilb)
+      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
 
-          idx_t ic = l[il];
-          if (ic >= 0) {
-            assert(pi[oc] <= ic && ic < pi[oc+1]);
-            cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-          }
-        }
-    // if ib_size is not divisible by chunksize[1]
-    for (idx_t ib = chunks_b*chunksize[1] + ibo; ib < pi[ob+1]; ++ib)
-      for (int i = 0; i < chunksize[0]; ++i) {
-        idx_t ia = cki*chunksize[0] + i + iao;
-        assert(pi[oa] <= ia && ia < pi[oa+1]);
-        assert(pi[ob] <= ib && ib < pi[ob+1]);
-        int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-        assert(0 <= il && il < l_size);
+  for ( ; iab_sum < ia_size+ib_size - 1; ++iab_sum)
+    for (int ilb = iab_sum-ia_size + 1; ilb < ib_size; ++ilb)
+      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
 
-        idx_t ic = l[il];
-        if (ic >= 0) {
-          assert(pi[oc] <= ic && ic < pi[oc+1]);
-          cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-        }
-      }
-  }
-
-  // if ia_size is not divisible by chunksize[0]
-  for (idx_t ia = iao + chunks_a*chunksize[0]; ia < pi[oa+1]; ++ia)
-    for (idx_t ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      assert(pi[oa] <= ia && ia < pi[oa+1]);
-      assert(pi[ob] <= ib && ib < pi[ob+1]);
-      int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-      assert(0 <= il && il < l_size);
-
-      idx_t ic = l[il];
-      // if (ic >= 0) {
-        assert(pi[oc] <= ic && ic < pi[oc+1]);
-        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-      // }
-    }
 
   // oa > ob so longer loop is inside
   // for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)

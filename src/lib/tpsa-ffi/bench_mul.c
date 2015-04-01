@@ -46,15 +46,15 @@ int main(int argc, char *argv[])
     double start = get_time();
   #endif
 
-  clock_t t0 = clock();
+  // clock_t t0 = clock();
   for (int l = 0; l < NL; ++l) {
-    clock_t t0 = clock();
+    // clock_t t0 = clock();
     mad_tpsa_mul(a,b,c);
-    clock_t t1 = clock();
-    printf("time[%d]=%g\n", l, ((double)t1-t0)/CLOCKS_PER_SEC);
+    // clock_t t1 = clock();
+    // printf("time[%d]=%g\n", l, ((double)t1-t0)/CLOCKS_PER_SEC);
   }
-  clock_t t1 = clock();
-  printf("time=%g\n", ((double)t1-t0)/CLOCKS_PER_SEC);
+  // clock_t t1 = clock();
+  // printf("time=%g\n", ((double)t1-t0)/CLOCKS_PER_SEC);
 
   #ifdef _OPENMP
     double end = omp_get_wtime();
