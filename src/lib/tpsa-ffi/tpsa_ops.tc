@@ -15,7 +15,10 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <time.h>
 #endif
+
+static const int chunksize[2] = {1024,1024};
 
 static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
@@ -60,26 +63,77 @@ hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int o
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-  // fprintf(stderr, "i=%d oc=%d %d %d\n", omp_get_thread_num(), oa+ob, oa, ob);
   int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
   int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
   int l_size  = ia_size*ib_size, oc = oa+ob;
   (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
-  // oa > ob so longer loop is inside
-  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
-  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
+  int chunks_a = ia_size / chunksize[0];
+  int chunks_b = ib_size / chunksize[1];
 
-    int ic = l[il];
-    // if (ic >= 0) {
-    //   assert(pi[oc] <= ic && ic < pi[oc+1]);
-    //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    // }
-    assert(pi[oc] <= ic && ic < pi[oc+1]);
-    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  for (int cki = 0; cki < chunks_a; ++cki) {
+    for (int ckj = 0; ckj < chunks_b; ++ckj)
+      for (int i = 0; i < chunksize[0]; ++i)
+        for (int j = 0; j < chunksize[1]; ++j) {
+          idx_t ia = cki*chunksize[0] + i + iao;
+          idx_t ib = ckj*chunksize[1] + j + ibo;
+          assert(pi[oa] <= ia && ia < pi[oa+1]);
+          assert(pi[ob] <= ib && ib < pi[ob+1]);
+          int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+          assert(0 <= il && il < l_size);
+
+          idx_t ic = l[il];
+          if (ic >= 0) {
+            assert(pi[oc] <= ic && ic < pi[oc+1]);
+            cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+          }
+        }
+    // if ib_size is not divisible by chunksize[1]
+    for (idx_t ib = chunks_b*chunksize[1] + ibo; ib < pi[ob+1]; ++ib)
+      for (int i = 0; i < chunksize[0]; ++i) {
+        idx_t ia = cki*chunksize[0] + i + iao;
+        assert(pi[oa] <= ia && ia < pi[oa+1]);
+        assert(pi[ob] <= ib && ib < pi[ob+1]);
+        int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+        assert(0 <= il && il < l_size);
+
+        idx_t ic = l[il];
+        if (ic >= 0) {
+          assert(pi[oc] <= ic && ic < pi[oc+1]);
+          cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+        }
+      }
   }
+
+  // if ia_size is not divisible by chunksize[0]
+  for (idx_t ia = iao + chunks_a*chunksize[0]; ia < pi[oa+1]; ++ia)
+    for (idx_t ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      assert(pi[oa] <= ia && ia < pi[oa+1]);
+      assert(pi[ob] <= ib && ib < pi[ob+1]);
+      int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+      assert(0 <= il && il < l_size);
+
+      idx_t ic = l[il];
+      // if (ic >= 0) {
+        assert(pi[oc] <= ic && ic < pi[oc+1]);
+        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+      // }
+    }
+
+  // oa > ob so longer loop is inside
+  // for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
+  // for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
+  //   int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
+  //   assert(0 <= il && il < l_size);
+
+  //   int ic = l[il];
+  //   // if (ic >= 0) {
+  //   //   assert(pi[oc] <= ic && ic < pi[oc+1]);
+  //   //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  //   // }
+  //   assert(pi[oc] <= ic && ic < pi[oc+1]);
+  //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  // }
   return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]) * 2;
 }
 
@@ -123,14 +177,16 @@ hpoly_mul(const T *a, const T *b, T *c)
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  for (int oc=2; oc <= c->mo; oc++) {
+  int chunksize[2] = {2,3};
+
+  for (int oc=c->mo; oc >= 2; oc--) {
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa > ob >= 1
       l = dc->L[oa*hod + ob];
       assert(l);
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
+        hpoly_sym_mul(ca,cb,cc, l,chunksize, oa,ob,ps);
         c->nz = bset(c->nz,oc);
       }
       else if (bget(nza,oa) && bget(nzb,ob)) {
@@ -163,31 +219,36 @@ hpoly_mul(const T *a, const T *b, T *c)
   printf("poly_mul_parallel\n");
 #endif
   D *dc = c->desc;
-  const idx_t *l = NULL;
+  // const idx_t *l = NULL;
   int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
   const num_t *ca = a->coef,  *cb = b->coef;
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  int nb_threads = 4;
+  static const int nb_threads = 4;
   bit_t c_nzs[nb_threads];
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
-  int ocs[4][20] = {
-              {  2,  3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 0 },
-              { 19, 17, 0, },
-              { 20 },
+  static const int ocs[4][20] = {
+              { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, },
+              { 19, 17 },
+              { 20, },
+              { 0 },
               };
+  // int ocs[4][20] = { { 2, 5 }, { 3 }, { 4 }, { 0 }, };
   int ops[c->mo+1];
   ops[0] = ops[1] = 0;
 
+  // static int loop_id = 0;
+  // loop_id++;
+  // clock_t t0 = clock();
   #pragma omp parallel for num_threads(nb_threads)
   for (int t = 0; t < nb_threads; ++t)
   {
-    // int t = omp_get_thread_num();
-    // int tid = omp_get_thread_num();
-    for (int i = 0; i < c->mo; ++i) {
+    // clock_t t0 = clock();
+    int i;
+    for (i = 0; i < c->mo; ++i) {
       int oc = ocs[t][i];
       ops[oc] = 0;
 
@@ -195,7 +256,7 @@ hpoly_mul(const T *a, const T *b, T *c)
         break;
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
-        l = dc->L[oa*hod + ob];
+        const idx_t *l = dc->L[oa*hod + ob];
         assert(l);
 
         if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
@@ -214,7 +275,7 @@ hpoly_mul(const T *a, const T *b, T *c)
 
       if (! (oc & 1)) {  // even oc, triang matrix
         int hoc = oc/2;
-        l = dc->L[hoc*hod + hoc];
+        const idx_t *l = dc->L[hoc*hod + hoc];
         assert(l);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
           ops[oc] += hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
@@ -222,38 +283,41 @@ hpoly_mul(const T *a, const T *b, T *c)
         }
       }
     }
+    // clock_t t1 = clock();
+    // printf("time_omp[%d,%d]: %g\n", loop_id, t, ((double)t1-t0)/CLOCKS_PER_SEC);
   }
+  // clock_t t1 = clock();
+  // printf("time_omp[%d]: %g\n", loop_id, ((double)t1-t0)/CLOCKS_PER_SEC);
 
   for (int t = 0; t < nb_threads; ++t)
     c->nz |= c_nzs[t];
 
-  static int printed = 1;
-  if (printed)
-    return;
+  // if (printed)
+  //   return;
 
-  printed = 1;
-  fprintf(stderr, "\n ops: ");
-  for (int o = 2; o <= c->mo; ++o)
-    fprintf(stderr, "[%d]=%d ", o, ops[o]);
+  // printed = 1;
+  // fprintf(stderr, "\n ops: ");
+  // for (int o = 2; o <= c->mo; ++o)
+  //   fprintf(stderr, "[%d]=%d ", o, ops[o]);
 
-  fprintf(stderr, "\n cumulated ops: ");
-  int accum = 0;
-  for (int o = 2; o <= c->mo; ++o) {
-    accum += ops[o];
-    fprintf(stderr, "[%d]=%d ", o, accum);
-  }
+  // fprintf(stderr, "\n cumulated ops: ");
+  // int accum = 0;
+  // for (int o = 2; o <= c->mo; ++o) {
+  //   accum += ops[o];
+  //   fprintf(stderr, "[%d]=%d ", o, accum);
+  // }
 
-  fprintf(stderr, "\n mul_threads: %d\n", nb_threads);
-  for (int t = 0; t < nb_threads; ++t) {
-    int ops_per_thread = 0;
-    fprintf(stderr, "%d :\t", t);
-    for (int i = 0; i < c->mo && ocs[t][i] > 0; ++i) {
-      int ord = ocs[t][i];
-      ops_per_thread += ops[ord];
-      fprintf(stderr, "%d ", ord);
-    }
-    fprintf(stderr, "ops=%d\n", ops_per_thread);
-  }
+  // fprintf(stderr, "\n mul_threads: %d\n", nb_threads);
+  // for (int t = 0; t < nb_threads; ++t) {
+  //   int ops_per_thread = 0;
+  //   fprintf(stderr, "%d :\t", t);
+  //   for (int i = 0; i < c->mo && ocs[t][i] > 0; ++i) {
+  //     int ord = ocs[t][i];
+  //     ops_per_thread += ops[ord];
+  //     fprintf(stderr, "%d ", ord);
+  //   }
+  //   fprintf(stderr, "ops=%d\n", ops_per_thread);
+  // }
 }
 #endif
 
