@@ -3,6 +3,7 @@
 # Output files #
 ################
 *.out
+*.txt
 
 # Compiled source #
 ###################

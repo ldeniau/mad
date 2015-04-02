@@ -12,22 +12,61 @@
 #include <omp.h>
 #endif
 
-static const int chunksize[2] = {1024,1024};
+enum ORD_SPLIT {NONE, LEFT, RIGHT};
+
+static inline void
+sym_loop(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib,
+         int start, int end, const idx_t pi[], ord_t oa, ord_t ob, ord_t oc)
+{
+  l += hpoly_idx_rect(ib-pi[ob],start,pi[oa+1]-pi[oa]);
+  end -= start;
+  for (int il=0; il < end; il++) {
+    idx_t ia = il + start + pi[oa];
+    int ic = l[il];
+    // if (ic >= 0) {
+    //   assert(pi[oc] <= ic && ic < pi[oc+1]);
+    //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    // }
+    assert(pi[oa] <= ia && ia < pi[oa+1]);
+    assert(pi[ob] <= ib && ib < pi[ob+1]);
+    assert(pi[oc] <= ic && ic < pi[oc+1]);
+    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  }
+}
 
 static inline int
-hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const *l, int oa, int pi[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc,
+                 const idx_t l[], int oa, int pi[], enum ORD_SPLIT split, const int thlds[])
 {
 #ifdef TRACE
   printf("triang_mul oa=%d ob=%d\n", oa, oa);
 #endif
+  int ia_size = pi[oa+1] - pi[oa];
+  if (split == NONE) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, 0       , ib  , pi,oa,ob,oa+ob);
+  }
+  else if (split == LEFT) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, 0       , thlds[ib], pi,oa,ob,oa+ob);
+  }
+  else if (split == RIGHT) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, thlds[ib], ia_size , pi,oa,ob,oa+ob);
+  }
+  return ia_size * (pi[ob+1]-pi[ob]);
+
+
+
   int iao = pi[oa], ibo = pi[oa];  // offsets for shifting to 0
-  int l_size = (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa] + 1) / 2, oc = oa + oa;
+  int ia_size = pi[oa+1]-pi[oa];
+  int l_size = ia_size * ia_size, oc = oa + oa;
   (void)oc; (void)l_size;  // avoid warning when compiling without assert
 
   // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
   for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
-  for (idx_t ia = ib + 1; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_triang(ib-ibo, ia-iao);
+  for (idx_t ia = pi[oa]; ia < ib      ; ia++) {
+    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
@@ -39,72 +78,40 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const 
 
   // symm: c[2 2] = a[1 1] * b[1 1]
   for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_triang(ia-iao, ia-iao);
+    int il = hpoly_idx_rect(ia-iao, ia-iao, ia_size);
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    // if (ic >= 0) {
+    if (ic >= 0) {
       assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ia];
-    // }
+    }
   }
   return (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa]);
 }
 
 static inline int
-hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t *l, int oa, int ob, int pi[])
+hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc,
+              const idx_t l[], int oa, int ob, const int pi[], enum ORD_SPLIT split, const int thlds[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
-  int iao = pi[oa], ibo = pi[ob];             // offsets into poly
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)l_size; (void)oc;    // avoid warnings when compilign without assert
 
-  int ilb, il, row = 0, cs = 0, ce = 0;
-  idx_t ia, ib, ic;
-  while (cs <= ce) {
-    for (int ila = cs; ila <= ce; ++ila) {
-      ilb = row - ila + cs;
-      // ila = col;
-      il = hpoly_idx_rect(ilb,ila,ia_size);
-      assert(0 <= il && il < l_size);
-
-      ia = ila + iao;
-      ib = ilb + ibo;
-      assert(pi[oa] <= ia && ia < pi[oa+1]);
-      assert(pi[ob] <= ib && ib < pi[ob+1]);
-
-      ic = l[il];
-      // if (ic >= 0) {
-        assert(pi[oc] <= ic && ic < pi[oc+1]);
-        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-      // }
-    }
-    if (row < ib_size-1)
-      ce = ++row;
-    else {
-      cs++;
-      ce = imin(cs+ib_size,ia_size) - 1;
-    }
+  int ia_size = pi[oa+1] - pi[oa];
+  if (split == NONE) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, 0       , ia_size  , pi,oa,ob,oa+ob);
   }
-
-  // oa > ob so longer loop is inside
-  // for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
-  // for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
-  //   int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-  //   assert(0 <= il && il < l_size);
-
-  //   int ic = l[il];
-  //   // if (ic >= 0) {
-  //   //   assert(pi[oc] <= ic && ic < pi[oc+1]);
-  //   //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-  //   // }
-  //   assert(pi[oc] <= ic && ic < pi[oc+1]);
-  //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-  // }
-  return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]) * 2;
+  else if (split == LEFT) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, 0       , thlds[ib], pi,oa,ob,oa+ob);
+  }
+  else if (split == RIGHT) {
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
+      sym_loop(ca,cb,cc, l, ib, thlds[ib], ia_size , pi,oa,ob,oa+ob);
+  }
+  return 2* ia_size * (pi[ob+1]-pi[ob]);
 }
 
 static inline int
@@ -187,7 +194,9 @@ hpoly_mul(const T *a, const T *b, T *c)
   printf("poly_mul_parallel\n");
 #endif
   D *dc = c->desc;
-  // const idx_t *l = NULL;
+  idx_t *l     = NULL;
+  int   *thlds = NULL;
+  enum ORD_SPLIT split = NONE;
   int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
   const num_t *ca = a->coef,  *cb = b->coef;
         num_t *cc = c->coef;
@@ -198,36 +207,45 @@ hpoly_mul(const T *a, const T *b, T *c)
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
+  // static const int ocs[4][20] = {
+  //             { 21, 12, 7 },
+  //             { 20, 11, 9, 6, 4, 2, 1 },
+  //             { 19, 15, 10,  8,  5, 3 },
+  //             { 18, 17, 16, 14, 13,   },
+  //             };
   static const int ocs[4][20] = {
-              { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, },
-              { 19, 17 },
-              { 20, },
+              { 4 },
+              { 3 },
+              { 2 },
               { 0 },
               };
-  int ops[c->mo+1];
+  int ops[c->mo+2];
   ops[0] = ops[1] = 0;
 
-  // static int loop_id = 0;
-  // loop_id++;
-  // clock_t t0 = clock();
-  #pragma omp parallel for num_threads(nb_threads)
+  #pragma omp parallel for firstprivate(l,thlds,split) num_threads(nb_threads)
   for (int t = 0; t < nb_threads; ++t)
   {
-    // clock_t t0 = clock();
-    int i;
-    for (i = 0; i < c->mo; ++i) {
+    for (int i = 0; i < c->mo; ++i) {
       int oc = ocs[t][i];
       ops[oc] = 0;
 
+      if (oc == c->mo)
+        split = LEFT;
+      if (oc == c->mo + 1) {
+        oc = c->mo;
+        split = RIGHT;
+      }
       if (oc < 2 || oc > c->mo)
-        break;
+        continue;
+
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
-        const idx_t *l = dc->L[oa*hod + ob];
-        assert(l);
+        l     = dc->L[oa*hod + ob];
+        thlds = dc->thld_idx[oa*hod + ob];
+        assert(l && thlds);
 
         if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-          ops[oc] += hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
+          ops[oc] += hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps, split,thlds);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,oa) && bget(nzb,ob)) {
@@ -242,7 +260,7 @@ hpoly_mul(const T *a, const T *b, T *c)
 
       if (! (oc & 1)) {  // even oc, triang matrix
         int hoc = oc/2;
-        const idx_t *l = dc->L[hoc*hod + hoc];
+        l = dc->L[hoc*hod + hoc];
         assert(l);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
           ops[oc] += hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
@@ -250,11 +268,7 @@ hpoly_mul(const T *a, const T *b, T *c)
         }
       }
     }
-    // clock_t t1 = clock();
-    // printf("time_omp[%d,%d]: %g\n", loop_id, t, ((double)t1-t0)/CLOCKS_PER_SEC);
   }
-  // clock_t t1 = clock();
-  // printf("time_omp[%d]: %g\n", loop_id, ((double)t1-t0)/CLOCKS_PER_SEC);
 
   for (int t = 0; t < nb_threads; ++t)
     c->nz |= c_nzs[t];
@@ -374,40 +388,15 @@ mad_tpsa_der(const T *a, int var, T *c)
 
   #define DER_USING_L_MATRIX
   #ifdef DER_USING_L_MATRIX
-  // get source indexes from L[oc][1], oc = [1..c_mo]
+
+  idx_t ia, *lc, *pi = d->hpoly_To_idx;
   const num_t *ca = a->coef;
-
-  // ord 1  -- triangular lc
-  ord_t oc = 1, ho = d->mo/2;
-  idx_t ia, *lc = d->L[oc*ho + 1], *pi = d->hpoly_To_idx;
-  if (bget(a->nz,2)) {
-    for (int ic = pi[oc]; ic < var; ++ic) {
-      ia = lc[ hpoly_idx_triang(ic-pi[oc], var-pi[1]) ];
-      if (ia >= 0) {
-        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-        mad_tpsa_seti(c,ic,ca[ia]);
-      }
-    }
-    ia = lc[ hpoly_idx_triang(var-pi[1],var-pi[1]) ];
-    mad_tpsa_seti(c,var,2*ca[ia]);
-
-    for (int ic = var+1; ic < pi[oc+1]; ++ic) {
-      ia = lc[ hpoly_idx_triang(var-pi[1], ic-pi[oc]) ];
-      if (ia >= 0) {
-        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-        mad_tpsa_seti(c,ic,ca[ia]);
-      }
-    }
-  }
-
-  // ords [2..c_mo]  -- rectangular lc
-  int ord_size = -1;
-  for (oc = 2; oc <= c_mo; ++oc)
+  ord_t ho = d->mo/2;
+  for (int oc = 1; oc <= c_mo; ++oc)
     if (bget(a->nz,oc+1)) {
       lc = d->L[oc*ho + 1];
-      ord_size = pi[oc+1] - pi[oc];
       for (int ic = pi[oc]; ic < pi[oc+1]; ++ic) {
-        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], ord_size) ];
+        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], pi[oc+1]-pi[oc]) ];
         if (ia >= 0) {
           assert(pi[oc+1] <= ia && ia < pi[oc+2]);
           mad_tpsa_seti(c,ic, d->To[ia][var-1] * ca[ia]);
@@ -416,7 +405,6 @@ mad_tpsa_der(const T *a, int var, T *c)
     }
   #else  // not DER_USING_L_MATRIX
 
-  // #ifdef UNUSED
   // TODO: switch between the two methods depending on NV ?
   idx_t idx_der = -1, *pi = d->hpoly_To_idx;
   var--;    // monos are 0-indexed

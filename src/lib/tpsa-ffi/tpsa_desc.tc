@@ -25,6 +25,7 @@ struct tpsa_desc {
           *tv2to, *to2tv, // lookup tv->to, to->tv
           *H,         // indexing matrix, in Tv
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
+  int    **thld_idx;  // thld_idx[oa][ob] = t[]; t[ilb] = ila : on row ilb split at idx ila
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -34,7 +35,6 @@ min_ord2(ord_t a, ord_t b)
 {
   return a<b ? a : b;
 }
-
 
 static inline ord_t
 min_ord(ord_t a, ord_t b, ord_t c)
@@ -53,12 +53,6 @@ max_nc(int nv, int no)
     den *= i - max;
   }
   return num / den;
-}
-
-static inline idx_t
-hpoly_idx_triang(idx_t ib, idx_t ia)
-{
-  return (ia*(ia+1))/2 + ib;  // left triangular
 }
 
 static inline idx_t
@@ -259,8 +253,8 @@ static inline int
 find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, enum tbl_ordering tbl_ord)
 {
 #ifdef DEBUG
-  mono_print(n,m);
-  printf(" from %d to %d\n", start, stop);
+  // mono_print(n,m);
+  // printf(" from %d to %d\n", start, stop);
 #endif
 
   int count = stop - start, i = 0, step = 0;
@@ -479,13 +473,7 @@ tbl_print_LC(const idx_t *lc, int oa, int ob, int *pi)
   for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
     printf("\n  ");
     for (int ia = pi[oa]; ia < pi[oa+1]; ++ia) {
-      int ic;
-      if (oa == ob) {
-        if (ia > ib) break;
-        ic = lc[hpoly_idx_triang(ia-iao,ib-ibo)];  // swap them to print left triang
-      }
-      else
-        ic = lc[hpoly_idx_rect  (ib-ibo,ia-iao,cols)];
+      int ic = lc[hpoly_idx_rect(ib-ibo,ia-iao,cols)];
       printf("%3d ", ic);
     }
   }
@@ -499,7 +487,7 @@ tbl_print_L(const D *d)
   for (int oc = 2; oc <= d->mo; ++oc)
     for (int j = 1; j <= oc/2; ++j) {
       int oa = oc - j, ob = j;
-      printf("L[%d][%d] = {", oa, ob);
+      printf("L[%d][%d] = {", ob, oa);
       tbl_print_LC(d->L[oa*ho + ob], oa, ob, d->hpoly_To_idx);
     }
 }
@@ -508,7 +496,7 @@ static inline idx_t*
 tbl_build_LC(int oa, int ob, D *d)
 {
 #ifdef DEBUG
-  printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
+  // printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
 #endif
   assert(d && d->To && d->hpoly_To_idx && d->tv2to);
   assert(oa < d->mo && ob < d->mo);
@@ -518,9 +506,7 @@ tbl_build_LC(int oa, int ob, D *d)
              iao  = pi[oa],            ibo   = pi[ob],            // offsets
              cols = pi[oa+1] - pi[oa], rows  = pi[ob+1] - pi[ob]; // sizes
 
-  int mat_size = 0;
-  if (oa == ob) mat_size = ((rows + 1) * cols) / 2;
-  else          mat_size = rows * cols;
+  int mat_size = rows * cols;
   idx_t *lc = malloc(mat_size * sizeof *lc);
   assert(lc);
   d->size += mat_size * sizeof *lc;
@@ -529,27 +515,61 @@ tbl_build_LC(int oa, int ob, D *d)
 
   ord_t m[d->nv];
   int ic, idx_lc;
-  for (int ib =      pi[ob]    ; ib < pi[ob+1]; ++ib)
-  for (int ia = imax(pi[oa],ib); ia < pi[oa+1]; ++ia) {
-    mono_add(d->nv, To[ia], To[ib], m);
-    if (desc_mono_isvalid(d,d->nv,m)) {
-      ic = tv2to[tbl_index_H(d,d->nv,m)];
-      if (oa == ob) idx_lc = hpoly_idx_triang(ib-ibo, ia-iao);
-      else          idx_lc = hpoly_idx_rect  (ib-ibo, ia-iao, cols);
-      lc[idx_lc] = ic;
-
+  for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+    int lim_a = oa == ob ? ib+1 : pi[oa+1];   // triangular is lower left
+    for (int ia = pi[oa]; ia < lim_a; ++ia) {
+      mono_add(d->nv, To[ia], To[ib], m);
+      if (desc_mono_isvalid(d,d->nv,m)) {
+        ic = tv2to[tbl_index_H(d,d->nv,m)];
+        idx_lc = hpoly_idx_rect(ib-ibo, ia-iao, cols);
+        lc[idx_lc] = ic;
 #ifdef DEBUG
-      /*
-      printf(" ib=%d ", ib); mono_print(d->nv, To[ib]);
-      printf(" ia=%d ", ia); mono_print(d->nv, To[ia]);
-      printf(" ic=%d ", ic); mono_print(d->nv, m);
-      printf(" ilc=%d\n", ilc);
-      */
+        /*
+        printf(" ib=%d ", ib); mono_print(d->nv, To[ib]);
+        printf(" ia=%d ", ia); mono_print(d->nv, To[ia]);
+        printf(" ic=%d ", ic); mono_print(d->nv, m);
+        printf(" ilc=%d\n", idx_lc);
+        */
 #endif
+      }
     }
   }
 
   return lc;
+}
+
+static inline int*
+get_thld_idxs(int oa, int ob, D *d)
+{
+#ifdef TRACE
+  printf("get_thld_idxs oa=%d ob=%d d=%p\n", oa, ob, (void*)d);
+#endif
+  int oc = oa + ob;
+  const idx_t *pi = d->hpoly_To_idx, *lc = d->L[d->mo/2*oa + ob],
+                T = (pi[oc+1] + pi[oc] - 1) / 2;  // Threshold of oc
+  const int  cols =  pi[oa+1] - pi[oa],
+             rows =  pi[ob+1] - pi[ob];
+
+  int *thld_idx = malloc(rows * sizeof *thld_idx);
+  assert(thld_idx);
+  d->size += rows * sizeof *thld_idx;
+
+  for (int ilb = 0; ilb < rows; ++ilb) {
+    thld_idx[ilb] = oa == ob ? ilb+1 : cols;
+    for (int ila = 0; ila < cols; ++ila) {
+      int ilc = hpoly_idx_rect(ilb,ila,cols);
+      if (lc[ilc] >= T) {
+        thld_idx[ilb] = ila;
+        break;
+  } } }
+#ifdef DEBUG
+  printf("THLDs[%d][%d] = { ", ob, oa);
+  for (int r = 0; r < rows; ++r)
+    printf("%d ", thld_idx[r]);
+  printf("} T = %d\n", T);
+#endif
+
+  return thld_idx;
 }
 
 static inline void
@@ -564,7 +584,13 @@ tbl_set_L(D *d)
   assert(d->L);
   d->size += size_L;
 
-  memset(d->L, 0, size_L);
+  int size_thi = (o*ho + 1) * sizeof *(d->thld_idx);
+  d->thld_idx = malloc(size_thi);
+  assert(d->thld_idx);
+  d->size += size_thi;
+
+  memset(d->L,        0, size_L);
+  memset(d->thld_idx, 0, size_thi);
   // #ifdef _OPENMP
   // #pragma omp parallel for schedule(guided,1)
   // #endif
@@ -572,7 +598,8 @@ tbl_set_L(D *d)
     for (int j = 1; j <= oc / 2; ++j) {
       int oa = oc - j, ob = j;
 
-      d->L[oa*ho + ob] = tbl_build_LC(oa, ob, d);
+      d->L       [oa*ho + ob] = tbl_build_LC (oa, ob, d);
+      d->thld_idx[oa*ho + ob] = get_thld_idxs(oa, ob, d);
     }
 
 #ifdef DEBUG
@@ -596,21 +623,21 @@ tbl_check_L(D *d)
 
       int sa = pi[oa+1]-pi[oa], sb = pi[ob+1]-pi[ob];
 
-      for (int ibl =                   0 ; ibl < sb; ++ibl) {
-      for (int ial = (oa == ob ? ibl : 0); ial < sa; ++ial) {
-        int ib = ibl + pi[ob], ia = ial + pi[oa];
-        int il = (oa == ob ?
-                  hpoly_idx_triang(ibl,ial) : hpoly_idx_rect(ibl,ial,sa));
-        if (il < 0)                              return -2e7 - ia*1e5 - ib;
-        if (il >= sa * sb)                       return  2e7 + ia*1e5 + ib;
+      for (int ibl = 0; ibl < sb; ++ibl) {
+        int lim_a = oa == ob ? ibl+1 : sa;
+        for (int ial = 0; ial < lim_a; ++ial) {
+          int ib = ibl + pi[ob], ia = ial + pi[oa];
+          int il = hpoly_idx_rect(ibl,ial,sa);
+          if (il < 0)                              return -2e7 - ia*1e5 - ib;
+          if (il >= sa * sb)                       return  2e7 + ia*1e5 + ib;
 
-        int ic = lc[il];
-        if (ic >= pi[oc+1])                      return  3e7 + ic*1e5 + 11;
-        if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
+          int ic = lc[il];
+          if (ic >= pi[oc+1])                      return  3e7 + ic*1e5 + 11;
+          if (ic >= 0 && ic < d->hpoly_To_idx[oc]) return  3e7 + ic*1e5 + 12;
 
-        mono_add(d->nv, d->To[ia], d->To[ib], m);
-        if (ic < 0 && desc_mono_isvalid(d,d->nv,m))
-                                                 return -3e7          - 13;
+          mono_add(d->nv, d->To[ia], d->To[ib], m);
+          if (ic < 0 && desc_mono_isvalid(d,d->nv,m))
+                                                   return -3e7          - 13;
         }
       }
     }
@@ -775,20 +802,22 @@ mad_tpsa_desc_del(D *d)
 {
   assert(d);
   // free and set to NULL so that they cannot be accidentally reused
-  free(d->a);            d->a              = NULL;
-  free(d->monos);        d->monos          = NULL;
-  free(d->ords);         d->ords           = NULL;
-  free(d->To);           d->To             = NULL;
-  free(d->Tv);           d->Tv             = NULL;
-  free(d->hpoly_To_idx); d->hpoly_To_idx   = NULL;
-  free(d->tv2to);        d->tv2to          = NULL;
-  free(d->to2tv);        d->to2tv          = NULL;
-  free(d->H);            d->H              = NULL;
+  free(d->a);             d->a              = NULL;
+  free(d->monos);         d->monos          = NULL;
+  free(d->ords);          d->ords           = NULL;
+  free(d->To);            d->To             = NULL;
+  free(d->Tv);            d->Tv             = NULL;
+  free(d->hpoly_To_idx);  d->hpoly_To_idx   = NULL;
+  free(d->tv2to);         d->tv2to          = NULL;
+  free(d->to2tv);         d->to2tv          = NULL;
+  free(d->H);             d->H              = NULL;
 
   for (int i = 0; i < 1 + d->mo * d->mo/2; ++i) {
-    free(d->L[i]);       d->L[i]           = NULL;
+    free(d->L       [i]); d->L       [i]    = NULL;
+    free(d->thld_idx[i]); d->thld_idx[i]    = NULL;
   }
-  free(d->L);            d->L              = NULL;
+  free(d->L);             d->L              = NULL;
+  free(d->thld_idx);      d->thld_idx       = NULL;
 
   // remove descriptor from global array
   int idx;

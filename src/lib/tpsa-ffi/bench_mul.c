@@ -67,15 +67,15 @@ int main(int argc, char *argv[])
   t0_cu = s0_tms.tms_cutime;
   t1_cu = s1_tms.tms_cutime;
 
-  printf("t_omp: %.3f\t",          t1_omp - t0_omp);
-  printf("t_tms: %.3f\t", ((double)t1_tms - t0_tms)  / CLK_TKS);
-  printf("t_cu : %.3f\t", ((double)t1_cu  - t0_cu )  / CLK_TKS);
-  printf("t_clk: %.3f\t", ((double)t1_clk - t0_clk)  / CLOCKS_PER_SEC);
-  printf("\n");
+  fprintf(stderr, "t_omp: %.3f\t",          t1_omp - t0_omp);
+  fprintf(stderr, "t_tms: %.3f\t", ((double)t1_tms - t0_tms)  / CLK_TKS);
+  fprintf(stderr, "t_cu : %.3f\t", ((double)t1_cu  - t0_cu )  / CLK_TKS);
+  fprintf(stderr, "t_clk: %.3f\t", ((double)t1_clk - t0_clk)  / CLOCKS_PER_SEC);
+  fprintf(stderr, "\n");
 
   // mad_tpsa_print(a,NULL);
   // mad_tpsa_print(b,NULL);
-  // mad_tpsa_print(c,NULL);
+  mad_tpsa_print(c,NULL);
 
   fclose(fin);
   return 0;

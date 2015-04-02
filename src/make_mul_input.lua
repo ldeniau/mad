@@ -18,6 +18,15 @@ for o=1,no do
   a = a * t
 end
 
+--local r1 = a * a
+--local res_file = io.open("lib/tpsa-ffi/res.out")
+--local r2 = tpsa.read(res_file)
+
+--factory.setup(tpsa,nv,no)
+--local check = require"check"
+--check.identical(r1,r2,1e-12,factory.To,"mul","absolute")
+
+
 local file = io.open(arg[3] or "tpsa.out","w")
 a:print(file)
 a:print(file)

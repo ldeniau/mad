@@ -335,7 +335,7 @@ function M.print(a, file)
 end
 
 function M.read(file)
-  local d = clib.mad_tpsa_desc_read(file)
+  local d = clib.mad_tpsa_desc_scan(file)
   local t = allocate(d)
   clib.mad_tpsa_scan_coef(t,file)
   return t
