@@ -21,7 +21,7 @@
 static const int chunksize[2] = {1024,1024};
 
 static inline int
-hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const *l, int oa, int pi[])
 {
 #ifdef TRACE
   printf("triang_mul oa=%d ob=%d\n", oa, oa);
@@ -49,57 +49,52 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const*
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    if (ic >= 0) {
+    // if (ic >= 0) {
       assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ia];
-    }
+    // }
   }
   return (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa]);
 }
 
-static inline void
-idx_and_sym_mul(int iab_sum, int ilb, int ia_size, int ib_size,
-                const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
-{
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
-  int ila = iab_sum - ilb;
-  int il = hpoly_idx_rect(ilb,ila,ia_size);
-  assert(0 <= il && il < l_size);
-  idx_t ia = pi[oa] + ila;
-  idx_t ib = pi[ob] + ilb;
-  assert(pi[oa] <= ia && ia < pi[oa+1]);
-  assert(pi[ob] <= ib && ib < pi[ob+1]);
-
-  int ic = l[il];
-  if (ic >= 0) {
-    assert(pi[oc] <= ic && ic < pi[oc+1]);
-    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-  }
-}
-
 static inline int
-hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t *l, int oa, int ob, int pi[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
   int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
+  int iao = pi[oa], ibo = pi[ob];             // offsets into poly
+  int l_size  = ia_size*ib_size, oc = oa+ob;
+  (void)l_size; (void)oc;    // avoid warnings when compilign without assert
 
-  int iab_sum = 0;
-  for ( ; iab_sum < ib_size - 1; ++iab_sum)
-    for (int ilb = 0; ilb < iab_sum; ++ilb)
-      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
+  int ilb, il, row = 0, cs = 0, ce = 0;
+  idx_t ia, ib, ic;
+  while (cs <= ce) {
+    for (int ila = cs; ila <= ce; ++ila) {
+      ilb = row - ila + cs;
+      // ila = col;
+      il = hpoly_idx_rect(ilb,ila,ia_size);
+      assert(0 <= il && il < l_size);
 
-  for ( ; iab_sum < ia_size; ++iab_sum)
-    for (int ilb = 0; ilb < ib_size; ++ilb)
-      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
+      ia = ila + iao;
+      ib = ilb + ibo;
+      assert(pi[oa] <= ia && ia < pi[oa+1]);
+      assert(pi[ob] <= ib && ib < pi[ob+1]);
 
-  for ( ; iab_sum < ia_size+ib_size - 1; ++iab_sum)
-    for (int ilb = iab_sum-ia_size + 1; ilb < ib_size; ++ilb)
-      idx_and_sym_mul(iab_sum,ilb, ia_size,ib_size, ca,cb,cc,l,oa,ob,pi);
-
+      ic = l[il];
+      // if (ic >= 0) {
+        assert(pi[oc] <= ic && ic < pi[oc+1]);
+        cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+      // }
+    }
+    if (row < ib_size-1)
+      ce = ++row;
+    else {
+      cs++;
+      ce = imin(cs+ib_size,ia_size) - 1;
+    }
+  }
 
   // oa > ob so longer loop is inside
   // for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
@@ -119,7 +114,7 @@ hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int o
 }
 
 static inline int
-hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t *l, int oa, int ob, int pi[])
 {
 #ifdef TRACE
   printf("asym_mul oa=%d ob=%d \n", oa, ob);
@@ -136,10 +131,10 @@ hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int 
     assert(0 <= il && il < l_size);
 
     int ic = l[il];
-    if (ic >= 0) {
+    // if (ic >= 0) {
       assert(pi[oc] <= ic && ic < pi[oc+1]);
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
-    }
+    // }
   }
   return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]);
 }
@@ -158,16 +153,14 @@ hpoly_mul(const T *a, const T *b, T *c)
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  int chunksize[2] = {2,3};
-
-  for (int oc=c->mo; oc >= 2; oc--) {
+  for (int oc=2; oc <= c->mo; oc++) {
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa > ob >= 1
       l = dc->L[oa*hod + ob];
       assert(l);
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_sym_mul(ca,cb,cc, l,chunksize, oa,ob,ps);
+        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
         c->nz = bset(c->nz,oc);
       }
       else if (bget(nza,oa) && bget(nzb,ob)) {
@@ -217,7 +210,6 @@ hpoly_mul(const T *a, const T *b, T *c)
               { 20, },
               { 0 },
               };
-  // int ocs[4][20] = { { 2, 5 }, { 3 }, { 4 }, { 0 }, };
   int ops[c->mo+1];
   ops[0] = ops[1] = 0;
 
