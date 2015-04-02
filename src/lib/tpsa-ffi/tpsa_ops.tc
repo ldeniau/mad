@@ -10,12 +10,6 @@
 
 #ifdef _OPENMP
 #include <omp.h>
-// for debugging Thread ID
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <time.h>
 #endif
 
 static const int chunksize[2] = {1024,1024};

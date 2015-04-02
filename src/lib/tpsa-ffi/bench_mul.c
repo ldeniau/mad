@@ -3,8 +3,11 @@
  prints the result to stdout
 */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <time.h>
+#include <sys/times.h>
+#include <unistd.h>
 #include <omp.h>
 #include "mad_tpsa_desc.h"
 #include "mad_tpsa.h"
@@ -40,30 +43,35 @@ int main(int argc, char *argv[])
 
   int NL = atoi(argv[2]);
 
-  #ifdef _OPENMP
-    double start = omp_get_wtime();
-  #else
-    double start = get_time();
-  #endif
+  int CLK_TKS = sysconf(_SC_CLK_TCK);
+  struct tms s0_tms, s1_tms;
+  clock_t t0_clk, t1_clk, t0_cu, t1_cu, t0_tms, t1_tms;
+  double t0_omp = 0, t1_omp = 0;
 
-  // clock_t t0 = clock();
+  #ifdef _OPENMP
+  t0_omp = omp_get_wtime();
+  #endif
+  t0_clk = clock();
+  t0_tms = times(&s0_tms);
+
   for (int l = 0; l < NL; ++l) {
-    // clock_t t0 = clock();
     mad_tpsa_mul(a,b,c);
-    // clock_t t1 = clock();
-    // printf("time[%d]=%g\n", l, ((double)t1-t0)/CLOCKS_PER_SEC);
   }
-  // clock_t t1 = clock();
-  // printf("time=%g\n", ((double)t1-t0)/CLOCKS_PER_SEC);
 
+  t1_tms = times(&s1_tms);
+  t1_clk = clock();
   #ifdef _OPENMP
-    double end = omp_get_wtime();
-  #else
-    double end = get_time();
+  t1_omp = omp_get_wtime();
   #endif
 
+  t0_cu = s0_tms.tms_cutime;
+  t1_cu = s1_tms.tms_cutime;
 
-  printf("%.3f\n", end-start);
+  printf("t_omp: %.3f\t",          t1_omp - t0_omp);
+  printf("t_tms: %.3f\t", ((double)t1_tms - t0_tms)  / CLK_TKS);
+  printf("t_cu : %.3f\t", ((double)t1_cu  - t0_cu )  / CLK_TKS);
+  printf("t_clk: %.3f\t", ((double)t1_clk - t0_clk)  / CLOCKS_PER_SEC);
+  printf("\n");
 
   // mad_tpsa_print(a,NULL);
   // mad_tpsa_print(b,NULL);
