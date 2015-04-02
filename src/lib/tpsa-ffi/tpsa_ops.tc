@@ -27,67 +27,72 @@ sym_loop(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib
     //   assert(pi[oc] <= ic && ic < pi[oc+1]);
     //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
     // }
-    assert(pi[oa] <= ia && ia < pi[oa+1]);
-    assert(pi[ob] <= ib && ib < pi[ob+1]);
-    assert(pi[oc] <= ic && ic < pi[oc+1]);
+    if (!(pi[oa] <= ia && ia < pi[oa+1])) {
+      printf("ia:%d\n", ia);
+      return;
+    }
+    if (!(pi[ob] <= ib && ib < pi[ob+1])) {
+      printf("ib:%d\n", ia);
+      return;
+    }
+    if (!(pi[oc] <= ic && ic < pi[oc+1])) {
+      printf("ic:%d\n", ia);
+      return;
+    }
+    // assert(pi[oa] <= ia && ia < pi[oa+1]);
+    // assert(pi[ob] <= ib && ib < pi[ob+1]);
+    // assert(pi[oc] <= ic && ic < pi[oc+1]);
     cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+  }
+}
+
+static inline void
+diag_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib,
+         int ib_size, const idx_t pi[], ord_t ob, ord_t oc)
+{
+  int il = hpoly_idx_rect(ib-pi[ob], ib-pi[ob], ib_size);
+  int ic = l[il];
+  if (ic >= 0) {
+    assert(pi[oc] <= ic && ic < pi[oc+1]);
+    cc[ic] = cc[ic] + ca[ib]*cb[ib];
   }
 }
 
 static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc,
-                 const idx_t l[], int oa, int pi[], enum ORD_SPLIT split, const int thlds[])
+                 const idx_t l[], int ob, int pi[], enum ORD_SPLIT split, const int thlds[])
 {
 #ifdef TRACE
-  printf("triang_mul oa=%d ob=%d\n", oa, oa);
+  printf("triang_mul oa=%d ob=%d\n", ob, ob);
 #endif
-  int ia_size = pi[oa+1] - pi[oa];
+  int ib_size = pi[ob+1] - pi[ob], ibo = pi[ob], ilb;
+  ord_t oc = ob + ob;
   if (split == NONE) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, 0       , ib  , pi,oa,ob,oa+ob);
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      ilb = ib - ibo;
+      // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
+      sym_loop(ca,cb,cc, l, ib, 0         , ilb       , pi,ob,ob,oc);
+      // symm: c[2 2] = a[1 1] * b[1 1]
+      diag_mul(ca,cb,cc, l, ib,       ib_size,          pi,   ob,oc);
+    }
   }
   else if (split == LEFT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, 0       , thlds[ib], pi,oa,ob,oa+ob);
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      ilb = ib - ibo;
+      sym_loop(ca,cb,cc, l, ib, 0         , thlds[ilb], pi,ob,ob,oc);
+      if (ilb < thlds[ilb])
+        diag_mul(ca,cb,cc, l, ib,     ib_size,          pi,   ob,oc);
+    }
   }
   else if (split == RIGHT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, thlds[ib], ia_size , pi,oa,ob,oa+ob);
-  }
-  return ia_size * (pi[ob+1]-pi[ob]);
-
-
-
-  int iao = pi[oa], ibo = pi[oa];  // offsets for shifting to 0
-  int ia_size = pi[oa+1]-pi[oa];
-  int l_size = ia_size * ia_size, oc = oa + oa;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
-  // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
-  for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
-  for (idx_t ia = pi[oa]; ia < ib      ; ia++) {
-    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      ilb = ib - ibo;
+      sym_loop(ca,cb,cc, l, ib, thlds[ilb], ilb       , pi,ob,ob,oc);
+      if (ilb >= thlds[ilb])
+        diag_mul(ca,cb,cc, l, ib,     ib_size,          pi,   ob,oc);
     }
   }
-
-  // symm: c[2 2] = a[1 1] * b[1 1]
-  for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_rect(ia-iao, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
-      cc[ic] = cc[ic] + ca[ia]*cb[ia];
-    }
-  }
-  return (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa]);
+  return ib_size * ib_size;
 }
 
 static inline int
@@ -98,18 +103,22 @@ hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc,
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
 
-  int ia_size = pi[oa+1] - pi[oa];
+  int ia_size = pi[oa+1] - pi[oa], ibo = pi[ob], ilb;
   if (split == NONE) {
     for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, 0       , ia_size  , pi,oa,ob,oa+ob);
+      sym_loop(ca,cb,cc, l, ib, 0         , ia_size   , pi,oa,ob,oa+ob);
   }
   else if (split == LEFT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, 0       , thlds[ib], pi,oa,ob,oa+ob);
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      ilb = ib - ibo;
+      sym_loop(ca,cb,cc, l, ib, 0         , thlds[ilb], pi,oa,ob,oa+ob);
+    }
   }
   else if (split == RIGHT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, thlds[ib], ia_size , pi,oa,ob,oa+ob);
+    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
+      ilb = ib - ibo;
+      sym_loop(ca,cb,cc, l, ib, thlds[ilb], ia_size   , pi,oa,ob,oa+ob);
+    }
   }
   return 2* ia_size * (pi[ob+1]-pi[ob]);
 }
@@ -214,10 +223,10 @@ hpoly_mul(const T *a, const T *b, T *c)
   //             { 18, 17, 16, 14, 13,   },
   //             };
   static const int ocs[4][20] = {
+              { 5 },
               { 4 },
               { 3 },
               { 2 },
-              { 0 },
               };
   int ops[c->mo+2];
   ops[0] = ops[1] = 0;
@@ -261,9 +270,10 @@ hpoly_mul(const T *a, const T *b, T *c)
       if (! (oc & 1)) {  // even oc, triang matrix
         int hoc = oc/2;
         l = dc->L[hoc*hod + hoc];
-        assert(l);
+        thlds = dc->thld_idx[hoc*hod + hoc];
+        assert(l && thlds);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
-          ops[oc] += hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
+          ops[oc] += hpoly_triang_mul(ca,cb,cc, l, hoc,ps, split,thlds);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
