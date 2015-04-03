@@ -209,22 +209,20 @@ hpoly_mul(const T *a, const T *b, T *c)
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  static const int nb_threads = 4;
+  static const int nb_threads = 8;
   bit_t c_nzs[nb_threads];
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
-  // static const int ocs[4][20] = {
-  //             { 21, 12, 7 },
-  //             { 20, 11, 9, 6, 4, 2, 1 },
-  //             { 19, 15, 10,  8,  5, 3 },
-  //             { 18, 17, 16, 14, 13,   },
-  //             };
-  static const int ocs[4][20] = {
-              { 6 },
-              { 5, 2 },
-              { 3 },
-              { 4 },
+  static const int ocs[8][20] = {
+              { 21, },
+              { 20, },
+              { 19, },
+              { 18, },
+              { 17, },
+              { 16, },
+              { 15, 10,  8,  7, 5 },
+              { 14, 13, 12, 11, 9, 6, 4, 3, 2, 1 },
               };
   int ops[c->mo+2];
   ops[0] = ops[1] = 0;
