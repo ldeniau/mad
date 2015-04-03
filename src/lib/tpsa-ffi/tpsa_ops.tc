@@ -24,22 +24,13 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, int nb,
   for (idx_t ia = idx[0][ib]; ia < idx[1][ib]; ia++) {
     int ic = l[hpoly_idx_rect(ib,ia,nb)];
     if (ic >= 0)
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-  }
-
-  // symm: c[2 2] = a[1 1] * b[1 1]
-  for (int ib=0; ib < nb; ib++) {
-    int ilow  = l[hpoly_idx_rect(ib,idx[0][ib],nb)];
-    int ihigh = l[hpoly_idx_rect(ib,idx[1][ib],nb)];
-    int ic    = l[hpoly_idx_rect(ib,ib,nb)];
-    if (ilow <= ic && ic <= ihigh )
-      cc[ic] = cc[ic] + ca[ib]*cb[ib];
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + (ia == ib ? 0 : ca[ib]*cb[ia]);
   }
 }
 
 static inline void
-hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
-              const idx_t l[], const int *idx[])
+hpoly_sym_mul(const num_t *ca1, const num_t *cb1, const num_t *ca2, const num_t *cb2,
+              num_t *cc, int na, int nb, const idx_t l[], const int *idx[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
@@ -49,7 +40,7 @@ hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
   for (idx_t ia=idx[0][ib]; ia < idx[1][ib]; ia++) {
     int ic = l[hpoly_idx_rect(ib, ia, na)];
     if (ic >= 0)
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
+      cc[ic] = cc[ic] + ca1[ia]*cb1[ib] + ca2[ib]*cb2[ia];
   }
 }
 
@@ -124,7 +115,7 @@ hpoly_mul(const T *a, const T *b, T *c)
 #endif
   D *dc = c->desc;
   idx_t *lc     = NULL;
-  int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
+  int *pi = dc->hpoly_To_idx, hod = dc->mo/2;
   const num_t *ca = a->coef,  *cb = b->coef;
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
@@ -156,8 +147,8 @@ hpoly_mul(const T *a, const T *b, T *c)
 
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
-        int na = ps[oa+1] - ps[oa];
-        int nb = ps[ob+1] - ps[ob];
+        int na = pi[oa+1] - pi[oa];
+        int nb = pi[ob+1] - pi[ob];
         lc  = dc->L[oa*hod + ob];
         assert(lc);
         const int *idx[2] = { dc->L_idx[oa*hod + ob][idx0],
@@ -165,27 +156,27 @@ hpoly_mul(const T *a, const T *b, T *c)
         assert(idx[0] && idx[1]);
 
         if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-          hpoly_sym_mul(ca+ps[oa],cb+ps[ob],cc, na,nb, lc, idx);
+          hpoly_sym_mul(ca+pi[oa],cb+pi[ob], ca+pi[ob],cb+pi[oa], cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,oa) && bget(nzb,ob)) {
-          hpoly_asym_mul(ca+ps[oa],cb+ps[ob],cc, na,nb, lc, idx);
+          hpoly_asym_mul(ca+pi[oa],cb+pi[ob],cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,ob) && bget(nzb,oa)) {
-          hpoly_asym_mul(cb+ps[ob],ca+ps[oa],cc, na,nb, lc, idx);
+          hpoly_asym_mul(cb+pi[ob],ca+pi[oa],cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
 
       if (! (oc & 1)) {  // even oc, triang matrix
-        int hoc = oc/2, nb = ps[hoc+1]-ps[hoc];
+        int hoc = oc/2, nb = pi[hoc+1]-pi[hoc];
         lc = dc->L[hoc*hod + hoc];
         const int *idx[2] = { dc->L_idx[hoc*hod + hoc][idx0],
                               dc->L_idx[hoc*hod + hoc][idx1] };
         assert(lc);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
-          hpoly_triang_mul(ca+ps[hoc],cb+ps[hoc],cc, nb, lc, idx);
+          hpoly_triang_mul(ca+pi[hoc],cb+pi[hoc],cc, nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }

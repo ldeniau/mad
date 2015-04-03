@@ -558,25 +558,35 @@ get_LC_idxs(int oa, int ob, D *d)
   assert(limits);
   d->size += 3 * rows * sizeof *limits;
 
-  LC_idx[0] = limits;
-  LC_idx[1] = limits +   rows;
-  LC_idx[2] = limits + 2*rows;
+  int START = 0, SPLIT = 1, END = 2;
 
-  for (int ilb = 0; ilb < rows; ++ilb) {
-    LC_idx[0][ilb] = 0;
-    LC_idx[1][ilb] = oa == ob ? ilb : cols;
-    LC_idx[2][ilb] = oa == ob ? ilb : cols;
-    for (int ila = 0; ila < cols; ++ila) {
-      int ilc = hpoly_idx_rect(ilb,ila,cols);
-      if (lc[ilc] >= T) {
-        LC_idx[1][ilb] = ila;
+  LC_idx[START] = limits;
+  LC_idx[SPLIT] = limits +   rows;
+  LC_idx[END  ] = limits + 2*rows;
+
+  for (int ib = 0; ib < rows; ++ib) {
+    int ia;
+    for (ia = 0; lc[hpoly_idx_rect(ib,ia,cols)] == -1; ++ia)
+      ;  // shift ia to first valid entry
+    LC_idx[START][ib] = ia;
+
+    for (ia = oa == ob ? ib : cols-1; lc[hpoly_idx_rect(ib,ia,cols)] == -1; --ia)
+      ;  // shift ia to last valid entry
+    LC_idx[END  ][ib] = ia + 1;
+
+    LC_idx[SPLIT][ib] = oa == ob ? ib+1 : cols;
+    for (ia = LC_idx[START][ib]; ia < LC_idx[END][ib]; ++ia)
+      if (lc[hpoly_idx_rect(ib,ia,cols)] >= T) {
+        LC_idx[SPLIT][ib] = ia;
         break;
-  } } }
+      }
+  }
 
 #ifdef DEBUG
   printf("LC_idx[%d][%d] = { [T=%d]\n", ob, oa, T);
+  printf("  -->\t  //\t<--\n");
   for (int r = 0; r < rows; ++r)
-    printf("  [%d\t%d\t%d]\n", LC_idx[0][r],LC_idx[1][r],LC_idx[2][r]);
+    printf("  [%3d\t%3d\t%3d]\n", LC_idx[START][r],LC_idx[SPLIT][r],LC_idx[END][r]);
 #endif
 
   return LC_idx;
