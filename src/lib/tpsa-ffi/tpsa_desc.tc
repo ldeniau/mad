@@ -25,7 +25,7 @@ struct tpsa_desc {
           *tv2to, *to2tv, // lookup tv->to, to->tv
           *H,         // indexing matrix, in Tv
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
-  int    **thld_idx;  // thld_idx[oa][ob] = t[]; t[ilb] = ila : on row ilb split at idx ila
+  int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -538,11 +538,11 @@ tbl_build_LC(int oa, int ob, D *d)
   return lc;
 }
 
-static inline int*
-get_thld_idxs(int oa, int ob, D *d)
+static inline int**
+get_LC_idxs(int oa, int ob, D *d)
 {
 #ifdef TRACE
-  printf("get_thld_idxs oa=%d ob=%d d=%p\n", oa, ob, (void*)d);
+  printf("get_L_idxs oa=%d ob=%d d=%p\n", oa, ob, (void*)d);
 #endif
   int oc = oa + ob;
   const idx_t *pi = d->hpoly_To_idx, *lc = d->L[d->mo/2*oa + ob],
@@ -550,26 +550,36 @@ get_thld_idxs(int oa, int ob, D *d)
   const int  cols =  pi[oa+1] - pi[oa],
              rows =  pi[ob+1] - pi[ob];
 
-  int *thld_idx = malloc(rows * sizeof *thld_idx);
-  assert(thld_idx);
-  d->size += rows * sizeof *thld_idx;
+  int **LC_idx = malloc(3 * sizeof *LC_idx);
+  assert(LC_idx);
+  d->size += 3 * sizeof *LC_idx;
+
+  int *limits = malloc(3 * rows * sizeof *limits);
+  assert(limits);
+  d->size += 3 * rows * sizeof *limits;
+
+  LC_idx[0] = limits;
+  LC_idx[1] = limits +   rows;
+  LC_idx[2] = limits + 2*rows;
 
   for (int ilb = 0; ilb < rows; ++ilb) {
-    thld_idx[ilb] = oa == ob ? ilb : cols;
+    LC_idx[0][ilb] = 0;
+    LC_idx[1][ilb] = oa == ob ? ilb : cols;
+    LC_idx[2][ilb] = oa == ob ? ilb : cols;
     for (int ila = 0; ila < cols; ++ila) {
       int ilc = hpoly_idx_rect(ilb,ila,cols);
       if (lc[ilc] >= T) {
-        thld_idx[ilb] = ila;
+        LC_idx[1][ilb] = ila;
         break;
   } } }
+
 #ifdef DEBUG
-  printf("THLDs[%d][%d] = { ", ob, oa);
+  printf("LC_idx[%d][%d] = { [T=%d]\n", ob, oa, T);
   for (int r = 0; r < rows; ++r)
-    printf("%d ", thld_idx[r]);
-  printf("} T = %d\n", T);
+    printf("  [%d\t%d\t%d]\n", LC_idx[0][r],LC_idx[1][r],LC_idx[2][r]);
 #endif
 
-  return thld_idx;
+  return LC_idx;
 }
 
 static inline void
@@ -584,13 +594,13 @@ tbl_set_L(D *d)
   assert(d->L);
   d->size += size_L;
 
-  int size_thi = (o*ho + 1) * sizeof *(d->thld_idx);
-  d->thld_idx = malloc(size_thi);
-  assert(d->thld_idx);
-  d->size += size_thi;
+  int size_lci = (o*ho + 1) * sizeof *(d->L_idx);
+  d->L_idx = malloc(size_lci);
+  assert(d->L_idx);
+  d->size += size_lci;
 
-  memset(d->L,        0, size_L);
-  memset(d->thld_idx, 0, size_thi);
+  memset(d->L,     0, size_L);
+  memset(d->L_idx, 0, size_lci);
   // #ifdef _OPENMP
   // #pragma omp parallel for schedule(guided,1)
   // #endif
@@ -598,8 +608,8 @@ tbl_set_L(D *d)
     for (int j = 1; j <= oc / 2; ++j) {
       int oa = oc - j, ob = j;
 
-      d->L       [oa*ho + ob] = tbl_build_LC (oa, ob, d);
-      d->thld_idx[oa*ho + ob] = get_thld_idxs(oa, ob, d);
+      d->L    [oa*ho + ob] = tbl_build_LC(oa, ob, d);
+      d->L_idx[oa*ho + ob] = get_LC_idxs (oa, ob, d);
     }
 
 #ifdef DEBUG
@@ -802,22 +812,24 @@ mad_tpsa_desc_del(D *d)
 {
   assert(d);
   // free and set to NULL so that they cannot be accidentally reused
-  free(d->a);             d->a              = NULL;
-  free(d->monos);         d->monos          = NULL;
-  free(d->ords);          d->ords           = NULL;
-  free(d->To);            d->To             = NULL;
-  free(d->Tv);            d->Tv             = NULL;
-  free(d->hpoly_To_idx);  d->hpoly_To_idx   = NULL;
-  free(d->tv2to);         d->tv2to          = NULL;
-  free(d->to2tv);         d->to2tv          = NULL;
-  free(d->H);             d->H              = NULL;
+  free(d->a);               d->a             = NULL;
+  free(d->monos);           d->monos         = NULL;
+  free(d->ords);            d->ords          = NULL;
+  free(d->To);              d->To            = NULL;
+  free(d->Tv);              d->Tv            = NULL;
+  free(d->hpoly_To_idx);    d->hpoly_To_idx  = NULL;
+  free(d->tv2to);           d->tv2to         = NULL;
+  free(d->to2tv);           d->to2tv         = NULL;
+  free(d->H);               d->H             = NULL;
 
   for (int i = 0; i < 1 + d->mo * d->mo/2; ++i) {
-    free(d->L       [i]); d->L       [i]    = NULL;
-    free(d->thld_idx[i]); d->thld_idx[i]    = NULL;
+    free(d->L    [i]);      d->L    [i]      = NULL;
+    if (d->L_idx[i])
+      free(d->L_idx[i][0]); d->L_idx[i][0]   = NULL;
+    free(d->L_idx[i]);      d->L_idx[i]      = NULL;
   }
-  free(d->L);             d->L              = NULL;
-  free(d->thld_idx);      d->thld_idx       = NULL;
+  free(d->L);               d->L             = NULL;
+  free(d->L_idx);           d->L_idx         = NULL;
 
   // remove descriptor from global array
   int idx;

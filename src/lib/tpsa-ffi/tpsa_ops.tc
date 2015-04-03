@@ -12,139 +12,61 @@
 #include <omp.h>
 #endif
 
-enum ORD_SPLIT {NONE, LEFT, RIGHT};
-
 static inline void
-sym_loop(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib,
-         int start, int end, const idx_t pi[], ord_t oa, ord_t ob, ord_t oc)
-{
-  l += hpoly_idx_rect(ib-pi[ob],start,pi[oa+1]-pi[oa]);
-  end -= start;
-  for (int il=0; il < end; il++) {
-    idx_t ia = il + start + pi[oa];
-    int ic = l[il];
-    // if (ic >= 0) {
-    //   assert(pi[oc] <= ic && ic < pi[oc+1]);
-    //   cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    // }
-    if (!(pi[oa] <= ia && ia < pi[oa+1])) {
-      printf("ia:%d\n", ia);
-      return;
-    }
-    if (!(pi[ob] <= ib && ib < pi[ob+1])) {
-      printf("ib:%d\n", ia);
-      return;
-    }
-    if (!(pi[oc] <= ic && ic < pi[oc+1])) {
-      printf("ic:%d\n", ia);
-      return;
-    }
-    // assert(pi[oa] <= ia && ia < pi[oa+1]);
-    // assert(pi[ob] <= ib && ib < pi[ob+1]);
-    // assert(pi[oc] <= ic && ic < pi[oc+1]);
-    cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-  }
-}
-
-static inline int
-hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc,
-                 const idx_t l[], int ob, int pi[], enum ORD_SPLIT split, const int thlds[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, int nb,
+                 const idx_t l[], const int *idx[])
 {
 #ifdef TRACE
   printf("triang_mul oa=%d ob=%d\n", ob, ob);
 #endif
-  int ib_size = pi[ob+1] - pi[ob], ibo = pi[ob], ilb;
-  ord_t oc = ob + ob;
-  if (split == NONE) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      ilb = ib - ibo;
-      // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
-      sym_loop(ca,cb,cc, l, ib, 0         , ilb       , pi,ob,ob,oc);
-      // symm: c[2 2] = a[1 1] * b[1 1]
-      int ic  = l[hpoly_idx_rect(ilb,ilb       ,ib_size)];
-      if (ic >= 0) {
-        assert(pi[oc] <= ic && ic < pi[oc+1]);
-        cc[ic] = cc[ic] + ca[ib]*cb[ib];
-      }
-    }
+  // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
+  for (idx_t ib = 0; ib < nb; ib++)
+  for (idx_t ia = idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib,ia,nb)];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
   }
-  else if (split == LEFT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      ilb = ib - ibo;
-      sym_loop(ca,cb,cc, l, ib, 0         , thlds[ilb], pi,ob,ob,oc);
-      int ic  = l[hpoly_idx_rect(ilb,ilb       ,ib_size)];
-      if (ic  < l[hpoly_idx_rect(ilb,thlds[ilb],ib_size)] && ic >= 0) {
-        assert(pi[oc] <= ic && ic < pi[oc+1]);
-        cc[ic] = cc[ic] + ca[ib]*cb[ib];
-      }
-    }
+
+  // symm: c[2 2] = a[1 1] * b[1 1]
+  for (int ib=0; ib < nb; ib++) {
+    int ilow  = l[hpoly_idx_rect(ib,idx[0][ib],nb)];
+    int ihigh = l[hpoly_idx_rect(ib,idx[1][ib],nb)];
+    int ic    = l[hpoly_idx_rect(ib,ib,nb)];
+    if (ilow <= ic && ic < ihigh )
+      cc[ic] = cc[ic] + ca[ib]*cb[ib];
   }
-  else if (split == RIGHT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      ilb = ib - ibo;
-      sym_loop(ca,cb,cc, l, ib, thlds[ilb], ilb       , pi,ob,ob,oc);
-      int ic  = l[hpoly_idx_rect(ilb,ilb,ib_size)];
-      if (ic >= l[hpoly_idx_rect(ilb,thlds[ilb],ib_size)] && ic >= 0) {
-        assert(pi[oc] <= ic && ic < pi[oc+1]);
-        cc[ic] = cc[ic] + ca[ib]*cb[ib];
-      }
-    }
-  }
-  return ib_size * ib_size;
 }
 
-static inline int
-hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc,
-              const idx_t l[], int oa, int ob, const int pi[], enum ORD_SPLIT split, const int thlds[])
+static inline void
+hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
+              const idx_t l[], const int *idx[])
 {
 #ifdef TRACE
   printf("sym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-
-  int ia_size = pi[oa+1] - pi[oa], ibo = pi[ob], ilb;
-  if (split == NONE) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib)
-      sym_loop(ca,cb,cc, l, ib, 0         , ia_size   , pi,oa,ob,oa+ob);
+  // na > nb so longer loop is inside
+  for (idx_t ib=0; ib < nb; ib++)
+  for (idx_t ia=idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib, ia, na)];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
   }
-  else if (split == LEFT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      ilb = ib - ibo;
-      sym_loop(ca,cb,cc, l, ib, 0         , thlds[ilb], pi,oa,ob,oa+ob);
-    }
-  }
-  else if (split == RIGHT) {
-    for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
-      ilb = ib - ibo;
-      sym_loop(ca,cb,cc, l, ib, thlds[ilb], ia_size   , pi,oa,ob,oa+ob);
-    }
-  }
-  return 2* ia_size * (pi[ob+1]-pi[ob]);
 }
 
-static inline int
-hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t *l, int oa, int ob, int pi[])
+static inline void
+hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
+               const idx_t l[], const int *idx[])
 {
 #ifdef TRACE
   printf("asym_mul oa=%d ob=%d \n", oa, ob);
 #endif
-  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
-  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
   // oa > ob so longer loop is inside
-  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
-  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    // if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
+  for (idx_t ib=0; ib < nb; ib++)
+  for (idx_t ia=idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib,ia,na)];
+    if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
-    // }
   }
-  return (pi[oa+1]-pi[oa]) * (pi[ob+1]-pi[ob]);
 }
 
 #ifndef _OPENMP
@@ -201,76 +123,62 @@ hpoly_mul(const T *a, const T *b, T *c)
   printf("poly_mul_parallel\n");
 #endif
   D *dc = c->desc;
-  idx_t *l     = NULL;
-  int   *thlds = NULL;
-  enum ORD_SPLIT split = NONE;
+  idx_t *lc     = NULL;
   int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
   const num_t *ca = a->coef,  *cb = b->coef;
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  static const int nb_threads = 8;
+  static const int nb_threads = 4;
   bit_t c_nzs[nb_threads];
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
-  static const int ocs[8][20] = {
-              { 21, },
-              { 20, },
-              { 19, },
-              { 18, },
-              { 17, },
-              { 16, },
-              { 15, 10,  8,  7, 5 },
-              { 14, 13, 12, 11, 9, 6, 4, 3, 2, 1 },
+  static const int ocs[4][20] = {
+              { 6 },
+              { 5, 4, 3, 2 },
               };
-  int ops[c->mo+2];
-  ops[0] = ops[1] = 0;
 
-  #pragma omp parallel for firstprivate(l,thlds,split) num_threads(nb_threads)
+  #pragma omp parallel for firstprivate(lc) num_threads(nb_threads)
   for (int t = 0; t < nb_threads; ++t)
   {
-    for (int i = 0; i < c->mo; ++i) {
+    for (int i = 0; ocs[t][i]; ++i) {
       int oc = ocs[t][i];
-      split = NONE;
-      ops[oc] = 0;
-
-      if (oc == c->mo)
-        split = LEFT;
-      if (oc == c->mo + 1) {
-        oc = c->mo;
-        split = RIGHT;
-      }
-      if (oc < 2 || oc > c->mo)
-        continue;
+      int idx0 = oc == c->mo+1 ? 1 : 0;
+      int idx1 = oc == c->mo   ? 1 : 2;
+            oc = oc == c->mo+1 ? c->mo : oc;
 
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
-        l     = dc->L[oa*hod + ob];
-        thlds = dc->thld_idx[oa*hod + ob];
-        assert(l && thlds);
+        int na = ps[oa+1] - ps[oa];
+        int nb = ps[ob+1] - ps[ob];
+        lc  = dc->L[oa*hod + ob];
+        assert(lc);
+        const int *idx[2] = { dc->L_idx[oa*hod + ob][idx0],
+                              dc->L_idx[oa*hod + ob][idx1]};
 
         if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-          ops[oc] += hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps, split,thlds);
+          hpoly_sym_mul(ca+ps[oa],cb+ps[ob],cc+ps[oc], na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,oa) && bget(nzb,ob)) {
-          ops[oc] += hpoly_asym_mul(ca,cb,cc, l, oa,ob,ps);
+          hpoly_asym_mul(ca+ps[oa],cb+ps[ob],cc+ps[oc], na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,ob) && bget(nzb,oa)) {
-          ops[oc] += hpoly_asym_mul(cb,ca,cc, l, oa,ob,ps);
+          hpoly_asym_mul(cb+ps[ob],ca+ps[oa],cc+ps[oc], na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
 
       if (! (oc & 1)) {  // even oc, triang matrix
-        int hoc = oc/2;
-        l = dc->L[hoc*hod + hoc];
-        thlds = dc->thld_idx[hoc*hod + hoc];
-        assert(l && thlds);
+        int hoc = oc/2, nb = ps[hoc+1]-ps[hoc];
+        lc = dc->L[hoc*hod + hoc];
+        const int *idx[2] = { dc->L_idx[hoc*hod + hoc][idx0],
+                              dc->L_idx[hoc*hod + hoc][idx1] };
+        assert(lc);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
-          ops[oc] += hpoly_triang_mul(ca,cb,cc, l, hoc,ps, split,thlds);
+          hpoly_triang_mul(ca+ps[hoc],cb+ps[hoc],cc+ps[oc], nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
@@ -279,33 +187,6 @@ hpoly_mul(const T *a, const T *b, T *c)
 
   for (int t = 0; t < nb_threads; ++t)
     c->nz |= c_nzs[t];
-
-  // if (printed)
-  //   return;
-
-  // printed = 1;
-  // fprintf(stderr, "\n ops: ");
-  // for (int o = 2; o <= c->mo; ++o)
-  //   fprintf(stderr, "[%d]=%d ", o, ops[o]);
-
-  // fprintf(stderr, "\n cumulated ops: ");
-  // int accum = 0;
-  // for (int o = 2; o <= c->mo; ++o) {
-  //   accum += ops[o];
-  //   fprintf(stderr, "[%d]=%d ", o, accum);
-  // }
-
-  // fprintf(stderr, "\n mul_threads: %d\n", nb_threads);
-  // for (int t = 0; t < nb_threads; ++t) {
-  //   int ops_per_thread = 0;
-  //   fprintf(stderr, "%d :\t", t);
-  //   for (int i = 0; i < c->mo && ocs[t][i] > 0; ++i) {
-  //     int ord = ocs[t][i];
-  //     ops_per_thread += ops[ord];
-  //     fprintf(stderr, "%d ", ord);
-  //   }
-  //   fprintf(stderr, "ops=%d\n", ops_per_thread);
-  // }
 }
 #endif
 
