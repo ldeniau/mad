@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
   // mad_tpsa_print(a,NULL);
   // mad_tpsa_print(b,NULL);
-  // mad_tpsa_print(c,NULL);
+  mad_tpsa_print(c,NULL);
 
   fclose(fin);
   return 0;

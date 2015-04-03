@@ -32,7 +32,7 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, int nb,
     int ilow  = l[hpoly_idx_rect(ib,idx[0][ib],nb)];
     int ihigh = l[hpoly_idx_rect(ib,idx[1][ib],nb)];
     int ic    = l[hpoly_idx_rect(ib,ib,nb)];
-    if (ilow <= ic && ic < ihigh )
+    if (ilow <= ic && ic <= ihigh )
       cc[ic] = cc[ic] + ca[ib]*cb[ib];
   }
 }
@@ -137,6 +137,8 @@ hpoly_mul(const T *a, const T *b, T *c)
   static const int ocs[4][20] = {
               { 6 },
               { 5, 4, 3, 2 },
+              { 0 },
+              { 0 },
               };
 
   #pragma omp parallel for firstprivate(lc) num_threads(nb_threads)
@@ -146,7 +148,11 @@ hpoly_mul(const T *a, const T *b, T *c)
       int oc = ocs[t][i];
       int idx0 = oc == c->mo+1 ? 1 : 0;
       int idx1 = oc == c->mo   ? 1 : 2;
-            oc = oc == c->mo+1 ? c->mo : oc;
+
+      if (oc == c->mo+1)
+        oc = c->mo;
+      if (oc > c->mo)
+        continue;
 
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
@@ -156,17 +162,18 @@ hpoly_mul(const T *a, const T *b, T *c)
         assert(lc);
         const int *idx[2] = { dc->L_idx[oa*hod + ob][idx0],
                               dc->L_idx[oa*hod + ob][idx1]};
+        assert(idx[0] && idx[1]);
 
         if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-          hpoly_sym_mul(ca+ps[oa],cb+ps[ob],cc+ps[oc], na,nb, lc, idx);
+          hpoly_sym_mul(ca+ps[oa],cb+ps[ob],cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,oa) && bget(nzb,ob)) {
-          hpoly_asym_mul(ca+ps[oa],cb+ps[ob],cc+ps[oc], na,nb, lc, idx);
+          hpoly_asym_mul(ca+ps[oa],cb+ps[ob],cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
         else if (bget(nza,ob) && bget(nzb,oa)) {
-          hpoly_asym_mul(cb+ps[ob],ca+ps[oa],cc+ps[oc], na,nb, lc, idx);
+          hpoly_asym_mul(cb+ps[ob],ca+ps[oa],cc, na,nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
@@ -178,7 +185,7 @@ hpoly_mul(const T *a, const T *b, T *c)
                               dc->L_idx[hoc*hod + hoc][idx1] };
         assert(lc);
         if (bget(nza,hoc) && bget(nzb,hoc) ) {
-          hpoly_triang_mul(ca+ps[hoc],cb+ps[hoc],cc+ps[oc], nb, lc, idx);
+          hpoly_triang_mul(ca+ps[hoc],cb+ps[hoc],cc, nb, lc, idx);
           c_nzs[t] = bset(c_nzs[t],oc);
         }
       }
