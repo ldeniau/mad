@@ -6,7 +6,7 @@ io.stderr:write([[Usage: luajit make_mul_input.lua nv no (in | out) [file]
 
 ]])
 
-tpsa.set_package("berz")
+tpsa.set_package("ffi")
 
 local nv, no = tonumber(arg[1]), tonumber(arg[2])
 factory.setup(tpsa,nv,no)
