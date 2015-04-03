@@ -46,18 +46,6 @@ sym_loop(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib
   }
 }
 
-static inline void
-diag_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t l[],  idx_t ib,
-         int ib_size, const idx_t pi[], ord_t ob, ord_t oc)
-{
-  int il = hpoly_idx_rect(ib-pi[ob], ib-pi[ob], ib_size);
-  int ic = l[il];
-  if (ic >= 0) {
-    assert(pi[oc] <= ic && ic < pi[oc+1]);
-    cc[ic] = cc[ic] + ca[ib]*cb[ib];
-  }
-}
-
 static inline int
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc,
                  const idx_t l[], int ob, int pi[], enum ORD_SPLIT split, const int thlds[])
@@ -73,23 +61,33 @@ hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc,
       // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
       sym_loop(ca,cb,cc, l, ib, 0         , ilb       , pi,ob,ob,oc);
       // symm: c[2 2] = a[1 1] * b[1 1]
-      diag_mul(ca,cb,cc, l, ib,       ib_size,          pi,   ob,oc);
+      int ic  = l[hpoly_idx_rect(ilb,ilb       ,ib_size)];
+      if (ic >= 0) {
+        assert(pi[oc] <= ic && ic < pi[oc+1]);
+        cc[ic] = cc[ic] + ca[ib]*cb[ib];
+      }
     }
   }
   else if (split == LEFT) {
     for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
       ilb = ib - ibo;
       sym_loop(ca,cb,cc, l, ib, 0         , thlds[ilb], pi,ob,ob,oc);
-      if (ilb < thlds[ilb])
-        diag_mul(ca,cb,cc, l, ib,     ib_size,          pi,   ob,oc);
+      int ic  = l[hpoly_idx_rect(ilb,ilb       ,ib_size)];
+      if (ic  < l[hpoly_idx_rect(ilb,thlds[ilb],ib_size)] && ic >= 0) {
+        assert(pi[oc] <= ic && ic < pi[oc+1]);
+        cc[ic] = cc[ic] + ca[ib]*cb[ib];
+      }
     }
   }
   else if (split == RIGHT) {
     for (int ib = pi[ob]; ib < pi[ob+1]; ++ib) {
       ilb = ib - ibo;
       sym_loop(ca,cb,cc, l, ib, thlds[ilb], ilb       , pi,ob,ob,oc);
-      if (ilb >= thlds[ilb])
-        diag_mul(ca,cb,cc, l, ib,     ib_size,          pi,   ob,oc);
+      int ic  = l[hpoly_idx_rect(ilb,ilb,ib_size)];
+      if (ic >= l[hpoly_idx_rect(ilb,thlds[ilb],ib_size)] && ic >= 0) {
+        assert(pi[oc] <= ic && ic < pi[oc+1]);
+        cc[ic] = cc[ic] + ca[ib]*cb[ib];
+      }
     }
   }
   return ib_size * ib_size;
@@ -223,10 +221,10 @@ hpoly_mul(const T *a, const T *b, T *c)
   //             { 18, 17, 16, 14, 13,   },
   //             };
   static const int ocs[4][20] = {
-              { 5 },
-              { 4 },
+              { 6 },
+              { 5, 2 },
               { 3 },
-              { 2 },
+              { 4 },
               };
   int ops[c->mo+2];
   ops[0] = ops[1] = 0;
@@ -236,6 +234,7 @@ hpoly_mul(const T *a, const T *b, T *c)
   {
     for (int i = 0; i < c->mo; ++i) {
       int oc = ocs[t][i];
+      split = NONE;
       ops[oc] = 0;
 
       if (oc == c->mo)

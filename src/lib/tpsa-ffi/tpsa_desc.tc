@@ -555,7 +555,7 @@ get_thld_idxs(int oa, int ob, D *d)
   d->size += rows * sizeof *thld_idx;
 
   for (int ilb = 0; ilb < rows; ++ilb) {
-    thld_idx[ilb] = oa == ob ? ilb+1 : cols;
+    thld_idx[ilb] = oa == ob ? ilb : cols;
     for (int ila = 0; ila < cols; ++ila) {
       int ilc = hpoly_idx_rect(ilb,ila,cols);
       if (lc[ilc] >= T) {
