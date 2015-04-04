@@ -56,53 +56,6 @@ hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
   }
 }
 
-#ifndef _OPENMP
-static inline void
-hpoly_mul(const T *a, const T *b, T *c)
-{
-#ifdef TRACE
-  printf("poly_mul\n");
-#endif
-  D *dc = c->desc;
-  const idx_t *l = NULL;
-  int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
-  const num_t *ca = a->coef,  *cb = b->coef;
-        num_t *cc = c->coef;
-        bit_t nza = a->nz  ,  nzb = b->nz;
-
-  for (int oc=2; oc <= c->mo; oc++) {
-    for (int j=1; j <= (oc-1)/2; ++j) {
-      int oa = oc-j, ob = j;            // oa > ob >= 1
-      l = dc->L[oa*hod + ob];
-      assert(l);
-
-      if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
-      }
-      else if (bget(nza,oa) && bget(nzb,ob)) {
-        hpoly_asym_mul(ca,cb,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
-      }
-      else if (bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_asym_mul(cb,ca,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
-      }
-    }
-
-    if (! (oc & 1)) {  // even oc, triang matrix
-      int hoc = oc/2;
-      l = dc->L[hoc*hod + hoc];
-      assert(l);
-      if (bget(nza,hoc) && bget(nzb,hoc) ) {
-        hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
-        c->nz = bset(c->nz,oc);
-      }
-    }
-  }
-}
-#else  // OPENMP
-
 static inline void
 hpoly_mul(const T *a, const T *b, T *c)
 {
@@ -116,12 +69,14 @@ hpoly_mul(const T *a, const T *b, T *c)
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  int nb_threads = omp_get_num_procs();
+  int nb_threads = get_num_threads();
   bit_t c_nzs[nb_threads];
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
+  #ifdef _OPENMP
   #pragma omp parallel for firstprivate(lc)
+  #endif
   for (int t = 0; t < nb_threads; ++t)
   {
     ord_t *ocs = dc->ocs[t];
@@ -132,8 +87,6 @@ hpoly_mul(const T *a, const T *b, T *c)
 
       if (oc == c->mo+1)
         oc = c->mo;
-      if (oc > c->mo)
-        continue;
 
       for (int j=1; j <= (oc-1)/2; ++j) {
         int oa = oc-j, ob = j;            // oa > ob >= 1
@@ -176,7 +129,6 @@ hpoly_mul(const T *a, const T *b, T *c)
   for (int t = 0; t < nb_threads; ++t)
     c->nz |= c_nzs[t];
 }
-#endif
 
 static inline void
 scale_and_accum(num_t v, const T *a, T *c)

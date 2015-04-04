@@ -695,8 +695,6 @@ tbl_check(D *d)
 
 // --- THREAD DISPATCH ---------------------------------------------------------
 
-#ifdef _OPENMP
-
 static inline void
 get_ops(D *d, long long int ops[])
 {
@@ -718,7 +716,7 @@ get_ops(D *d, long long int ops[])
 static inline void
 build_dispatch(D *d)
 {
-  int nb_threads = omp_get_num_procs();
+  int nb_threads = get_num_threads();
   d->ocs = malloc(nb_threads * sizeof *(d->ocs));
   assert(d->ocs);
   d->size += nb_threads * sizeof *(d->ocs);
@@ -737,7 +735,7 @@ build_dispatch(D *d)
   dops[0] = ops[d->mo] / 2;
   d->ocs[0][sizes[0]++] = d->mo + 1;
 
-  for (int o = d->mo; o > 2; --o) {
+  for (int o = d->mo; o >= 2; --o) {
     long long int min_disp = 1L<<62, min_disp_idx = -1;
     for (int t = 0; t < nb_threads; ++t)
       if (dops[t] < min_disp) {
@@ -761,7 +759,6 @@ build_dispatch(D *d)
 #endif
 }
 
-#endif
 // --- DESC management ---------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
@@ -814,9 +811,7 @@ desc_build(D *d)
   tbl_by_var(d);  // requires To
   tbl_set_H(d);
   tbl_set_L(d);
-  #ifdef _OPENMP
   build_dispatch(d);
-  #endif
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
