@@ -1,5 +1,5 @@
-local factory, check = require"factory", require "check"
-local clock, printf = os.clock, factory.printf
+local factory, check, omp = require"factory", require "check", require"lib.omp"
+local clock, printf = omp.omp_get_wtime, factory.printf
 
 local header_fmt = "nv\tno\tnl       \ttime (s)\n"
 local line_fmt   = "%d\t%d\t%8d\t%.3f\n"
@@ -21,7 +21,7 @@ local function bench(mod_name, fct_name, filename)
 
   local Ts = {}  -- times
   for i=1,#NL do
-    check.do_all_checks(tpsa, NV[i], NO[i])
+--    check.do_all_checks(tpsa, NV[i], NO[i])
 
     factory.setup(tpsa, NV[i], NO[i])
     Ts[i] = timeit(tpsa[fct_name], NL[i], factory.get_args(fct_name))

@@ -190,9 +190,9 @@ function M.get_args(fct_name)
 
   local args = {
     getm     = function() return make_To_ffi(), M.nv end,
-    getCoeff = function() return M.To                end,
+    get = function() return M.To                end,
     setm     = function() return make_To_ffi(), val, M.nv end,
-    setCoeff = function() return M.To    , val       end,
+    set = function() return M.To    , val       end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     mul      = args_bin_op,
@@ -250,7 +250,7 @@ function M.ord(ord, startVal, inc)
   for o=1,#ord do
     if ord[o] > M.no then error("Specified ord is greater than no") end
     for m=To.ps[ord[o]],To.pe[ord[o]] do
-      t:setCoeff(To[m], startVal)
+      t:set(To[m], startVal)
       startVal = startVal + inc
     end
   end

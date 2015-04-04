@@ -218,7 +218,7 @@ mad_tpsa_print(const T *t)
 
 #ifdef TPSA_MAIN
 
-// gcc -DTPSA_MAIN -std=c99 -Wall -W -pedantic -O3 -fopenmp -static-libgcc  *.c -o tpsa
+// gcc -DTPSA_MAIN -std=c99 -Wall -W -pedantic -O3 -fopenmp -static-libgcc  mad_*.c -o tpsa
 
 #include <time.h>
 
@@ -255,7 +255,6 @@ int main(int argc, char **argv)
     mad_tpsa_compose(nv, (const T**)ma, nv, (const T**)mb, nv, mc);
   double t1 = omp_get_wtime();
 
-  // printf("nv\tmo\tnc\tnl\tthreads\ttime\n");
   printf("%d\t%d\t%d\t%d\t%d\t%.3f\n", nv, mo, nc, nl, COMPOSE_NUM_THREADS, t1-t0);
 
   return 0;

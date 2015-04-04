@@ -133,7 +133,7 @@ function M.cpy(src, dst)
   return dst
 end
 
-function M.setCoeff(t, m, v)
+function M.set(t, m, v)
   clib.mad_tpsa_setm(t, #m, mono_t(#m, m), v)
 end
 
@@ -141,7 +141,7 @@ function M.setConst(t, v)
   clib.mad_tpsa_seti(t, 0, v)
 end
 
-function M.getCoeff(t, m)
+function M.get(t, m)
   return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
 end
 
