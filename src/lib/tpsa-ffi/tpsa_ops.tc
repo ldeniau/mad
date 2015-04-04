@@ -8,10 +8,6 @@
 
 // --- LOCAL FUNCTIONS --------------------------------------------------------
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 static inline void
 hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, int nb,
                  const idx_t l[], const int *idx[])
@@ -120,26 +116,17 @@ hpoly_mul(const T *a, const T *b, T *c)
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-  static const int nb_threads = 8;
+  int nb_threads = omp_get_num_procs();
   bit_t c_nzs[nb_threads];
   for (int t = 0; t < nb_threads; ++t)
     c_nzs[t] = c->nz;
 
-  static const int ocs[8][20] = {
-                { 21 },
-                { 20 },
-                { 19 },
-                { 18 },
-                { 17 },
-                { 16 },
-                { 15, 10,  8,  7, 5 },
-                { 14, 13, 12, 11, 9, 6, 4, 3, 2, 1 },
-              };
-  #pragma omp parallel for firstprivate(lc) num_threads(nb_threads)
+  #pragma omp parallel for firstprivate(lc)
   for (int t = 0; t < nb_threads; ++t)
   {
-    for (int i = 0; ocs[t][i]; ++i) {
-      int oc = ocs[t][i];
+    ord_t *ocs = dc->ocs[t];
+    for (int i = 0; ocs[i]; ++i) {
+      ord_t oc = ocs[i];
       int idx0 = oc == c->mo+1 ? 1 : 0;
       int idx1 = oc == c->mo   ? 1 : 2;
 

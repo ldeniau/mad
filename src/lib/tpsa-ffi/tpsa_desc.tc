@@ -26,6 +26,7 @@ struct tpsa_desc {
           *H,         // indexing matrix, in Tv
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
+  ord_t  **ocs;       // ocs[t,i] = o; o will be computed on thread t; o = 3..mo; terminated with 0
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -627,7 +628,7 @@ tbl_set_L(D *d)
 #endif
 }
 
-// --- UNIT TEST --------------------------------------------------------------
+// --- TABLE TEST --------------------------------------------------------------
 
 static inline int
 tbl_check_L(D *d)
@@ -692,7 +693,76 @@ tbl_check(D *d)
   return tbl_check_L(d);
 }
 
-// --- DESC management --------------------------------------------------------
+// --- THREAD DISPATCH ---------------------------------------------------------
+
+#ifdef _OPENMP
+
+static inline void
+get_ops(D *d, long long int ops[])
+{
+  int *pi = d->hpoly_To_idx;
+  for (int o = 2; o <= d->mo; ++o) {
+    ops[o] = 0;
+    for (int j = 1; j <= (o-1)/2; ++j) {
+      int oa = o-j, ob = j;            // oa > ob >= 1
+      int na = pi[oa+1] - pi[oa], nb = pi[ob+1] - pi[ob];
+      ops[o] += 2 * na * nb;
+    }
+    if (!(o & 1)) {
+      int ho = o/2;
+      ops[o] += (pi[ho+1]-pi[ho]) * (pi[ho+1]-pi[ho]);
+    }
+  }
+}
+
+static inline void
+build_dispatch(D *d)
+{
+  int nb_threads = omp_get_num_procs();
+  d->ocs = malloc(nb_threads * sizeof *(d->ocs));
+  assert(d->ocs);
+  d->size += nb_threads * sizeof *(d->ocs);
+
+  int sizes[nb_threads];
+  for (int t = 0; t < nb_threads; ++t) {
+    d->ocs[t] = malloc(d->mo * sizeof *(d->ocs[t]));
+    assert(d->ocs[t]);
+    d->size += d->mo * sizeof *(d->ocs[t]);
+    sizes[t] = 0;
+  }
+
+  long long int ops[d->mo+1], dops[nb_threads];
+  memset(dops,0,nb_threads * sizeof *dops);
+  get_ops(d,ops);
+  dops[0] = ops[d->mo] / 2;
+  d->ocs[0][sizes[0]++] = d->mo + 1;
+
+  for (int o = d->mo; o > 2; --o) {
+    long long int min_disp = 1L<<62, min_disp_idx = -1;
+    for (int t = 0; t < nb_threads; ++t)
+      if (dops[t] < min_disp) {
+        min_disp = dops[t];
+        min_disp_idx = t;
+      }
+    assert(min_disp_idx >= 0);
+    d->ocs[min_disp_idx][sizes[min_disp_idx]++] = o;
+    dops[min_disp_idx] += ops[o];
+  }
+
+#ifdef DEBUG
+  printf("\nTHREAD DISPATCH:\n");
+  for (int t = 0; t < nb_threads; ++t) {
+    printf("[%d]: ", t);
+    for (int i = 0; d->ocs[t][i]; ++i)
+      printf("%d ", d->ocs[t][i]);
+    printf("[ops:%lld]: \n", dops[t]);
+  }
+  printf("\n");
+#endif
+}
+
+#endif
+// --- DESC management ---------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
 
@@ -744,6 +814,9 @@ desc_build(D *d)
   tbl_by_var(d);  // requires To
   tbl_set_H(d);
   tbl_set_L(d);
+  #ifdef _OPENMP
+  build_dispatch(d);
+  #endif
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
@@ -840,6 +913,12 @@ mad_tpsa_desc_del(D *d)
   }
   free(d->L);               d->L             = NULL;
   free(d->L_idx);           d->L_idx         = NULL;
+
+  #ifdef _OPENMP
+  for (int t = 0; t < omp_get_num_procs(); ++t)
+    free(d->ocs[t]);
+  free(d->ocs);
+  #endif
 
   // remove descriptor from global array
   int idx;
