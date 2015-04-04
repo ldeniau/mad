@@ -224,7 +224,7 @@ mad_tpsa_print(const T *t)
 
 int main(int argc, char **argv)
 {
-  printf("Usage: tpsa nv mo nl [num_threads]\n");
+  fprintf(stderr, "Usage: tpsa nv mo nl [num_threads]\n");
   if (argc < 3)
     exit(1);
   int nv = atoi(argv[1]), mo = atoi(argv[2]), nl = atoi(argv[3]);
@@ -250,13 +250,13 @@ int main(int argc, char **argv)
     mc[i] = mad_tpsa_new  (t);
   }
 
-  double time = clock();
+  double t0 = omp_get_wtime();
   for (int l = 0; l < nl; ++l)
     mad_tpsa_compose(nv, (const T**)ma, nv, (const T**)mb, nv, mc);
-  time = (clock() - time) / CLOCKS_PER_SEC;
+  double t1 = omp_get_wtime();
 
-  printf("nv\tmo\tnc\tnl\tt_total\tt_real\n");
-  printf("%d\t%d\t%d\t%d\t%.3f\t%.3f\n", nv, mo, nc, nl, time, time/COMPOSE_NUM_THREADS);
+  // printf("nv\tmo\tnc\tnl\tthreads\ttime\n");
+  printf("%d\t%d\t%d\t%d\t%d\t%.3f\n", nv, mo, nc, nl, COMPOSE_NUM_THREADS, t1-t0);
 
   return 0;
 }
