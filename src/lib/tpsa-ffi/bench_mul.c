@@ -39,6 +39,13 @@ int main(int argc, char *argv[])
   T *b = mad_tpsa_newd(d, NULL);
   T *c = mad_tpsa_newd(d, NULL);
 
+  double val = 1.1, inc = 0.001;
+  for (int i = 0; i < mad_tpsa_desc_nc(d,NULL); ++i) {
+    mad_tpsa_seti(a,i,val);
+    mad_tpsa_seti(b,i,val);
+    val += inc;
+  }
+
   double t0, t1;
   #ifdef _OPENMP
   t0 = omp_get_wtime();
