@@ -27,9 +27,9 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Not enough args\n");
     return 1;
   }
-  int nv = atoi(argv[1]);
-  int no = atoi(argv[2]);
-  int NL = atoi(argv[3]);
+  int   nv = atoi(argv[1]);
+  ord_t no = atoi(argv[2]);
+  int   NL = atoi(argv[3]);
 
   ord_t ords[nv];
   for (int i = 0; i < nv; ++i)
@@ -39,8 +39,8 @@ int main(int argc, char *argv[])
   T *b = mad_tpsa_newd(d, NULL);
   T *c = mad_tpsa_newd(d, NULL);
 
-  double val = 1.1, inc = 0.001;
-  for (int i = 0; i < mad_tpsa_desc_nc(d,NULL); ++i) {
+  double val = 1.1, inc = 0.1;
+  for (int i = 0; i < mad_tpsa_desc_nc(d,&no); ++i) {
     mad_tpsa_seti(a,i,val);
     mad_tpsa_seti(b,i,val);
     val += inc;
