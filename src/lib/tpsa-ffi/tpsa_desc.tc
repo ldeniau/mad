@@ -870,7 +870,7 @@ D*
 mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], ord_t vo)
 {
   assert(var_ords);
-  return get_desc(nv,var_ords,nv,vo,0);
+  return get_desc(nv,var_ords,vo,nv,0);
 }
 
 D*
