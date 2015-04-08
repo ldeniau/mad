@@ -485,12 +485,14 @@ static inline void
 tbl_print_L(const D *d)
 {
   int ho = d->mo / 2;
-  for (int oc = 2; oc <= d->mo; ++oc)
+  for (int oc = 2; oc <= min_ord2(d->mo,5); ++oc)
     for (int j = 1; j <= oc/2; ++j) {
       int oa = oc - j, ob = j;
       printf("L[%d][%d] = {", ob, oa);
       tbl_print_LC(d->L[oa*ho + ob], oa, ob, d->hpoly_To_idx);
     }
+  if (d->mo > 5)
+    printf("Orders 5 to %d omitted...\n", d->mo);
 }
 
 static inline idx_t*
@@ -584,10 +586,12 @@ get_LC_idxs(int oa, int ob, D *d)
   }
 
 #ifdef DEBUG
-  printf("LC_idx[%d][%d] = { [T=%d]\n", ob, oa, T);
-  printf("  -->\t  //\t<--\n");
-  for (int r = 0; r < rows; ++r)
-    printf("  [%3d\t%3d\t%3d]\n", LC_idx[START][r],LC_idx[SPLIT][r],LC_idx[END][r]);
+  if (oc <= 5) {
+    printf("LC_idx[%d][%d] = { [T=%d]\n", ob, oa, T);
+    printf("  -->\t  //\t<--\n");
+    for (int r = 0; r < rows; ++r)
+      printf("  [%3d\t%3d\t%3d]\n", LC_idx[START][r],LC_idx[SPLIT][r],LC_idx[END][r]);
+  }
 #endif
 
   return LC_idx;
@@ -711,6 +715,23 @@ get_ops(D *d, long long int ops[])
       ops[o] += (pi[ho+1]-pi[ho]) * (pi[ho+1]-pi[ho]);
     }
   }
+  if (d->mo >= 12) {
+    ops[d->mo]   /= 2;
+    ops[d->mo+1] = ops[d->mo];
+  }
+}
+
+static inline int
+get_min_dispatched_idx(int nb_threads, long long int dops[])
+{
+  long long int min_disp = dops[nb_threads-1];
+  int min_disp_idx = nb_threads - 1;
+  for (int t = nb_threads-1; t >= 0; --t)
+    if (dops[t] <= min_disp) {
+      min_disp = dops[t];
+      min_disp_idx = t;
+    }
+  return min_disp_idx;
 }
 
 static inline void
@@ -723,7 +744,7 @@ build_dispatch(D *d)
 
   int sizes[nb_threads];
   for (int t = 0; t < nb_threads; ++t) {
-    d->ocs[t] = malloc(d->mo * sizeof *(d->ocs[t]));
+    d->ocs[t] = calloc(d->mo, sizeof *(d->ocs[t]));
     assert(d->ocs[t]);
     d->size += d->mo * sizeof *(d->ocs[t]);
     sizes[t] = 0;
@@ -732,19 +753,19 @@ build_dispatch(D *d)
   long long int ops[d->mo+1], dops[nb_threads];
   memset(dops,0,nb_threads * sizeof *dops);
   get_ops(d,ops);
-  dops[0] = ops[d->mo] / 2;
-  d->ocs[0][sizes[0]++] = d->mo + 1;
 
-  for (int o = d->mo; o >= 2; --o) {
-    long long int min_disp = 1L<<62, min_disp_idx = -1;
-    for (int t = 0; t < nb_threads; ++t)
-      if (dops[t] < min_disp) {
-        min_disp = dops[t];
-        min_disp_idx = t;
-      }
-    assert(min_disp_idx >= 0);
-    d->ocs[min_disp_idx][sizes[min_disp_idx]++] = o;
-    dops[min_disp_idx] += ops[o];
+  int idx, o = nb_threads == 1 || d->mo < 12 ? d->mo : d->mo+1;
+  for ( ; o > 12; --o) {
+    idx = get_min_dispatched_idx(nb_threads,dops);
+    assert(idx >= 0 && idx < nb_threads);
+    d->ocs[idx][sizes[idx]++] = o;
+    dops[idx] += ops[o];
+  }
+
+  idx = get_min_dispatched_idx(nb_threads,dops);
+  for ( ; o >= 2; --o) {
+    d->ocs[idx][sizes[idx]++] = o;
+    dops[idx] += ops[o];
   }
 
 #ifdef DEBUG
@@ -753,7 +774,7 @@ build_dispatch(D *d)
     printf("[%d]: ", t);
     for (int i = 0; d->ocs[t][i]; ++i)
       printf("%d ", d->ocs[t][i]);
-    printf("[ops:%lld]: \n", dops[t]);
+    printf("[ops:%lld] \n", dops[t]);
   }
   printf("\n");
 #endif
