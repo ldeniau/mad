@@ -326,7 +326,7 @@ function M.do_all_checks(mod, nv, no)
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
 
---  check_compose_with_berz(mod)
+  check_compose_with_berz(mod)
 --  check_der_with_berz(mod)
 --  check_abs_with_berz(mod)
 

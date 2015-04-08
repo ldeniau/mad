@@ -754,18 +754,19 @@ build_dispatch(D *d)
   memset(dops,0,nb_threads * sizeof *dops);
   get_ops(d,ops);
 
-  int idx, o = nb_threads == 1 || d->mo < 12 ? d->mo : d->mo+1;
-  for ( ; o > 12; --o) {
-    idx = get_min_dispatched_idx(nb_threads,dops);
-    assert(idx >= 0 && idx < nb_threads);
-    d->ocs[idx][sizes[idx]++] = o;
-    dops[idx] += ops[o];
+  if (nb_threads == 1 || d->mo < 12) {
+    for (int o = d->mo; o >= 2; --o) {
+      d->ocs[0][sizes[0]++] = o;
+      dops[0] += ops[o];
+    }
   }
-
-  idx = get_min_dispatched_idx(nb_threads,dops);
-  for ( ; o >= 2; --o) {
-    d->ocs[idx][sizes[idx]++] = o;
-    dops[idx] += ops[o];
+  else {
+    for (int o = d->mo + 1; o >= 2; --o) {
+      int idx = get_min_dispatched_idx(nb_threads,dops);
+      assert(idx >= 0 && idx < nb_threads);
+      d->ocs[idx][sizes[idx]++] = o;
+      dops[idx] += ops[o];
+    }
   }
 
 #ifdef DEBUG

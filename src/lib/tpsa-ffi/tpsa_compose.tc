@@ -117,8 +117,7 @@ parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
   T *mt[COMPOSE_NUM_THREADS][sa];
   #pragma omp parallel num_threads(COMPOSE_NUM_THREADS)
   {
-    // int id = omp_get_thread_num();
-    int id = 1;
+    int id = omp_get_thread_num();
 
     // alloc private vars
     ord_t mono[ctx->d->nv];
