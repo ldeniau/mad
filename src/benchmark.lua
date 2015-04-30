@@ -1,5 +1,5 @@
-local factory, check = require"factory", require "check"
-local clock, printf = os.clock, factory.printf
+local factory, check, omp = require"factory", require "check", require "lib.omp"
+local clock, printf = omp.omp_get_wtime, factory.printf
 
 local header_fmt = "nv\tno\tnl       \t"
 local line_fmt   = "%d\t%d\t%8d\t"
@@ -60,5 +60,5 @@ if arg[1] == "-h" then
 end
 
 bench(arg[1], arg[2], arg[3], arg[4])
-
+os.exit(0)  -- avoids SegFault with OMP
 

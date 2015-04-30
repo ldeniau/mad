@@ -67,4 +67,15 @@ imax (int a, int b)
   return a>b ? a : b;
 }
 
+static inline int
+get_num_threads()
+{
+#ifdef _OPENMP
+  return omp_get_num_procs();
+#else
+  return 1;
+#endif
+}
+
+
 #endif

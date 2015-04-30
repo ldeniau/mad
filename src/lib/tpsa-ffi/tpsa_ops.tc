@@ -9,141 +9,128 @@
 // --- LOCAL FUNCTIONS --------------------------------------------------------
 
 static inline void
-hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t const* l, int oa, int pi[])
+hpoly_triang_mul(const num_t *ca, const num_t *cb, num_t *cc, int nb,
+                 const idx_t l[], const int *idx[])
 {
-#ifdef TRACE
-  printf("triang_mul oa=%d ob=%d\n", oa, oa);
-#endif
-  int iao = pi[oa], ibo = pi[oa];  // offsets for shifting to 0
-  int l_size = (pi[oa+1]-pi[oa]) * (pi[oa+1]-pi[oa] + 1) / 2, oc = oa + oa;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
   // asymm: c[2 2] = a[2 0]*b[0 2] + a[0 2]*b[2 0]
-  for (idx_t ib = pi[oa]; ib < pi[oa+1]; ib++)
-  for (idx_t ia = ib + 1; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_triang(ib-ibo, ia-iao);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    }
-  }
-
-  // symm: c[2 2] = a[1 1] * b[1 1]
-  for (int ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_triang(ia-iao, ia-iao);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
-      cc[ic] = cc[ic] + ca[ia]*cb[ia];
-    }
+  for (idx_t ib = 0; ib < nb; ib++)
+  for (idx_t ia = idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib,ia,nb)];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca[ia]*cb[ib] + (ia == ib ? 0 : ca[ib]*cb[ia]);
   }
 }
 
 static inline void
-hpoly_sym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+hpoly_sym_mul(const num_t *ca1, const num_t *cb1, const num_t *ca2, const num_t *cb2,
+              num_t *cc, int na, int nb, const idx_t l[], const int *idx[])
 {
-#ifdef TRACE
-  printf("sym_mul oa=%d ob=%d \n", oa, ob);
-#endif
-  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
-  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
-  // oa > ob so longer loop is inside
-  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
-  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
-      cc[ic] = cc[ic] + ca[ia]*cb[ib] + ca[ib]*cb[ia];
-    }
+  // na > nb so longer loop is inside
+  for (idx_t ib=0; ib < nb; ib++)
+  for (idx_t ia=idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib, ia, na)];
+    if (ic >= 0)
+      cc[ic] = cc[ic] + ca1[ia]*cb1[ib] + ca2[ib]*cb2[ia];
   }
 }
 
 static inline void
-hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, const idx_t* l, int oa, int ob, int pi[])
+hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
+               const idx_t l[], const int *idx[])
 {
-#ifdef TRACE
-  printf("asym_mul oa=%d ob=%d \n", oa, ob);
-#endif
-  int iao = pi[oa], ibo = pi[ob];  // offsets for shifting to 0
-  int ia_size = pi[oa+1]-pi[oa], ib_size = pi[ob+1]-pi[ob];
-  int l_size  = ia_size*ib_size, oc = oa+ob;
-  (void)oc; (void)l_size;  // avoid warning when compiling without assert
-
   // oa > ob so longer loop is inside
-  for (idx_t ib=pi[ob]; ib < pi[ob+1]; ib++)
-  for (idx_t ia=pi[oa]; ia < pi[oa+1]; ia++) {
-    int il = hpoly_idx_rect(ib-ibo, ia-iao, ia_size);
-    assert(0 <= il && il < l_size);
-
-    int ic = l[il];
-    if (ic >= 0) {
-      assert(pi[oc] <= ic && ic < pi[oc+1]);
+  for (idx_t ib=0; ib < nb; ib++)
+  for (idx_t ia=idx[0][ib]; ia < idx[1][ib]; ia++) {
+    int ic = l[hpoly_idx_rect(ib,ia,na)];
+    if (ic >= 0)
       cc[ic] = cc[ic] + ca[ia]*cb[ib];
-    }
   }
 }
 
 static inline void
-hpoly_mul(const T *a, const T *b, T *c)
+hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int split_end)
 {
 #ifdef TRACE
-  printf("poly_mul\n");
+  printf("tpsa_mul\n");
 #endif
-  D *dc = c->desc;
-  const idx_t *l = NULL;
-  int *ps = dc->hpoly_To_idx, hod = dc->mo/2;
+  D *d = c->desc;
+  int *pi = d->hpoly_To_idx, hod = d->mo/2;
   const num_t *ca = a->coef,  *cb = b->coef;
         num_t *cc = c->coef;
         bit_t nza = a->nz  ,  nzb = b->nz;
 
-#ifdef _OPENMP
-#pragma omp parallel for
-  for (int i=2; i <= c->mo; i++) {
-    int oc = !(i & 1) ? 1+i/2 : c->mo+1-i/2;
-#else
-  for (int oc=2; oc <= c->mo; oc++) {
-#endif
+  for (int i = 0; ocs[i]; ++i) {
+    ord_t oc = ocs[i] == c->mo+1 ? c->mo : ocs[i];
+    int idx0 = ocs[i] == c->mo+1 ? 1 : 0;
+    int idx1 = ocs[i] == c->mo   ? split_end : 2;
 
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa > ob >= 1
-      l = dc->L[oa*hod + ob];
-      assert(l);
+      int na = pi[oa+1] - pi[oa];
+      int nb = pi[ob+1] - pi[ob];
+      const idx_t *lc  = d->L[oa*hod + ob];
+      assert(lc);
+      const int *idx[2] = { d->L_idx[oa*hod + ob][idx0],
+                            d->L_idx[oa*hod + ob][idx1]};
+      assert(idx[0] && idx[1]);
 
       if (bget(nza,oa) && bget(nzb,ob) && bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_sym_mul(ca,cb,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
+        hpoly_sym_mul(ca+pi[oa],cb+pi[ob], ca+pi[ob],cb+pi[oa], cc, na,nb, lc, idx);
+        *cnz = bset(*cnz,oc);
       }
       else if (bget(nza,oa) && bget(nzb,ob)) {
-        hpoly_asym_mul(ca,cb,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
+        hpoly_asym_mul(ca+pi[oa],cb+pi[ob],cc, na,nb, lc, idx);
+        *cnz = bset(*cnz,oc);
       }
       else if (bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_asym_mul(cb,ca,cc, l, oa,ob,ps);
-        c->nz = bset(c->nz,oc);
+        hpoly_asym_mul(cb+pi[ob],ca+pi[oa],cc, na,nb, lc, idx);
+        *cnz = bset(*cnz,oc);
       }
     }
 
     if (! (oc & 1)) {  // even oc, triang matrix
-      int hoc = oc/2;
-      l = dc->L[hoc*hod + hoc];
-      assert(l);
+      int hoc = oc/2, nb = pi[hoc+1]-pi[hoc];
+      const idx_t *lc = d->L[hoc*hod + hoc];
+      const int *idx[2] = { d->L_idx[hoc*hod + hoc][idx0],
+                            d->L_idx[hoc*hod + hoc][idx1] };
+      assert(lc);
       if (bget(nza,hoc) && bget(nzb,hoc) ) {
-        hpoly_triang_mul(ca,cb,cc, l, hoc,ps);
-        c->nz = bset(c->nz,oc);
+        hpoly_triang_mul(ca+pi[hoc],cb+pi[hoc],cc, nb, lc, idx);
+        *cnz = bset(*cnz,oc);
       }
     }
   }
+}
+
+#ifdef _OPENMP
+static inline void
+hpoly_mul_par(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("poly_mul_parallel\n");
+#endif
+
+  int nb_threads = get_num_threads();
+  bit_t c_nzs[nb_threads];
+  for (int t = 0; t < nb_threads; ++t)
+    c_nzs[t] = c->nz;
+
+  #pragma omp parallel for
+  for (int t = 0; t < nb_threads; ++t)
+    hpoly_mul(a,b,c,c->desc->ocs[t],&c_nzs[t],1);
+
+  for (int t = 0; t < nb_threads; ++t)
+    c->nz |= c_nzs[t];
+}
+#endif
+
+static inline void
+hpoly_mul_ser(const T *a, const T *b, T *c)
+{
+#ifdef TRACE
+  printf("poly_mul_serial\n");
+#endif
+  hpoly_mul(a,b,c,c->desc->ocs[0],&c->nz,2);
 }
 
 static inline void
@@ -232,40 +219,15 @@ mad_tpsa_der(const T *a, int var, T *c)
 
   #define DER_USING_L_MATRIX
   #ifdef DER_USING_L_MATRIX
-  // get source indexes from L[oc][1], oc = [1..c_mo]
+
+  idx_t ia, *lc, *pi = d->hpoly_To_idx;
   const num_t *ca = a->coef;
-
-  // ord 1  -- triangular lc
-  ord_t oc = 1, ho = d->mo/2;
-  idx_t ia, *lc = d->L[oc*ho + 1], *pi = d->hpoly_To_idx;
-  if (bget(a->nz,2)) {
-    for (int ic = pi[oc]; ic < var; ++ic) {
-      ia = lc[ hpoly_idx_triang(ic-pi[oc], var-pi[1]) ];
-      if (ia >= 0) {
-        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-        mad_tpsa_seti(c,ic,ca[ia]);
-      }
-    }
-    ia = lc[ hpoly_idx_triang(var-pi[1],var-pi[1]) ];
-    mad_tpsa_seti(c,var,2*ca[ia]);
-
-    for (int ic = var+1; ic < pi[oc+1]; ++ic) {
-      ia = lc[ hpoly_idx_triang(var-pi[1], ic-pi[oc]) ];
-      if (ia >= 0) {
-        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-        mad_tpsa_seti(c,ic,ca[ia]);
-      }
-    }
-  }
-
-  // ords [2..c_mo]  -- rectangular lc
-  int ord_size = -1;
-  for (oc = 2; oc <= c_mo; ++oc)
+  ord_t ho = d->mo/2;
+  for (int oc = 1; oc <= c_mo; ++oc)
     if (bget(a->nz,oc+1)) {
       lc = d->L[oc*ho + 1];
-      ord_size = pi[oc+1] - pi[oc];
       for (int ic = pi[oc]; ic < pi[oc+1]; ++ic) {
-        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], ord_size) ];
+        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], pi[oc+1]-pi[oc]) ];
         if (ia >= 0) {
           assert(pi[oc+1] <= ia && ia < pi[oc+2]);
           mad_tpsa_seti(c,ic, d->To[ia][var-1] * ca[ia]);
@@ -274,7 +236,6 @@ mad_tpsa_der(const T *a, int var, T *c)
     }
   #else  // not DER_USING_L_MATRIX
 
-  // #ifdef UNUSED
   // TODO: switch between the two methods depending on NV ?
   idx_t idx_der = -1, *pi = d->hpoly_To_idx;
   var--;    // monos are 0-indexed
@@ -419,7 +380,12 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
     for (; i < lim_b; ++i) cc[i] =            a0*cb[i];
     for (; i < lim_c; ++i) cc[i] = 0;
 
-    hpoly_mul(a, b, c);
+    #ifdef _OPENMP
+    if (c->mo >= 12)
+      hpoly_mul_par(a,b,c);
+    else
+    #endif
+      hpoly_mul_ser(a,b,c);
   }
 }
 

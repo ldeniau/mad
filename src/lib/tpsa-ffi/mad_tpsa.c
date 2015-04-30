@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "mad_tpsa.h"
 #include "tpsa_utils.tc"
 #include "tpsa_desc.tc"

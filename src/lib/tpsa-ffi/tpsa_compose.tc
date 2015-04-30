@@ -1,20 +1,10 @@
 #ifndef TPSA_COMPOSE_TEMPLATE
 #define TPSA_COMPOSE_TEMPLATE
 
-// #define TRACE
-
 #define T struct tpsa
 #define D struct tpsa_desc
 
-struct compose_ctx {
-  int sa;
-  char *required;
-  const T **ma, **mb;
-        T **mc, **ords, *knb_coef, *tmp;
-  D *da;
-};
-
-// --- LOCAL FUNCTIONS --------------------------------------------------------
+// #define DEBUG
 
 static inline void
 check_same_desc(int sa, const T *ma[sa])
@@ -38,146 +28,11 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   ensure(ma[0]->desc == mc[0]->desc);
 }
 
-static inline T*
-get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
-{
-  // extract from `a` all knob children of `pure_mono`, which contains only canonical vars
-  assert(pure_mono && knb_coef);
-  D *d = a->desc;
-  ord_t mono[d->nv], knb_mono[d->nv];
-  mono_cpy(d->nv, pure_mono, mono);
-  num_t val;
-  idx_t idx, idx_knb_only;
-  mad_tpsa_clean(knb_coef);
+#ifdef _OPENMP
+#include "tpsa_compose_par.tc"
+#endif
+#include "tpsa_compose_ser.tc"
 
-  do {
-    idx = desc_get_idx(d, d->nv, mono);
-    val = mad_tpsa_geti(a,idx);
-    if (val) {
-      mono_cpy(d->nv, mono, knb_mono);
-      mono_set(d->knb_start, knb_mono, 0);  // remove canonical vars
-      idx_knb_only = desc_get_idx(d, d->nv, knb_mono);
-      mad_tpsa_seti(knb_coef, idx_knb_only, val);
-    }
-  } while(nxt_mono_by_var(d, d->nv, mono, d->knb_start));
-
-  return knb_coef;
-}
-
-static inline void
-compose_ord1(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
-{
-  (void)sb; (void) sc;  // checked in mad_tpsa_compose
-  D *d = ma[0]->desc;
-  if (d->knb_start < d->nv) { // there are knobs
-    T *knb_coef = mad_tpsa_newd(d,&d->ko);
-    T *tmp      = mad_tpsa_newd(d,&d->trunc);
-
-    for (int i = 0; i < sa; ++i) {
-      mad_tpsa_setConst(mc[i],ma[i]->coef[0]);
-
-      // ord 1 -- vars
-      for (int v = 1; v <= d->knb_start; ++v)
-        if (ma[i]->coef[v]) {
-          T *coef = get_knobs_coef(ma[i], d->To[v], knb_coef);
-          if (coef->nz) {
-            mad_tpsa_mul   (coef, mb[v-1], tmp);
-            scale_and_accum(1.0 , tmp  , mc[i]);
-          }
-        }
-      // ord 1 -- knobs
-      for (int k = d->knb_start+1; k <= d->nv; ++k)
-        mc[i]->coef[k] = ma[i]->coef[k];
-    }
-  }
-  else {                        // no knobs
-    for (int i = 0; i < sa; ++i) {
-      mad_tpsa_setConst(mc[i], ma[i]->coef[0]);
-      for (int v = 1; v <= d->nv; ++v) {
-        num_t coef = mad_tpsa_geti(ma[i],v);
-        if (coef)
-          scale_and_accum(coef, mb[v-1], mc[i]);
-      }
-    }
-  }
-}
-
-static inline void
-compose(int pos, ord_t o, ord_t curr_mono[], struct compose_ctx *ctx)
-{
-  D *da = ctx->da;
-  int idx = desc_get_idx(da, da->nv, curr_mono);
-  if (!ctx->required[idx])
-    return;
-
-  if (o > 0)
-    mad_tpsa_mul(ctx->ords[o-1], ctx->mb[pos], ctx->ords[o]);
-
-  if (da->knb_start < da->nv) { // there are knobs
-    for (int i = 0; i < ctx->sa; ++i) {
-      T *coef = get_knobs_coef(ctx->ma[i], curr_mono, ctx->knb_coef);
-      if (coef->nz) {
-        mad_tpsa_mul   (coef, ctx->ords[o], ctx->tmp);
-        scale_and_accum(1.0 , ctx->tmp    , ctx->mc[i]);
-      }
-    }
-  }
-  else {                        // no knobs
-    for (int i = 0; i < ctx->sa; ++i) {
-      num_t coef = mad_tpsa_geti(ctx->ma[i],idx);
-      if (coef)
-        scale_and_accum(coef, ctx->ords[o], ctx->mc[i]);
-    }
-  }
-
-  for(  ; pos < da->knb_start; ++pos) {  // don't put knobs in curr_mono
-    curr_mono[pos]++;
-    if (desc_mono_isvalid(da, da->nv, curr_mono))
-      compose(pos, o+1, curr_mono, ctx);
-    curr_mono[pos]--;
-  }
-}
-
-static inline int
-init_required(int sa, const T *ma[sa], char required[])
-{
-  assert(ma && required);
-  D *d = ma[0]->desc;
-  int nv = d->nv, max_mo = -1, *pi = d->hpoly_To_idx;
-  double eps = 1e-10;
-
-  // original nodes
-  memset(required, 0, d->nc);
-  for (int i = 0; i < sa; ++i) {
-    if (ma[i]->mo > max_mo)
-      max_mo = ma[i]->mo;
-    for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
-      if (   bget(ma[i]->nz,d->ords[c])
-          && (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps)) // != 0
-        required[c] = 1;
-  }
-
-  // root is always required
-  required[0] = 1;
-
-  // fathers of nodes
-  ord_t mono[nv];
-  int j, father = -1;
-  for (int o = max_mo; o > 1; --o) {
-    for (int c = pi[o]; c < pi[o+1]; ++c)
-      if (required[c]) {
-        mono_cpy(nv,d->To[c],mono);
-        for (j = nv-1; j >= 0 && !mono[j]; --j)
-          ; // get j to first non-zero element
-        mono[j]--;
-        father = desc_get_idx(d,nv,mono);
-        required[father] = 1;
-      }
-  }
-  return max_mo;
-}
-
-// --- PUBLIC FUNCTIONS -------------------------------------------------------
 
 void
 mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
@@ -185,86 +40,23 @@ mad_tpsa_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
 #ifdef TRACE
   printf("tpsa_compose\n");
 #endif
-  check_compose(sa,ma,sb,mb,sc,mc);
+  check_compose(sa, ma, sb, mb, sc, mc);
 
-  // locals
-  D *da = ma[0]->desc;
-  ord_t mono[da->nv];
-  T *ords[da->mo+1];  // one for each order [0,mo]
-  char required[da->nc];
-
-  int max_mo = init_required(sa, ma, required);
-  if (max_mo == 1) {
-    compose_ord1(sa,ma,sb,mb,sc,mc);
-    return;
-  }
-
-  // initialization
-  for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
-  for (int o = 0; o <= max_mo; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
-  mad_tpsa_setConst(ords[0],1.0);
-  for (int ic = 0; ic < sc; ++ic)
-    mad_tpsa_clean(mc[ic]);
-
-  struct compose_ctx ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
-                             .da=da, .mb=mb, .ords=ords  };
-  ctx.knb_coef = da->ko ? mad_tpsa_newd(da,&da->ko) : NULL;
-  ctx.tmp      = mad_tpsa_newd(da,&da->trunc);
-
-  // do composition from root of tree, ord 0
-  compose(0, 0, mono, &ctx);
-
-  // cleanup
-  for (int o = 0; o <= max_mo; ++o)
-    mad_tpsa_del(ords[o]);
-  mad_tpsa_del(ctx.knb_coef);
-  mad_tpsa_del(ctx.tmp);
+  #ifdef _OPENMP
+  ord_t max_in_mo = 0;
+  for (int i = 0; i < sa; ++i)
+    if (ma[i]->mo > max_in_mo)
+      max_in_mo = ma[i]->mo;
+  if (max_in_mo >= 6)
+    mad_tpsa_compose_par(sa,ma,mb,mc);
+  else
+  #endif
+    mad_tpsa_compose_ser(sa,ma,mb,mc);
 }
-
-#ifdef UNUSED
-void
-mad_tpsa_compose_slow(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
-{
-#ifdef TRACE
-  printf("tpsa_compose\n");
-#endif
-  assert(ma && mb && mc);
-  assert(ma[0]->desc->knb_start == sb);
-  (void)sc;
-
-  for (int ic = 0; ic < sc; ++ic)
-    mad_tpsa_clean(mc[ic]);
-
-  D *desc_a = ma[0]->desc;
-  ord_t *curr_mono;
-  T *curr_build = mad_tpsa_new(ma[0]), *tmp_res = mad_tpsa_new(ma[0]);
-  int coef_lim;
-  for (int ia = 0; ia < sa; ++ia) {
-    ord_t mo = min_ord(ma[ia]->mo, desc_a->trunc);
-    coef_lim = desc_a->hpoly_To_idx[mo+1];
-
-    for (int mono_idx = 0; mono_idx < coef_lim; ++mono_idx) {
-      curr_mono = desc_a->To[mono_idx];
-
-      mad_tpsa_clean(curr_build);
-      num_t curr_coef = mad_tpsa_geti(ma[ia], mono_idx);
-      if (curr_coef == 0)
-        continue;
-
-      mad_tpsa_seti(curr_build, 0, curr_coef);
-      for (int var = 0; var < desc_a->knb_start; ++var)
-        for (ord_t o = 0; o < curr_mono[var]; ++o) { // pow
-          mad_tpsa_mul(curr_build, mb[var], tmp_res);
-          mad_tpsa_copy(tmp_res, curr_build);
-        }
-
-      mad_tpsa_add(mc[ia], curr_build, tmp_res);
-      mad_tpsa_copy(tmp_res, mc[ia]);
-    }
-  }
-}
-#endif // UNUSED
 
 #undef T
 #undef D
+
+#undef CTX
+
 #endif
