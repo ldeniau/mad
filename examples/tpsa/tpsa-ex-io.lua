@@ -27,8 +27,7 @@ if     arg[4] == "out" then
 elseif arg[4] == "in"  then
   local t = factory.new_instance()
   tpsa.read_into(t)
-  t = t * t
-  factory.print(io.output(), t)
+  t:print()
 end
 
 -- I/O with files

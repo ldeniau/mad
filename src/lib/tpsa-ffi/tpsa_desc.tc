@@ -11,8 +11,7 @@ typedef int           idx_t;
 #define D struct tpsa_desc
 
 struct tpsa_desc {
-  int      nv, nc,    // number of vars, number of coeff
-           knb_start, // index in `a` where the knobs start
+  int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
            size;      // bytes used by current desc
   ord_t    mo, ko,    // maximum orders: for vars, for knobs
            trunc,     // truncation order for operations; always <= mo
@@ -69,10 +68,10 @@ static inline int
 desc_mono_isvalid(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  int ks = d->knb_start;
+  int rk = d->rk;
   return    ( n <= d->nv )
          && (         mono_sum(n   ,m)    <= d->mo)
-         && (n > ks ? mono_sum(n-ks,m+ks) <= d->ko
+         && (n > rk ? mono_sum(n-rk,m+rk) <= d->ko
                     : 1)
          && mono_leq(n,m,d->a);
 }
@@ -197,7 +196,7 @@ make_monos(D *d)
   const int max_init_alloc = 20000;  // to fit (6,12)
   d->nc = max_nc(d->nv, d->mo);
   int nv = d->nv, need_realloc = 0;
-  if (d->nc > max_init_alloc || d->nc < 0) {  // nc < 0 on overflow in max_nc
+  if (d->nc > max_init_alloc || d->nc < 0) {  // nc < 0 when overflow in max_nc
     need_realloc = 1;
     d->nc = max_init_alloc;
   }
@@ -549,7 +548,7 @@ get_LC_idxs(int oa, int ob, D *d)
 #endif
   int oc = oa + ob;
   const idx_t *pi = d->hpoly_To_idx, *lc = d->L[d->mo/2*oa + ob],
-                T = (pi[oc+1] + pi[oc] - 1) / 2;  // Threshold of oc
+                T = (pi[oc+1] + pi[oc] - 1) / 2;  // splitting threshold of oc
   const int  cols =  pi[oa+1] - pi[oa],
              rows =  pi[ob+1] - pi[ob];
 
@@ -557,11 +556,11 @@ get_LC_idxs(int oa, int ob, D *d)
   assert(LC_idx);
   d->size += 3 * sizeof *LC_idx;
 
-  int *limits = malloc(3 * rows * sizeof *limits);
+  int *limits = malloc(3 * rows * sizeof *limits); // rows: [start split end]
   assert(limits);
   d->size += 3 * rows * sizeof *limits;
 
-  int START = 0, SPLIT = 1, END = 2;
+  const int START = 0, SPLIT = 1, END = 2;
 
   LC_idx[START] = limits;
   LC_idx[SPLIT] = limits +   rows;
@@ -789,20 +788,20 @@ static D  *Ds[TPSA_DESC_NUM];
 static int last_desc_idx = -1;
 
 static inline D*
-desc_init(int nv, const ord_t ords[nv], ord_t vo, int ks, ord_t ko)
+desc_init(int nv, const ord_t ords[nv], ord_t vo, int rk, ord_t ko)
 {
 #ifdef TRACE
-  printf("desc_ini nv=%d ks=%d vo=%d ko=%d var_ords=",nv,ks,vo,ko);
+  printf("desc_ini nv=%d rk=%d vo=%d ko=%d var_ords=",nv,rk,vo,ko);
   mono_print(nv,ords);
   printf("\n");
 #endif
 
   assert(ords);
   ensure(vo >= ko);
-  for (int v =  0; v < ks; ++v) ensure(ords[v] <= vo);
-  for (int v = ks; v < nv; ++v) ensure(ords[v] <= ko);
-  ensure(mono_sum(ks    ,ords  ) >= vo);
-  ensure(mono_sum(nv-ks,ords+ks) >= ko);
+  for (int v =  0; v < rk; ++v) ensure(ords[v] <= vo);
+  for (int v = rk; v < nv; ++v) ensure(ords[v] <= ko);
+  ensure(mono_sum(rk    ,ords  ) >= vo);
+  ensure(mono_sum(nv-rk,ords+rk) >= ko);
 
   D *d = malloc(sizeof *d);
   assert(d);
@@ -810,8 +809,8 @@ desc_init(int nv, const ord_t ords[nv], ord_t vo, int ks, ord_t ko)
   d->mo    = vo;
   d->ko    = ko;
   d->trunc = vo;
-  d->knb_start = ks;
-  d->size = sizeof(d);
+  d->rk    = rk;
+  d->size  = sizeof(d);
 
   d->a = malloc(nv * sizeof *(d->a));
   assert(d->a);
@@ -856,7 +855,7 @@ static inline int
 desc_equ(const D *d1, const D *d2)
 {
   assert(d1 && d2);
-  return    d1->nv == d2->nv && d1->knb_start == d2->knb_start
+  return    d1->nv == d2->nv && d1->rk == d2->rk
          && d1->mo == d2->mo && d1->ko == d2->ko
          && mono_equ(d1->nv, d1->a, d2->a);
 }
@@ -872,10 +871,10 @@ desc_search(const D *d)
 }
 
 static inline D*
-get_desc(int nv, const ord_t ords[nv], ord_t vo, int ks, ord_t ko)
+get_desc(int nv, const ord_t ords[nv], ord_t vo, int rk, ord_t ko)
 {
   assert(ords);
-  D *d = desc_init(nv,ords,vo,ks,ko);
+  D *d = desc_init(nv,ords,vo,rk,ko);
   D *existing_desc = desc_search(d);
   if (existing_desc) {
     free(d->a);
@@ -901,9 +900,9 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], ord_t vo,
 {
   assert(var_ords && knb_ords);
   ord_t ords[nv+nk];
-  int io = 0;
-  for (int i = 0; i < nv; ++i) ords[io++] = var_ords[i];
-  for (int i = 0; i < nk; ++i) ords[io++] = knb_ords[i];
+  int oidx = 0;
+  for (int i = 0; i < nv; ++i) ords[oidx++] = var_ords[i];
+  for (int i = 0; i < nk; ++i) ords[oidx++] = knb_ords[i];
   return get_desc(nv+nk, ords, vo, nv, ko);
 }
 
@@ -932,9 +931,10 @@ mad_tpsa_desc_del(D *d)
   free(d->L_idx);           d->L_idx         = NULL;
 
   #ifdef _OPENMP
-  for (int t = 0; t < omp_get_num_procs(); ++t)
-    free(d->ocs[t]);
-  free(d->ocs);
+  for (int t = 0; t < omp_get_num_procs(); ++t) {
+    free(d->ocs[t]);        d->ocs[t]        = NULL;
+  }
+  free(d->ocs);             d->ocs           = NULL;
   #endif
 
   // remove descriptor from global array

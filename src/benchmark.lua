@@ -24,7 +24,7 @@ local function bench(mod_name, fct_name, filename, trials)
 
   local Ts = {}  -- times
   for i=1,#NL do
---    check.do_all_checks(tpsa, NV[i], NO[i])
+    check.do_all_checks(tpsa, NV[i], NO[i])
 
     factory.setup(tpsa, NV[i], NO[i])
     printf(line_fmt, NV[i], NO[i], NL[i])

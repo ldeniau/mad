@@ -20,7 +20,7 @@ check_compose(int sa, const T *ma[], int sb, const T *mb[], int sc, T *mc[])
   assert(ma && mb && mc);
   ensure(sa && sb && sc);
   ensure(sa == sc);
-  ensure(sb == ma[0]->desc->knb_start);
+  ensure(sb == ma[0]->desc->rk);
   check_same_desc(sa,ma);
   check_same_desc(sb,mb);
   check_same_desc(sc,(const T**)mc);

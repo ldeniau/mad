@@ -26,28 +26,6 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
 
 // --- DEBUGGING --------------------------------------------------------------
 
-static inline void
-print_l(const idx_t const* l)
-{
-  printf("l=%p\n", (void*)l);
-  int s = l[0];
-  printf("s=%d\n", s);
-  for (int i=1; i < s*s; i++)
-    printf("%d ", l[i]);
-  printf("\n");
-}
-
-void
-print_wf(const T *t)
-{
-  D *d = t->desc;
-  printf("[ nz=%d; mo=%d; ", t->nz, t->mo);
-  for (int o = t->mo; o >= 0; --o)
-    for (int i = d->hpoly_To_idx[o]; i < d->hpoly_To_idx[o+1]; ++i)
-      printf("%.2f ", t->coef[i]);
-  printf(" ]\n");
-}
-
 void
 mad_tpsa_print_compact(const T *t)
 {
@@ -82,10 +60,10 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
   printf("tpsa new %p from %p\n", (void*)t, (void*)d);
 #endif
   t->desc = d;
-  t->mo = 1;    // IMPORTANT for mul !!
   t->to = to;
   t->nz = 0;
-  for (int i = 0; i <= d->nv; ++i)
+  t->mo = 1;    // IMPORTANT for mul !! ord 1 always initialized
+  for (int i = 0; i < d->hpoly_To_idx[2]; ++i)
     t->coef[i] = 0;
   return t;
 }
@@ -195,7 +173,7 @@ mad_tpsa_setConst(T *t, num_t v)
   t->mo = 1;
   t->nz = 1;
   t->coef[0] = v;
-  for (int i = 1; i <= t->desc->nv; ++i)
+  for (int i = 1; i < t->desc->hpoly_To_idx[2]; ++i)
     t->coef[i] = 0;
 }
 

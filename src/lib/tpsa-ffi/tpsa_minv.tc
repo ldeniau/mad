@@ -14,7 +14,7 @@ static inline void
 check_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 {
   ensure(sa == sc);
-  ensure(sa == ma[0]->desc->knb_start); // 'square' matrix, ignoring knobs
+  ensure(sa == ma[0]->desc->rk); // 'square' matrix, ignoring knobs
   check_same_desc(sa,ma);
   check_same_desc(sc,(const T**)mc);
   ensure(ma[0]->desc == mc[0]->desc);
@@ -24,7 +24,7 @@ check_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 static inline void
 split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
 {
-  int nv = d->nv, cv = d->knb_start, nk = nv - cv;             // #vars, #canonical vars, #knobs
+  int nv = d->nv, cv = d->rk, nk = nv - cv;                    // #vars, #canonical vars, #knobs
   gsl_matrix *mat_var  =      gsl_matrix_calloc(cv,cv),        // canonical vars
              *mat_vari =      gsl_matrix_alloc (cv,cv),        // inverse of vars
              *mat_knb  = nk ? gsl_matrix_calloc(cv,nk) : NULL, // knobs
