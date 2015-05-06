@@ -451,11 +451,6 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, m, l, v)
-  -- m is a t.mono_t (i.e. intArr) of length nv
-  berzLib.dapok_(t, m, v)
-end
-
 function tpsa.getm(t, m, l, res)
   -- m is a t.mono_t (i.e. intArr) of length nv
   berzLib.dapek_(t, m, res)

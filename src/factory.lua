@@ -5,6 +5,7 @@ M.seed = os.time()
 local dbl_ptr  = ffi.typeof("double[1]")
 local int_ptr  = ffi.typeof("int   [1]")
 local uint_ptr = ffi.typeof("unsigned int [1]")
+local size_t_ptr = ffi.typeof("size_t     [1]")
 
 -- HELPERS ---------------------------------------------------------------------
 local function fprintf(f, s, ...)
@@ -67,7 +68,7 @@ local function initMons(nv)
   return t
 end
 
-local function table_by_ords(nv, no, ords, f)
+function M.make_To(nv, no, ords, f)
   local t = initMons(nv)
   local a = ords or mono_val(nv, no)
         f = f or function() return true end
@@ -109,10 +110,32 @@ local function make_To_ffi()
   return To_ffi
 end
 
+function M.make_To_sparse()
+  if M.To_sp and M.To_sp.nv == M.nv and M.To_sp.no == M.no then
+    return M.To_sp
+  end
+
+  local To = M.To
+  local To_sp = { ps=To.ps, pe=To.pe, nv=M.nv, no=M.no }
+  for m=0,#To do
+    local mono_sp = {}
+    for v=1,#To[m] do
+      if To[m][v] ~= 0 then
+        mono_sp[#mono_sp+1] = v
+        mono_sp[#mono_sp+1] = To[m][v]
+      end
+    end
+    To_sp[m] = mono_sp
+  end
+
+  M.To_sp = To_sp
+  return To_sp
+end
+
 -- ARGUMENTS BUILD -------------------------------------------------------------
 -- use functions return to avoid unpack which is not compiled
 
--- --- PEEK  -------------------------------------------------------------------
+-- --- PEEK --------------------------------------------------------------------
 
 local function args_getm()
   local args = {             --    raw instance  ,   mono length   , result ptr
@@ -247,13 +270,10 @@ function M.new_instance()
 end
 
 function M.get_args(fct_name, t)
-  local val = 4.3
-
   local args = {
+    get      = function() return M.To end,
     getm     = args_getm,
-    setm     = args_setm,
-    get      = function() return M.To      end,
-    set      = function() return M.To, val end,
+    get_sp   = function() return M.make_To_sparse() end,
 
     der      = function() return M.full(), 1, M.new_instance() end,
     poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
@@ -269,8 +289,6 @@ function M.get_args(fct_name, t)
     fun      = args_fun,        -- returns t_in, t_out; t_in filled, t_out empty
     inv      = args_fun,
     sqrt     = args_fun,
-
-    generic  = function() return M.To end
   }
   return args[fct_name](t)
 end
@@ -285,7 +303,7 @@ function M.setup(mod, nv, no)
   end
 
   if nv and no and (nv ~= M.nv or no ~= M.no) then
-    M.nv, M.no, M.To= nv, no, table_by_ords(nv, no)
+    M.nv, M.no, M.To= nv, no, M.make_To(nv, no)
   end
   if mod ~= M.mod then
     M.mod = mod
@@ -297,7 +315,6 @@ end
 -- EXPORTED UTILS --------------------------------------------------------------
 M.mono_val   = mono_val
 M.mono_print = mono_print
-M.make_To    = table_by_ords
 M.fprintf    = fprintf
 M.printf     = function (...) fprintf(io.output(), ...); io:flush() end
 

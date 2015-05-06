@@ -281,11 +281,6 @@ end
 
 -- interface for benchmarking --------------------------------------------------
 
-function tpsa.setm(t, m, l, v)
-  -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
-  yangLib.ad_pok_(t, m, l, v)
-end
-
 function tpsa.getm(t, m, l, res)
   -- lower level interface; m is a t.mono_t of length nv (i.e. an intArr)
   yangLib.ad_pek_(t, m, l, res)

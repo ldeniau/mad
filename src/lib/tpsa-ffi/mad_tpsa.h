@@ -25,9 +25,11 @@ void  mad_tpsa_del     (      T *t);
 void  mad_tpsa_setConst(      T *t,        num_t v);
 void  mad_tpsa_seti    (      T *t, int i, num_t v);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
+void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t v);
 
 num_t mad_tpsa_geti    (const T *t, int i);
 num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
+num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]);
 
 int   mad_tpsa_idx     (const T *t, int n, const ord_t m[n]);
 

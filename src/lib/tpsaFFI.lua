@@ -52,9 +52,11 @@ ffi.cdef[[
   void  mad_tpsa_setConst(      T *t,        num_t v);
   void  mad_tpsa_seti    (      T *t, int i, num_t v);
   void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t v);
+  void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t v);
 
   num_t mad_tpsa_geti    (const T *t, int i);
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
+  num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
 
   int   mad_tpsa_get_idx (const T *t, int n, const ord_t m[]);
 
@@ -124,6 +126,7 @@ ffi.cdef[[
 local desc_t   = typeof("D       ")
 local tpsa_t   = typeof("T       ")
 local mono_t   = typeof("const ord_t[?]")
+local smono_t  = typeof("const int  [?]")
 local ord_ptr  = typeof("const ord_t[1]")
 local tpsa_arr = typeof("T*   [?]")
 local tpsa_carr = typeof("const T*   [?]")
@@ -187,8 +190,7 @@ local function allocate(desc, trunc_ord)
 end
 
 
--- functions -------------------------------------------------------------------
-
+-- CONSTRUCTORS ----------------------------------------------------------------
 local constructor_as_string = {
   [0] = [==[
     tpsa.init({vars} [, vo [, {knobs} [, ko]]])
@@ -289,12 +291,22 @@ function M.cpy(src, dst)
   return dst
 end
 
+-- PEEK & POKE -----------------------------------------------------------------
+function M.get(t, m)
+  return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
+end
+
 function M.set(t, m, v)
   clib.mad_tpsa_setm(t, #m, mono_t(#m, m), v)
 end
 
-function M.setConst(t, v)
-  clib.mad_tpsa_setConst(t, v)
+function M.get_sp(t,m)
+  -- m = {idx1, ord1, idx2, ord2, ... }
+  return tonumber(clib.mad_tpsa_getm_sp(t, #m, smono_t(#m,m)))
+end
+
+function M.set_sp(t, m, v)
+  clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
 end
 
 function M.get_idx(t,m)
@@ -309,10 +321,11 @@ function M.set_at(t,i,v)
   clib.mad_tpsa_seti(t,i,v)
 end
 
-function M.get(t, m)
-  return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
+function M.setConst(t, v)
+  clib.mad_tpsa_setConst(t, v)
 end
 
+-- FUNCS -----------------------------------------------------------------------
 function M.global_truncation(t, o)
   -- use without `o` to get current truncation order
   return clib.mad_tpsa_desc_trunc(t.desc, ord_ptr(o))
@@ -330,6 +343,7 @@ function M.comp(a, b)
   return clib.mad_tpsa_comp(a, b)
 end
 
+-- I/O -------------------------------------------------------------------------
 function M.print(a, file)
   clib.mad_tpsa_print(a,file)
 end
@@ -617,11 +631,6 @@ end
 M.debug = clib.mad_tpsa_print_compact
 
 -- interface for benchmarking --------------------------------------------------
-
-function M.setm(t, m, l, v)
-  -- m should be a t.mono_t of length l
-  clib.mad_tpsa_setm(t, l, m, v)
-end
 
 function M.getm(t, m, l, res)
   -- m should be a t.mono_t of length l

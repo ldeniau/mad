@@ -59,7 +59,7 @@ local function bench(mod_name, fct_name, filename, trials)
 end
 
 local usage = [[
-Usage:   luajit pek-pok-bench.lua -h mod_name fct_name [params_filename]
+Usage:   luajit pek-pok-bench.lua [-h] mod_name fct_name [params_filename]
 ]]
 local help = [[
   mod_name: lib.tpsaFFI | lib.tpsaBerz | lib.tpsaYang | lib.tpsaMC

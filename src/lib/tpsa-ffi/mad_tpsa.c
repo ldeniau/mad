@@ -114,7 +114,6 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
 {
   assert(t && m);
   D *d = t->desc;
-  assert(n <= d->nv);
   idx_t i = desc_get_idx(d,n,m);
   ensure(d->ords[i] <= t->to);
   return d->ords[i] <= t->mo ? t->coef[i] : 0;
@@ -129,6 +128,28 @@ mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
   printf("set_mono: "); mono_print(n, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
+  mad_tpsa_seti(t,i,v);
+}
+
+// --- mono is sparse; represented as [(i o)]
+num_t
+mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
+{
+  assert(t && m);
+  D *d = t->desc;
+  idx_t i = desc_get_idx_sp(d,n,m);
+  ensure(d->ords[i] <= t->to);
+  return d->ords[i] <= t->mo ? t->coef[i] : 0;
+}
+
+void
+mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
+{
+  assert(t && m);
+#ifdef TRACE
+  printf("set_mono_sp: "); mono_print(n, m); printf("\n");
+#endif
+  idx_t i = desc_get_idx_sp(t->desc,n,m);
   mad_tpsa_seti(t,i,v);
 }
 

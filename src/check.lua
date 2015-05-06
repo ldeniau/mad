@@ -10,45 +10,31 @@ local function dummy_fct() return 0 end
 
 -- UTILS -----------------------------------------------------------------------
 
-local function check_coeff_consistency(fset_name, fget_name, in_vals, err_code)
-  local err_fmt = "Error %d: inconsistent coefficients at %d (%f should have been %f)"
+local function check_coeff_consistency(fset_name, fget_name, in_vals)
+  local err_fmt = "Error for %s + %s: inconsistent coefficients at idx %d (%f should have been %f)"
 
-  local t, To_set, To_get, l_set, l_get, _
+  local t, tpsa = factory.new_instance(), factory.mod
+  if fset_name then
+    local To = fset_name == "set" and factory.To or factory.make_To_sparse()
+    local set = tpsa[fset_name]
+    for m=0,#To do set(t, To[m], in_vals[m]) end
+  end
 
-  t = factory.new_instance()
-  To_set, _, l_set = factory.get_args(fset_name or "generic")
-  To_get,    l_get = factory.get_args(fget_name)
-
-  if #To_set ~= #To_get  then error("Inconsistent factory setup")  end
-  if #To_get ~= #in_vals then error("Incorrect in_vals")  end
-
-  local fset = fset_name and t[fset_name] or dummy_fct
-  local fget = t[fget_name] or error("Incorrect get function: " .. fget_name)
-
+  local get = tpsa[fget_name] or error("Incorrect get function: " .. fget_name)
   local out_vals = {}
-  for m=0,#To_set  do               fset(t, To_set[m], in_vals[m], l_set) end
-  for m=0,#To_get  do out_vals[m] = fget(t, To_get[m],             l_get) end
+  local To, _, mlen, res_ptr = factory.get_args(fget_name)
+  if fget_name == "getm" and factory.mod.name ~= "tpsa" then
+    t = t.idx
+  end
+
+  assert(#To == #in_vals, "Incorrect in_vals")
+  for m=0,#To do out_vals[m] = get(t, To[m], mlen, res_ptr) end
+
   for m=0,#in_vals do
     if in_vals[m] ~= out_vals[m] then
-      error(string.format(err_fmt, err_code, m, out_vals[m], in_vals[m]))
+      error(string.format(err_fmt, fset_name, fget_name, m, out_vals[m], in_vals[m]))
     end
   end
-end
-
-local function check_coeff()
-  local in_vals
-
-  in_vals = factory.mono_val(#factory.To, 0)  -- initially all should be 0
-  in_vals[0] = 0
-  check_coeff_consistency(nil,    "getm", in_vals, -1)
-  check_coeff_consistency(nil,    "get" , in_vals, -2)
-
-  in_vals = factory.mono_val(#factory.To)     -- randoms
-  in_vals[0] = 1 + rand()
-  check_coeff_consistency("set" , "get" , in_vals,  0)
-  check_coeff_consistency("set" , "getm", in_vals,  1)
-  check_coeff_consistency("setm", "get" , in_vals,  2)
-  check_coeff_consistency("setm", "getm", in_vals,  3)
 end
 
 local function identical_value(v1, v2, eps, name1, name2, val_name, abs_or_rel)
@@ -86,6 +72,26 @@ local function check_identical(t1, t2, eps, To, fct_name, abs_or_rel)
 end
 
 -- CHECKS ----------------------------------------------------------------------
+local function check_coeff()
+  local in_vals
+
+  in_vals = factory.mono_val(#factory.To, 0)  -- initially all should be 0
+  in_vals[0] = 0
+  check_coeff_consistency(nil,    "getm"  , in_vals)
+  check_coeff_consistency(nil,    "get"   , in_vals)
+  if factory.mod.name == "tpsa" then
+    check_coeff_consistency(nil,  "get_sp", in_vals)
+  end
+
+  in_vals = factory.mono_val(#factory.To)     -- randoms
+  in_vals[0] = 1 + rand()
+  check_coeff_consistency  ("set"   , "get"   , in_vals)
+  check_coeff_consistency  ("set"   , "getm"  , in_vals)
+  if factory.mod.name == "tpsa" then
+    check_coeff_consistency("set"   , "get_sp", in_vals)
+    check_coeff_consistency("set_sp", "get"   , in_vals)
+  end
+end
 
 local function check_bin_with_berz(mod)
   -- factory has already been setup for {mod, nv, no}
@@ -321,7 +327,7 @@ function M.do_all_checks(mod, nv, no)
   factory.setup(mod,nv,no)
   if mod.name == "mapClass" then return end
 
---  check_coeff()
+  check_coeff()
 
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
