@@ -340,7 +340,7 @@ function M.do_all_checks(mod, nv, no)
 
   check_fun_with_berz(mod)
 --  check_poisson_with_berz(mod)
---  check_minv_with_berz(mod)
+  check_minv_with_berz(mod)
 end
 
 M.identical = check_identical

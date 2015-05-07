@@ -48,7 +48,7 @@ hpoly_asym_mul(const num_t *ca, const num_t *cb, num_t *cc, int na, int nb,
 }
 
 static inline void
-hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int split_end)
+hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int in_parallel)
 {
 #ifdef TRACE
   printf("tpsa_mul\n");
@@ -60,9 +60,16 @@ hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int split_
         bit_t nza = a->nz  ,  nzb = b->nz;
 
   for (int i = 0; ocs[i]; ++i) {
-    ord_t oc = ocs[i] == c->mo+1 ? c->mo : ocs[i];
-    int idx0 = ocs[i] == c->mo+1 ? 1 : 0;
-    int idx1 = ocs[i] == c->mo   ? split_end : 2;
+    if (ocs[i] > c->mo + 1 || (ocs[i] == c->mo + 1 && !in_parallel))
+      continue;
+
+    ord_t oc = ocs[i];
+    int idx0 = 0, idx1 = 2;
+    if (in_parallel && ocs[i] >= c->mo) {
+      oc = c->mo;
+      if (ocs[i] == c->mo) idx1 = 1;
+      else                 idx0 = 1;
+    }
 
     for (int j=1; j <= (oc-1)/2; ++j) {
       int oa = oc-j, ob = j;            // oa > ob >= 1
@@ -130,7 +137,7 @@ hpoly_mul_ser(const T *a, const T *b, T *c)
 #ifdef TRACE
   printf("poly_mul_serial\n");
 #endif
-  hpoly_mul(a,b,c,c->desc->ocs[0],&c->nz,2);
+  hpoly_mul(a,b,c,c->desc->ocs[0],&c->nz,0);
 }
 
 static inline void
