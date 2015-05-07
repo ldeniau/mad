@@ -338,7 +338,7 @@ function M.do_all_checks(mod, nv, no)
 
 --  if mod.name == "yang" then return end
 
---  check_fun_with_berz(mod)
+  check_fun_with_berz(mod)
 --  check_poisson_with_berz(mod)
 --  check_minv_with_berz(mod)
 end

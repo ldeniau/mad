@@ -83,7 +83,7 @@ hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int split_
         *cnz = bset(*cnz,oc);
       }
       else if (bget(nza,ob) && bget(nzb,oa)) {
-        hpoly_asym_mul(cb+pi[ob],ca+pi[oa],cc, na,nb, lc, idx);
+        hpoly_asym_mul(cb+pi[oa],ca+pi[ob],cc, na,nb, lc, idx);
         *cnz = bset(*cnz,oc);
       }
     }
