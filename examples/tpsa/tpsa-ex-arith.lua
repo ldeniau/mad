@@ -14,8 +14,13 @@ b:set({0,1,1}, 5.0)
 
 
 local c = 1 + a - b + 2
-
 c = 2 * a + b * 3 + a * b
+c:print()
+c = c:new(2)
+c.cpy(2 * a + b * 3 + a * b, c) -- truncate result
+c:print()
+
+
 c = a / (b+1)
 
 a:print()

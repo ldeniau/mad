@@ -275,7 +275,6 @@ function M.get_args(fct_name, t)
     getm     = args_getm,
     get_sp   = function() return M.make_To_sparse() end,
 
-    der      = function() return M.full(), 1, M.new_instance() end,
     poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
     mul      = args_bin_op,     -- returns t1, t2, t_out; t1,t2 filled, t_out empty
     div      = args_bin_op,     -- same as ^

@@ -202,52 +202,63 @@ mad_tpsa_der(const T *a, int var, T *c)
 #ifdef TRACE
   printf("mad_tpsa_der\n");
 #endif
-  assert(a && c);
+  assert(a && c && a != c);
   ensure(var > 0 && var <= a->desc->nv);
 
   D *d = a->desc;
 
-  ensure(0 && "OUTDATED: mo >= 1");
-  // prepare destination; minimal cleanup
-  ord_t c_mo = min_ord(a->mo-1, c->to, d->trunc);
-  c->mo = c->nz = 0;
-  for (int i = 0; i < d->hpoly_To_idx[c_mo+1]; ++i)
-    c->coef[i] = 0;
-
   // ord 0
-  num_t val = 0;
-  if ((val = mad_tpsa_geti(a,var))) {
-    c->coef[0] = val;
-    c->nz = bset(0,0);  // set ord 0
-  }
-
+  mad_tpsa_setConst(c, a->coef[var]);
   if (a->mo == 1)
     return;
 
+  c->mo = min_ord(c->to, d->trunc, a->mo-1);
   #define DER_USING_L_MATRIX
   #ifdef DER_USING_L_MATRIX
 
-  idx_t ia, *lc, *pi = d->hpoly_To_idx;
+  idx_t ia, *lc, *pi = d->hpoly_To_idx, nc;
   const num_t *ca = a->coef;
-  ord_t ho = d->mo/2;
-  for (int oc = 1; oc <= c_mo; ++oc)
+        num_t *cc;
+  ord_t ho = d->mo/2, oc = 1;
+  var = var - pi[1];         // shift to 0
+  // ord 1 -- triang
+  if (bget(a->nz,2)) {
+    lc = d->L[oc*ho + 1];  // L[oc][1]
+    cc = c->coef  + pi[oc];
+    nc = pi[oc+1] - pi[oc];
+    for (int ic = 0; ic < nc; ++ic) {
+      ia = lc[hpoly_idx_rect(imax(var,ic),imin(var,ic),nc)];
+      // printf("ia=%d ic=%d\n", ia, ic+pi[oc]);
+      if (ia >= 0) {
+        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
+        cc[ic] = d->To[ia][var] * ca[ia];
+        c->nz = bset(c->nz,oc);
+      }
+    }
+  }
+  for (oc = 2; oc <= c->mo; ++oc)
     if (bget(a->nz,oc+1)) {
-      lc = d->L[oc*ho + 1];
-      for (int ic = pi[oc]; ic < pi[oc+1]; ++ic) {
-        ia = lc[ hpoly_idx_rect(var-pi[1], ic-pi[oc], pi[oc+1]-pi[oc]) ];
+      lc = d->L[oc*ho + 1];  // L[oc][1]
+      cc = c->coef + pi[oc];
+      nc = pi[oc+1] - pi[oc];
+      for (int ic = 0; ic < nc; ++ic) {
+        ia = lc[hpoly_idx_rect(var,ic,nc)];
+        // printf("ia=%d ic=%d\n", ia, ic+pi[oc]);
         if (ia >= 0) {
           assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-          mad_tpsa_seti(c,ic, d->To[ia][var-1] * ca[ia]);
+          cc[ic] = d->To[ia][var] * ca[ia];
+          c->nz = bset(c->nz,oc);
         }
       }
     }
   #else  // not DER_USING_L_MATRIX
 
+  ensure(0 && "OUTDATED: mo >= 1");
   // TODO: switch between the two methods depending on NV ?
-  idx_t idx_der = -1, *pi = d->hpoly_To_idx;
+  idx_t idx_der = -1, *pi  = d->hpoly_To_idx;
   var--;    // monos are 0-indexed
   ord_t der_mono[d->nv];
-  for (int o = 1; o <= c_mo+1; ++o)
+  for (int o = 1; o <= c->mo+1; ++o)
     if (bget(a->nz,o))
       for (int m = pi[o]; m < pi[o+1]; ++m)
         if (a->coef[m] && d->To[m][var]) {

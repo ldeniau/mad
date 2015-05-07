@@ -191,9 +191,9 @@ void
 mad_tpsa_setConst(T *t, num_t v)
 {
   assert(t);
-  t->mo = 1;
-  t->nz = 1;
   t->coef[0] = v;
+  t->mo = 1;
+  t->nz = v ? 1 : 0;
   for (int i = 1; i < t->desc->hpoly_To_idx[2]; ++i)
     t->coef[i] = 0;
 }

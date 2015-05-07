@@ -159,14 +159,27 @@ local function check_compose_with_berz(mod)
 end
 
 local function check_der_with_berz(mod)
-  local ma, var, mr = factory.get_args("der")
-  mod.der(ma, var, mr)
-
+  local ma, mr = factory.full(), factory.new_instance()
   factory.setup(berz)
-  local ba, _, br = factory.get_args("der")
-  berz.der(ba, var, br)
+  local ba, br = factory.full(), factory.new_instance()
 
-  check_identical(mr, br, 1e-17, factory.To, "der")
+  fprintf(M.mod_file , "\n==== DER =======================\n")
+  fprintf(M.mod_file , "\n---- IN ------------------------\n")
+  factory.print(M.mod_file , ma)
+  fprintf(M.berz_file, "\n==== DER =======================\n")
+  fprintf(M.berz_file, "\n---- IN ------------------------\n")
+  factory.print(M.berz_file, ba)
+  for var=1,factory.nv do
+    fprintf(M.mod_file , "\n---- %d ------------------------\n", var)
+    fprintf(M.berz_file, "\n---- %d ------------------------\n", var)
+
+     mod.der(ma, var, mr)
+    berz.der(ba, var, br)
+    check_identical(mr, br, 1e-17, factory.To, "der")
+
+    factory.print(M.mod_file , mr)
+    factory.print(M.berz_file, br)
+  end
 
   factory.setup(mod)  -- restore original
 end
@@ -333,14 +346,14 @@ function M.do_all_checks(mod, nv, no)
   check_bin_with_berz(mod)
 
   check_compose_with_berz(mod)
---  check_der_with_berz(mod)
+  check_der_with_berz(mod)
 --  check_abs_with_berz(mod)
 
 --  if mod.name == "yang" then return end
 
   check_fun_with_berz(mod)
 --  check_poisson_with_berz(mod)
-  check_minv_with_berz(mod)
+--  check_minv_with_berz(mod)
 end
 
 M.identical = check_identical
