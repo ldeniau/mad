@@ -13,12 +13,13 @@ end
 -- benchmark the speed of fct_name from module mod_name using parameters from filename
 local function bench(mod_name, fct_name, filename, trials)
   local NV, NO, NL = factory.read_params(filename)
-  trials = trials or 5
+  trials = tonumber(trials) or 5
 
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
   printf(header_fmt)
   for t=1,trials do printf("t_%d\t", t) end
-  printf("avg\tmin\tmax\n")
+  if trials > 1 then printf("avg\tmin\tmax") end
+  print()
 
   local tpsa = require(mod_name)
 
@@ -38,7 +39,8 @@ local function bench(mod_name, fct_name, filename, trials)
       sum = sum + Ts[i][t]
       printf("%.3f\t", Ts[i][t])
     end
-    printf("%.3f\t%.3f\t%.3f\n", sum/trials, min, max)
+    if trials > 1 then printf("%.3f\t%.3f\t%.3f", sum/trials, min, max) end
+    print()
   end
 end
 

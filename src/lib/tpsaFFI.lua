@@ -64,7 +64,9 @@ ffi.cdef[[
   num_t mad_tpsa_abs2    (const T *t);
   void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
 
-  void  mad_tpsa_der     (const T *a, int var,    T *c);
+  void  mad_tpsa_der     (const T *a, int var,                T *c);
+  void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[], T *c);
+
   void  mad_tpsa_pos     (const T *a,             T *c);
   num_t mad_tpsa_comp    (const T *a, const T *b);
 
@@ -186,7 +188,7 @@ local function allocate(desc, trunc_ord)
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
   t.to      = trunc_ord
   t.desc    = desc
-  return t
+  return t, nc
 end
 
 
@@ -370,6 +372,12 @@ end
 function M.der(src, var, dst)
   dst = dst or src:same()
   clib.mad_tpsa_der(src, var, dst)
+  return dst
+end
+
+function M.derm(src, m, dst)
+  dst = dst or src:same()
+  clib.mad_tpsa_der_m(src,#m,mono_t(#m,m),dst)
   return dst
 end
 
@@ -636,6 +644,10 @@ function M.getm(t, m, l, res)
   -- m should be a t.mono_t of length l
   res = clib.mad_tpsa_getm(t, l, m)
   return res
+end
+
+function M.der_raw(t_in, v, t_out)
+  clib.mad_tpsa_der(t_in, v, t_out)
 end
 
 function M.compose_raw(sa, ma, sb, mb, sc, mc)

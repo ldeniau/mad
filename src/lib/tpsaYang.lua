@@ -287,6 +287,10 @@ function tpsa.getm(t, m, l, res)
   return res[0]
 end
 
+function tpsa.der_raw(t_in, v, t_out)
+  yangLib.ad_derivative_(t_in, uintPtr(v), t_out)
+end
+
 function tpsa.compose_raw(sa,ma,sb,mb,sc,mc)
   for i=0,sa-1 do
     yangLib.ad_subst_(ma+i, mb, sb, mc+i)

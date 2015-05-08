@@ -152,6 +152,15 @@ local function args_bin_op()
   return M.full(), M.full(), M.new_instance()
 end
 
+local function args_der()
+  local args = {  --         -- input ---, - deriv var --, --- output ---------
+    tpsa = function() return M.full()    , M.nv            , M.new_instance()     end,
+    berz = function() return M.full().idx, int_ptr(M.nv)   , M.new_instance().idx end,
+    yang = function() return M.full().idx, uint_ptr(M.nv-1), M.new_instance().idx end,
+  }
+  return args[M.mod.name]()
+end
+
 -- --- SUBST -------------------------------------------------------------------
 
 local function make_cmap(t, refs, cmap)
@@ -275,6 +284,7 @@ function M.get_args(fct_name, t)
     getm     = args_getm,
     get_sp   = function() return M.make_To_sparse() end,
 
+    der_raw  = args_der,
     poisson  = function() return M.rand(M.seed), M.rand(), M.new_instance(), M.nv/2 end,
     mul      = args_bin_op,     -- returns t1, t2, t_out; t1,t2 filled, t_out empty
     div      = args_bin_op,     -- same as ^

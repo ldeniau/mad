@@ -37,7 +37,8 @@ num_t mad_tpsa_abs     (const T *t);
 num_t mad_tpsa_abs2    (const T *t);
 void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
 
-void  mad_tpsa_der     (const T *a, int var,    T *c);
+void  mad_tpsa_der     (const T *a, int var,                 T *c);
+void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[n], T *c);
 // void  mad_tpsa_pos     (const T *a,             T *c);
 // num_t mad_tpsa_comp    (const T *a, const T *b);
 

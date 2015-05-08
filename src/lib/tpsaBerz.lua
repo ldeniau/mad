@@ -457,6 +457,10 @@ function tpsa.getm(t, m, l, res)
   return res[0]
 end
 
+function tpsa.der_raw(t_in, v, t_out)
+  berzLib.dader_(v,t_in,t_out)
+end
+
 function tpsa.scale(val,src,dst)
   tpsa.cmul(src,val,dst)
 end
