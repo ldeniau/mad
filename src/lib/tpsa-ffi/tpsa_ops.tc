@@ -162,12 +162,9 @@ hpoly_der_lt(const num_t ca[], num_t cc[], idx_t idx, ord_t oc, ord_t ord, bit_t
   const idx_t *lc = d->L[ord*ho + oc], *pi = d->hpoly_To_idx;
   int nc = pi[oc+1] - pi[oc], cols = pi[ord+1] - pi[ord];
   idx = idx - pi[ord];
-  tbl_print_LC(lc,ord,oc,pi);
-  printf("oc=%d ord=%d nc=%d\n", oc, ord,nc);
   for (int ic = 0; ic < nc; ++ic) {
     idx_t ia = lc[hpoly_idx_rect(ic,idx,cols)];
     if (ia >= 0 && ca[ia]) {
-      printf("ia=%d ic=%d idx=%d\n", ia, ic+pi[oc], idx);
       assert(pi[oc+ord] <= ia && ia < pi[oc+ord+1]);
       cc[ic] = ca[ia] * der_coef(ia,ic,d);
       *cnz = bset(*cnz,oc);

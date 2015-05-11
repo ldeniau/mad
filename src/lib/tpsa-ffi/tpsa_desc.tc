@@ -171,12 +171,12 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
 #endif
 
 // ords 2..mo
-  int nv = d->nv, j;
+  int nv = d->nv;
   ord_t m[nv], *curr_mono = d->monos + curr_mono_idx*nv;
-  for (ord_t o = 2; o <= d->mo; o++) {  // to build ord o:
-    for (int i = 1; i < nv+1; ++i) {    // i goes through ord  1
-      j = d->hpoly_To_idx[o-1];         // j goes through ord (o-1)
-      do {
+  idx_t *pi = d->hpoly_To_idx;
+  for (ord_t o = 2; o <= d->mo; o++) {        // to build ord o:
+    for   (int i = pi[ 1 ]; i < pi[2]; ++i) { // i goes through ord  1
+      for (int j = pi[o-1]; j < pi[o]; ++j) { // j goes through ord (o-1)
         mono_add(nv, d->monos + i*nv, d->monos + j*nv, m);
         if (desc_mono_isvalid(d, nv, m)) {
           // ensure there is space for m
@@ -189,10 +189,11 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
           curr_mono_idx++;
           curr_mono += nv;
         }
-        j++;
-      } while(m[i-1] <= d->a[i-1] && m[i-1] < o && j < d->hpoly_To_idx[o]);
+        if (m[i-1] > d->a[i-1] || m[i-1] >= o)
+          break;
+      }
+      pi[o+1] = curr_mono_idx;
     }
-    d->hpoly_To_idx[o+1] = curr_mono_idx;
   }
 
 #ifdef DEBUG
@@ -234,12 +235,13 @@ make_monos(D *d)
   // ord 1
   d->hpoly_To_idx[1] = 1;
   mono_set(nv*nv, d->monos+nv, 0);  // init with 0
-  for (int i = 0; i < nv; ++i) {
-    d->monos[curr_mono_idx*nv + i] = 1;
-    d->ords [curr_mono_idx]        = 1;
-    curr_mono_idx++;
-  }
-  d->hpoly_To_idx[2] = nv + 1;
+  for (int i = 0; i < nv; ++i)
+    if (d->a[i]) {
+      d->monos[curr_mono_idx*nv + i] = 1;
+      d->ords [curr_mono_idx]        = 1;
+      curr_mono_idx++;
+    }
+  d->hpoly_To_idx[2] = curr_mono_idx;
 
   int real_nc = curr_mono_idx;
   if (d->mo >= 2)
@@ -722,14 +724,14 @@ tbl_check(D *d)
   // check H
   for (int i = 0; i < nv; ++i)
     if (H[i*cols + 0] != 0)                   return 1e6 + i;
-  for (int i = 1; i < nv; ++i)
-    if (a[i] == 0) {
-      for (int j = 1; j <= d->mo + 1; ++j)
-        if (H[i*cols + j] != -1)              return 2e6 + i;
-    }
-    else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
-                          H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
-                                              return 3e6 + i;
+  // for (int i = 1; i < nv; ++i)
+  //   if (a[i] == 0) {
+  //     for (int j = 1; j <= d->mo + 1; ++j)
+  //       if (H[i*cols + j] != -1)              return 2e6 + i;
+  //   }
+  //   else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
+  //                         H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
+  //                                             return 3e6 + i;
 
   for (int i = 1; i < d->nc; ++i) {
     if (to2tv[tv2to[i]] != i)                 return 4e6 + i;
