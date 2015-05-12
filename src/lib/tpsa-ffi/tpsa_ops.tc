@@ -140,18 +140,21 @@ hpoly_mul_ser(const T *a, const T *b, T *c)
   hpoly_mul(a,b,c,c->desc->ocs[0],&c->nz,0);
 }
 
-static inline num_t
-der_coef(idx_t ia, idx_t di, const D* d)
+static inline int
+der_coef(idx_t ia, idx_t di, ord_t der_ord, const D* d)
 {
+  if (der_ord == 1) // der against var
+    return d->To[ia][di-1];
+
   const ord_t *msrc = d->To[ia], *mder = d->To[di];
   if (!mono_leq(d->nv,mder,msrc))
     return 0;
 
-  num_t c = 1;
+  int c = 1;
   for (int v = 0; v < d->nv; ++v)
-    if (mder[v])
-      for (int o = msrc[v]; o > 1 && o >= mder[v]; --o)
-        c *= o;
+    for (int o = 0; o < mder[v]; ++o)
+        c *= msrc[v] - o;
+  // printf("ia=%d di=%d c=%d\n", ia, di, c);
   return c;
 }
 
@@ -161,12 +164,12 @@ hpoly_der_lt(const num_t ca[], num_t cc[], idx_t idx, ord_t oc, ord_t ord, bit_t
   const ord_t ho = d->mo/2;
   const idx_t *lc = d->L[ord*ho + oc], *pi = d->hpoly_To_idx;
   int nc = pi[oc+1] - pi[oc], cols = pi[ord+1] - pi[ord];
-  idx = idx - pi[ord];
+  // idx = idx - pi[ord];
   for (int ic = 0; ic < nc; ++ic) {
-    idx_t ia = lc[hpoly_idx_rect(ic,idx,cols)];
+    idx_t ia = lc[hpoly_idx_rect(ic,idx-pi[ord],cols)];
     if (ia >= 0 && ca[ia]) {
       assert(pi[oc+ord] <= ia && ia < pi[oc+ord+1]);
-      cc[ic] = ca[ia] * der_coef(ia,ic,d);
+      cc[ic] = ca[ia] * der_coef(ia,idx,ord,d);
       *cnz = bset(*cnz,oc);
     }
   }
@@ -178,12 +181,12 @@ hpoly_der_eq(const num_t ca[], num_t cc[], idx_t idx, ord_t oc, ord_t ord, bit_t
   const ord_t ho = d->mo/2;
   const idx_t *lc = d->L[ord*ho + oc], *pi = d->hpoly_To_idx;
   int nc = pi[ord+1] - pi[ord];
-  idx = idx - pi[ord];
+  idx_t idx_shifted = idx - pi[ord];
   for (int ic = 0; ic < nc; ++ic) {
-    idx_t ia = lc[hpoly_idx_rect(imax(ic,idx),imin(ic,idx),nc)];
+    idx_t ia = lc[hpoly_idx_rect(imax(ic,idx_shifted),imin(ic,idx_shifted),nc)];
     if (ia >= 0 && ca[ia]) {
       assert(pi[oc+ord] <= ia && ia < pi[oc+ord+1]);
-      cc[ic] = ca[ia] * der_coef(ia,ic,d);
+      cc[ic] = ca[ia] * der_coef(ia,idx,ord,d);
       *cnz = bset(*cnz,oc);
     }
   }
@@ -195,12 +198,12 @@ hpoly_der_gt(const num_t ca[], num_t cc[], idx_t idx, ord_t oc, ord_t ord, bit_t
   const ord_t ho = d->mo/2;
   const idx_t *lc = d->L[oc*ho + ord], *pi = d->hpoly_To_idx;
   int nc = pi[oc+1] - pi[oc];
-  idx = idx - pi[ord];
+  idx_t idx_shifted = idx - pi[ord];
   for (int ic = 0; ic < nc; ++ic) {
-    idx_t ia = lc[hpoly_idx_rect(idx,ic,nc)];
+    idx_t ia = lc[hpoly_idx_rect(idx_shifted,ic,nc)];
     if (ia >= 0 && ca[ia]) {
       assert(pi[oc+ord] <= ia && ia < pi[oc+ord+1]);
-      cc[ic] = ca[ia] * der_coef(ia,ic,d);
+      cc[ic] = ca[ia] * der_coef(ia,idx,ord,d);
       *cnz = bset(*cnz,oc);
     }
   }
@@ -293,67 +296,22 @@ mad_tpsa_der(const T *a, int var, T *c)
 
   D *d = a->desc;
 
-  // ord 0
+  // ord 0 & cleanup
   mad_tpsa_setConst(c, a->coef[var]);
   if (a->mo == 1)
     return;
 
   c->mo = min_ord(c->to, d->trunc, a->mo-1);
-#define DER_USING_L_MATRIX
-#ifdef DER_USING_L_MATRIX
 
-  idx_t ia, *lc, *pi = d->hpoly_To_idx, nc;
+  idx_t *pi = d->hpoly_To_idx;
   const num_t *ca = a->coef;
-        num_t *cc;
-  ord_t ho = d->mo/2, oc = 1;
-  var = var - pi[1];         // shift to 0
-  // ord 1 -- triang
-  if (bget(a->nz,2)) {
-    lc = d->L[oc*ho + 1];  // L[oc][1]
-    cc = c->coef  + pi[oc];
-    nc = pi[oc+1] - pi[oc];
-    for (int ic = 0; ic < nc; ++ic) {
-      ia = lc[hpoly_idx_rect(imax(var,ic),imin(var,ic),nc)];
-      // printf("ia=%d ic=%d\n", ia, ic+pi[oc]);
-      if (ia > 0 && ca[ia]) {
-        assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-        cc[ic] = d->To[ia][var] * ca[ia];
-        c->nz = bset(c->nz,oc);
-      }
-    }
-  }
-  for (oc = 2; oc <= c->mo; ++oc)
-    if (bget(a->nz,oc+1)) {
-      lc = d->L[oc*ho + 1];  // L[oc][1]
-      cc = c->coef + pi[oc];
-      nc = pi[oc+1] - pi[oc];
-      for (int ic = 0; ic < nc; ++ic) {
-        ia = lc[hpoly_idx_rect(var,ic,nc)];
-        // printf("ia=%d ic=%d\n", ia, ic+pi[oc]);
-        if (ia > 0 && ca[ia]) {
-          assert(pi[oc+1] <= ia && ia < pi[oc+2]);
-          cc[ic] = d->To[ia][var] * ca[ia];
-          c->nz = bset(c->nz,oc);
-        }
-      }
-    }
-#else  // not DER_USING_L_MATRIX
 
-  // TODO: switch between the two methods depending on NV ?
-  idx_t idx_der = -1, *pi  = d->hpoly_To_idx;
-  var--;    // monos are 0-indexed
-  ord_t der_mono[d->nv];
-  for (int o = 2; o <= c->mo+1; ++o)
-    if (bget(a->nz,o))
-      for (int m = pi[o]; m < pi[o+1]; ++m)
-        if (a->coef[m] && d->To[m][var]) {
-          mono_cpy(d->nv,d->To[m],der_mono);
-          der_mono[var]--;
-          idx_der = desc_get_idx(d, d->nv, der_mono);
-          mad_tpsa_seti(c,idx_der, a->coef[m] * d->To[m][var]);
-        }
-  #endif // DER_USING_L_MATRIX
-  #undef DER_USING_L_MATRIX
+  ord_t der_ord = 1, oc = 1;
+  if (bget(a->nz,2))
+      hpoly_der_eq(ca,c->coef+pi[oc],var,oc,der_ord,&c->nz,d);
+  for (oc = 2; oc <= c->mo; ++oc)
+    if (bget(a->nz,oc+1))
+      hpoly_der_gt(ca,c->coef+pi[oc],var,oc,der_ord,&c->nz,d);
 }
 
 void
@@ -366,17 +324,21 @@ mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
   assert(a->desc == c->desc);
   ensure(desc_mono_isvalid(a->desc,n,mono));
 
-  ord_t ord = mono_sum(n,mono);
-  ensure(ord > 0);
+  ord_t der_ord = mono_sum(n,mono);
+  ensure(der_ord > 0);
   idx_t idx = desc_get_idx(a->desc,n,mono);
+  if (idx < a->desc->hpoly_To_idx[2]) {  // fallback on simple version
+    mad_tpsa_der(a,idx,c);
+    return;
+  }
 
   // ord 0 & setup
-  mad_tpsa_setConst(c,mad_tpsa_geti(a,idx));
-  if (a->mo < ord)
+  mad_tpsa_setConst(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
+  if (a->mo < der_ord)
     return;
 
   // ords 1..a->mo - 1
-  hpoly_der(a,idx,ord,c);
+  hpoly_der(a,idx,der_ord,c);
 }
 
 void

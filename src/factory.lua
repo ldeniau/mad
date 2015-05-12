@@ -93,7 +93,7 @@ function M.make_To(nv, no, ords, f)
   return t
 end
 
-local function make_To_ffi()
+function M.make_To_ffi()
   if M.To_ffi and M.To_ffi.mono_t == M.mod.mono_t
               and M.To_ffi.nv     == M.nv
               and M.To_ffi.no     == M.no
@@ -143,7 +143,7 @@ local function args_getm()
     berz = function() return M.new_instance().idx,            M.nv , dbl_ptr() end,
     yang = function() return M.new_instance().idx, size_t_ptr(M.nv), dbl_ptr() end,
   }
-  return make_To_ffi(), args[M.mod.name]()
+  return M.make_To_ffi(), args[M.mod.name]()
 end
 
 -- --- OPERATIONS --------------------------------------------------------------
