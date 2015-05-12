@@ -4,7 +4,7 @@
 #include "mad_tpsa_desc.h"
 
 // #define TRACE
-// #define DEBUG
+#define DEBUG
 
 typedef int           idx_t;
 
@@ -13,7 +13,7 @@ typedef int           idx_t;
 struct tpsa_desc {
   int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
            size;      // bytes used by current desc
-  ord_t    mo, ko,    // maximum orders: for vars, for knobs
+  ord_t    mo, vo,ko, // maximum orders: for map, for vars, for knobs
            trunc,     // truncation order for operations; always <= mo
           *a,         // alphas (max order for each var)
           *monos,     // 'matrix' storing the monomials (sorted by ord)
@@ -71,6 +71,7 @@ desc_mono_isvalid(const D *d, int n, const ord_t m[n])
   int rk = d->rk;
   return    ( n <= d->nv )
          && (         mono_sum(n   ,m)    <= d->mo)
+         && (mono_bounded(rk,m,d->vo))
          && (n > rk ? mono_sum(n-rk,m+rk) <= d->ko
                     : 1)
          && mono_leq(n,m,d->a);
@@ -80,12 +81,14 @@ static inline int
 desc_mono_isvalid_sp(const D *d, int n, const idx_t m[n])
 {
   assert(d && m);
-  ensure(!(n & 1));  // no incomplete tuples
+  if (n & 1)
+    return 0;
   ord_t mo = 0, ko = 0;
   for (int i = 0; i < n; i += 2) {
     int idx = m[i] - 1, o = m[i+1];
-    if (idx >= d->nv)       return 0;
-    if (o > d->a[idx])      return 0;
+    if (idx >= d->nv)             return 0;
+    if (o > d->a[idx])            return 0;
+    if (idx < d->rk && o > d->vo) return 0;
 
     mo += o;
     if (idx > d->rk)
@@ -198,6 +201,10 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
 
 #ifdef DEBUG
   print_mono_mat(d->nv, curr_mono_idx, d->monos);
+  printf("ps={ ");
+  for (int o = 0; o <= d->mo + 1; ++o)
+    printf("[%d]=%d ", o, d->hpoly_To_idx[o]);
+  printf("}\n");
 #endif
 
   return curr_mono_idx;
@@ -294,6 +301,7 @@ find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, en
   // error
   tbl_print(n, stop, (ord_t **)T);
   printf("monomial not found in table: "); mono_print(n,m);
+  printf(" Searched by %s from %d to %d\n", tbl_ord == BY_ORD ? "order" : "variable", start, stop);
   assert(NULL);
   return -1;
 }
@@ -843,19 +851,18 @@ desc_init(int nv, const ord_t ords[nv], ord_t vo, int rk, ord_t ko)
 #endif
 
   assert(ords);
-  ensure(vo >= ko);
-  for (int v =  0; v < rk; ++v) ensure(ords[v] <= vo);
-  for (int v = rk; v < nv; ++v) ensure(ords[v] <= ko);
-  ensure(mono_sum(rk    ,ords  ) >= vo);
-  ensure(mono_sum(nv-rk,ords+rk) >= ko);
 
   D *d = malloc(sizeof *d);
   assert(d);
-  d->nv    = nv;
-  d->mo    = vo;
-  d->ko    = ko;
-  d->trunc = vo;
-  d->rk    = rk;
+  d->rk = rk;
+  d->nv = nv;
+  d->vo = vo;
+  d->ko = ko;
+  d->mo = 0;
+  for (int v = 0; v < rk; ++v)
+    if (ords[v] > d->mo)
+      d->mo = ords[v];
+  d->trunc = d->mo;
   d->size  = sizeof(d);
 
   d->a = malloc(nv * sizeof *(d->a));
@@ -902,7 +909,7 @@ desc_equ(const D *d1, const D *d2)
 {
   assert(d1 && d2);
   return    d1->nv == d2->nv && d1->rk == d2->rk
-         && d1->mo == d2->mo && d1->ko == d2->ko
+         && d1->vo == d2->vo && d1->ko == d2->ko
          && mono_equ(d1->nv, d1->a, d2->a);
 }
 

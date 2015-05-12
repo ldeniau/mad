@@ -168,7 +168,7 @@ local function get_bounded(val, array, var_name, array_name)
   end
 
   local s = arr_sum(array)
-  local warn_str = "Warning: %s. Constructor has been adjusted"
+  local warn_str = "Warning: %s. Constructor has been adjusted\n"
   if val > s then
     local upper_bound_msg = "%s > sum(%s)"
     val = s        -- limit to the maximum available
@@ -188,7 +188,7 @@ local function allocate(desc, trunc_ord)
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
   t.to      = trunc_ord
   t.desc    = desc
-  return t, nc
+  return t
 end
 
 
@@ -267,9 +267,7 @@ function M.init(...)
   end
 
   knobs = knobs or {}
-  vo = get_bounded(vo,vars ,"vo","vars")
   ko = get_bounded(ko,knobs,"ko","knobs")
-  if vo < ko then error("vo < ko") end
 
   local nv, nk = #vars, #knobs
   vars, knobs = mono_t(nv, vars), mono_t(nk, knobs)
@@ -648,6 +646,10 @@ end
 
 function M.der_raw(t_in, v, t_out)
   clib.mad_tpsa_der(t_in, v, t_out)
+end
+
+function M.derm_raw(t_in, l, m, t_out)
+  clib.mad_tpsa_der_m(t_in, l, m, t_out)
 end
 
 function M.compose_raw(sa, ma, sb, mb, sc, mc)

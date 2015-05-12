@@ -13,6 +13,7 @@ static void  mono_cpy     (int n, const ord_t a[n],       ord_t r[n]);
 static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_rcmp    (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
+static int   mono_bounded (int n, const ord_t a[n],       ord_t val);
 static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static void  mono_sub     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static void  mono_print   (int n, const ord_t a[n]);
@@ -78,6 +79,15 @@ mono_leq(int n, const ord_t a[n], const ord_t b[n])
   assert(a && b);
   for (int i=0; i < n; ++i)
     if (a[i] > b[i]) return 0;
+  return 1;
+}
+
+static inline int
+mono_bounded(int n, const ord_t a[n], ord_t v)
+{
+  assert(a);
+  for (int i=0; i < n; ++i)
+    if (a[i] > v) return 0;
   return 1;
 }
 
