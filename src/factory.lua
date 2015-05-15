@@ -132,6 +132,19 @@ function M.make_To_sparse()
   return To_sp
 end
 
+local function alternate_0s()
+  local t = M.new_instance()
+  local rand = math.random
+  for m=0,#M.To,2 do
+    t:set(M.To[m], 1 + m/10)  -- doubles in (0,2) interval
+  end
+  for m=1,#M.To,2 do
+    t:set(M.To[m], 0)
+  end
+  return t
+end
+
+
 -- ARGUMENTS BUILD -------------------------------------------------------------
 -- use functions return to avoid unpack which is not compiled
 
@@ -149,7 +162,8 @@ end
 -- --- OPERATIONS --------------------------------------------------------------
 
 local function args_bin_op()
-  return M.full(), M.full(), M.new_instance()
+--  return M.full(), M.full(), M.new_instance()
+  return alternate_0s(), alternate_0s(), M.new_instance()
 end
 
 -- --- SUBST -------------------------------------------------------------------
