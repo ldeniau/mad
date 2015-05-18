@@ -19,7 +19,7 @@
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
-  ord_t   mo, to; // max ord, trunc ord
+  ord_t   hi, to; // highest used ord, trunc ord
   bit_t   nz;
   num_t   coef[];
 };
@@ -30,9 +30,9 @@ void
 mad_tpsa_print_compact(const T *t)
 {
   D *d = t->desc;
-  printf("{ nz=%d; mo=%d; ", t->nz, t->mo);
-  ord_t mo = min_ord(t->mo, t->to, t->desc->trunc);
-  for (int i = 0; i < d->hpoly_To_idx[mo+1]; ++i)
+  printf("{ nz=%d; hi=%d; ", t->nz, t->hi);
+  ord_t hi = min_ord(t->hi, t->to, t->desc->trunc);
+  for (int i = 0; i < d->hpoly_To_idx[hi+1]; ++i)
     if (t->coef[i])
       printf("[%d]=%.2f ", i, t->coef[i]);
   printf(" }\n");
@@ -62,7 +62,7 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
   t->desc = d;
   t->to = to;
   t->nz = 0;
-  t->mo = 1;    // IMPORTANT for mul !! ord 1 always initialized
+  t->hi = 1;    // IMPORTANT for mul !! ord 1 always initialized
   for (int i = 0; i < d->hpoly_To_idx[2]; ++i)
     t->coef[i] = 0;
   return t;
@@ -81,9 +81,9 @@ mad_tpsa_copy(const T *src, T *dst)
   assert(src && dst);
   assert(src->desc == dst->desc);
   D *d = src->desc;
-  dst->mo = min_ord(src->mo, dst->to, d->trunc);
-  dst->nz = btrunc(src->nz, dst->mo);
-  for (int i = 0; i < d->hpoly_To_idx[dst->mo+1]; ++i)
+  dst->hi = min_ord(src->hi, dst->to, d->trunc);
+  dst->nz = btrunc(src->nz, dst->hi);
+  for (int i = 0; i < d->hpoly_To_idx[dst->hi+1]; ++i)
     dst->coef[i] = src->coef[i];
 #ifdef TRACE
   printf("Copied from %p to %p\n", (void*)src, (void*)dst);
@@ -97,7 +97,7 @@ mad_tpsa_clean(T *t)
   for (int i = 0; i < t->desc->hpoly_To_idx[t->to+1]; ++i)
     t->coef[i] = 0;
   t->nz = 0;
-  t->mo = 1;
+  t->hi = 1;
 }
 
 void
@@ -116,7 +116,7 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   D *d = t->desc;
   idx_t i = desc_get_idx(d,n,m);
   ensure(d->ords[i] <= t->to);
-  return d->ords[i] <= t->mo ? t->coef[i] : 0;
+  return d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
 void
@@ -139,7 +139,7 @@ mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
   D *d = t->desc;
   idx_t i = desc_get_idx_sp(d,n,m);
   ensure(d->ords[i] <= t->to);
-  return d->ords[i] <= t->mo ? t->coef[i] : 0;
+  return d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
 void
@@ -160,7 +160,7 @@ mad_tpsa_geti(const T *t, int i)
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc);
   ord_t o = d->ords[i];
-  return o <= t->mo ? t->coef[i] : 0;
+  return o <= t->hi ? t->coef[i] : 0;
 }
 
 void
@@ -178,10 +178,10 @@ mad_tpsa_seti(T *t, int i, num_t v)
   }
 
   ord_t o = d->ords[i];
-  if (o > t->mo) {
-    for (int c = d->hpoly_To_idx[t->mo+1]; c < d->hpoly_To_idx[o+1]; ++c)
+  if (o > t->hi) {
+    for (int c = d->hpoly_To_idx[t->hi+1]; c < d->hpoly_To_idx[o+1]; ++c)
       t->coef[c] = 0;
-    t->mo = o;
+    t->hi = o;
   }
   t->nz = bset(t->nz,o);
   t->coef[i] = v;
@@ -192,7 +192,7 @@ mad_tpsa_setConst(T *t, num_t v)
 {
   assert(t);
   t->coef[0] = v;
-  t->mo = 1;
+  t->hi = 1;
   t->nz = v ? 1 : 0;
   for (int i = 1; i < t->desc->hpoly_To_idx[2]; ++i)
     t->coef[i] = 0;
@@ -213,9 +213,9 @@ mad_tpsa_abs(const T *a)
 {
   assert(a);
   num_t norm = 0.0;
-  ord_t mo = min_ord(a->mo, a->to, a->desc->trunc);
+  ord_t hi = min_ord(a->hi, a->to, a->desc->trunc);
   int *pi = a->desc->hpoly_To_idx;
-  for (int o = 0; o <= mo; ++o)
+  for (int o = 0; o <= hi; ++o)
     if (bget(a->nz,o)) {
       for (int i = pi[o]; i < pi[o+1]; ++i)
         norm += fabs(a->coef[i]);
@@ -228,9 +228,9 @@ mad_tpsa_abs2(const T *a)
 {
   assert(a);
   num_t norm = 0;
-  ord_t mo = min_ord(a->mo, a->to, a->desc->trunc);
+  ord_t hi = min_ord(a->hi, a->to, a->desc->trunc);
   int *pi = a->desc->hpoly_To_idx;
-  for (int o = 0; o <= mo; ++o)
+  for (int o = 0; o <= hi; ++o)
     if (bget(a->nz,o)) {
       for (int i = pi[o]; i < pi[o+1]; ++i)
         norm += a->coef[i] * a->coef[i];
@@ -244,11 +244,11 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
   assert(a);
   srand(seed);
   D *d = a->desc;
-  a->mo = min_ord(a->to, d->mo, d->trunc);
+  a->hi = min_ord2(a->to, d->trunc);
 
-  for (int i = 0; i < d->hpoly_To_idx[a->mo+1]; ++i)
+  for (int i = 0; i < d->hpoly_To_idx[a->hi+1]; ++i)
     a->coef[i] = low + rand() / (RAND_MAX/(high-low));
-  a->nz = (1 << (a->mo+1)) - 1;  // set all [0,mo]
+  a->nz = (1 << (a->hi+1)) - 1;  // set all [0,hi]
 }
 
 #undef T

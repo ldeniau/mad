@@ -51,7 +51,7 @@ static inline void
 hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int in_parallel)
 {
 #ifdef TRACE
-  printf("tpsa_mul\n");
+  printf("hpoly_mul\n");
 #endif
   D *d = c->desc;
   int *pi = d->hpoly_To_idx, hod = d->mo/2;
@@ -60,14 +60,14 @@ hpoly_mul(const T *a, const T *b, T *c, const ord_t *ocs, bit_t *cnz, int in_par
         bit_t nza = a->nz  ,  nzb = b->nz;
 
   for (int i = 0; ocs[i]; ++i) {
-    if (ocs[i] > c->mo + 1 || (ocs[i] == c->mo + 1 && !in_parallel))
+    if (ocs[i] > c->hi + 1 || (ocs[i] == c->hi + 1 && !in_parallel))
       continue;
 
     ord_t oc = ocs[i];
     int idx0 = 0, idx1 = 2;
-    if (in_parallel && ocs[i] >= c->mo) {
-      oc = c->mo;
-      if (ocs[i] == c->mo) idx1 = 1;
+    if (in_parallel && ocs[i] >= c->hi) {
+      oc = c->hi;
+      if (ocs[i] == c->hi) idx1 = 1;
       else                 idx0 = 1;
     }
 
@@ -217,8 +217,8 @@ hpoly_der(const T *a, idx_t idx, ord_t ord, T *c)
   const num_t *ca = a->coef;
         num_t *cc;
 
-  c->mo = min_ord(c->to, d->trunc, a->mo-ord);
-  for (int oc = 1; oc <= c->mo; ++oc)
+  c->hi = min_ord(c->to, d->trunc, a->hi-ord);
+  for (int oc = 1; oc <= c->hi; ++oc)
     if (bget(a->nz,oc+ord)) {
       cc = c->coef + pi[oc];
       if (oc < ord)
@@ -241,13 +241,13 @@ scale_and_accum(num_t v, const T *a, T *c)
   D *d = c->desc;
   const num_t *ca = a->coef;
         num_t *cc = c->coef;
-  ord_t new_mo = min_ord(a->mo,c->to,d->trunc);
-  for (int i = d->hpoly_To_idx[c->mo+1]; i < d->hpoly_To_idx[new_mo+1]; ++i)
+  ord_t new_hi = min_ord(a->hi,c->to,d->trunc);
+  for (int i = d->hpoly_To_idx[c->hi+1]; i < d->hpoly_To_idx[new_hi+1]; ++i)
     cc[i] = 0;
-  for (int i = 0; i < d->hpoly_To_idx[new_mo+1]; ++i)
+  for (int i = 0; i < d->hpoly_To_idx[new_hi+1]; ++i)
     cc[i] += v * ca[i];
-  c->mo = new_mo > c->mo ? new_mo : c->mo;
-  c->nz = btrunc(badd(c->nz,a->nz),c->mo);
+  c->hi = new_hi > c->hi ? new_hi : c->hi;
+  c->nz = btrunc(badd(c->nz,a->nz),c->hi);
 }
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
@@ -262,10 +262,10 @@ mad_tpsa_comp(const T *a, const T *b)
   assert(a && b);
   ensure(a->desc == b->desc);
   num_t norm = 0;
-  ord_t amo = min_ord(a->mo, a->to, a->desc->trunc),
-        bmo = min_ord(b->mo, b->to, b->desc->trunc);
-  int len_a = a->desc->hpoly_To_idx[amo+1],
-      len_b = b->desc->hpoly_To_idx[bmo+1],
+  ord_t ahi = min_ord2(a->hi, a->desc->trunc),
+        bhi = min_ord2(b->hi, b->desc->trunc);
+  int len_a = a->desc->hpoly_To_idx[ahi+1],
+      len_b = b->desc->hpoly_To_idx[bhi+1],
       i     = 0;
   for ( ; i < imin(len_a,len_b); ++i) norm += fabs(a->coef[i] - b->coef[i]);
   for ( ; i <      len_a       ; ++i) norm += fabs(a->coef[i]);
@@ -278,10 +278,10 @@ mad_tpsa_pos(const T *a, T *c)
 {
   assert(a);
   ensure(a->desc == c->desc);
-  c->mo = min_ord(a->mo, a->desc->trunc);
-  for (int i = 0; i < c->desc->hpoly_To_idx[c->mo+1]; ++i)
+  c->hi = min_ord(a->hi, a->desc->trunc);
+  for (int i = 0; i < c->desc->hpoly_To_idx[c->hi+1]; ++i)
     c->coef[i] = fabs(a->coef[i]);
-  c->nz = btrunc(a->nz,c->mo);
+  c->nz = btrunc(a->nz,c->hi);
 }
 #endif // unused
 
@@ -298,10 +298,10 @@ mad_tpsa_der(const T *a, int var, T *c)
 
   // ord 0 & cleanup
   mad_tpsa_setConst(c, a->coef[var]);
-  if (a->mo == 1)
+  if (a->hi <= 1)
     return;
 
-  c->mo = min_ord(c->to, d->trunc, a->mo-1);
+  c->hi = min_ord(c->to, d->trunc, a->hi-1);
 
   idx_t *pi = d->hpoly_To_idx;
   const num_t *ca = a->coef;
@@ -309,7 +309,7 @@ mad_tpsa_der(const T *a, int var, T *c)
   ord_t der_ord = 1, oc = 1;
   if (bget(a->nz,2))
       hpoly_der_eq(ca,c->coef+pi[oc],var,oc,der_ord,&c->nz,d);
-  for (oc = 2; oc <= c->mo; ++oc)
+  for (oc = 2; oc <= c->hi; ++oc)
     if (bget(a->nz,oc+1))
       hpoly_der_gt(ca,c->coef+pi[oc],var,oc,der_ord,&c->nz,d);
 }
@@ -334,17 +334,16 @@ mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
 
   // ord 0 & setup
   mad_tpsa_setConst(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
-  if (a->mo < der_ord)
+  if (a->hi <= der_ord)
     return;
 
-  // ords 1..a->mo - 1
+  // ords 1..a->hi - 1
   hpoly_der(a,idx,der_ord,c);
 }
 
 void
 mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
 {
-  // this can be done in place [i.e. (a or b) == c ]
 #ifdef TRACE
   printf("tpsa_axpby\n");
 #endif
@@ -357,17 +356,17 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
     return;
   }
 
-  if (a->mo > b->mo)  {
+  if (a->hi > b->hi)  {
     swap(&a,&b);
     num_t tmp = c1;
     c1 = c2;
     c2 = tmp;
   }
 
-  c->mo = min_ord(b->mo, c->to, c->desc->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->mo);
-  int ac = c->desc->hpoly_To_idx[min_ord2(a->mo,c->mo)+1];
-  int bc = c->desc->hpoly_To_idx[c->mo+1];
+  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
+  int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
+  int bc = c->desc->hpoly_To_idx[c->hi+1];
 
   const num_t *ca = a->coef, *cb = b->coef;
         num_t *cc = c->coef;
@@ -386,11 +385,11 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(a != c && b != c);
 
-  if (a->mo > b->mo) swap(&a,&b);
-  c->mo = min_ord(b->mo, c->to, c->desc->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->mo);
-  int ac = c->desc->hpoly_To_idx[min_ord2(a->mo,c->mo)+1];
-  int bc = c->desc->hpoly_To_idx[c->mo+1];
+  if (a->hi > b->hi) swap(&a,&b);
+  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
+  int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
+  int bc = c->desc->hpoly_To_idx[c->hi+1];
 
   const num_t *ca = a->coef, *cb = b->coef;
         num_t *cc = c->coef;
@@ -409,11 +408,11 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(a != c && b != c);
 
-  if (a->mo > b->mo) swap(&a,&b);
-  c->mo = min_ord(b->mo, c->to, c->desc->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->mo);
-  int ac = c->desc->hpoly_To_idx[min_ord2(a->mo,c->mo)+1];
-  int bc = c->desc->hpoly_To_idx[c->mo+1];
+  if (a->hi > b->hi) swap(&a,&b);
+  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
+  int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
+  int bc = c->desc->hpoly_To_idx[c->hi+1];
 
   const num_t *ca = a->coef, *cb = b->coef;
         num_t *cc = c->coef;
@@ -429,47 +428,49 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   printf("tpsa_mul\n");
 #endif
   assert(a && b && c);
-  // tpsa itself can't be just ord 0; use scale for that, at map level
-  assert(a->mo >= 1 && b->mo >= 1);
-  // ensure(a->desc == b->desc && a->desc == c->desc);
+  ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(a != c && b != c);
 
   D *d = a->desc;
   num_t a0 = a->coef[0], b0 = b->coef[0];
   c->coef[0] = a0 * b0;
 
+  // cannot optimize ord 0, i.e. quit computation if c->hi == 0
+  // because the extra checks have overhead on ord 1
+  assert(a->hi >= 1 && b->hi >= 1);
+
   for (int i = 1; i <= d->nv; ++i)
     c->coef[i] = a0 * b->coef[i] + b0 * a->coef[i];
 
   if (d->trunc == 1) {  // skip checks, assume everything is set
-    c->mo = 1;
+    c->hi = 1;
     c->nz = 3;
     return;
   }
 
-  c->mo = min_ord(a->mo + b->mo, c->to, d->trunc);
-  assert(c->mo >= 1);
+  c->hi = min_ord(a->hi + b->hi, c->to, d->trunc);
+  assert(c->hi >= 1);
 
   c->nz = 0;
-  if (a0) c->nz = btrunc(badd(c->nz,b->nz),c->mo);
-  if (b0) c->nz = btrunc(badd(c->nz,a->nz),c->mo);
+  if (a0) c->nz = btrunc(badd(c->nz,b->nz),c->hi);
+  if (b0) c->nz = btrunc(badd(c->nz,a->nz),c->hi);
 
-  if (c->mo >= 2) {
-    if (a->mo > b->mo) swap(&a,&b);
+  if (c->hi >= 2) {
+    if (a->hi > b->hi) swap(&a,&b);
     a0 = a->coef[0], b0 = b->coef[0];
 
     const num_t *ca = a->coef, *cb = b->coef;
           num_t *cc = c->coef;
-    int lim_a = d->hpoly_To_idx[min_ord2(a->mo,c->mo)+1];
-    int lim_b = d->hpoly_To_idx[min_ord2(b->mo,c->mo)+1];
-    int lim_c = d->hpoly_To_idx[               c->mo +1];
+    int lim_a = d->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
+    int lim_b = d->hpoly_To_idx[min_ord2(b->hi,c->hi)+1];
+    int lim_c = d->hpoly_To_idx[               c->hi +1];
     int i     = d->hpoly_To_idx[2];
     for (; i < lim_a; ++i) cc[i] = b0*ca[i] + a0*cb[i];
     for (; i < lim_b; ++i) cc[i] =            a0*cb[i];
     for (; i < lim_c; ++i) cc[i] = 0;
 
     #ifdef _OPENMP
-    if (c->mo >= 12)
+    if (c->hi >= 12)
       hpoly_mul_par(a,b,c);
     else
     #endif
@@ -488,14 +489,6 @@ mad_tpsa_div(const T *a, const T *b, T *c)
   ensure(b->coef[0] != 0);
 
   D *d = a->desc;
-  // TODO: outdated, mo always >= 1
-  if (d->trunc == 0 || c->to == 0) {
-    c->mo = 0;
-    c->nz = bset(0,0);  // has ord 0
-    c->coef[0] = a->coef[0] / b->coef[0];
-    return;
-  }
-
   T *tmp = mad_tpsa_newd(d,&d->trunc);
   mad_tpsa_inv(b,tmp);
   mad_tpsa_mul(a,tmp,c);
@@ -543,9 +536,9 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
   }
 
   D *d = a->desc;
-  c->mo = min_ord(a->mo, c->to, d->trunc);
-  c->nz = btrunc(a->nz,c->mo);
-  for (int i = 0; i < d->hpoly_To_idx[c->mo+1]; ++i)
+  c->hi = min_ord(a->hi, c->to, d->trunc);
+  c->nz = btrunc(a->nz,c->hi);
+  for (int i = 0; i < d->hpoly_To_idx[c->hi+1]; ++i)
     c->coef[i] = v * a->coef[i];
 }
 

@@ -724,14 +724,14 @@ tbl_check(D *d)
   // check H
   for (int i = 0; i < nv; ++i)
     if (H[i*cols + 0] != 0)                   return 1e6 + i;
-  // for (int i = 1; i < nv; ++i)
-  //   if (a[i] == 0) {
-  //     for (int j = 1; j <= d->mo + 1; ++j)
-  //       if (H[i*cols + j] != -1)              return 2e6 + i;
-  //   }
-  //   else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
-  //                         H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
-  //                                             return 3e6 + i;
+  for (int i = 1; i < nv; ++i)
+    if (a[i] == 0) {
+      for (int j = 1; j <= d->mo + 1; ++j)
+        if (H[i*cols + j] != -1)              return 2e6 + i;
+    }
+    else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
+                          H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
+                                              return 3e6 + i;
 
   for (int i = 1; i < d->nc; ++i) {
     if (to2tv[tv2to[i]] != i)                 return 4e6 + i;
