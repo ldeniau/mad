@@ -217,7 +217,7 @@ hpoly_der(const T *a, idx_t idx, ord_t ord, T *c)
   const num_t *ca = a->coef;
         num_t *cc;
 
-  c->hi = min_ord(c->to, d->trunc, a->hi-ord);
+  c->hi = min_ord(c->mo, d->trunc, a->hi-ord);
   for (int oc = 1; oc <= c->hi; ++oc)
     if (bget(a->nz,oc+ord)) {
       cc = c->coef + pi[oc];
@@ -241,7 +241,7 @@ scale_and_accum(num_t v, const T *a, T *c)
   D *d = c->desc;
   const num_t *ca = a->coef;
         num_t *cc = c->coef;
-  ord_t new_hi = min_ord(a->hi,c->to,d->trunc);
+  ord_t new_hi = min_ord(a->hi,c->mo,d->trunc);
   for (int i = d->hpoly_To_idx[c->hi+1]; i < d->hpoly_To_idx[new_hi+1]; ++i)
     cc[i] = 0;
   for (int i = 0; i < d->hpoly_To_idx[new_hi+1]; ++i)
@@ -301,7 +301,7 @@ mad_tpsa_der(const T *a, int var, T *c)
   if (a->hi <= 1)
     return;
 
-  c->hi = min_ord(c->to, d->trunc, a->hi-1);
+  c->hi = min_ord(c->mo, d->trunc, a->hi-1);
 
   idx_t *pi = d->hpoly_To_idx;
   const num_t *ca = a->coef;
@@ -363,7 +363,7 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
     c2 = tmp;
   }
 
-  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->hi = min_ord(b->hi, c->mo, c->desc->trunc);
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
   int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
   int bc = c->desc->hpoly_To_idx[c->hi+1];
@@ -386,7 +386,7 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   ensure(a != c && b != c);
 
   if (a->hi > b->hi) swap(&a,&b);
-  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->hi = min_ord(b->hi, c->mo, c->desc->trunc);
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
   int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
   int bc = c->desc->hpoly_To_idx[c->hi+1];
@@ -409,7 +409,7 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   ensure(a != c && b != c);
 
   if (a->hi > b->hi) swap(&a,&b);
-  c->hi = min_ord(b->hi, c->to, c->desc->trunc);
+  c->hi = min_ord(b->hi, c->mo, c->desc->trunc);
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
   int ac = c->desc->hpoly_To_idx[min_ord2(a->hi,c->hi)+1];
   int bc = c->desc->hpoly_To_idx[c->hi+1];
@@ -448,7 +448,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
     return;
   }
 
-  c->hi = min_ord(a->hi + b->hi, c->to, d->trunc);
+  c->hi = min_ord(a->hi + b->hi, c->mo, d->trunc);
   assert(c->hi >= 1);
 
   c->nz = 0;
@@ -536,7 +536,7 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
   }
 
   D *d = a->desc;
-  c->hi = min_ord(a->hi, c->to, d->trunc);
+  c->hi = min_ord(a->hi, c->mo, d->trunc);
   c->nz = btrunc(a->nz,c->hi);
   for (int i = 0; i < d->hpoly_To_idx[c->hi+1]; ++i)
     c->coef[i] = v * a->coef[i];

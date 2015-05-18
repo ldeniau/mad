@@ -28,22 +28,22 @@ TPSA
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
-  ord_t   hi, to; // highest used ord, trunc ord
+  ord_t   hi, mo; // highest used ord, maximum order
   bit_t   nz;
   num_t   coef[];
 };
 
 desc -- pointer to a shared descriptor; immutable
 
-to   -- truncation order; immutable
-     -- 1 <= to <= desc->mo
+mo   -- memory truncation order; immutable
+     -- 1 <= mo <= desc->mo
      -- coefficients are only allocated up to this polynomial, inclusive
      -- writing or reading an index from a higher order results in error
 
 hi   -- state of current maximum order
      -- modifies according to operations performed on tpsa
      -- used to avoid un-necessary computation
-     -- IMPORTANT: 1 <= hi <= to
+     -- IMPORTANT: 1 <= hi <= mo
 
 nz   -- state of non-zero polynomials
      -- used to avoid computation on unused polynomials
@@ -96,7 +96,7 @@ num_t mad_tpsa_getm(const T *t, int n, const ord_t m[n])
     -- gets the value of the coefficient given by the monomial m
     -- n = lenght of monomial m
     -- if n < desc->nv then the rest of m is considered to be filled with 0s
-    -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->to ]
+    -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->mo ]
 
 void mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
     -- sets the coefficient given by the monomial m to the value of v
@@ -112,9 +112,9 @@ int mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
 
 num_t mad_tpsa_geti(const T *t, int i)
     -- gets the value of the coefficient at index i
-    -- returns 0 if ord(mono(i)) > t->to
+    -- returns 0 if ord(mono(i)) > t->mo
 
 num_t mad_tpsa_seti(const T *t, int i, num_t v)
     -- sets the coefficient at index i to value v
-    -- ERROR  -- if i is outside of the range of t [ ord(mono(i)) > t->to ]
+    -- ERROR  -- if i is outside of the range of t [ ord(mono(i)) > t->mo ]
               -- if i is outside the current truncation order [ desc->trunc ] (should be warning ?)
