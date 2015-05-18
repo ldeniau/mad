@@ -21,9 +21,9 @@ ffi.cdef[[
   typedef struct tpsa      T;
   typedef struct tpsa_desc D;
 
-  struct tpsa { // warning: must be kept identical to LuaJit definition
+  struct tpsa { // warning: must be kept identical to C definition
     D      *desc;
-    ord_t   mo, to; // max ord, trunc ord
+    ord_t   lo, hi, mo; // lowest/highest used ord, trunc ord
     bit_t   nz;
     num_t   coef[?];
   };
@@ -186,8 +186,9 @@ local function allocate(desc, trunc_ord)
   trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
   local nc  = clib.mad_tpsa_desc_nc(desc, ord_ptr(trunc_ord))
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
-  t.to      = trunc_ord
   t.desc    = desc
+  t.mo      = trunc_ord
+  t.hi      = 1
   return t, nc
 end
 
@@ -284,7 +285,7 @@ function M:new(trunc_ord)
 end
 
 function M:same()
-  return allocate(self.desc,self.to)
+  return allocate(self.desc,self.mo)
 end
 
 function M.cpy(src, dst)
