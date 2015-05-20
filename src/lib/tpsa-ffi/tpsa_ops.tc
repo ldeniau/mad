@@ -394,17 +394,17 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
 // --- --- BINARY --------------------------------------------------------------
 
 //      TPSA_LINOP(+, +, 0) => cc[i] = +ca[i] + cb[i], with i from (lo+0) to hi
-#define TPSA_LINOP(_PREF_A_, _PREF_B_, _ORD_) \
+#define TPSA_LINOP(OPA, OPB, ORD) \
 { \
     idx_t *pi = c->desc->hpoly_To_idx; \
-    idx_t start_a = pi[imax(a->lo,_ORD_)], end_a = pi[imin(a->hi,c->hi)+1]; \
-    idx_t start_b = pi[imax(b->lo,_ORD_)], end_b = pi[imin(b->hi,c->hi)+1]; \
+    idx_t start_a = pi[imax(a->lo,ORD)], end_a = pi[imin(a->hi,c->hi)+1]; \
+    idx_t start_b = pi[imax(b->lo,ORD)], end_b = pi[imin(b->hi,c->hi)+1]; \
     idx_t   end_c = pi[c->hi+1]; \
     int i = start_a; \
-    for (; i <      start_b     ; ++i) c->coef[i] = _PREF_A_ a->coef[i]; \
-    for (; i < imin(end_a,end_b); ++i) c->coef[i] = _PREF_A_ a->coef[i] _PREF_B_ b->coef[i]; \
-    for (; i <      end_a       ; ++i) c->coef[i] = _PREF_A_ a->coef[i]; \
-    for (; i <      end_b       ; ++i) c->coef[i] =                     _PREF_B_ b->coef[i]; \
+    for (; i <      start_b     ; ++i) c->coef[i] = OPA a->coef[i]; \
+    for (; i < imin(end_a,end_b); ++i) c->coef[i] = OPA a->coef[i] OPB b->coef[i]; \
+    for (; i <      end_a       ; ++i) c->coef[i] = OPA a->coef[i]; \
+    for (; i <      end_b       ; ++i) c->coef[i] =                OPB b->coef[i]; \
     for (; i <      end_c       ; ++i) c->coef[i] = 0; \
 } \
 
@@ -434,7 +434,7 @@ mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
   c->hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 
-  TPSA_LINOP(+ c1 *, + c2 *, 0);  // c->coef[i] = + c1 * a->coef[i] + c2 * b->coef[i];
+  TPSA_LINOP(c1 *, + c2 *, 0);  // c->coef[i] = c1 * a->coef[i] + c2 * b->coef[i];
 }
 
 void
@@ -463,7 +463,7 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   c->hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 
-  TPSA_LINOP(+,+,0);  // c->coef[i] = + a->coef[i] + b->coef[i];
+  TPSA_LINOP( ,+,0);  // c->coef[i] = a->coef[i] + b->coef[i];
 }
 
 void
@@ -494,7 +494,7 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
     TPSA_LINOP(-,+,0);  // c->coef[i] = - a->coef[i] + b->coef[i];
   }
   else {
-    TPSA_LINOP(+,-,0);  // c->coef[i] = + a->coef[i] - b->coef[i];
+    TPSA_LINOP( ,-,0);  // c->coef[i] =   a->coef[i] - b->coef[i];
   }
 }
 
@@ -548,7 +548,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
       b0 = b->coef[0];
     }
 
-    TPSA_LINOP(+ b0 *, + a0 *, 2); // c->coef[i] = + b0 * a->coef[i] + a0 * b->coef[i] ;
+    TPSA_LINOP(b0 *, + a0 *, 2); // c->coef[i] = b0 * a->coef[i] + a0 * b->coef[i] ;
 
     #ifdef _OPENMP
     if (c->hi >= 12)
