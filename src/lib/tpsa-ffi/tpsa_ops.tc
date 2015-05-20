@@ -383,6 +383,11 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
     return;
   }
 
+  if (a->hi == 0) {
+    mad_tpsa_setConst(c,v * a->coef[0]);
+    return;
+  }
+
   D *d = a->desc;
   c->lo = a->lo;
   c->hi = min_ord(a->hi, c->mo, d->trunc);
@@ -573,23 +578,16 @@ mad_tpsa_div(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(b->coef[0] != 0);
 
+  if (b->hi == 0) {
+    mad_tpsa_scale(1/b->coef[0],a,c);
+    return;
+  }
+
   D *d = a->desc;
   T *tmp = mad_tpsa_newd(d,&d->trunc);
   mad_tpsa_inv(b,tmp);
   mad_tpsa_mul(a,tmp,c);
   mad_tpsa_del(tmp);
-}
-
-void
-mad_tpsa_cdiv(const T *a, num_t v, T *c)
-{
-#ifdef TRACE
-  printf("tpsa_constant_div\n");
-#endif
-  assert(a && c);
-  ensure(a->desc == c->desc);
-
-  mad_tpsa_scale(1/v,a,c);
 }
 
 void
@@ -600,9 +598,15 @@ mad_tpsa_divc(num_t v, const T *a, T *c)
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
+  ensure(a->coef[0] != 0);
+
+  if (a->hi == 0) {
+    mad_tpsa_setConst(c,v/a->coef[0]);
+    return;
+  }
 
   T *tmp = mad_tpsa_new(a);
-  mad_tpsa_cdiv(a,v,tmp);
+  mad_tpsa_scale(1/v,a,tmp);
   mad_tpsa_inv(tmp,c);
   mad_tpsa_del(tmp);
 }
@@ -623,7 +627,7 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
     mad_tpsa_der(b, 2*i    , is[1]);
     mad_tpsa_mul(is[0],is[1],is[2]);
     mad_tpsa_add(is[3],is[2],is[0]);
-    mad_tpsa_copy(is[0],is[3]);
+    mad_tpsa_copy(is[0],is[3]);      // TODO: use swap ?
 
     mad_tpsa_der(a, 2*i    , is[0]);
     mad_tpsa_der(b, 2*i - 1, is[1]);

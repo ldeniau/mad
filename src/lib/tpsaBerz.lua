@@ -30,7 +30,6 @@ ffi.cdef[[
   void dacsu_(int *t,  double *c, int *r);            // r = c - t
   void dasuc_(int *t,  double *c, int *r);            // r = t - c
   void dacmu_(int *t,  double *c, int *r);            // r = t * c
-  void dacdi_(int *t,  double *c, int *r);            // r = t / c
   void dadic_(int *t,  double *c, int *r);            // r = c / t
   void dacma_(int *t1, double *t2, int *c, int *r);   // r = t1 + c * t2
 
@@ -185,10 +184,6 @@ end
 
 function tpsa.scale(t, c, r)
   berzLib.dacmu_(t.idx, dblPtr(c), r.idx)
-end
-
-function tpsa.cdiv(t, c, r)
-  berzLib.dacdi_(t.idx, dblPtr(c), r.idx)
 end
 
 function tpsa.divc(t, c, r)
@@ -439,7 +434,7 @@ function MT.__div(a,b)
     berzLib.dadic_(b.idx, dblPtr(a), c.idx)
   elseif type(b) == "number" then
     c = a:same()
-    berzLib.dacdi_(a.idx, dblPtr(b), c.idx)
+    berzLib.dacmu_(a.idx, dblPtr(1/b), c.idx)
   elseif type(a) == type(b) then
     c = a:same()
     berzLib.dadiv_(a.idx, b.idx, c.idx)

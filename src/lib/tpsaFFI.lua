@@ -104,7 +104,6 @@ ffi.cdef[[
   void  mad_tpsa_mul     (const T *a, const T *b, T *c);
   void  mad_tpsa_div     (const T *a, const T *b, T *c);
   void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
-  void  mad_tpsa_cdiv    (num_t    v, const T *a, T *c);
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
   void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
@@ -384,11 +383,7 @@ function M.scale(val, src, dst)
   clib.mad_tpsa_scale(val, src, dst)
 end
 
-function M.cdiv(val, src, dst)
-  clib.mad_tpsa_cdiv(val,src,dst)
-end
-
-function M.divc(val, src, dst)
+function M.divc(src, val, dst)
   clib.mad_tpsa_divc(val,src,dst)
 end
 
@@ -492,7 +487,7 @@ function MT.__div(a,b)
     clib.mad_tpsa_divc(a,b,c)
   elseif type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_cdiv(b,a,c)
+    clib.mad_tpsa_scale(1/b,a,c)
   elseif ffi.istype(a,b) then
     c = a:same()
     clib.mad_tpsa_div(a,b,c)

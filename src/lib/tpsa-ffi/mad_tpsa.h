@@ -78,7 +78,6 @@ void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 
 void  mad_tpsa_div     (const T *a, const T *b, T *c);
 void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
-void  mad_tpsa_cdiv    (const T *a, num_t    v, T *c);
 // void  mad_tpsa_pow     (const T *a,             T *c, int p);
 void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
