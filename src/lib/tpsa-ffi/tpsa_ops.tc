@@ -239,7 +239,7 @@ hpoly_der(const T *a, idx_t idx, ord_t ord, T *c)
       else
         hpoly_der_gt(ca,cc,idx,oc,ord,&c->nz,d);
     }
-  c->lo = b_lowest(c->nz);
+  c->lo = min_ord2(b_lowest(c->nz),c->mo);
   c->hi = b_highest(c->nz);
 }
 
@@ -339,7 +339,8 @@ mad_tpsa_der(const T *a, int var, T *c)
   for (oc = 2; oc <= c->hi; ++oc)
     if (bget(a->nz,oc+1))
       hpoly_der_gt(ca,c->coef+pi[oc],var,oc,der_ord,&c->nz,d);
-  c->lo = b_lowest(c->nz);
+  c->lo = min_ord2(b_lowest(c->nz),c->mo);
+  c->hi = b_highest(c->nz);
 }
 
 void

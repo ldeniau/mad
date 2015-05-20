@@ -179,7 +179,7 @@ mad_tpsa_seti(T *t, int i, num_t v)
     t->coef[i] = v;
     if (i == 0 && t->lo == 0) {
       t->nz = bclr(t->nz,0);
-      t->lo = b_lowest(t->nz);
+      t->lo = min_ord2(b_lowest(t->nz),t->mo);
     }
     return;
   }

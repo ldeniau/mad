@@ -55,9 +55,10 @@ static const bit_t MultiplyDeBruijnBitPosition[32] = {
 static inline bit_t
 b_lowest(bit_t b) // find the number of trailing zeros in 32-bit b
 {
-  return MultiplyDeBruijnBitPosition[((b & -b) * 0x077CB531U) >> 27];
+  return b ? MultiplyDeBruijnBitPosition[((b & -b) * 0x077CB531U) >> 27] : 32;
 
   #if 0 // use cycle
+    if (!b) return 32;
     bit_t pos = 0;
     while (!(b & 1)) {
       b >>= 1;
