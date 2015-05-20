@@ -183,7 +183,7 @@ function tpsa.subc(t, c, r)
   berzLib.dacad_(t.idx, dblPtr(c), r.idx)
 end
 
-function tpsa.cmul(t, c, r)
+function tpsa.scale(t, c, r)
   berzLib.dacmu_(t.idx, dblPtr(c), r.idx)
 end
 

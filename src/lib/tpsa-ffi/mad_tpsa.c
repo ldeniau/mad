@@ -61,7 +61,7 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
 #endif
   t->desc = d;
   t->lo = t->mo = mo;
-  t->hi = t->nz = 0;
+  t->hi = t->nz = t->coef[0] = 0;  // coef[0] used without checking in mul
   return t;
 }
 
@@ -96,8 +96,7 @@ void
 mad_tpsa_reset(T *t)
 {
   assert(t);
-  t->hi = 0;
-  t->nz = 0;
+  t->hi = t->nz = t->coef[0] = 0;
   t->lo = t->mo;
 }
 

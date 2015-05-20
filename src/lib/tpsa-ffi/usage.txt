@@ -28,7 +28,7 @@ TPSA
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
-  ord_t   hi, mo; // highest used ord, maximum order
+  ord_t   lo, hi, mo; // lowest/highest used ord, trunc ord
   bit_t   nz;
   num_t   coef[];
 };
@@ -40,17 +40,19 @@ mo   -- memory truncation order; immutable
      -- coefficients are only allocated up to this polynomial, inclusive
      -- writing or reading an index from a higher order results in error
 
-hi   -- state of current maximum order
-     -- modifies according to operations performed on tpsa
+hi   -- highest homogeneous poly in use; 0 <= hi <= mo
      -- used to avoid un-necessary computation
-     -- IMPORTANT: 1 <= hi <= mo
+     -- modifies according to operations performed on tpsa
 
-nz   -- state of non-zero polynomials
+lo   -- lowest homogeneous poly in use
+     -- 0 <= lo <= hi; if lo > hi then TPSA is considered uninitialized
+
+nz   -- state of non-zero homogeneous polynomials
      -- used to avoid computation on unused polynomials
      -- type: bit-array; each bit corresponds 1-to-1 to an order
      -- to be used through functions in utils: bset, bget, bclr, badd, btrunc
-     -- note: when clearing ord 0, also set coef[0] = 0 because ord0 is not checked
-        when performing computations
+     -- IMPORTANT: when clearing ord 0, also set coef[0] = 0 because ord0 is not
+        checked when performing computations
 
 
 Constructor
