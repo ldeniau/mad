@@ -240,15 +240,17 @@ make_monos(D *d)
   int curr_mono_idx = 1;
 
   // ord 1
-  d->hpoly_To_idx[1] = 1;
-  mono_set(nv*nv, d->monos+nv, 0);  // init with 0
-  for (int i = 0; i < nv; ++i)
-    if (d->a[i]) {
-      d->monos[curr_mono_idx*nv + i] = 1;
-      d->ords [curr_mono_idx]        = 1;
-      curr_mono_idx++;
-    }
-  d->hpoly_To_idx[2] = curr_mono_idx;
+  if (d->mo >= 1) {
+    d->hpoly_To_idx[1] = 1;
+    mono_set(nv*nv, d->monos+nv, 0);  // init with 0
+    for (int i = 0; i < nv; ++i)
+      if (d->a[i]) {
+        d->monos[curr_mono_idx*nv + i] = 1;
+        d->ords [curr_mono_idx]        = 1;
+        curr_mono_idx++;
+      }
+    d->hpoly_To_idx[2] = curr_mono_idx;
+  }
 
   int real_nc = curr_mono_idx;
   if (d->mo >= 2)
@@ -280,8 +282,8 @@ static inline int
 find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, enum tbl_ordering tbl_ord)
 {
 #ifdef DEBUG
-  // mono_print(n,m);
-  // printf(" from %d to %d\n", start, stop);
+  mono_print(n,m);
+  printf(" from %d to %d\n", start, stop);
 #endif
 
   int count = stop - start, i = 0, step = 0;
@@ -732,14 +734,14 @@ tbl_check(D *d)
   // check H
   for (int i = 0; i < nv; ++i)
     if (H[i*cols + 0] != 0)                   return 1e6 + i;
-  // for (int i = 1; i < nv; ++i)
-  //   if (a[i] == 0) {
-  //     for (int j = 1; j <= d->mo + 1; ++j)
-  //       if (H[i*cols + j] != -1)              return 2e6 + i;
-  //   }
-  //   else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
-  //                         H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
-  //                                             return 3e6 + i;
+  for (int i = 1; i < nv; ++i)
+    if (a[i] == 0) {
+      for (int j = 1; j <= d->mo + 1; ++j)
+        if (H[i*cols + j] != -1)              return 2e6 + i;
+    }
+    else if (H[i*cols + 1] != (H[(i-1)*cols + a[i-1] + 1] != -1 ?
+                          H[(i-1)*cols + a[i-1] + 1] : H[(i-1)*cols + a[i-1]] + 1))
+                                              return 3e6 + i;
 
   for (int i = 1; i < d->nc; ++i) {
     if (to2tv[tv2to[i]] != i)                 return 4e6 + i;

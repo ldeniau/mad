@@ -112,20 +112,21 @@ compose(int pos, ord_t o, ord_t curr_mono[], CTX *ctx)
   }
 }
 
-static inline int
+static inline ord_t
 init_required(int sa, const T *ma[sa], char required[])
 {
   assert(ma && required);
   D *d = ma[0]->desc;
-  int nv = d->nv, max_mo = -1, *pi = d->hpoly_To_idx;
+  int nv = d->nv, *pi = d->hpoly_To_idx;
+  ord_t highest_ord = 0;
   double eps = 1e-10;
 
   // original nodes
   memset(required, 0, d->nc);
   for (int i = 0; i < sa; ++i) {
-    if (ma[i]->mo > max_mo)
-      max_mo = ma[i]->mo;
-    for (int c = 0; c < pi[ ma[i]->mo+1 ]; ++c)
+    if (ma[i]->hi > highest_ord)
+      highest_ord = ma[i]->hi;
+    for (int c = 0; c < pi[ ma[i]->hi+1 ]; ++c)
       if (   bget(ma[i]->nz,d->ords[c])
           && (ma[i]->coef[c] < -eps || ma[i]->coef[c] > eps)) // != 0
         required[c] = 1;
@@ -137,7 +138,7 @@ init_required(int sa, const T *ma[sa], char required[])
   // fathers of nodes
   ord_t mono[nv];
   int j, father = -1;
-  for (int o = max_mo; o > 1; --o) {
+  for (int o = highest_ord; o > 1; --o) {
     for (int c = pi[o]; c < pi[o+1]; ++c)
       if (required[c]) {
         mono_cpy(nv,d->To[c],mono);
@@ -148,7 +149,7 @@ init_required(int sa, const T *ma[sa], char required[])
         required[father] = 1;
       }
   }
-  return max_mo;
+  return highest_ord;
 }
 
 static inline void
@@ -164,15 +165,15 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
   T *ords[da->mo+1];  // one for each order [0,mo]
   char required[da->nc];
 
-  int max_mo = init_required(sa, ma, required);
-  if (max_mo == 1) {
+  ord_t highest_ord = init_required(sa, ma, required);
+  if (highest_ord == 1) {
     compose_ord1(sa,ma,mb,mc);
     return;
   }
 
   // initialization
   for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
-  for (int o = 0; o <= max_mo; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
+  for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
   mad_tpsa_setConst(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
     mad_tpsa_clean(mc[ic]);
@@ -186,7 +187,7 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
   compose(0, 0, mono, &ctx);
 
   // cleanup
-  for (int o = 0; o <= max_mo; ++o)
+  for (int o = 0; o <= highest_ord; ++o)
     mad_tpsa_del(ords[o]);
   mad_tpsa_del(ctx.knb_coef);
   mad_tpsa_del(ctx.tmp);

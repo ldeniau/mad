@@ -53,10 +53,8 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
   assert(ma && mc && ctx);
 
   // cleanup & ord 0
-  for (int i = 0; i < sa; ++i) {
-    mad_tpsa_clean(mc[i]);
-    mad_tpsa_seti(mc[i], 0, ma[i]->coef[0]);
-  }
+  for (int i = 0; i < sa; ++i)
+    mad_tpsa_setConst(mc[i], ma[i]->coef[0]);
 
   ord_t mono[ctx->d->nv];
   T *tmps[2] = { mad_tpsa_newd(ctx->d,NULL), mad_tpsa_newd(ctx->d,NULL) }, *t = NULL;
@@ -76,11 +74,11 @@ static int COMPOSE_NUM_THREADS;
 static inline void
 parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
 {
-  ord_t max_mo = 0;
+  ord_t highest = 0;
   for (int i = 0; i < sa; ++i)
-    if (ma[i]->mo > max_mo)
-      max_mo = ma[i]->mo;
-  int max_coeff = ctx->d->hpoly_To_idx[max_mo+1];
+    if (ma[i]->hi > highest)
+      highest = ma[i]->hi;
+  int max_coeff = ctx->d->hpoly_To_idx[highest+1];
 
   if (!COMPOSE_NUM_THREADS)
     COMPOSE_NUM_THREADS = get_num_threads();

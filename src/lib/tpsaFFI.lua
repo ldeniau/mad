@@ -1,6 +1,5 @@
 local ffi = require('ffi')
-local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
-local is_list = require"mad.utils".is_list
+local tonumber, typeof = tonumber, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -21,9 +20,9 @@ ffi.cdef[[
   typedef struct tpsa      T;
   typedef struct tpsa_desc D;
 
-  struct tpsa { // warning: must be kept identical to LuaJit definition
+  struct tpsa { // warning: must be kept identical to C definition
     D      *desc;
-    ord_t   mo, to; // max ord, trunc ord
+    ord_t   lo, hi, mo; // lowest/highest used ord, trunc ord
     bit_t   nz;
     num_t   coef[?];
   };
@@ -125,7 +124,6 @@ ffi.cdef[[
 ]]
 
 -- define types just once as use their constructor
-local desc_t   = typeof("D       ")
 local tpsa_t   = typeof("T       ")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
@@ -186,9 +184,10 @@ local function allocate(desc, trunc_ord)
   trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
   local nc  = clib.mad_tpsa_desc_nc(desc, ord_ptr(trunc_ord))
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
-  t.to      = trunc_ord
   t.desc    = desc
-  return t
+  t.mo      = trunc_ord
+  t.lo      = t.mo
+  return t, nc
 end
 
 
@@ -267,7 +266,9 @@ function M.init(...)
   end
 
   knobs = knobs or {}
+  vo = get_bounded(vo,vars ,"vo","vars")
   ko = get_bounded(ko,knobs,"ko","knobs")
+  if vo < ko then error("vo < ko") end
 
   local nv, nk = #vars, #knobs
   vars, knobs = mono_t(nv, vars), mono_t(nk, knobs)
@@ -282,7 +283,7 @@ function M:new(trunc_ord)
 end
 
 function M:same()
-  return allocate(self.desc,self.to)
+  return allocate(self.desc,self.mo)
 end
 
 function M.cpy(src, dst)
@@ -424,7 +425,7 @@ function M.poisson(a, b, c, n)
 end
 
 function M.axpby(v1, a, v2, b, c)
-  clib.mad_tpsa_axpb(v1, a, v2, b, c)
+  clib.mad_tpsa_axpby(v1, a, v2, b, c)
 end
 
 function M.axpb(v, a, b, c)
@@ -646,10 +647,6 @@ end
 
 function M.der_raw(t_in, v, t_out)
   clib.mad_tpsa_der(t_in, v, t_out)
-end
-
-function M.derm_raw(t_in, l, m, t_out)
-  clib.mad_tpsa_der_m(t_in, l, m, t_out)
 end
 
 function M.compose_raw(sa, ma, sb, mb, sc, mc)
