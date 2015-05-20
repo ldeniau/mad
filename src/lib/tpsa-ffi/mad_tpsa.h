@@ -19,7 +19,7 @@ T*    mad_tpsa_new     (const T *t);
 T*    mad_tpsa_clone   (const T *t); // new + copy
 
 void  mad_tpsa_copy    (const T *src, T *dst);
-void  mad_tpsa_clean   (      T *t);
+void  mad_tpsa_reset   (      T *t);
 void  mad_tpsa_del     (      T *t);
 
 void  mad_tpsa_setConst(      T *t,        num_t v);

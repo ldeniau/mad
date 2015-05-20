@@ -233,15 +233,17 @@ make_monos(D *d)
   int curr_mono_idx = 1;
 
   // ord 1
-  d->hpoly_To_idx[1] = 1;
-  mono_set(nv*nv, d->monos+nv, 0);  // init with 0
-  for (int i = 0; i < nv; ++i)
-    if (d->a[i]) {
-      d->monos[curr_mono_idx*nv + i] = 1;
-      d->ords [curr_mono_idx]        = 1;
-      curr_mono_idx++;
-    }
-  d->hpoly_To_idx[2] = curr_mono_idx;
+  if (d->mo >= 1) {
+    d->hpoly_To_idx[1] = 1;
+    mono_set(nv*nv, d->monos+nv, 0);  // init with 0
+    for (int i = 0; i < nv; ++i)
+      if (d->a[i]) {
+        d->monos[curr_mono_idx*nv + i] = 1;
+        d->ords [curr_mono_idx]        = 1;
+        curr_mono_idx++;
+      }
+    d->hpoly_To_idx[2] = curr_mono_idx;
+  }
 
   int real_nc = curr_mono_idx;
   if (d->mo >= 2)
@@ -273,8 +275,8 @@ static inline int
 find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, enum tbl_ordering tbl_ord)
 {
 #ifdef DEBUG
-  // mono_print(n,m);
-  // printf(" from %d to %d\n", start, stop);
+  mono_print(n,m);
+  printf(" from %d to %d\n", start, stop);
 #endif
 
   int count = stop - start, i = 0, step = 0;

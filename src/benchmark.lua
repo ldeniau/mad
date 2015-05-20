@@ -18,7 +18,7 @@ local function bench(mod_name, fct_name, filename, trials)
   printf("Benchmarking %s -- %s ... \n", mod_name, fct_name)
   printf(header_fmt)
   for t=1,trials do printf("t_%d\t", t) end
-  if trials > 1 then printf("avg\tmin\tmax") end
+  if trials > 1 then printf("min") end
   print()
 
   local tpsa = require(mod_name)
@@ -31,15 +31,13 @@ local function bench(mod_name, fct_name, filename, trials)
     printf(line_fmt, NV[i], NO[i], NL[i])
 
     Ts[i] = {}
-    local min, max, sum = 1000, 0, 0
+    local min = 1000
     for t=1,trials do
       Ts[i][t] = timeit(tpsa[fct_name], NL[i], factory.get_args(fct_name))
       min = Ts[i][t] < min and Ts[i][t] or min
-      max = Ts[i][t] > max and Ts[i][t] or max
-      sum = sum + Ts[i][t]
       printf("%.3f\t", Ts[i][t])
     end
-    if trials > 1 then printf("%.3f\t%.3f\t%.3f", sum/trials, min, max) end
+    if trials > 1 then printf("%.3f", min) end
     print()
   end
 end

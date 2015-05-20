@@ -1,6 +1,5 @@
 local ffi = require('ffi')
-local setmetatable, tonumber, typeof = setmetatable, tonumber, ffi.typeof
-local is_list = require"mad.utils".is_list
+local tonumber, typeof = tonumber, ffi.typeof
 
 -- to load from relative path, you need the path of the file which requires
 -- current module;
@@ -125,7 +124,6 @@ ffi.cdef[[
 ]]
 
 -- define types just once as use their constructor
-local desc_t   = typeof("D       ")
 local tpsa_t   = typeof("T       ")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
@@ -188,7 +186,7 @@ local function allocate(desc, trunc_ord)
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
   t.desc    = desc
   t.mo      = trunc_ord
-  t.hi      = 1
+  t.lo      = t.mo
   return t, nc
 end
 
@@ -427,7 +425,7 @@ function M.poisson(a, b, c, n)
 end
 
 function M.axpby(v1, a, v2, b, c)
-  clib.mad_tpsa_axpb(v1, a, v2, b, c)
+  clib.mad_tpsa_axpby(v1, a, v2, b, c)
 end
 
 function M.axpb(v, a, b, c)
