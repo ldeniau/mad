@@ -23,14 +23,14 @@ get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
   mono_cpy(d->nv, pure_mono, mono);
   num_t val;
   idx_t idx, idx_knb_only;
-  mad_tpsa_clean(knb_coef);
+  mad_tpsa_reset(knb_coef);
 
   do {
     idx = desc_get_idx(d, d->nv, mono);
     val = mad_tpsa_geti(a,idx);
     if (val) {
       mono_cpy(d->nv, mono, knb_mono);
-      mono_set(d->rk, knb_mono, 0);  // remove canonical vars
+      mono_set(d->rk, knb_mono, 0);  // remove map vars, keep only the knobs
       idx_knb_only = desc_get_idx(d, d->nv, knb_mono);
       mad_tpsa_seti(knb_coef, idx_knb_only, val);
     }
@@ -176,7 +176,7 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
   for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
   mad_tpsa_setConst(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
-    mad_tpsa_clean(mc[ic]);
+    mad_tpsa_reset(mc[ic]);
 
   CTX ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
               .da=da, .mb=mb, .ords=ords  };

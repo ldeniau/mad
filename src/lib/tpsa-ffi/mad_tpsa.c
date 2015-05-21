@@ -284,7 +284,7 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
 
 #include "tpsa_fun.tc"
 
-// #include "tpsa_compose.tc"
+#include "tpsa_compose.tc"
 
 // #include "tpsa_minv.tc"
 
