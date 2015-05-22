@@ -21,7 +21,7 @@ local MT = {  -- metatable
 }
 
 -- {v={'x','px'}, mo={2,2} [, vo={3,3}] [, ko={1,1}] [, dk=2]}
-function M:make_map(args)
+function M.make_map(args)
   assert(args and args.v and args.mo and #args.v == #args.mo)
   local m = { [V]={} }
   args.vo = args.vo or args.mo
