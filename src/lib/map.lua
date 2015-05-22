@@ -20,8 +20,14 @@ function M.make_map(args)
   return setmetatable(m,MT)
 end
 
-function M:to(ord)
-  tpsa.gtrunc(self._desc,ord)
+function M:to(...)
+  local to, mo = -1
+  for _,v in ipairs{...} do
+    mo = type(v) == "number" and 0 or v.mo
+    to = mo > to and mo or to
+  end
+
+  tpsa.gtrunc(self._desc,to)
 end
 
 

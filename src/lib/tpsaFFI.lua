@@ -408,6 +408,22 @@ function MT.__div(a,b)
   return c
 end
 
+function MT.__pow(a,p)
+  if a.hi == 0 then
+    return a.coef[0] ^ p
+  end
+  local c = a:same()
+  clib.mad_tpsa_mul(a,a,c)
+  if p > 2 then
+    local tmp = a:same()
+    for i=2,p do
+      clib.mad_tpsa_mul(a,c,tmp)
+      c, tmp = tmp, c
+    end
+  end
+  return c
+end
+
 -- MAPS ------------------------------------------------------------------------
 
 function M.compose(ma, mb, mc)
