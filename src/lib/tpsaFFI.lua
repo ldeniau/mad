@@ -17,6 +17,7 @@ ffi.cdef[[
   typedef double           num_t;
   typedef unsigned char    ord_t;
   typedef unsigned int     bit_t;
+  typedef const char*      str_t;
   typedef struct tpsa      T;
   typedef struct tpsa_desc D;
 
@@ -31,9 +32,9 @@ ffi.cdef[[
 
   // --- --- DESC --------------------------------------------------------------
 
-  D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[], ord_t vo);
-  D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[], ord_t vo, // with knobs
-                            int nk, const ord_t knb_ords[], ord_t ko);
+  D*    mad_tpsa_desc_new    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
+  D*    mad_tpsa_desc_newk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
+                              int nk, const ord_t knb_ords[], ord_t dk); // knobs
   D*    mad_tpsa_desc_scan (FILE *stream_);
 
   void  mad_tpsa_desc_del  (      D *d);
@@ -127,7 +128,8 @@ local tpsa_t   = typeof("T       ")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
 local ord_ptr  = typeof("const ord_t[1]")
-local tpsa_arr = typeof("T*   [?]")
+local str_arr  = typeof("      str_t[?]")
+local tpsa_arr = typeof("      T*   [?]")
 local tpsa_carr = typeof("const T*   [?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
@@ -158,28 +160,24 @@ local function arr_sum(a)
   return s
 end
 
-local function get_bounded(val, array, var_name, array_name)
-  local m = arr_max(array)
-  if not val then
-    return m
+-- CONSTRUCTORS ----------------------------------------------------------------
+
+function M.get_desc(args) -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1}] [, dk=2]}
+  assert(args and args.vo)
+  local nv, nk, dk = #args.vo, args.ko and #args.ko or 0, args.dk or 0
+  local cvar_names = args.v  and str_arr(#args.v, args.v)
+  local cvar_ords  =             mono_t(#args.vo, args.vo)
+  local cmap_ords  = args.mo and mono_t(#args.mo, args.mo)
+  local cknb_ords  = args.ko and mono_t(#args.ko, args.ko)
+  if nk == 0 then
+    return clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
   end
 
-  local s = arr_sum(array)
-  local warn_str = "Warning: %s. Constructor has been adjusted\n"
-  if val > s then
-    local upper_bound_msg = "%s > sum(%s)"
-    val = s        -- limit to the maximum available
-    io.stderr:write(warn_str:format(upper_bound_msg:format(var_name, array_name)))
-
-  elseif val < m then
-    val = m        -- put the least necessary
-    local lower_bound_msg = "%s < max(%s)"
-    io.stderr:write(warn_str:format(lower_bound_msg:format(var_name, array_name)))
-  end
-  return val
+  return clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
+                                 nk, cknb_ords, dk)
 end
 
-local function allocate(desc, trunc_ord)
+function M.allocate(desc, trunc_ord)
   trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
   local nc  = clib.mad_tpsa_desc_nc(desc, ord_ptr(trunc_ord))
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
@@ -187,93 +185,6 @@ local function allocate(desc, trunc_ord)
   t.mo      = trunc_ord
   t.lo      = t.mo
   return t, nc
-end
-
-
--- CONSTRUCTORS ----------------------------------------------------------------
-local constructor_as_string = {
-  [0] = [==[
-    tpsa.init({vars} [, vo [, {knobs} [, ko]]])
-    tpsa.init(nv, no [, nk [,ko]])
-  ]==],                                       -- ALWAYS: sum(vars) >= vo >= ko
-  [1] = "tpsa.init({vars})",                  -- vo = max(vars)
-  [2] = "tpsa.init({vars}, vo)",              -- vo in [max(vars), sum(vars)]
-  [3] = "tpsa.init({vars}, {knobs})",         -- vo = max(vars); ko = max(knobs)
-  [4] = "tpsa.init({vars}, vo, {knobs})",     -- [2] for vo; ko = max(knobs)
-  [5] = "tpsa.init({vars}, vo, {knobs}, ko)", -- [2] for vo; ko in [max(knobs), sum(knobs)]
-
-  [6] = "tpsa.init(nv,no)",                   -- vars = {no,no,..,no}, nv times
-  [7] = "tpsa.init(nv,no,nk,ko)"              -- [6] and [1] for vo; same for ko
-
-}
-
-function M.init(...)
-  local err_str  = "Invalid constructor. Did you mean: %s ?"
-  local type = type
-  local vars, knobs, vo, ko
-
-  local arg = {...}
-  -- case 1: tpsa.init({vars})
-  if #arg == 1 then
-    if type(arg[1]) ~= "table" then error(err_str:format(constructor_as_string[1])) end
-    vars = arg[1]
-
-  elseif #arg == 2 then
-    -- case 6: tpsa.init(nv,no)
-    if type(arg[1]) == "number" then
-      if type(arg[2]) ~= "number" then error(err_str:format(constructor_as_string[6])) end
-      vars = arr_val(arg[1],arg[2])
-    elseif type(arg[1]) == "table" then
-      vars  = arg[1]
-
-      -- case 2: tpsa.init({vars}, vo)
-      if type(arg[2]) == "number" then
-        vo = arg[2]
-
-      -- case 3: tpsa.init({vars}, {knobs})
-      elseif type(arg[2]) == "table" then
-        knobs = arg[2]
-      else
-        error(err_str:format(constructor_as_string[2] .. " or " .. constructor_as_string[3]))
-      end
-    end
-
-  elseif #arg == 3 then
-    -- case 4: tpsa.init({vars}, vo, {knobs})
-    if type(arg[1]) ~= "table" or type(arg[2]) ~= "number" or type(arg[3]) ~= "table" then
-        error(err_str:format(constructor_as_string[4]))
-    end
-    vars, vo, knobs = arg[1], arg[2], arg[3]
-
-  elseif #arg == 4 then
-    -- case 5: tpsa.init({vars}, vo, {knobs}, ko)
-    if type(arg[1]) == "table" and type(arg[2]) == "number" and
-       type(arg[3]) == "table" and type(arg[4]) == "number" then
-      vars , vo = arg[1], arg[2]
-      knobs, ko = arg[3], arg[4]
-
-    -- case 7: tpsa.init(nv,no,nk,ko)
-    elseif type(arg[1]) == "number" and type(arg[2]) == "number" and
-           type(arg[3]) == "number" and type(arg[4]) == "number" then
-      vars , vo = arr_val(arg[1],arg[2]), arg[2]
-      knobs, ko = arr_val(arg[3],arg[4]), arg[4]
-    else
-      error(err_str:format(constructor_as_string[5] .. " or " .. constructor_as_string[7]))
-    end
-  else
-    error("Too many arguments to TPSA constructor. Usage: " .. constructor_as_string[0])
-  end
-
-  knobs = knobs or {}
-  vo = get_bounded(vo,vars ,"vo","vars")
-  ko = get_bounded(ko,knobs,"ko","knobs")
-  if vo < ko then error("vo < ko") end
-
-  local nv, nk = #vars, #knobs
-  vars, knobs = mono_t(nv, vars), mono_t(nk, knobs)
-  local d = clib.mad_tpsa_desc_newk(nv,vars,vo, nk,knobs,ko)
-
-  return allocate(d,vo)
 end
 
 function M:new(trunc_ord)

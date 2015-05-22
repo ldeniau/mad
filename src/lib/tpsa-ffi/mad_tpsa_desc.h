@@ -6,10 +6,11 @@
 // --- interface ---------------------------------------------------------------
 
 #define D struct tpsa_desc
+#define str_t const char*
 
-D*    mad_tpsa_desc_new  (int nv, const ord_t var_ords[nv], ord_t vo);
-D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t vo, // with knobs
-                          int nk, const ord_t knb_ords[nk], ord_t ko);
+D*    mad_tpsa_desc_new    (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv]);
+D*    mad_tpsa_desc_newk   (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
+                            int nk, const ord_t knb_ords[nk], ord_t dk); // knobs
 D*    mad_tpsa_desc_scan (FILE *stream_);
 
 void  mad_tpsa_desc_del  (      D *d);
