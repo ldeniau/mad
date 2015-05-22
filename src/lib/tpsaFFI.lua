@@ -1,6 +1,6 @@
 local ffi = require('ffi')
 local tonumber, typeof = tonumber, ffi.typeof
-
+local type = type
 -- to load from relative path, you need the path of the file which requires
 -- current module;
 -- first get the directory structure: for "foo/bar/baz.lua" it is "foo.bar"
@@ -35,13 +35,13 @@ ffi.cdef[[
   D*    mad_tpsa_desc_new    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
   D*    mad_tpsa_desc_newk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
                               int nk, const ord_t knb_ords[], ord_t dk); // knobs
-  D*    mad_tpsa_desc_scan (FILE *stream_);
+  D*    mad_tpsa_desc_scan  (FILE *stream_);
 
-  void  mad_tpsa_desc_del  (      D *d);
+  void  mad_tpsa_desc_del   (      D *d);
 
-  int   mad_tpsa_desc_nc   (const D *d, const ord_t *ord_);
-  ord_t mad_tpsa_desc_trunc(      D *d, const ord_t *to_ );
-  ord_t mad_tpsa_desc_mo   (const D *d);
+  int   mad_tpsa_desc_nc    (const D *d, ord_t ord);
+  ord_t mad_tpsa_desc_gtrunc(      D *d, ord_t to );
+  ord_t mad_tpsa_desc_mo    (const D *d);
 
   // --- --- TPSA --------------------------------------------------------------
 
@@ -179,7 +179,7 @@ end
 
 function M.allocate(desc, trunc_ord)
   trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
-  local nc  = clib.mad_tpsa_desc_nc(desc, ord_ptr(trunc_ord))
+  local nc  = clib.mad_tpsa_desc_nc(desc, trunc_ord)
   local t   = tpsa_t(nc)  -- automatically initialized with 0s
   t.desc    = desc
   t.mo      = trunc_ord
@@ -189,11 +189,11 @@ end
 
 function M:new(trunc_ord)
   if not trunc_ord then error("use t.same() or specify truncation order") end
-  return allocate(self.desc, trunc_ord)
+  return M.allocate(self.desc, trunc_ord)
 end
 
 function M:same()
-  return allocate(self.desc,self.mo)
+  return M.allocate(self.desc,self.mo)
 end
 
 function M.cpy(src, dst)
@@ -237,9 +237,9 @@ function M.setConst(t, v)
 end
 
 -- FUNCS -----------------------------------------------------------------------
-function M.global_truncation(t, o)
+function M.gtrunc(desc, o)
   -- use without `o` to get current truncation order
-  return clib.mad_tpsa_desc_trunc(t.desc, ord_ptr(o))
+  return clib.mad_tpsa_desc_gtrunc(desc, o)
 end
 
 function M.abs(a)
@@ -261,7 +261,7 @@ end
 
 function M.read(file)
   local d = clib.mad_tpsa_desc_scan(file)
-  local t = allocate(d)
+  local t = M.allocate(d)
   clib.mad_tpsa_scan_coef(t,file)
   return t
 end
@@ -342,16 +342,17 @@ end
 function MT.__add(a, b)
   local c
   if type(a) == "number" then
-    c = b:cpy()
-    clib.mad_tpsa_seti(c,0,c.coef[0]+a)
-  elseif type(b) == "number" then
+    a,b = b,a
+  end
+  if a.hi == 0 then
+    return a.coef[0] + b
+  end
+  if type(b) == "number" then
     c = a:cpy()
-    clib.mad_tpsa_seti(c,0,c.coef[0]+b)
-  elseif ffi.istype(a,b) then
+    c.coef[0] = c.coef[0] + b
+  else
     c = a:same()
     clib.mad_tpsa_add(a,b,c)
-  else
-    error("Incompatible operands")
   end
   return c
 end
@@ -365,11 +366,9 @@ function MT.__sub(a, b)
   elseif type(b) == "number" then
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,c.coef[0]-b)
-  elseif ffi.istype(a,b) then
+  else
     c = a:same()
     clib.mad_tpsa_sub(a,b,c)
-  else
-    error("Incompatible operands")
   end
   return c
 end
@@ -377,16 +376,19 @@ end
 function MT.__mul(a,b)
   local c
   if type(a) == "number" then
-    c = b:same()
-    clib.mad_tpsa_scale(a,b,c)
-  elseif type(b) == "number" then
+    a,b = b,a
+  end
+
+  if a.hi == 0 then
+    return a.coef[0] * b
+  end
+
+  if type(b) == "number" then
     c = a:same()
     clib.mad_tpsa_scale(b,a,c)
-  elseif ffi.istype(a,b) then
+  else
     c = a:same()
     clib.mad_tpsa_mul(a,b,c)
-  else
-    error("Incompatible operands")
   end
   return c
 end
@@ -399,11 +401,9 @@ function MT.__div(a,b)
   elseif type(b) == "number" then
     c = a:same()
     clib.mad_tpsa_scale(1/b,a,c)
-  elseif ffi.istype(a,b) then
+  else
     c = a:same()
     clib.mad_tpsa_div(a,b,c)
-  else
-    error("Incompatible operands")
   end
   return c
 end

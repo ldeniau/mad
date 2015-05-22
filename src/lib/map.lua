@@ -1,29 +1,27 @@
 local tpsa = require"lib.tpsaFFI"
 
 local M = {}  -- this module
+local MT = { __index=M }
 
-local function make_tpsa(args)
-  if not args.id or args.id < 1 or args.id > #args.v then error("Invalid id") end
-
-  local t = tpsa.init(args.x, args.dx, args.k, args.dk)
-  return t:new(args.x[args.id])
-end
-
-
+-- {v={'x','px'}, mo={2,2} [, vo={3,3}] [, ko={1,1}] [, dk=2]}
 function M.make_map(args)
+  assert(args and args.v and args.mo and #args.v == #args.mo)
   local m = {}
-  local v, x = args.v, args.x
-
-  if #v ~= #x then error("v and x differ") end
-  for i=1,#v do
-    if x[i] > 0 then
-      args.id = i
-      m[v[i]] = make_tpsa(args)
+  args.vo = args.vo or args.mo
+  m._desc = tpsa.get_desc(args)
+  for i=1,#args.mo do
+    if args.mo[i] == 0 then
+      m[args.v[i]] = 0
     else
-      m[v[i]] = 0
+      m[args.v[i]] = tpsa.allocate(m._desc,args.mo[i])
     end
   end
-  return m
+
+  return setmetatable(m,MT)
+end
+
+function M:to(ord)
+  tpsa.gtrunc(self._desc,ord)
 end
 
 
