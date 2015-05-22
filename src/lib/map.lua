@@ -1,5 +1,12 @@
 local tpsa = require"lib.tpsaFFI"
 
+local function mono_sum(m)
+  local s = 0
+  for i=1,#m do s = s + m[i] end
+  return s
+end
+
+
 local M = {}  -- this module
 local V = {}  -- private keys
 local D = {}  -- private desc
@@ -16,7 +23,7 @@ local MT = {  -- metatable
       tpsa.setConst(var, val)
     else
       tpsa.cpy(val, var)
-    end 
+    end
   end
 }
 
@@ -25,7 +32,11 @@ function M.make_map(args)
   assert(args and args.v and args.mo and #args.v == #args.mo)
   local m = { [V]={} }
   args.vo = args.vo or args.mo
-  m[D] = tpsa.get_desc(args)
+
+  if mono_sum(args.vo) ~= 0 and mono_sum(args.mo) ~= 0 then
+    m[D] = tpsa.get_desc(args)
+  end
+
   for i=1,#args.mo do
     if args.mo[i] == 0 then
       m[V][args.v[i]] = 0
@@ -37,6 +48,7 @@ function M.make_map(args)
 end
 
 function M:to(...)
+  if not self[D] then return end
   local to, mo = -1
   for _,v in ipairs{...} do
     mo = type(v) == "number" and 0 or v.mo

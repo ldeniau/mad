@@ -991,6 +991,7 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
 {
   // input validation
   ensure(var_ords && knb_ords);
+  ensure(mono_sum(nv,var_ords) > 0);
   if (map_ords_)
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
 
