@@ -278,7 +278,7 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
 
 // --- --- OPERATIONS ---------------------------------------------------------
 
-// #include "tpsa_io.tc"
+#include "tpsa_io.tc"
 
 #include "tpsa_ops.tc"
 

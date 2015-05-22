@@ -28,7 +28,7 @@ print_ords(int n, ord_t ords[n], FILE *stream)
 }
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
-
+#if 0
 D*
 mad_tpsa_desc_scan(FILE *stream_)
 {
@@ -78,7 +78,7 @@ mad_tpsa_desc_scan(FILE *stream_)
 
   return get_desc(ncv+nk,ords,mo,ncv,ko);
 }
-
+#endif
 void
 mad_tpsa_scan_coef(T *t, FILE *stream_)
 {
@@ -118,6 +118,7 @@ void
 mad_tpsa_print(const T *t, FILE *stream_)
 {
   assert(t);
+  // TODO: print map vars and name
 
   if (!stream_)
     stream_ = stdout;
@@ -125,8 +126,10 @@ mad_tpsa_print(const T *t, FILE *stream_)
 
   // print header
   char name[11] = "-UNNAMED--";
-  fprintf(stream_, "\n %10s, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d\n ORDS: ",
+  fprintf(stream_, "\n %10s, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d\n MAP ORDS: ",
           name,d->mo,d->rk,d->ko, d->nv - d->rk);
+  print_ords(d->rk,d->map_a,stream_);
+  fprintf(stream_, " ||| VAR ORDS: ");
   print_ords(d->nv,d->a,stream_);
   fprintf(stream_, "\n *******************************************************");
 
