@@ -105,7 +105,12 @@ mad_tpsa_sqrt(const T *a, T *c)
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(a->coef[0] > 0);
+  ensure(a->coef[0] >= 0);
+
+  if (a->coef[0] == 0) {
+    mad_tpsa_reset(c);
+    return;
+  }
 
   ord_t to = min_ord2(c->mo,a->desc->trunc);
   if (!to || a->hi == 0) { mad_tpsa_setConst(c, sqrt(a->coef[0])); return; }
@@ -119,7 +124,7 @@ mad_tpsa_sqrt(const T *a, T *c)
 }
 
 void
-mad_tpsa_isrt(const T *a, T *c)
+mad_tpsa_invsqrt(const T *a, T *c)
 {
 // 1/SQRT(A0+P) = 1/SQRT(A0)*(1-1/2(P/A0)+3/8*(P/A0)**2-...)
 #ifdef TRACE

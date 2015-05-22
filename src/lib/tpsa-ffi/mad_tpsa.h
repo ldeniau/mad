@@ -44,7 +44,7 @@ void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[n], T *c);
 
 void  mad_tpsa_inv     (const T *a, T *c);
 void  mad_tpsa_sqrt    (const T *a, T *c);
-void  mad_tpsa_isrt    (const T *a, T *c);
+void  mad_tpsa_invsqrt (const T *a, T *c);
 void  mad_tpsa_exp     (const T *a, T *c);
 void  mad_tpsa_log     (const T *a, T *c);
 void  mad_tpsa_sin     (const T *a, T *c);

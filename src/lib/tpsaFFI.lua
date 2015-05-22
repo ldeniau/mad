@@ -72,7 +72,7 @@ ffi.cdef[[
 
   void  mad_tpsa_inv     (const T *a, T *c);
   void  mad_tpsa_sqrt    (const T *a, T *c);
-  void  mad_tpsa_isrt    (const T *a, T *c);
+  void  mad_tpsa_invsqrt (const T *a, T *c);
   void  mad_tpsa_exp     (const T *a, T *c);
   void  mad_tpsa_log     (const T *a, T *c);
   void  mad_tpsa_sin     (const T *a, T *c);
@@ -349,7 +349,7 @@ function MT.__add(a, b)
   end
   if type(b) == "number" then
     c = a:cpy()
-    c.coef[0] = c.coef[0] + b
+    clib.mad_tpsa_seti(c,0,a.coef[0]+b)
   else
     c = a:same()
     clib.mad_tpsa_add(a,b,c)
@@ -447,40 +447,58 @@ end
 
 -- FUNCTIONS -------------------------------------------------------------------
 
-function M.inv(a, c)
+function M.inv(a)
+  local c = a:same()
   clib.mad_tpsa_inv(a, c)
+  return c
 end
 
-function M.sqrt(a, c)
+function M.sqrt(a)
+  local c = a:same()
   clib.mad_tpsa_sqrt(a,c)
+  return c
 end
 
-function M.isrt(a, c)
-  clib.mad_tpsa_isrt(a,c)
+function M.invsqsrt(a)
+  local c = a:same()
+  clib.mad_tpsa_invsqrt(a,c)
+  return c
 end
 
-function M.exp(a, c)
+function M.exp(a)
+  local c = a:same()
   clib.mad_tpsa_exp(a,c)
+  return c
 end
 
-function M.log(a, c)
+function M.log(a)
+  local c = a:same()
   clib.mad_tpsa_log(a,c)
+  return c
 end
 
-function M.sin(a, c)
+function M.sin(a)
+  local c = a:same()
   clib.mad_tpsa_sin(a,c)
+  return c
 end
 
-function M.cos(a, c)
+function M.cos(a)
+  local c = a:same()
   clib.mad_tpsa_cos(a,c)
+  return c
 end
 
-function M.sinh(a, c)
+function M.sinh(a)
+  local c = a:same()
   clib.mad_tpsa_sinh(a,c)
+  return c
 end
 
-function M.cosh(a, c)
+function M.cosh(a)
+  local c = a:same()
   clib.mad_tpsa_cosh(a,c)
+  return c
 end
 
 function M.sincos(a, s, c)
