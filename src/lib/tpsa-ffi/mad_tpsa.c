@@ -21,6 +21,7 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
   ord_t   lo, hi, mo; // lowest/highest used ord, trunc ord
   bit_t   nz;
+  int     tmp;
   num_t   coef[];
 };
 
@@ -61,7 +62,8 @@ mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
 #endif
   t->desc = d;
   t->lo = t->mo = mo;
-  t->hi = t->nz = t->coef[0] = 0;  // coef[0] used without checking in mul
+  t->hi = t->nz = t->coef[0] = 0;  // coef[0] used without checking NZ[0]
+  t->tmp = 0;
   return t;
 }
 
@@ -85,6 +87,8 @@ mad_tpsa_copy(const T *src, T *dst)
   dst->hi = min_ord(src->hi, dst->mo, d->trunc);
   dst->lo = src->lo;
   dst->nz = btrunc(src->nz, dst->hi);
+  // dst->tmp = src->tmp;
+
   for (int i = d->hpoly_To_idx[dst->lo]; i < d->hpoly_To_idx[dst->hi+1]; ++i)
     dst->coef[i] = src->coef[i];
 #ifdef TRACE
@@ -98,6 +102,7 @@ mad_tpsa_reset(T *t)
   assert(t);
   t->hi = t->nz = t->coef[0] = 0;
   t->lo = t->mo;
+  t->tmp = 0;
 }
 
 void

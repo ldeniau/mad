@@ -25,6 +25,7 @@ ffi.cdef[[
     D      *desc;
     ord_t   lo, hi, mo; // lowest/highest used ord, trunc ord
     bit_t   nz;
+    int     tmp;
     num_t   coef[?];
   };
 
@@ -161,6 +162,7 @@ local function arr_sum(a)
 end
 
 -- CONSTRUCTORS ----------------------------------------------------------------
+local tmp_stack
 
 -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1,1} ] [, dk=2]}
 -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, nk=3,ko=1  ] [, dk=2]}
@@ -173,13 +175,33 @@ function M.get_desc(args)
                              and str_arr(nv, args.v)
   local cmap_ords  = args.mo and assert(#args.mo == nv, 'not enough map ords')
                              and mono_t(nv, args.mo)
+  local d
   if nk ~= 0 then
     local cknb_ords = assert(args.ko, "knob orders not specified")
                              and mono_t(nk, args.ko)
-    return clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
-                                   nk, cknb_ords, dk)
+    d = clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
+                                nk, cknb_ords, dk)
   else
-    return clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
+    d = clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
+  end
+  tmp_stack = { top=0, mo=clib.mad_tpsa_desc_mo(d) }
+  return d
+end
+
+function M.set_tmp(t)
+  t.tmp = 1
+  return t
+end
+
+function M.set_var(t)
+  t.tmp = 0
+  return t
+end
+
+function M.release(t)
+  if t.tmp ~= 0 then
+    tmp_stack.top = tmp_stack.top + 1
+    tmp_stack[tmp_stack.top] = t
   end
 end
 
@@ -199,8 +221,14 @@ function M:new(trunc_ord)
 end
 
 function M.same(a,b)
-  local mo = b and b.mo > a.mo and b.mo or a.mo
-  return M.allocate(a.desc,mo)
+  local t
+  if tmp_stack.top > 0 then
+    t = tmp_stack[tmp_stack.top]
+    tmp_stack.top = tmp_stack.top - 1
+  else
+    t = M.allocate(a.desc,tmp_stack.mo)
+  end
+  return t
 end
 
 function M.cpy(src, dst)
@@ -347,21 +375,24 @@ end
 
 -- --- OVERLOADING -------------------------------------------------------------
 function MT.__add(a, b)
-  local c
   if type(a) == "number" then
     a,b = b,a
   end
-  if a.hi == 0 then
+  if a.hi == 0 then  -- promote to number
     return a.coef[0] + b
   end
+  local c
   if type(b) == "number" then
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,a.coef[0]+b)
+    a:release()
   else
     c = a:same(b)
     clib.mad_tpsa_add(a,b,c)
+    a:release()
+    b:release()
   end
-  return c
+  return c:set_tmp()
 end
 
 function MT.__sub(a, b)
@@ -370,34 +401,41 @@ function MT.__sub(a, b)
     c = b:same()
     clib.mad_tpsa_scale(-1, b, c)
     clib.mad_tpsa_seti(c,0,c.coef[0]+a)
+    b:release()
   elseif type(b) == "number" then
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,c.coef[0]-b)
+    a:release()
   else
     c = a:same()
     clib.mad_tpsa_sub(a,b,c)
+    a:release()
+    b:release()
   end
-  return c
+  return c:set_tmp()
 end
 
 function MT.__mul(a,b)
-  local c
   if type(a) == "number" then
     a,b = b,a
   end
 
-  if a.hi == 0 then
+  if a.hi == 0 then  -- promote to number
     return a.coef[0] * b
   end
 
+  local c
   if type(b) == "number" then
     c = a:same()
     clib.mad_tpsa_scale(b,a,c)
+    a:release()
   else
     c = a:same()
     clib.mad_tpsa_mul(a,b,c)
+    a:release()
+    b:release()
   end
-  return c
+  return c:set_tmp()
 end
 
 function MT.__div(a,b)
@@ -405,17 +443,22 @@ function MT.__div(a,b)
   if type(a) == "number" then
     c = b:same()
     clib.mad_tpsa_divc(a,b,c)
+    b:release()
   elseif type(b) == "number" then
     c = a:same()
     clib.mad_tpsa_scale(1/b,a,c)
+    a:release()
   else
     c = a:same()
     clib.mad_tpsa_div(a,b,c)
+    a:release()
+    b:release()
   end
-  return c
+  return c:set_tmp()
 end
 
 function MT.__pow(a,p)
+  if type(a) == "number" then error("NYI") end
   if a.hi == 0 then
     return a.coef[0] ^ p
   end
@@ -427,8 +470,10 @@ function MT.__pow(a,p)
       clib.mad_tpsa_mul(a,c,tmp)
       c, tmp = tmp, c
     end
+    tmp:release()
   end
-  return c
+  a:release()
+  return c:set_tmp()
 end
 
 -- MAPS ------------------------------------------------------------------------
@@ -456,20 +501,23 @@ end
 
 function M.inv(a)
   local c = a:same()
-  clib.mad_tpsa_inv(a, c)
-  return c
+  clib.mad_tpsa_inv(a,c)
+  a:release()
+  return c:set_tmp()
 end
 
 function M.sqrt(a)
   local c = a:same()
   clib.mad_tpsa_sqrt(a,c)
-  return c
+  a:release()
+  return c:set_tmp()
 end
 
 function M.invsqsrt(a)
   local c = a:same()
   clib.mad_tpsa_invsqrt(a,c)
-  return c
+  a:release()
+  return c:set_tmp()
 end
 
 function M.exp(a)
