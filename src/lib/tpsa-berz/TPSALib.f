@@ -2568,7 +2568,7 @@ c      write(*,*) 'Allocating DA vector'
         enddo
 !
       elseif(cf.eq.'SQRT') then
-!        SQRT(A0+P) = SQRT(A0)*(1+1/2(P/A0)-1/8*(P/A0)**2+...)
+!        SQRT(A0+P) = SQRT(A0)*(1+1/2*(P/A0)-1/8*(P/A0)**2+...)
         if(a0.le.0) then
           write(*,1000) cf,ina,a0
           call dadeb(31,'ERR DAFUN ',1)
@@ -2582,7 +2582,7 @@ c      write(*,*) 'Allocating DA vector'
         enddo
 !
       elseif(cf.eq.'ISRT') then
-!        1/SQRT(A0+P) = 1/SQRT(A0)*(1-1/2(P/A0)+3/8*(P/A0)**2-...)
+!        1/SQRT(A0+P) = 1/SQRT(A0)*(1-1/2*(P/A0)+3/8*(P/A0)**2-...)
         if(a0.le.0) then
           write(*,1000) cf,ina,a0
           call dadeb(31,'ERR DAFUN ',1)

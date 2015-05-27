@@ -138,6 +138,9 @@ local MT   = { __index = M }
 
 ffi.metatype("struct tpsa", MT)
 
+M.clib_ = clib
+M.count = 0
+
 -- helpers ---------------------------------------------------------------------
 local function arr_val(l,v)
   local t = {}
@@ -212,6 +215,7 @@ function M.allocate(desc, trunc_ord)
   t.desc    = desc
   t.mo      = trunc_ord
   t.lo      = t.mo
+  M.count = M.count + 1
   return t, nc
 end
 
@@ -228,7 +232,7 @@ function M.same(a,b)
   else
     t = M.allocate(a.desc,tmp_stack.mo)
   end
-  return t
+  return t:set_var()
 end
 
 function M.cpy(src, dst)

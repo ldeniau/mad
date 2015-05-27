@@ -20,11 +20,17 @@ local MT = {  -- metatable
 --    io.write("setting ", key, '\n')
     local var = assert(tbl[V][key], "invalid map variable")
     if type(var) == "number" then
-      tbl[V][key] = type(val) == "number" and val or val.coef[0]
+      if type(val) == "number" then
+        tbl[V][key] = val
+      else
+        tbl[V][key] =  val.coef[0]
+        val:release()
+      end
     elseif type(val) == "number" then
       tpsa.setConst(var, val)
     else
       tpsa.cpy(val, var)
+      val:release()
     end
   end
 }
@@ -87,25 +93,23 @@ function M.track_drift(m, e)
   clib.mad_tpsa_scale(2/e.b,ps,t2)                      -- 2/e.b*m.ps 
   clib.mad_tpsa_seti(t2,0,1+t2.coef[0])                 -- 1 + 2/e.b*m.ps
   clib.mad_tpsa_add(t1,t2,t3)                           -- 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
-  clib.mad_tpsa_invsqrt(t3,t1)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
+  clib.mad_tpsa_invsqrt(t3,t2)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
+  clib.mad_tpsa_scale(e.L,t2,t1)                        -- L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
 
   clib.mad_tpsa_mul(px,t1,t2)                           -- px*pz_
-  clib.mad_tpsa_scale(e.L,t2,t3)                        -- L*px*pz_ 
-  clib.mad_tpsa_add(x,t3,t2)                            -- x + L*px*pz_
-  clib.mad_tpsa_copy(t2, x)
+  clib.mad_tpsa_add(x,t2,t3)                            -- x + px*pz_
+  clib.mad_tpsa_copy(t3, x)
 
   clib.mad_tpsa_mul(py,t1,t2)                           -- py*pz_
-  clib.mad_tpsa_scale(e.L,t2,t3)                        -- L*py*pz_ 
-  clib.mad_tpsa_add(y,t3,t2)                            -- x + L*py*pz_
-  clib.mad_tpsa_copy(t2, y)
+  clib.mad_tpsa_add(y,t2,t3)                            -- x + py*pz_
+  clib.mad_tpsa_copy(t3, y)
 
   clib.mad_tpsa_copy(ps,t3)                             -- ps
   clib.mad_tpsa_seti(t3,0,1/e.b+t3.coef[0])             -- 1/e.b + ps
   clib.mad_tpsa_mul(t1,t3,t2)                           -- (1/e.b + ps)*pz_
-  clib.mad_tpsa_scale(e.L,t2,t3)                        -- L*(1/e.b + ps)*pz_ 
-  clib.mad_tpsa_add(ps,t3,t2)                           -- ps + L*(1/e.b + ps)*pz_
-  clib.mad_tpsa_seti(t2,0,t2.coef[0]-(1-e.T)*e.LD/e.b)  -- ps + L*(1/e.b + ps)*pz_ - (1-e.T)*e.LD/e.b
-  clib.mad_tpsa_copy(t2, s)
+  clib.mad_tpsa_add(ps,t2,t3)                           -- ps + (1/e.b + ps)*pz_
+  clib.mad_tpsa_seti(t3,0,t3.coef[0]-(1-e.T)*e.LD/e.b)  -- ps + (1/e.b + ps)*pz_ - (1-e.T)*e.LD/e.b
+  clib.mad_tpsa_copy(t3, s)
 end
 
 return M
