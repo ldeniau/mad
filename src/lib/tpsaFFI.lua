@@ -124,7 +124,7 @@ ffi.cdef[[
   // ---------------------------------------------------------------------------
 ]]
 
--- define types just once as use their constructor
+-- define types just once and use their constructor
 local tpsa_t   = typeof("T       ")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
