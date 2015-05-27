@@ -1,4 +1,5 @@
 local tpsa = require"lib.tpsaFFI"
+local type = type
 
 local function mono_sum(m)
   local s = 0
@@ -65,6 +66,15 @@ function M:to(...)
   end
 
   tpsa.gtrunc(self[D],to)
+end
+
+function M.set(m, var, mono, val)
+  if type(m[var]) == "number" then
+    assert(mono_sum(mono) == 0, "Invalid set for constant var")
+    m[var] = val
+  else
+    m[var]:set(mono, val)
+  end
 end
 
 local clib = tpsa.clib_
