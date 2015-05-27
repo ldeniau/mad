@@ -162,19 +162,25 @@ end
 
 -- CONSTRUCTORS ----------------------------------------------------------------
 
-function M.get_desc(args) -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1}] [, dk=2]}
-  assert(args and args.vo)
-  local nv, nk, dk = #args.vo, args.ko and #args.ko or 0, args.dk or 0
-  local cvar_names = args.v  and str_arr(#args.v, args.v)
-  local cvar_ords  =             mono_t(#args.vo, args.vo)
-  local cmap_ords  = args.mo and mono_t(#args.mo, args.mo)
-  local cknb_ords  = args.ko and mono_t(#args.ko, args.ko)
-  if nk == 0 then
+-- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1,1} ] [, dk=2]}
+-- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, nk=3,ko=1  ] [, dk=2]}
+function M.get_desc(args)
+  assert(args and args.vo, "not enough args for TPSA descriptor")
+
+  local nv, nk, dk = #args.vo, args.nk or args.ko and #args.ko or 0, args.dk or 0
+  local cvar_ords  = mono_t(nv, args.vo)
+  local cvar_names = args.v  and assert(#args.v  == nv, 'not enough var names')
+                             and str_arr(nv, args.v)
+  local cmap_ords  = args.mo and assert(#args.mo == nv, 'not enough map ords')
+                             and mono_t(nv, args.mo)
+  if nk ~= 0 then
+    local cknb_ords = assert(args.ko, "knob orders not specified")
+                             and mono_t(nk, args.ko)
+    return clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
+                                   nk, cknb_ords, dk)
+  else
     return clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
   end
-
-  return clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
-                                 nk, cknb_ords, dk)
 end
 
 function M.allocate(desc, trunc_ord)
@@ -192,8 +198,9 @@ function M:new(trunc_ord)
   return M.allocate(self.desc, trunc_ord)
 end
 
-function M:same()
-  return M.allocate(self.desc,self.mo)
+function M.same(a,b)
+  local mo = b and b.mo > a.mo and b.mo or a.mo
+  return M.allocate(a.desc,mo)
 end
 
 function M.cpy(src, dst)
@@ -351,7 +358,7 @@ function MT.__add(a, b)
     c = a:cpy()
     clib.mad_tpsa_seti(c,0,a.coef[0]+b)
   else
-    c = a:same()
+    c = a:same(b)
     clib.mad_tpsa_add(a,b,c)
   end
   return c

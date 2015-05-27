@@ -3,8 +3,8 @@
 
 #include "mad_tpsa_desc.h"
 
-// #define TRACE
-// #define DEBUG
+#define TRACE
+#define DEBUG
 
 typedef int           idx_t;
 
@@ -947,7 +947,7 @@ desc_equ(const D *d1, const D *d2)
   return    d1->nv == d2->nv && d1->rk == d2->rk
          && d1->mo == d2->mo && d1->ko == d2->ko
          && mono_equ(d1->nv, d1->a    , d2->a)
-         && mono_equ(d1->nc, d1->map_a, d2->map_a);
+         && mono_equ(d1->rk, d1->map_a, d2->map_a);
 }
 
 static inline D*

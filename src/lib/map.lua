@@ -29,7 +29,8 @@ local MT = {  -- metatable
   end
 }
 
--- {v={'x','px'}, mo={2,2} [, vo={3,3}] [, ko={1,1}] [, dk=2]}
+-- {v={'x','px'}, mo={3,3} [, vo={2,2}] [, ko={1,1,1} ] [, dk=2]}
+-- {v={'x','px'}, mo={3,3} [, vo={2,1}] [, nk=3,ko=1  ] [, dk=2]}
 function M.make_map(args)
   assert(args and args.v and args.mo and #args.v == #args.mo)
   local m = { [V]={} }

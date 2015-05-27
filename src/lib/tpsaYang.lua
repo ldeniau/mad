@@ -210,6 +210,7 @@ end
 -- OVERLOADING -----------------------------------------------------------------
 function MT.__add(a,b)
   local c
+  error("UNIMPLEMENTED")
   if type(a) == "number" then
     c = b:cpy()
     yangLib.ad_mult_const_(c.idx, dblPtr(-1))
