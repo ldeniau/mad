@@ -410,7 +410,7 @@ end
 -- returns a tpsa filled up to its maximum order
 function M.build_full()  -- same as t:pow(no)
   local b, r, tmp, p = M.ord{0,1}, M.new_instance(), M.new_instance(), M.no
-  r:setConst(1)
+  r:set0(1)
 
   while p > 0 do
     if p%2==1 then

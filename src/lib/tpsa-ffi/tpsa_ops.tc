@@ -324,7 +324,7 @@ mad_tpsa_der(const T *a, int var, T *c)
     return;
   }
 
-  mad_tpsa_setConst(c,mad_tpsa_geti(a,var));
+  mad_tpsa_set0(c,mad_tpsa_geti(a,var));
 
   D *d = c->desc;
   c->hi = min_ord(c->mo, d->trunc, a->hi-1);
@@ -362,7 +362,7 @@ mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
   }
 
   // ord 0 & setup
-  mad_tpsa_setConst(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
+  mad_tpsa_set0(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
   if (a->hi <= der_ord)
     return;
 
@@ -384,7 +384,7 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
   }
 
   if (a->hi == 0) {
-    mad_tpsa_setConst(c,v * a->coef[0]);
+    mad_tpsa_set0(c,v * a->coef[0]);
     return;
   }
 
@@ -601,7 +601,7 @@ mad_tpsa_divc(num_t v, const T *a, T *c)
   ensure(a->coef[0] != 0);
 
   if (a->hi == 0) {
-    mad_tpsa_setConst(c,v/a->coef[0]);
+    mad_tpsa_set0(c,v/a->coef[0]);
     return;
   }
 

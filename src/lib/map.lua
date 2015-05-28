@@ -28,7 +28,7 @@ local MT = {  -- metatable
         val:release()
       end
     elseif type(val) == "number" then
-      tpsa.setConst(var, val)
+      tpsa.set0(var, val)
     else
       tpsa.cpy(val, var)
       val:release()

@@ -115,7 +115,7 @@ function tpsa.destroy(t)
   berzLib.dadal_(t.idx, one_i)
 end
 
-function tpsa.setConst(t, val)
+function tpsa.set0(t, val)
   berzLib.dacon_(t.idx, dblPtr(val))
 end
 
