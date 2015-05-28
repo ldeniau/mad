@@ -8,14 +8,17 @@
 #endif
 
 #include "mad_tpsa.h"
+#include "mono.h"
 #include "tpsa_utils.tc"
 #include "tpsa_desc.tc"
 //#include "mem_alloc.h"
 
 // #define TRACE
 
-#define T struct tpsa
-#define D struct tpsa_desc
+#define T     struct tpsa
+#define D     struct tpsa_desc
+#define num_t double
+
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;

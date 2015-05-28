@@ -1,8 +1,6 @@
 #ifndef TPSA_DESC_TEMPLATE
 #define TPSA_DESC_TEMPLATE
 
-#include "mad_tpsa_desc.h"
-
 // #define TRACE
 // #define DEBUG
 
@@ -976,7 +974,7 @@ get_desc(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], con
 // --- Public Functions -------------------------------------------------------
 
 D*
-mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
+mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
 {
   ensure(var_ords);
   if (map_ords_)
@@ -986,7 +984,7 @@ mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], s
 }
 
 D*
-mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
+mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
                    int nk, const ord_t knb_ords[nk], ord_t dk)
 {
   // input validation
@@ -1009,7 +1007,7 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
 }
 
 void
-mad_tpsa_desc_del(D *d)
+mad_tpsa_ddel(D *d)
 {
   assert(d);
   free(d->a);

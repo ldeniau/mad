@@ -33,13 +33,12 @@ ffi.cdef[[
 
   // --- --- DESC --------------------------------------------------------------
 
-  D*    mad_tpsa_desc_new    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
-  D*    mad_tpsa_desc_newk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
-                              int nk, const ord_t knb_ords[], ord_t dk); // knobs
-  D*    mad_tpsa_desc_scan  (FILE *stream_);
+  D*    mad_tpsa_dnew    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
+  D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
+                          int nk, const ord_t knb_ords[], ord_t dk); // knobs
+  void  mad_tpsa_ddel    (D *d);
 
-  void  mad_tpsa_desc_del   (      D *d);
-
+  // --- --- DESC introspection ------------------------------------------------
   int   mad_tpsa_desc_nc    (const D *d, ord_t ord);
   ord_t mad_tpsa_desc_gtrunc(      D *d, ord_t to );
   ord_t mad_tpsa_desc_mo    (const D *d);
@@ -120,18 +119,18 @@ ffi.cdef[[
   void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
   void  mad_tpsa_print    (const T *t, FILE *stream_);
   void  mad_tpsa_print_compact   (const T *t);
+  D*    mad_tpsa_desc_scan  (FILE *stream_);
 
   // ---------------------------------------------------------------------------
 ]]
 
 -- define types just once and use their constructor
-local tpsa_t   = typeof("T       ")
+local tpsa_t   = typeof("T")
+local tpsa_arr = typeof("T*         [?]")
+local tpsa_carr= typeof("const T*   [?]")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
-local ord_ptr  = typeof("const ord_t[1]")
 local str_arr  = typeof("      str_t[?]")
-local tpsa_arr = typeof("      T*   [?]")
-local tpsa_carr = typeof("const T*   [?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
@@ -141,29 +140,6 @@ ffi.metatype("struct tpsa", MT)
 M.clib_ = clib
 M.count = 0
 
--- helpers ---------------------------------------------------------------------
-local function arr_val(l,v)
-  local t = {}
-  for i=1,l do t[i] = v end
-  return t
-end
-
-local function arr_max(a)
-  local m = a[1]
-  for i=2,#a do
-    if a[i] > m then m = a[i] end
-  end
-  return m or 0
-end
-
-local function arr_sum(a)
-  local s = a[1]
-  for i=2,#a do
-    s = s + a[i]
-  end
-  return s
-end
-
 -- CONSTRUCTORS ----------------------------------------------------------------
 local tmp_stack
 
@@ -172,20 +148,21 @@ local tmp_stack
 function M.get_desc(args)
   assert(args and args.vo, "not enough args for TPSA descriptor")
 
-  local nv, nk, dk = #args.vo, args.nk or args.ko and #args.ko or 0, args.dk or 0
+  local nv, dk = #args.vo, args.dk or 0
   local cvar_ords  = mono_t(nv, args.vo)
   local cvar_names = args.v  and assert(#args.v  == nv, 'not enough var names')
                              and str_arr(nv, args.v)
   local cmap_ords  = args.mo and assert(#args.mo == nv, 'not enough map ords')
                              and mono_t(nv, args.mo)
+
   local d
+  local nk = args.nk or type(args.ko) == "table" and #args.ko or 0
   if nk ~= 0 then
-    local cknb_ords = assert(args.ko, "knob orders not specified")
-                             and mono_t(nk, args.ko)
-    d = clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
-                                nk, cknb_ords, dk)
+    local cknb_ords = assert(args.ko, "knob orders not specified") and mono_t(nk, args.ko)
+    d = clib.mad_tpsa_dnewk(nv, cvar_ords, cmap_ords, cvar_names,
+                            nk, cknb_ords, dk)
   else
-    d = clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
+    d = clib.mad_tpsa_dnew (nv, cvar_ords, cmap_ords, cvar_names)
   end
   tmp_stack = { top=0, mo=clib.mad_tpsa_desc_mo(d) }
   return d

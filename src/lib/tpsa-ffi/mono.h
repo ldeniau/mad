@@ -113,8 +113,8 @@ mono_print(int n, const ord_t m[n])
 // --- SSE2 implementation -----------------------------------------------------
 
 // Comment the following include to disable SSE/AVX optimization
-#include "mad_mono_sse.h"
-#include "mad_mono_avx.h"
+#include "mono_sse.h"
+#include "mono_avx.h"
 
 // -----------------------------------------------------------------------------
 #endif
