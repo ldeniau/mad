@@ -1052,16 +1052,17 @@ mad_tpsa_ddel(D *d)
 }
 
 int
-mad_tpsa_desc_nc(const D *d, ord_t ord)
+mad_tpsa_size(const D *d, ord_t *t_mo)
 {
   assert(d);
-  if (ord == 0 || ord > d->mo)
-    ord = d->mo;
-  return d->hpoly_To_idx[ord+1];
+  ensure(t_mo);
+  if (*t_mo == 0 || *t_mo > d->mo)
+    *t_mo = d->mo;
+  return d->hpoly_To_idx[*t_mo+1];
 }
 
 ord_t
-mad_tpsa_desc_gtrunc(D *d, ord_t to)
+mad_tpsa_gtrunc(D *d, ord_t to)
 {
   assert(d);
   ord_t orig = d->trunc;
@@ -1070,13 +1071,6 @@ mad_tpsa_desc_gtrunc(D *d, ord_t to)
   d->trunc = to;
   return orig;
 }
-
-ord_t
-mad_tpsa_desc_mo(const D *d)
-{
-  return d->mo;
-}
-
 
 #undef D
 #undef TRACE

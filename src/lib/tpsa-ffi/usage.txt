@@ -74,11 +74,11 @@ D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t vo,
 
 TPSA
 ----
-a) T* mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
-    -- allocates a TPSA for the descriptor d, with capacity for orders up to trunc_ord_
-    -- if trunc_ord_ is NULL, then d->mo is used
+a) T* mad_tpsa_new(D *d, const ord_t mo_)
+    -- allocates a TPSA for the descriptor d, with capacity for orders up to mo_
+    -- if not 0 < mo_ <= d_mo then mo_ = d_mo
 
-b) T* mad_tpsa_new(const T *t)
+b) T* mad_tpsa_same(const T *t)
     -- allocates a TPSA of the same kind as t (same descriptor, same truncation order)
 
 

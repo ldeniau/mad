@@ -22,16 +22,13 @@ D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[nv], const ord_t map_ords_[
 void  mad_tpsa_ddel    (D *d);
 
 // desc introspection
-int   mad_tpsa_desc_nc    (const D *d, ord_t ord); // if not 0 <    to <= d_mo then to = d_mo
-ord_t mad_tpsa_desc_gtrunc(      D *d, ord_t to);  // if not 0 <= to <= d_mo then to = d_mo
-ord_t mad_tpsa_desc_mo    (const D *d);
+int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not 0 <  *t_mo <= d_mo then *t_mo = d_mo
+ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <=  g_to <= d_mo then  g_to = d_mo
 
-T*    mad_tpsa_newd    (struct tpsa_desc *d, const ord_t *trunc_ord_);
-
-T*    mad_tpsa_new     (const T *t);
-T*    mad_tpsa_clone   (const T *t); // new + copy
-
-void  mad_tpsa_copy    (const T *src, T *dst);
+// ctors, dtor
+T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
+T*    mad_tpsa_same    (const T *t);
+void  mad_tpsa_copy    (const T *t, T *d);
 void  mad_tpsa_reset   (      T *t);
 void  mad_tpsa_del     (      T *t);
 

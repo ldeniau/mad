@@ -31,14 +31,15 @@ struct tpsa { // warning: must be kept identical to LuaJit definition
 // --- DEBUGGING --------------------------------------------------------------
 
 void
-mad_tpsa_print_compact(const T *t)
+mad_tpsa_debug(const T *t)
 {
   D *d = t->desc;
-  printf("{ nz=%d lo=%d hi=%d mo=%d | ", t->nz, t->lo, t->hi, t->mo);
+  printf("{ nz=%d lo=%d hi=%d mo=%d | [0]=%g", t->nz, t->lo, t->hi, t->mo, t->coef[0]);
   ord_t hi = min_ord(t->hi, t->mo, t->desc->trunc);
-  for (int i = d->hpoly_To_idx[t->lo]; i < d->hpoly_To_idx[hi+1]; ++i)
+  int i = d->hpoly_To_idx[imax(1,t->lo)]; // ord 0 already printed
+  for (; i < d->hpoly_To_idx[hi+1]; ++i)
     if (t->coef[i])
-      printf("[%d]=%.2f ", i, t->coef[i]);
+      printf("[%d]=%g ", i, t->coef[i]);
   printf(" }\n");
 }
 
@@ -47,34 +48,31 @@ mad_tpsa_print_compact(const T *t)
 // --- --- TOOLS --------------------------------------------------------------
 
 T*
-mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
+mad_tpsa_new(D *d, ord_t mo_)
 {
   assert(d);
 
-  ord_t mo = d->mo;
-  if (trunc_ord_) {
-    ensure(*trunc_ord_ <= d->mo && *trunc_ord_ >= 1);
-    mo = *trunc_ord_;
-  }
+  if (mo_ == 0 || mo_ > d->mo)
+    mo_ = d->mo;
 
-  int needed_coef = d->hpoly_To_idx[mo+1];
+  int needed_coef = d->hpoly_To_idx[mo_+1];
   T *t = malloc(sizeof(T) + needed_coef * sizeof(num_t));
   assert(t);
 #ifdef TRACE
-  printf("tpsa new %p from %p with mo=%d\n", (void*)t, (void*)d, *trunc_ord_);
+  printf("tpsa new %p from %p with mo=%d\n", (void*)t, (void*)d, *mo_);
 #endif
   t->desc = d;
-  t->lo = t->mo = mo;
+  t->lo = t->mo = mo_;
   t->hi = t->nz = t->coef[0] = 0;  // coef[0] used without checking NZ[0]
   t->tmp = 0;
   return t;
 }
 
 T*
-mad_tpsa_new(const T *t)
+mad_tpsa_same(const T *t)
 {
   assert(t && t->desc);
-  return mad_tpsa_newd(t->desc, &t->mo);
+  return mad_tpsa_new(t->desc,t->mo);
 }
 
 void
@@ -90,7 +88,7 @@ mad_tpsa_copy(const T *src, T *dst)
   dst->hi = min_ord(src->hi, dst->mo, d->trunc);
   dst->lo = src->lo;
   dst->nz = btrunc(src->nz, dst->hi);
-  // dst->tmp = src->tmp;
+  // dst->tmp = src->tmp;  // managed from outside
 
   for (int i = d->hpoly_To_idx[dst->lo]; i < d->hpoly_To_idx[dst->hi+1]; ++i)
     dst->coef[i] = src->coef[i];
@@ -105,7 +103,7 @@ mad_tpsa_reset(T *t)
   assert(t);
   t->hi = t->nz = t->coef[0] = 0;
   t->lo = t->mo;
-  t->tmp = 0;
+  // t->tmp = 0;  // managed from outside
 }
 
 void

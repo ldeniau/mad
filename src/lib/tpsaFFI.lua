@@ -39,14 +39,15 @@ ffi.cdef[[
   void  mad_tpsa_ddel    (D *d);
 
   // --- --- DESC introspection ------------------------------------------------
-  int   mad_tpsa_desc_nc    (const D *d, ord_t ord);
-  ord_t mad_tpsa_desc_gtrunc(      D *d, ord_t to );
-  ord_t mad_tpsa_desc_mo    (const D *d);
+  int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not 0 < *t_mo <= d_mo then *t_mo = d_mo
+  ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <= g_to <= d_mo then  g_to = d_mo
 
   // --- --- TPSA --------------------------------------------------------------
-
-  void  mad_tpsa_copy    (const T *src, T *dst);
-  void  mad_tpsa_clean   (      T *t);
+  // --- --- ctors, dtor
+  T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
+  T*    mad_tpsa_same    (const T *t);
+  void  mad_tpsa_copy    (const T *t, T *d);
+  void  mad_tpsa_reset   (      T *t);
   void  mad_tpsa_del     (      T *t);
 
   void  mad_tpsa_setConst(      T *t,        num_t v);
@@ -116,10 +117,10 @@ ffi.cdef[[
   void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
   void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
 
-  void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
-  void  mad_tpsa_print    (const T *t, FILE *stream_);
-  void  mad_tpsa_print_compact   (const T *t);
-  D*    mad_tpsa_desc_scan  (FILE *stream_);
+  void  mad_tpsa_scan_coef (      T *t, FILE *stream_);
+  void  mad_tpsa_print     (const T *t, FILE *stream_);
+  void  mad_tpsa_debug     (const T *t);
+  D*    mad_tpsa_desc_scan (FILE *stream_);
 
   // ---------------------------------------------------------------------------
 ]]
@@ -130,6 +131,7 @@ local tpsa_arr = typeof("T*         [?]")
 local tpsa_carr= typeof("const T*   [?]")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
+local ord_ptr  = typeof("      ord_t[1]")
 local str_arr  = typeof("      str_t[?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
@@ -164,7 +166,7 @@ function M.get_desc(args)
   else
     d = clib.mad_tpsa_dnew (nv, cvar_ords, cmap_ords, cvar_names)
   end
-  tmp_stack = { top=0, mo=clib.mad_tpsa_desc_mo(d) }
+  tmp_stack = { top=0 }
   return d
 end
 
@@ -185,20 +187,15 @@ function M.release(t)
   end
 end
 
-function M.allocate(desc, trunc_ord)
-  trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
-  local nc  = clib.mad_tpsa_desc_nc(desc, trunc_ord)
-  local t   = tpsa_t(nc)  -- automatically initialized with 0s
-  t.desc    = desc
-  t.mo      = trunc_ord
-  t.lo      = t.mo
-  M.count = M.count + 1
+function M.allocate(desc, mo_)
+  mo_      = ord_ptr(mo_ or -1)
+  local nc = clib.mad_tpsa_size(desc, mo_)
+  local t  = tpsa_t(nc)  -- automatically initialized with 0s
+  t.desc   = desc
+  t.mo     = mo_[0]
+  t.lo     = t.mo
+  M.count  = M.count + 1
   return t, nc
-end
-
-function M:new(trunc_ord)
-  if not trunc_ord then error("use t.same() or specify truncation order") end
-  return M.allocate(self.desc, trunc_ord)
 end
 
 function M.same(a,b)
@@ -207,7 +204,7 @@ function M.same(a,b)
     t = tmp_stack[tmp_stack.top]
     tmp_stack.top = tmp_stack.top - 1
   else
-    t = M.allocate(a.desc,tmp_stack.mo)
+    t = M.allocate(a.desc)
   end
   return t:set_var()
 end
@@ -611,7 +608,7 @@ end
 
 -- debugging -------------------------------------------------------------------
 
-M.debug = clib.mad_tpsa_print_compact
+M.debug = clib.mad_tpsa_debug
 
 -- interface for benchmarking --------------------------------------------------
 

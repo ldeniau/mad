@@ -584,7 +584,7 @@ mad_tpsa_div(const T *a, const T *b, T *c)
   }
 
   D *d = a->desc;
-  T *tmp = mad_tpsa_newd(d,&d->trunc);
+  T *tmp = mad_tpsa_new(d,d->trunc);
   mad_tpsa_inv(b,tmp);
   mad_tpsa_mul(a,tmp,c);
   mad_tpsa_del(tmp);
@@ -605,7 +605,7 @@ mad_tpsa_divc(num_t v, const T *a, T *c)
     return;
   }
 
-  T *tmp = mad_tpsa_new(a);
+  T *tmp = mad_tpsa_same(a);
   mad_tpsa_scale(1/v,a,tmp);
   mad_tpsa_inv(tmp,c);
   mad_tpsa_del(tmp);
@@ -620,7 +620,7 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
 
   T *is[4];
   for (int i = 0; i < 4; ++i)
-    is[i] = mad_tpsa_newd(a->desc,&a->desc->trunc);
+    is[i] = mad_tpsa_new(a->desc,a->desc->trunc);
 
   for (int i = 1; i <= n; ++i) {
     mad_tpsa_der(a, 2*i - 1, is[0]);
@@ -663,7 +663,7 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   }
 
   // init: base = a, r = 1, tmp
-  T *base = mad_tpsa_new(a), *r = orig_res, *tmp_res = mad_tpsa_new(a);
+  T *base = mad_tpsa_same(a), *r = orig_res, *tmp_res = mad_tpsa_same(a);
   mad_tpsa_copy(a, base);
   mad_tpsa_clean(r);
   mad_tpsa_seti(r, 0, 1);

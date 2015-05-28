@@ -44,8 +44,8 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
 {
   D *d = ma[0]->desc;
   if (d->rk < d->nv) { // there are knobs
-    T *knb_coef = mad_tpsa_newd(d,&d->ko);
-    T *tmp      = mad_tpsa_newd(d,&d->trunc);
+    T *knb_coef = mad_tpsa_new(d,d->ko);
+    T *tmp      = mad_tpsa_new(d,d->trunc);
 
     for (int i = 0; i < sa; ++i) {
       mad_tpsa_setConst(mc[i],ma[i]->coef[0]);
@@ -173,15 +173,15 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
 
   // initialization
   for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
-  for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
+  for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_new(da,da->trunc);
   mad_tpsa_setConst(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
     mad_tpsa_reset(mc[ic]);
 
   CTX ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
               .da=da, .mb=mb, .ords=ords  };
-  ctx.knb_coef = da->ko ? mad_tpsa_newd(da,&da->ko) : NULL;
-  ctx.tmp      = mad_tpsa_newd(da,&da->trunc);
+  ctx.knb_coef = da->ko ? mad_tpsa_new(da,da->ko) : NULL;
+  ctx.tmp      = mad_tpsa_new(da,da->trunc);
 
   // do composition from root of tree, ord 0
   compose(0, 0, mono, &ctx);

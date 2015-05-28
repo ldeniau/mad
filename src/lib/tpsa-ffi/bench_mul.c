@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
   for (int i = 0; i < nv; ++i)
     ords[i] = no;
   D *d = mad_tpsa_desc_new(nv,ords,no);
-  T *a = mad_tpsa_newd(d, NULL);
-  T *b = mad_tpsa_newd(d, NULL);
-  T *c = mad_tpsa_newd(d, NULL);
+  T *a = mad_tpsa_new(d,-1);
+  T *b = mad_tpsa_new(d,-1);
+  T *c = mad_tpsa_new(d,-1);
 
   double val = 1.1, inc = 0.1;
   for (int i = 0; i < mad_tpsa_desc_nc(d,&no); ++i) {
