@@ -32,6 +32,11 @@ void  mad_tpsa_copy    (const T *t, T *d);
 void  mad_tpsa_reset   (      T *t);
 void  mad_tpsa_del     (      T *t);
 
+// indexing / monomials
+const ord_t*
+      mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
+int   mad_tpsa_midx    (const T *t, int n, const ord_t m[n]);
+
 void  mad_tpsa_setConst(      T *t,        num_t v);
 void  mad_tpsa_seti    (      T *t, int i, num_t v);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
@@ -41,7 +46,6 @@ num_t mad_tpsa_geti    (const T *t, int i);
 num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
 num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]);
 
-int   mad_tpsa_idx     (const T *t, int n, const ord_t m[n]);
 
 num_t mad_tpsa_abs     (const T *t);
 num_t mad_tpsa_abs2    (const T *t);

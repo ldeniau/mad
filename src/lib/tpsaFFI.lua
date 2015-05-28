@@ -50,6 +50,11 @@ ffi.cdef[[
   void  mad_tpsa_reset   (      T *t);
   void  mad_tpsa_del     (      T *t);
 
+  // --- --- indexing / monomials
+  const ord_t*
+        mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
+  int   mad_tpsa_midx    (const T *t, int n, const ord_t m[]);
+
   void  mad_tpsa_setConst(      T *t,        num_t v);
   void  mad_tpsa_seti    (      T *t, int i, num_t v);
   void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t v);
@@ -132,6 +137,7 @@ local tpsa_carr= typeof("const T*   [?]")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
 local ord_ptr  = typeof("      ord_t[1]")
+local int_ptr  = typeof("      int  [1]")
 local str_arr  = typeof("      str_t[?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
@@ -216,6 +222,20 @@ function M.cpy(src, dst)
 end
 
 -- PEEK & POKE -----------------------------------------------------------------
+function M.get_idx(t,m)
+  return clib.mad_tpsa_get_idx(t,#m,mono_t(#m,m))
+end
+
+function M.get_mono(t,i)
+  local nv, ord = int_ptr(), ord_ptr()
+  local cmono = clib.mad_tpsa_mono(t,i,nv,ord)
+  local m = {}
+  for i=1,nv[0] do
+    m[i] = cmono[i-1]
+  end
+  return m, ord[0]
+end
+
 function M.get(t, m)
   return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
 end
@@ -233,9 +253,6 @@ function M.set_sp(t, m, v)
   clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
 end
 
-function M.get_idx(t,m)
-  return clib.mad_tpsa_get_idx(t,#m,mono_t(#m,m))
-end
 
 function M.get_at(t,i)
   return clib.mad_tpsa_geti(t,i)

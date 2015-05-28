@@ -45,7 +45,7 @@ mad_tpsa_debug(const T *t)
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
-// --- --- TOOLS --------------------------------------------------------------
+// --- --- CTORS --------------------------------------------------------------
 
 T*
 mad_tpsa_new(D *d, ord_t mo_)
@@ -114,6 +114,31 @@ mad_tpsa_del(T* t)
 #endif
   free(t);
 }
+
+// --- --- INDEXING / MONOMIALS -----------------------------------------------
+
+const ord_t*
+mad_tpsa_mono(const T *t, int i, int *n, ord_t *total_ord_)
+{
+  assert(t && n);
+  D *d = t->desc;
+  ensure(0 <= i && i < d->nc);
+  *n = d->nv;
+  if (total_ord_)
+    *total_ord_ = d->ords[i];
+  return d->To[i];
+}
+
+int
+mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
+{
+  assert(t && t->desc);
+  assert(n <= t->desc->nv);
+  return desc_get_idx(t->desc, n, m);
+}
+
+
+// --- --- ACCESSORS ----------------------------------------------------------
 
 num_t
 mad_tpsa_getm(const T *t, int n, const ord_t m[n])
@@ -221,14 +246,6 @@ mad_tpsa_setConst(T *t, num_t v)
   }
   else
     mad_tpsa_reset(t);
-}
-
-int
-mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
-{
-  assert(t && t->desc);
-  assert(n <= t->desc->nv);
-  return desc_get_idx(t->desc, n, m);
 }
 
 #include <math.h>
