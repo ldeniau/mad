@@ -84,11 +84,11 @@ desc_mono_isvalid_sp(const D *d, int n, const idx_t m[n])
     return 0;
   ord_t mo = 0, ko = 0;
   for (int i = 0; i < n; i += 2) {
-    int mono_idx = m[i] - 1, // translate from var idx to mono idx
-               o = m[i+1];
-    if (mono_idx >= d->nv)             return 0;
-    if (o > d->a[mono_idx])            return 0;
+    int mono_idx = m[i] - 1; // translate from var idx to mono idx
+    if (mono_idx >= d->nv)  return 0;
 
+    ord_t o = m[i+1];
+    if (o > d->a[mono_idx]) return 0;
     mo += o;
     if (mono_idx > d->rk)
       ko += o;
@@ -977,6 +977,8 @@ D*
 mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
 {
   ensure(var_ords);
+  ord_t mo = mono_sum(nv,var_ords);
+  ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i)
       ensure(var_ords[i] <= map_ords_[i]);
@@ -989,7 +991,8 @@ mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_
 {
   // input validation
   ensure(var_ords && knb_ords);
-  ensure(mono_sum(nv,var_ords) > 0);
+  ord_t mo = mono_sum(nv,var_ords);
+  ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
 

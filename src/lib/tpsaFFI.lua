@@ -54,6 +54,7 @@ ffi.cdef[[
   const ord_t*
         mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
   int   mad_tpsa_midx    (const T *t, int n, const ord_t m[]);
+  int   mad_tpsa_midx_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
 
   void  mad_tpsa_setConst(      T *t,        num_t v);
   void  mad_tpsa_seti    (      T *t, int i, num_t v);
@@ -221,9 +222,13 @@ function M.cpy(src, dst)
   return dst
 end
 
--- PEEK & POKE -----------------------------------------------------------------
+-- INDEXING / MONO -------------------------------------------------------------
 function M.get_idx(t,m)
-  return clib.mad_tpsa_get_idx(t,#m,mono_t(#m,m))
+  return clib.mad_tpsa_midx(t,#m,mono_t(#m,m))
+end
+
+function M.get_idx_sp(t,m)
+  return clib.mad_tpsa_midx_sp(t,#m,smono_t(#m,m))
 end
 
 function M.get_mono(t,i)
@@ -236,8 +241,12 @@ function M.get_mono(t,i)
   return m, ord[0]
 end
 
+-- PEEK & POKE -----------------------------------------------------------------
+
+M.get_at = clib.mad_tpsa_geti
+
 function M.get(t, m)
-  return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
+  return clib.mad_tpsa_getm(t, #m, mono_t(#m,m))
 end
 
 function M.set(t, m, v)
@@ -251,11 +260,6 @@ end
 
 function M.set_sp(t, m, v)
   clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
-end
-
-
-function M.get_at(t,i)
-  return clib.mad_tpsa_geti(t,i)
 end
 
 function M.set_at(t,i,v)

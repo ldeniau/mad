@@ -130,15 +130,31 @@ mad_tpsa_mono(const T *t, int i, int *n, ord_t *total_ord_)
 }
 
 int
-mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
+mad_tpsa_midx(const T *t, int n, const ord_t m[n])
 {
   assert(t && t->desc);
   assert(n <= t->desc->nv);
   return desc_get_idx(t->desc, n, m);
 }
 
+int
+mad_tpsa_midx_sp(const T *t, int n, const int m[n])
+{
+  assert(t && t->desc);
+  return desc_get_idx_sp(t->desc, n, m);
+}
+
 
 // --- --- ACCESSORS ----------------------------------------------------------
+
+num_t
+mad_tpsa_geti(const T *t, int i)
+{
+  assert(t);
+  D *d = t->desc;
+  ensure(i >= 0 && i < d->nc);
+  return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
+}
 
 num_t
 mad_tpsa_getm(const T *t, int n, const ord_t m[n])
@@ -150,22 +166,10 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
-void
-mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
-{
-  assert(t && m);
-  assert(n <= t->desc->nv);
-#ifdef TRACE
-  printf("set_mono: "); mono_print(n, m); printf("\n");
-#endif
-  idx_t i = desc_get_idx(t->desc,n,m);
-  mad_tpsa_seti(t,i,v);
-}
-
-// --- mono is sparse; represented as [(i o)]
 num_t
 mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
 {
+  // --- mono is sparse; represented as [(i o)]
   assert(t && m);
   D *d = t->desc;
   idx_t i = desc_get_idx_sp(d,n,m);
@@ -174,26 +178,16 @@ mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
 }
 
 void
-mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
-{
-  assert(t && m);
-#ifdef TRACE
-  printf("set_mono_sp: [ ");
-  for (int i=0; i < n; ++i)
-    printf("%d ", (int)m[i]);
-  printf("]\n");
-#endif
-  idx_t i = desc_get_idx_sp(t->desc,n,m);
-  mad_tpsa_seti(t,i,v);
-}
-
-num_t
-mad_tpsa_geti(const T *t, int i)
+mad_tpsa_set0(T *t, num_t v)
 {
   assert(t);
-  D *d = t->desc;
-  ensure(i >= 0 && i < d->nc);
-  return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
+  if (v) {
+    t->coef[0] = v;
+    t->nz = 1;
+    t->lo = t->hi = 0;
+  }
+  else
+    mad_tpsa_reset(t);
 }
 
 void
@@ -217,17 +211,17 @@ mad_tpsa_seti(T *t, int i, num_t v)
 
   ord_t o = d->ords[i];
   t->nz = bset(t->nz,o);
-  if (t->lo > t->hi) {    // new TPSA
+  if (t->lo > t->hi) {    // new TPSA, init ord o
     for (int c = d->hpoly_To_idx[o]; c < d->hpoly_To_idx[o+1]; ++c)
       t->coef[c] = 0;
     t->lo = t->hi = o;
   }
-  else if (o > t->hi) {
+  else if (o > t->hi) {   // extend right
     for (int c = d->hpoly_To_idx[t->hi+1]; c < d->hpoly_To_idx[o+1]; ++c)
       t->coef[c] = 0;
     t->hi = o;
   }
-  else if (o < t->lo) {
+  else if (o < t->lo) {   // extend left
     for (int c = d->hpoly_To_idx[o]; c < d->hpoly_To_idx[t->lo]; ++c)
       t->coef[c] = 0;
     t->lo = o;
@@ -236,17 +230,32 @@ mad_tpsa_seti(T *t, int i, num_t v)
 }
 
 void
-mad_tpsa_setConst(T *t, num_t v)
+mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
 {
-  assert(t);
-  if (v) {
-    t->coef[0] = v;
-    t->nz = 1;
-    t->lo = t->hi = 0;
-  }
-  else
-    mad_tpsa_reset(t);
+  assert(t && m);
+  assert(n <= t->desc->nv);
+#ifdef TRACE
+  printf("set_mono: "); mono_print(n, m); printf("\n");
+#endif
+  idx_t i = desc_get_idx(t->desc,n,m);
+  mad_tpsa_seti(t,i,v);
 }
+
+void
+mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
+{
+  assert(t && m);
+#ifdef TRACE
+  printf("set_mono_sp: [ ");
+  for (int i=0; i < n; ++i)
+    printf("%d ", (int)m[i]);
+  printf("]\n");
+#endif
+  idx_t i = desc_get_idx_sp(t->desc,n,m);
+  mad_tpsa_seti(t,i,v);
+}
+
+// --- --- TOOLS ----------------------------------------------------------
 
 #include <math.h>
 

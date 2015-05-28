@@ -36,15 +36,16 @@ void  mad_tpsa_del     (      T *t);
 const ord_t*
       mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
 int   mad_tpsa_midx    (const T *t, int n, const ord_t m[n]);
+int   mad_tpsa_midx_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
 
-void  mad_tpsa_setConst(      T *t,        num_t v);
+// accessors
+num_t mad_tpsa_geti    (const T *t, int i);
+num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
+num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
+void  mad_tpsa_set0    (      T *t,        num_t v);
 void  mad_tpsa_seti    (      T *t, int i, num_t v);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
 void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t v);
-
-num_t mad_tpsa_geti    (const T *t, int i);
-num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
-num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]);
 
 
 num_t mad_tpsa_abs     (const T *t);
