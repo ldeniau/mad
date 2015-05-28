@@ -47,15 +47,17 @@ void  mad_tpsa_seti    (      T *t, int i, num_t v);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
 void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t v);
 
+// (in place) tranformations TODO
+void  mad_tpsa_map     (const T *a, T *c, num_t (*f)(num_t v, int i_));
+void  mad_tpsa_map2    (const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_));
 
-num_t mad_tpsa_abs     (const T *t);
-num_t mad_tpsa_abs2    (const T *t);
-void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
+// norms
+num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
+num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
 
 void  mad_tpsa_der     (const T *a, int var,                 T *c);
 void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[n], T *c);
 // void  mad_tpsa_pos     (const T *a,             T *c);
-// num_t mad_tpsa_comp    (const T *a, const T *b);
 
 void  mad_tpsa_inv     (const T *a, T *c);
 void  mad_tpsa_sqrt    (const T *a, T *c);

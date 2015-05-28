@@ -276,24 +276,60 @@ scale_and_accum(num_t v, const T *a, T *c)
 
 // --- --- UNARY ---------------------------------------------------------------
 
-/* tpsa_i and tpsa_interface don't have dacom */
 num_t
-mad_tpsa_comp(const T *a, const T *b)
+mad_tpsa_nrm1(const T *a, const T *b_)
 {
-  assert(a && b);
-  ensure(a->desc == b->desc);
-  if (a->lo > b->lo)
-    swap(&a,&b);
+  assert(a);
+  num_t norm = 0.0;
+  int *pi = a->desc->hpoly_To_idx;
+  if (b_) {
+    ensure(a->desc == b_->desc);
+    if (a->lo > b_->lo)
+      swap(&a,&b_);
 
-  idx_t *pi = a->desc->hpoly_To_idx;
-  num_t norm = 0;
-  int i = pi[a->lo];
-  for (; i <      pi[b->lo]               ; ++i) norm += fabs(a->coef[i]);
-  for (; i < imin(pi[a->hi+1],pi[b->hi+1]); ++i) norm += fabs(a->coef[i] - b->coef[i]);
-  for (; i <      pi[a->hi+1]             ; ++i) norm += fabs(a->coef[i]);
-  for (; i <      pi[b->hi+1]             ; ++i) norm += fabs(b->coef[i]);
-
+    int i = pi[a->lo];
+    for (; i <      pi[b_->lo]               ; ++i) norm += fabs(a->coef[i]);
+    for (; i < imin(pi[a->hi+1],pi[b_->hi+1]); ++i) norm += fabs(a->coef[i] - b_->coef[i]);
+    for (; i <      pi[a->hi+1]              ; ++i) norm += fabs(a->coef[i]);
+    for (; i <      pi[b_->hi+1]             ; ++i) norm += fabs(b_->coef[i]);
+  }
+  else {
+    ord_t hi = min_ord2(a->hi, a->desc->trunc);
+    for (int o = a->lo; o <= hi; ++o)
+      if (bget(a->nz,o)) {
+        for (int i = pi[o]; i < pi[o+1]; ++i)
+          norm += fabs(a->coef[i]);
+      }
+  }
   return norm;
+}
+
+num_t
+mad_tpsa_nrm2(const T *a, const T *b_)
+{
+  assert(a);
+  num_t norm = 0.0;
+  int *pi = a->desc->hpoly_To_idx;
+  if (b_) {
+    ensure(a->desc == b_->desc);
+    if (a->lo > b_->lo)
+      swap(&a,&b_);
+
+    int i = pi[a->lo];
+    for (; i <      pi[b_->lo]               ; ++i) norm += a->coef[i]  * a->coef[i];
+    for (; i < imin(pi[a->hi+1],pi[b_->hi+1]); ++i) norm += (a->coef[i]-b_->coef[i]) * (a->coef[i]-b_->coef[i]);
+    for (; i <      pi[a->hi+1]              ; ++i) norm += a->coef[i]  * a->coef[i];
+    for (; i <      pi[b_->hi+1]             ; ++i) norm += b_->coef[i] * b_->coef[i];
+  }
+  else {
+    ord_t hi = min_ord2(a->hi, a->desc->trunc);
+    for (int o = a->lo; o <= hi; ++o)
+      if (bget(a->nz,o)) {
+        for (int i = pi[o]; i < pi[o+1]; ++i)
+          norm += a->coef[i] * a->coef[i];
+      }
+  }
+  return sqrt(norm);
 }
 
 void

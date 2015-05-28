@@ -34,7 +34,7 @@ void
 mad_tpsa_debug(const T *t)
 {
   D *d = t->desc;
-  printf("{ nz=%d lo=%d hi=%d mo=%d | [0]=%g", t->nz, t->lo, t->hi, t->mo, t->coef[0]);
+  printf("{ nz=%d lo=%d hi=%d mo=%d | [0]=%g ", t->nz, t->lo, t->hi, t->mo, t->coef[0]);
   ord_t hi = min_ord(t->hi, t->mo, t->desc->trunc);
   int i = d->hpoly_To_idx[imax(1,t->lo)]; // ord 0 already printed
   for (; i < d->hpoly_To_idx[hi+1]; ++i)
@@ -255,64 +255,14 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
   mad_tpsa_seti(t,i,v);
 }
 
-// --- --- TOOLS ----------------------------------------------------------
-
-#include <math.h>
-
-num_t
-mad_tpsa_abs(const T *a)
-{
-  assert(a);
-  num_t norm = 0.0;
-  ord_t hi = min_ord2(a->hi, a->desc->trunc);
-  int *pi = a->desc->hpoly_To_idx;
-  for (int o = a->lo; o <= hi; ++o)
-    if (bget(a->nz,o)) {
-      for (int i = pi[o]; i < pi[o+1]; ++i)
-        norm += fabs(a->coef[i]);
-    }
-  return norm;
-}
-
-num_t
-mad_tpsa_abs2(const T *a)
-{
-  assert(a);
-  num_t norm = 0.0;
-  ord_t hi = min_ord2(a->hi, a->desc->trunc);
-  int *pi = a->desc->hpoly_To_idx;
-  for (int o = a->lo; o <= hi; ++o)
-    if (bget(a->nz,o)) {
-      for (int i = pi[o]; i < pi[o+1]; ++i)
-        norm += a->coef[i] * a->coef[i];
-    }
-  return norm;
-}
-
-void
-mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
-{
-  assert(a);
-  srand(seed);
-  ensure(NULL && "Not maintained");
-  D *d = a->desc;
-  a->hi = min_ord2(a->mo, d->trunc);
-  a->lo = 0;
-
-  for (int i = 0; i < d->hpoly_To_idx[a->hi+1]; ++i)
-    a->coef[i] = low + rand() / (RAND_MAX/(high-low));
-  a->nz = (1 << (a->hi+1)) - 1;  // set all [0,hi]
-}
-
 #undef T
 #undef D
 #undef TRACE
 
 // --- --- OPERATIONS ---------------------------------------------------------
+#include "tpsa_ops.tc"
 
 #include "tpsa_io.tc"
-
-#include "tpsa_ops.tc"
 
 #include "tpsa_fun.tc"
 

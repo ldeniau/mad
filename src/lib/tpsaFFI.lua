@@ -66,9 +66,9 @@ ffi.cdef[[
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
   num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
 
-  num_t mad_tpsa_abs     (const T *t);
-  num_t mad_tpsa_abs2    (const T *t);
-  void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
+  // --- --- norms
+  num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
+  num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
 
   void  mad_tpsa_der     (const T *a, int var,                T *c);
   void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[], T *c);
@@ -264,22 +264,20 @@ function M.set_sp(t, m, v)
   clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
 end
 
--- FUNCS -----------------------------------------------------------------------
+-- NORMS -----------------------------------------------------------------------
+function M.nrm1(t1, t2_)
+  return clib.mad_tpsa_nrm1(t1, t2_)
+end
+
+function M.nrm2(t1, t2_)
+  return clib.mad_tpsa_nrm2(t1, t2_)
+end
+
+
+
 function M.gtrunc(desc, o)
   -- use without `o` to get current truncation order
   return clib.mad_tpsa_desc_gtrunc(desc, o)
-end
-
-function M.abs(a)
-  return clib.mad_tpsa_abs(a)
-end
-
-function M.abs2(a)
-  return clib.mad_tpsa_abs2(a)
-end
-
-function M.comp(a, b)
-  return clib.mad_tpsa_comp(a, b)
 end
 
 -- I/O -------------------------------------------------------------------------
