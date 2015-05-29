@@ -42,7 +42,7 @@ split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
       nonlin[i]->coef[c] = 0;
     nonlin[i]->nz = bclr(nonlin[i]->nz,0);
     nonlin[i]->nz = bclr(nonlin[i]->nz,1);
-    mad_tpsa_scale(-1,nonlin[i],nonlin[i]);
+    mad_tpsa_scl(nonlin[i],-1,nonlin[i]);
   }
 
   // invert linear

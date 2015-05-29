@@ -200,6 +200,21 @@ mad_tpsa_seti(T *t, int i, num_t v)
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc && d->ords[i] <= t->mo && d->ords[i] <= d->trunc);
 
+  // ord_t o = d->ords[i];
+  // if (o >= t->lo && o <= t->hi) {  // inside range
+  //   t->coef[i] = a * t->coef[i] + v;
+  //   if (i == 0 && t->lo == 0) {    // shift up lo
+  //     t->nz = bclr(t->nz,0);
+  //     t->lo = min_ord2(b_lowest(t->nz),t->mo);
+  //   }
+  //   return;
+  // }
+  // if (t->lo > t->hi) {    // new TPSA, init ord o
+  //   for (int c = d->hpoly_To_idx[o]; c < d->hpoly_To_idx[o+1]; ++c)
+  //     t->coef[c] = 0;
+
+  // }
+
   if (v == 0) {
     t->coef[i] = v;
     if (i == 0 && t->lo == 0) {

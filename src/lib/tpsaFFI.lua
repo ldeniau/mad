@@ -66,15 +66,23 @@ ffi.cdef[[
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
   num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
 
-  // --- --- norms
+  // --- --- operations
   num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
   num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
+  void  mad_tpsa_der     (const T *a,       T *c, int var);
+  void  mad_tpsa_mder    (const T *a,       T *c, int n, const ord_t m[]);
+  // void  mad_tpsa_pos     (const T *a,             T *c);
 
-  void  mad_tpsa_der     (const T *a, int var,                T *c);
-  void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[], T *c);
+  void  mad_tpsa_scl        (const T *a, num_t ca, T *c);                               // aliasing OK
+  void  mad_tpsa_axpb       (num_t a, const T *x, num_t b,                      T *r);  // aliasing OK
+  void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // (x,y) != r
+  void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
+                                                           const T *z, num_t c, T *r);  // (x,y) != r
+  void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // x != r
+  void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // x != r
 
-  void  mad_tpsa_pos     (const T *a,             T *c);
-  num_t mad_tpsa_comp    (const T *a, const T *b);
+
 
   void  mad_tpsa_inv     (const T *a, T *c);
   void  mad_tpsa_sqrt    (const T *a, T *c);
@@ -176,6 +184,11 @@ function M.get_desc(args)
   return d
 end
 
+function M.gtrunc(desc, o)
+  -- use without `o` to get current truncation order
+  return clib.mad_tpsa_gtrunc(desc, o)
+end
+
 function M.set_tmp(t)
   t.tmp = 1
   return t
@@ -264,44 +277,14 @@ function M.set_sp(t, m, v)
   clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
 end
 
--- NORMS -----------------------------------------------------------------------
+-- OPERATIONS ------------------------------------------------------------------
+-- --- UNARY -------------------------------------------------------------------
 function M.nrm1(t1, t2_)
   return clib.mad_tpsa_nrm1(t1, t2_)
 end
 
 function M.nrm2(t1, t2_)
   return clib.mad_tpsa_nrm2(t1, t2_)
-end
-
-
-
-function M.gtrunc(desc, o)
-  -- use without `o` to get current truncation order
-  return clib.mad_tpsa_desc_gtrunc(desc, o)
-end
-
--- I/O -------------------------------------------------------------------------
-function M.print(a, file)
-  clib.mad_tpsa_print(a,file)
-end
-
-function M.read(file)
-  local d = clib.mad_tpsa_desc_scan(file)
-  local t = M.allocate(d)
-  clib.mad_tpsa_scan_coef(t,file)
-  return t
-end
-
-function M.read_into(t, file)
-  -- header is ignored, so make sure input is compatible with t (same nv,nk)
-  clib.mad_tpsa_desc_scan(file)
-  clib.mad_tpsa_scan_coef(t,file)
-end
-
--- OPERATIONS ------------------------------------------------------------------
--- --- UNARY -------------------------------------------------------------------
-function M.rand(a, low, high, seed)
-  clib.mad_tpsa_rand(a, low, high, seed)
 end
 
 function M.der(src, var, dst)
@@ -618,6 +601,26 @@ end
 function M.erf(a, c)
   clib.mad_tpsa_erf(a,c)
 end
+
+-- I/O -------------------------------------------------------------------------
+function M.print(a, file)
+  clib.mad_tpsa_print(a,file)
+end
+
+function M.read(file)
+  local d = clib.mad_tpsa_desc_scan(file)
+  local t = M.allocate(d)
+  clib.mad_tpsa_scan_coef(t,file)
+  return t
+end
+
+function M.read_into(t, file)
+  -- header is ignored, so make sure input is compatible with t (same nv,nk)
+  clib.mad_tpsa_desc_scan(file)
+  clib.mad_tpsa_scan_coef(t,file)
+end
+
+
 
 -- debugging -------------------------------------------------------------------
 

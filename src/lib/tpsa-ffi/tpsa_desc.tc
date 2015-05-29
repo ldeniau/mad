@@ -6,7 +6,8 @@
 
 typedef int           idx_t;
 
-#define D struct tpsa_desc
+#define D     struct tpsa_desc
+#define str_t const char*
 
 struct tpsa_desc {
   int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
