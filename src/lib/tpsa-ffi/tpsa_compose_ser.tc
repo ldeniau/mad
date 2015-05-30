@@ -119,7 +119,7 @@ init_required(int sa, const T *ma[sa], char required[])
   D *d = ma[0]->desc;
   int nv = d->nv, *pi = d->hpoly_To_idx;
   ord_t highest_ord = 0;
-  double eps = 1e-10;
+  double eps = 1e-10; // ld: very bad!!!
 
   // original nodes
   memset(required, 0, d->nc);

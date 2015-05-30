@@ -93,6 +93,8 @@ void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
 T*    mad_tpsa_scan     (FILE *stream_);             // TODO
 void  mad_tpsa_print    (const T *t, FILE *stream_);
 
+void  mad_tpsa_drift    (T *m[], num_t L, num_t B_, num_t E);
+
 #undef T
 
 // -----------------------------------------------------------------------------

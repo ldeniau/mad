@@ -109,9 +109,9 @@ ffi.cdef[[
   void  mad_tpsa_pow     (const T *a,             T *c, int p);
   void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
 
-  void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);
-  void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
-  void  mad_tpsa_scale   (num_t ca, const T *a,                       T *c);
+  void  mad_tpsa_scale   (num_t a, const T *x, T *r);
+  void  mad_tpsa_axpb    (num_t a, const T *x, num_t b, T *r);
+  void  mad_tpsa_axpbypc (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);
 
   void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc, T *mc[]);
   void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
@@ -121,6 +121,7 @@ ffi.cdef[[
   void  mad_tpsa_print    (const T *t, FILE *stream_);
   void  mad_tpsa_print_compact   (const T *t);
 
+  void  mad_tpsa_drift    (T *m[], num_t L, num_t B_, num_t E);
   // ---------------------------------------------------------------------------
 ]]
 
@@ -138,6 +139,7 @@ local MT   = { __index = M }
 
 ffi.metatype("struct tpsa", MT)
 
+M.arr = tpsa_arr
 M.clib_ = clib
 M.count = 0
 

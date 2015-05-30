@@ -293,3 +293,5 @@ mad_tpsa_rand(T *a, num_t low, num_t high, int seed)
 
 // #include "tpsa_minv.tc"
 
+#include "tpsa_track.tc"
+

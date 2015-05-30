@@ -79,10 +79,12 @@ function M.track_drift(m, e)
     t1, t2, t3 = x:same(), x:same(), x:same()
   end
 
---  _pz = 1/sqrt(1 + (2/e.b)*m.ps + m.ps^2 - m.px^2 - m.py^2)
---  m.x = m.x + e.L*m.px*_pz
---  m.y = m.y + e.L*m.py*_pz
---  m.s = m.s + e.L*(1/e.b + m.ps)*_pz - (1-e.T)*e.LD/e.b
+--  l_pz = e.L/sqrt(1 + (2/e.b)*m.ps + m.ps^2 - m.px^2 - m.py^2)
+--  m.x = m.x + m.px*l_pz
+--  m.y = m.y + m.py*l_pz
+--  m.s = m.s + (1/e.b + m.ps)*l_pz - (1-e.T)*e.LD/e.b
+
+  -- TODO: set max order for pz and other expression
 
   clib.mad_tpsa_mul(ps,ps,t1)                           -- ps^2
   clib.mad_tpsa_mul(px,px,t2)                           -- px^2
@@ -93,6 +95,8 @@ function M.track_drift(m, e)
   clib.mad_tpsa_scale(2/e.b,ps,t2)                      -- 2/e.b*m.ps 
   clib.mad_tpsa_seti(t2,0,1+t2.coef[0])                 -- 1 + 2/e.b*m.ps
   clib.mad_tpsa_add(t1,t2,t3)                           -- 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
+--  clib.mad_tpsa_axpbypc(2/e.b,ps, 1,t1, 1, t3)
+--  clib.mad_tpsa_invsqrt(e.L,t3,t2)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
   clib.mad_tpsa_invsqrt(t3,t2)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
   clib.mad_tpsa_scale(e.L,t2,t1)                        -- L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
 
@@ -106,6 +110,7 @@ function M.track_drift(m, e)
 
   clib.mad_tpsa_copy(ps,t3)                             -- ps
   clib.mad_tpsa_seti(t3,0,1/e.b+t3.coef[0])             -- 1/e.b + ps
+--  clib.mad_tpsa_axypbypc(1,t1,t3, 1,t3, -(1-e.T)*e.LD/e.b, s)
   clib.mad_tpsa_mul(t1,t3,t2)                           -- (1/e.b + ps)*pz_
   clib.mad_tpsa_add(ps,t2,t3)                           -- ps + (1/e.b + ps)*pz_
   clib.mad_tpsa_seti(t3,0,t3.coef[0]-(1-e.T)*e.LD/e.b)  -- ps + (1/e.b + ps)*pz_ - (1-e.T)*e.LD/e.b
