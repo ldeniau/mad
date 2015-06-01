@@ -102,7 +102,7 @@ mad_tpsa_scan_coef(T *t, FILE *stream_)
     // ensure(mono_sum(nv,ords) == o);  // consistency check
     if (o > t->mo)  // TODO: give warning ?
       break;        // printed by increasing orders
-    mad_tpsa_setm(t,nv,ords,c);
+    mad_tpsa_setm(t,nv,ords, 0.0,c);
   }
 }
 

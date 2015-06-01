@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
 
   double val = 1.1, inc = 0.1;
   for (int i = 0; i < mad_tpsa_desc_nc(d,&no); ++i) {
-    mad_tpsa_seti(a,i,val);
-    mad_tpsa_seti(b,i,val);
+    mad_tpsa_seti(a,i, 0.0,val);
+    mad_tpsa_seti(b,i, 0.0,val);
     val += inc;
   }
 

@@ -32,7 +32,7 @@ get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
       mono_cpy(d->nv, mono, knb_mono);
       mono_set(d->rk, knb_mono, 0);  // remove map vars, keep only the knobs
       idx_knb_only = desc_get_idx(d, d->nv, knb_mono);
-      mad_tpsa_seti(knb_coef, idx_knb_only, val);
+      mad_tpsa_seti(knb_coef, idx_knb_only, 0.0,val);
     }
   } while(nxt_mono_by_var(d, d->nv, mono, d->rk));
 

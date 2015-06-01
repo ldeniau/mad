@@ -457,7 +457,7 @@ mad_tpsa_axpb(num_t a, const T *x, num_t b, T *r)
   assert(x && r);
   ensure(x->desc == r->desc);
   mad_tpsa_scl(x,a,r);
-  if (b) mad_tpsa_seti(r,0,r->coef[0] + b);
+  if (b) mad_tpsa_seti(r,0, 1.0,b);
 }
 
 void
@@ -480,7 +480,7 @@ mad_tpsa_axpbypc(num_t c1, const T *a, num_t c2, const T *b, num_t c3, T *c)
   c->hi = c_hi;
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 
-  if (c3) mad_tpsa_seti(c,0,c->coef[0]+c3);
+  if (c3) mad_tpsa_seti(c,0, 1.0,c3);
 }
 
 void
@@ -746,7 +746,7 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
 
   if (p == 0) {
     mad_tpsa_clean(orig_res);
-    mad_tpsa_seti(orig_res, 0, 1);
+    mad_tpsa_seti(orig_res, 0, 0.0,1.0);
     return;
   }
   if (p == 1) {
@@ -758,7 +758,7 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   T *base = mad_tpsa_same(a), *r = orig_res, *tmp_res = mad_tpsa_same(a);
   mad_tpsa_copy(a, base);
   mad_tpsa_clean(r);
-  mad_tpsa_seti(r, 0, 1);
+  mad_tpsa_seti(r, 0, 0.0,1.0);
 
   while(p > 1) {
     if (p & 1) {

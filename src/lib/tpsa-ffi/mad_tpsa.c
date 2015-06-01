@@ -191,10 +191,10 @@ mad_tpsa_set0(T *t, num_t v)
 }
 
 void
-mad_tpsa_seti(T *t, int i, num_t v)
+mad_tpsa_seti(T *t, int i, num_t a, num_t b)
 {
 #ifdef TRACE
-  printf("set_idx for %p i=%d v=%lf\n", (void*)t, i, v);
+  printf("tpsa_seti for %p i=%d a=%lf b=%lf\n", (void*)t, i, a,b);
 #endif
   assert(t);
   D *d = t->desc;
@@ -231,7 +231,7 @@ mad_tpsa_seti(T *t, int i, num_t v)
 }
 
 void
-mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
+mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t a, num_t b)
 {
   assert(t && m);
   assert(n <= t->desc->nv);
@@ -239,21 +239,21 @@ mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
   printf("set_mono: "); mono_print(n, m); printf("\n");
 #endif
   idx_t i = desc_get_idx(t->desc,n,m);
-  mad_tpsa_seti(t,i,v);
+  mad_tpsa_seti(t,i,a,b);
 }
 
 void
-mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
+mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t a, num_t b)
 {
   assert(t && m);
 #ifdef TRACE
   printf("set_mono_sp: [ ");
-  for (int i=0; i < n; ++i)
-    printf("%d ", (int)m[i]);
+  for (int i=0; i < n; i += 2)
+    printf("%d %d  ", m[i], m[i+1]);
   printf("]\n");
 #endif
   idx_t i = desc_get_idx_sp(t->desc,n,m);
-  mad_tpsa_seti(t,i,v);
+  mad_tpsa_seti(t,i,a,b);
 }
 
 #undef T

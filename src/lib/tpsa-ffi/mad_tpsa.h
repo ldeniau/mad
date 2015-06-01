@@ -29,8 +29,10 @@ ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <=  g_to <= d_mo 
 // ! support mo == 0
 T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
 T*    mad_tpsa_same    (const T *t);
-void  mad_tpsa_copy    (const T *t, T *d);
+void  mad_tpsa_copy    (const T *t, T *dst);
 void  mad_tpsa_clear   (      T *t);
+// void  mad_tpsa_const    (      T *t,        num_t v);
+void  mad_tpsa_set0    (      T *t,        num_t v);
 void  mad_tpsa_del     (      T *t);
 
 // indexing / monomials
@@ -43,10 +45,9 @@ int   mad_tpsa_midx_sp (const T *t, int n, const int   m[n]); // sparse mono [(i
 num_t mad_tpsa_geti    (const T *t, int i);
 num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
 num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
-void  mad_tpsa_set0    (      T *t,        num_t v);
-void  mad_tpsa_seti    (      T *t, int i,                   num_t v);
-void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t v);
-void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t v);
+void  mad_tpsa_seti    (      T *t, int i,                   num_t a, num_t b);
+void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t a, num_t b);
+void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t a, num_t b);
 
 // tranformations TODO
 void  mad_tpsa_map     (const T *a, T *c, num_t (*f)(num_t v, int i_));
@@ -65,9 +66,10 @@ void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 void  mad_tpsa_div     (const T *a, const T *b, T *c);
 
 void  mad_tpsa_scl     (const T *a, num_t v, T *c);  // c = v*a
-void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a; TO CHECK!
-void  mad_tpsa_invsqrt (const T *a, num_t v, T *c);  // c = v/sqrt(a)
-// void  mad_tpsa_inv     (const T *a, T *c);
+// void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a; TO CHECK!
+void  mad_tpsa_inv     (const T *a, T *c);
+// void  mad_tpsa_invsqrt (const T *a, num_t v, T *c);  // c = v/sqrt(a)
+void  mad_tpsa_invsqrt (const T *a, T *c);
 void  mad_tpsa_sqrt    (const T *a, T *c);
 void  mad_tpsa_exp     (const T *a, T *c);
 void  mad_tpsa_log     (const T *a, T *c);

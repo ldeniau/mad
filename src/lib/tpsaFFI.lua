@@ -46,8 +46,9 @@ ffi.cdef[[
   // --- --- ctors, dtor
   T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
   T*    mad_tpsa_same    (const T *t);
-  void  mad_tpsa_copy    (const T *t, T *d);
+  void  mad_tpsa_copy    (const T *t, T *dst);
   void  mad_tpsa_clear   (      T *t);
+  void  mad_tpsa_set0    (      T *t, num_t v);
   void  mad_tpsa_del     (      T *t);
 
   // --- --- indexing / monomials
@@ -57,10 +58,9 @@ ffi.cdef[[
   int   mad_tpsa_midx_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
 
   // --- --- accessors
-  void  mad_tpsa_set0    (      T *t,        num_t v);
-  void  mad_tpsa_seti    (      T *t, int i, num_t v);
-  void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t v);
-  void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t v);
+  void  mad_tpsa_seti    (      T *t, int i,                  num_t a, num_t b);
+  void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t a, num_t b);
+  void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t a, num_t b);
 
   num_t mad_tpsa_geti    (const T *t, int i);
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
@@ -269,12 +269,12 @@ end
 M.set0   = clib.mad_tpsa_set0
 M.set_at = clib.mad_tpsa_seti
 
-function M.set(t, m, v)
-  clib.mad_tpsa_setm(t, #m, mono_t(#m, m), v)
+function M.set(t, m, a, b)
+  clib.mad_tpsa_setm(t, #m, mono_t(#m, m), a, b)
 end
 
-function M.set_sp(t, m, v)
-  clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
+function M.set_sp(t, m, a, b)
+  clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), a, b)
 end
 
 -- OPERATIONS ------------------------------------------------------------------

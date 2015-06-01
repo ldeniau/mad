@@ -18,7 +18,7 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
 
   // iter 1
   mad_tpsa_scl(a,expansion_coef[1],c);
-  mad_tpsa_seti(c,0,expansion_coef[0]);
+  mad_tpsa_seti(c,0, 0.0,expansion_coef[0]);
 
   // iter 2..iter
   if (iter >= 2) {
@@ -26,7 +26,7 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
       *acp = a->desc->t2,
       *tmp = a->desc->t3;
     mad_tpsa_copy(a,acp);
-    mad_tpsa_seti(acp,0,0.0);
+    mad_tpsa_seti(acp,0, 0.0,0.0);
     mad_tpsa_copy(acp,pow);  // already did ord 1
 
     for (int i = 2; i <= iter; ++i) {
@@ -48,8 +48,8 @@ sincos_fixed_point(const T *a, T *s, T *c, int iter_s, num_t sin_coef[iter_s+1],
   assert(iter_s >= 1 && iter_c >= 1);  // ord 0 treated outside
 
   // iter 1
-  mad_tpsa_scl(a,sin_coef[1],s); mad_tpsa_seti(s,0,sin_coef[0]);
-  mad_tpsa_scl(a,cos_coef[1],c); mad_tpsa_seti(c,0,cos_coef[0]);
+  mad_tpsa_scl(a,sin_coef[1],s); mad_tpsa_seti(s,0, 0.0,sin_coef[0]);
+  mad_tpsa_scl(a,cos_coef[1],c); mad_tpsa_seti(c,0, 0.0,cos_coef[0]);
 
   int max_iter = imax(iter_s,iter_c);
   if (max_iter >= 2) {
@@ -57,7 +57,7 @@ sincos_fixed_point(const T *a, T *s, T *c, int iter_s, num_t sin_coef[iter_s+1],
       *acp = mad_tpsa_same(a),
       *tmp = mad_tpsa_same(a);
     mad_tpsa_copy(a,acp);
-    mad_tpsa_seti(acp,0,0.0);
+    mad_tpsa_seti(acp,0, 0.0,0.0);
     mad_tpsa_copy(acp,pow);
 
     for (int i = 1; i <= max_iter; ++i) {
