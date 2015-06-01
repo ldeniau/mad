@@ -27,6 +27,8 @@ struct tpsa_desc {
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
   ord_t  **ocs;       // ocs[t,i] = o; o will be computed on thread t; o = 3..mo; terminated with 0
+  // T      **temps;     // array of TPSA to be used as temporaries, all allocated to mo
+  struct tpsa *t1, *t2, *t3;
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -836,6 +838,28 @@ build_dispatch(D *d)
 #endif
 }
 
+// --- TEMPS MANAGEMENT --------------------------------------------------------
+// static int ALLOCATED_TEMPS = 3;
+
+// static inline void
+// build_temps(D *d)
+// {
+// #ifdef TRACE
+//   printf("build_temps\n");
+// #endif
+//   assert(d);
+
+//   d->temps = malloc(ALLOCATED_TEMPS * sizeof *(d->temps));
+//   assert(d->temps);
+//   d->size += ALLOCATED_TEMPS * sizeof *(d->temps);
+
+//   for (int i = 0; i < ALLOCATED_TEMPS; ++i) {
+//     d->temps[i] = mad_tpsa_new(d,d->mo);
+//     assert(d->temps[i]);
+//     d->size += 1;
+//   }
+// }
+
 // --- DESC management ---------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
@@ -921,6 +945,10 @@ desc_build(D *d)
   tbl_set_H(d);
   tbl_set_L(d);
   build_dispatch(d);
+  // build_temps(d);
+  d->t1 = mad_tpsa_new(d,d->mo);
+  d->t2 = mad_tpsa_new(d,d->mo);
+  d->t3 = mad_tpsa_new(d,d->mo);
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
@@ -1043,6 +1071,10 @@ mad_tpsa_ddel(D *d)
   for (int t = 0; t < get_num_threads(); ++t)
     free(d->ocs[t]);
   free(d->ocs);
+
+  mad_tpsa_del(d->t1);
+  mad_tpsa_del(d->t2);
+  mad_tpsa_del(d->t3);
 
   // remove descriptor from global array
   int idx;

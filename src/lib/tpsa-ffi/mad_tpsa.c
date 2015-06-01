@@ -82,7 +82,7 @@ mad_tpsa_copy(const T *src, T *dst)
   assert(src->desc == dst->desc);
   D *d = src->desc;
   if (d->trunc < src->lo) {
-    mad_tpsa_reset(dst);
+    mad_tpsa_clear(dst);
     return;
   }
   dst->hi = min_ord(src->hi, dst->mo, d->trunc);
@@ -98,7 +98,7 @@ mad_tpsa_copy(const T *src, T *dst)
 }
 
 void
-mad_tpsa_reset(T *t)
+mad_tpsa_clear(T *t)
 {
   assert(t);
   t->hi = t->nz = t->coef[0] = 0;
@@ -187,7 +187,7 @@ mad_tpsa_set0(T *t, num_t v)
     t->lo = t->hi = 0;
   }
   else
-    mad_tpsa_reset(t);
+    mad_tpsa_clear(t);
 }
 
 void
@@ -200,21 +200,7 @@ mad_tpsa_seti(T *t, int i, num_t v)
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc && d->ords[i] <= t->mo && d->ords[i] <= d->trunc);
 
-  // ord_t o = d->ords[i];
-  // if (o >= t->lo && o <= t->hi) {  // inside range
-  //   t->coef[i] = a * t->coef[i] + v;
-  //   if (i == 0 && t->lo == 0) {    // shift up lo
-  //     t->nz = bclr(t->nz,0);
-  //     t->lo = min_ord2(b_lowest(t->nz),t->mo);
-  //   }
-  //   return;
-  // }
-  // if (t->lo > t->hi) {    // new TPSA, init ord o
-  //   for (int c = d->hpoly_To_idx[o]; c < d->hpoly_To_idx[o+1]; ++c)
-  //     t->coef[c] = 0;
-
-  // }
-
+  num_t v = a * mad_tpsa_geti(t,i) + b;
   if (v == 0) {
     t->coef[i] = v;
     if (i == 0 && t->lo == 0) {
@@ -282,6 +268,8 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t v)
 #include "tpsa_fun.tc"
 
 #include "tpsa_compose.tc"
+
+// #include "tpsa_track.tc"
 
 // #include "tpsa_minv.tc"
 

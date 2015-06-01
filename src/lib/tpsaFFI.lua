@@ -47,7 +47,7 @@ ffi.cdef[[
   T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
   T*    mad_tpsa_same    (const T *t);
   void  mad_tpsa_copy    (const T *t, T *d);
-  void  mad_tpsa_reset   (      T *t);
+  void  mad_tpsa_clear   (      T *t);
   void  mad_tpsa_del     (      T *t);
 
   // --- --- indexing / monomials

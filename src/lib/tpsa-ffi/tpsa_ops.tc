@@ -356,7 +356,7 @@ mad_tpsa_der(const T *a, T *c, int var)
   // TODO: ensure map_order[var] > 0
 
   if (a->hi < 1) {      // includes a->lo > a->hi
-    mad_tpsa_reset(c);
+    mad_tpsa_clear(c);
     return;
   }
 
@@ -431,7 +431,7 @@ mad_tpsa_scl(const T *a, num_t v, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
   if (v == 0 || a->lo > a->hi) {
-    mad_tpsa_reset(c);
+    mad_tpsa_clear(c);
     return;
   }
 
@@ -451,6 +451,9 @@ mad_tpsa_scl(const T *a, num_t v, T *c)
 void
 mad_tpsa_axpb(num_t a, const T *x, num_t b, T *r)
 {
+#ifdef TRACE
+  printf("tpsa_axpb %g*x + %g\n", a, b);
+#endif
   assert(x && r);
   ensure(x->desc == r->desc);
   mad_tpsa_scl(x,a,r);
@@ -461,20 +464,14 @@ void
 mad_tpsa_axpbypc(num_t c1, const T *a, num_t c2, const T *b, num_t c3, T *c)
 {
 #ifdef TRACE
-  printf("tpsa_axpbypc\n");
+  printf("tpsa_axpbypc %g*x + %g*y + %g\n", c1, c2, c3);
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && b->desc == c->desc);
 
-  if ((!c1 && !c2) || (a->lo > a->hi && b->lo > b->hi)) { mad_tpsa_set0(c,c3); return; }
-  if (!c1 || a->lo > a->hi) { mad_tpsa_axpb(c2,b,c3,c); return; }
-  if (!c2 || b->lo > b->hi) { mad_tpsa_axpb(c1,a,c3,c); return; }
-
   if (a->lo > b->lo)  {
     swap(&a,&b);
-    num_t tmp = c1;
-    c1 = c2;
-    c2 = tmp;
+    num_t tmp = c1; c1 = c2; c2 = tmp;
   }
   ord_t c_hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   TPSA_LINOP(c1 *, + c2 *, 0);  // c->coef[i] = c1 * a->coef[i] + c2 * b->coef[i];
@@ -491,13 +488,10 @@ mad_tpsa_axypb(num_t a, const T *x, const T *y, num_t b, T *r)
 {
   assert(x && y && r);
   ensure(x->desc == y->desc && y->desc == r->desc);
-  ensure(x != r && y != r);
-  if (a == 0 || x->lo > x->hi || y->lo > y->hi) { mad_tpsa_set0(r,b); return; }
-  if (x->hi == 0) { mad_tpsa_axpb(a*x->coef[0],y,b,r); return; }
-  if (y->hi == 0) { mad_tpsa_axpb(a*y->coef[0],x,b,r); return; }
 
-  mad_tpsa_mul(x,y,r);
-  mad_tpsa_axpb(a,r,b,r);
+  T *t = r->desc->t1;
+  mad_tpsa_mul(x,y,t);
+  mad_tpsa_axpb(a,t,b,r);
 }
 
 void
@@ -505,9 +499,10 @@ mad_tpsa_axypbzpc(num_t a, const T *x, const T *y, num_t b, const T *z, num_t c,
 {
   assert(x && y && z && r);
   ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
-  ensure(x != r && y != r);
-  mad_tpsa_mul(x,y,r);
-  mad_tpsa_axpbypc(a,r,b,z,c,r);
+
+  T *t = r->desc->t1;
+  mad_tpsa_mul(x,y,t);
+  mad_tpsa_axpbypc(a,t,b,z,c,r);
 }
 
 void
@@ -515,12 +510,11 @@ mad_tpsa_ax2pby2(num_t a, const T *x, num_t b, const T *y, T *r)
 {
   assert(x && y && r);
   ensure(x->desc == y->desc && y->desc == r->desc);
-  ensure(x != r);
-  T *tmp = mad_tpsa_same(r);
-  mad_tpsa_mul(x,x,r);
-  mad_tpsa_mul(y,y,tmp);
-  mad_tpsa_axpbypc(a,r,b,tmp,0,r);
-  mad_tpsa_del(tmp);
+
+  T *t1 = r->desc->t1, *t2 = r->desc->t2;
+  mad_tpsa_mul(x,x,t1);
+  mad_tpsa_mul(y,y,t2);
+  mad_tpsa_axpbypc(a,t1,b,t2,0,r);
 }
 
 void
@@ -528,23 +522,12 @@ mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T 
 {
   assert(x && y && z && r);
   ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
-  ensure(x != r);
-  T *t = mad_tpsa_same(r);
-#if 1 // this version avoids mul automatically if !a || !b || !c || is_empty(x,y,z)
-  mad_tpsa_axypb(a,x,x,0,r);  // a*x^2
-  mad_tpsa_axypb(b,y,y,0,t);  // b*y^2
-  scale_and_accum(1,t,r);     // a*x^2 + b*y^2
-  mad_tpsa_axypb(c,z,z,0,t);  // c*z^2
-  scale_and_accum(1,t,r);     // (a*x^2 + b*y^2) + c*z^2
-#else
-  mad_tpsa_mul(x,x,r);
-  mad_tpsa_mul(y,y,t);
-  mad_tpsa_axpbypc(a,r,b,t,0,r);  // a*x^2 + b*y^2
-
-  mad_tpsa_mul(z,z,t);
-  scale_and_accum(c,z,r);         // (a*x^2 + b*y^2) + c*z^2
-#endif
-  mad_tpsa_del(t);
+  T *t1 = r->desc->t1, *t2 = r->desc->t2;
+  mad_tpsa_mul(x,x,t1);              // a*x^2
+  mad_tpsa_mul(y,y,t2);              // b*y^2
+  mad_tpsa_axpbypc(a,t1, b,t2, 0,r);
+  mad_tpsa_mul(z,z,t1);              // c*z^2
+  mad_tpsa_axpbypc(c,t1, 1,r , 0,r);
 }
 
 void
@@ -624,7 +607,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
 
   // empty
   if (c->lo > c->hi) {
-    mad_tpsa_reset(c);
+    mad_tpsa_clear(c);
     return;
   }
 

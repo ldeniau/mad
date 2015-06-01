@@ -22,9 +22,9 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
 
   // iter 2..iter
   if (iter >= 2) {
-    T *pow = mad_tpsa_same(c),
-      *acp = mad_tpsa_same(c),
-      *tmp = mad_tpsa_same(c);
+    T *pow = a->desc->t1,
+      *acp = a->desc->t2,
+      *tmp = a->desc->t3;
     mad_tpsa_copy(a,acp);
     mad_tpsa_seti(acp,0,0.0);
     mad_tpsa_copy(acp,pow);  // already did ord 1
@@ -35,9 +35,9 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
       swap((const T**)&pow,(const T**)&tmp);
     }
 
-    mad_tpsa_del(pow);
-    mad_tpsa_del(acp);
-    mad_tpsa_del(tmp);
+    // mad_tpsa_del(pow);
+    // mad_tpsa_del(acp);
+    // mad_tpsa_del(tmp);
   }
 }
 
@@ -108,7 +108,7 @@ mad_tpsa_sqrt(const T *a, T *c)
   ensure(a->coef[0] >= 0);
 
   if (a->coef[0] == 0) {
-    mad_tpsa_reset(c);
+    mad_tpsa_clear(c);
     return;
   }
 
