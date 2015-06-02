@@ -16,6 +16,10 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
   assert(a && c && expansion_coef);
   assert(iter >= 1); // ord 0 treated outside
 
+  T *acp = a->desc->t2;
+  if (iter >=2)      // save copy before scale, to deal with aliasing
+    mad_tpsa_copy(a,acp);
+
   // iter 1
   mad_tpsa_scl(a,expansion_coef[1],c);
   mad_tpsa_set0(c, 0.0,expansion_coef[0]);
@@ -23,9 +27,7 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
   // iter 2..iter
   if (iter >= 2) {
     T *pow = a->desc->t1,
-      *acp = a->desc->t2,
       *tmp = a->desc->t3;
-    mad_tpsa_copy(a,acp);
     mad_tpsa_set0(acp, 0.0,0.0);
     mad_tpsa_copy(acp,pow);  // already did ord 1
 
@@ -34,10 +36,6 @@ fixed_point_iteration(const T *a, T *c, int iter, num_t expansion_coef[iter+1])
       scale_and_accum(expansion_coef[i],tmp,c);
       swap((const T**)&pow,(const T**)&tmp);
     }
-
-    // mad_tpsa_del(pow);
-    // mad_tpsa_del(acp);
-    // mad_tpsa_del(tmp);
   }
 }
 
@@ -75,25 +73,24 @@ sincos_fixed_point(const T *a, T *s, T *c, int iter_s, num_t sin_coef[iter_s+1],
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 void
-mad_tpsa_inv(const T *a, T *c)
+mad_tpsa_inv(const T *a, num_t v, T *c) // v/a
 {
-// 1/(A0+P) = 1/A0*(1-(P/A0)+(P/A0)**2-...)
 #ifdef TRACE
-  printf("tpsa_inv\n");
+  printf("tpsa_inv with c=%g\n", v);
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(a->coef[0] != 0);
+  ensure(v != 0 && a->coef[0] != 0);
 
-  ord_t to = min_ord2(c->mo,a->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, 1.0/a->coef[0]); return; }
+  ord_t to = min_ord2(c->mo,c->desc->trunc);
+  if (!to || a->hi == 0) { mad_tpsa_const(c, v/a->coef[0]); return; }
 
-  num_t expansion_coef[to+1], a0 = a->coef[0];
+  mad_tpsa_scl(a,1/v,c);
+  num_t expansion_coef[to+1], a0 = c->coef[0];
   expansion_coef[0] = 1.0 / a0;
   for (int o = 1; o <= to; ++o)
     expansion_coef[o] = -expansion_coef[o-1] / a0;
-
-  fixed_point_iteration(a,c,to,expansion_coef);
+  fixed_point_iteration(c,c,to,expansion_coef);
 }
 
 void

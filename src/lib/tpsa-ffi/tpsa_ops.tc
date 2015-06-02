@@ -670,37 +670,12 @@ mad_tpsa_div(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(b->coef[0] != 0);
 
-  if (b->hi == 0) {
-    mad_tpsa_scl(a,1/b->coef[0],c);
-    return;
-  }
+  if (b->hi == 0) { mad_tpsa_scl(a,1/b->coef[0],c); return; }
 
   D *d = a->desc;
-  T *tmp = mad_tpsa_new(d,d->trunc);
-  mad_tpsa_inv(b,tmp);
+  T *tmp = c->desc->t4;  // t1-3 used in inv
+  mad_tpsa_inv(b,1,tmp);
   mad_tpsa_mul(a,tmp,c);
-  mad_tpsa_del(tmp);
-}
-
-void
-mad_tpsa_divc(const T *a, num_t v, T *c) // v/a
-{
-#ifdef TRACE
-  printf("tpsa_div_constant\n");
-#endif
-  assert(a && c);
-  ensure(a->desc == c->desc);
-  ensure(a->coef[0] != 0);
-
-  if (a->hi == 0) {
-    mad_tpsa_const(c,v/a->coef[0]);
-    return;
-  }
-
-  T *tmp = mad_tpsa_same(a);
-  mad_tpsa_scl(a,1/v,tmp);
-  mad_tpsa_inv(tmp,c);
-  mad_tpsa_del(tmp);
 }
 
 void

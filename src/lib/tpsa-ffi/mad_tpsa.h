@@ -66,8 +66,7 @@ void  mad_tpsa_mul     (const T *a, const T *b, T *c);
 void  mad_tpsa_div     (const T *a, const T *b, T *c);
 
 void  mad_tpsa_scl     (const T *a, num_t v, T *c);  // c = v*a
-// void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a; TO CHECK!
-void  mad_tpsa_inv     (const T *a, T *c);
+void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a
 // void  mad_tpsa_invsqrt (const T *a, num_t v, T *c);  // c = v/sqrt(a)
 void  mad_tpsa_invsqrt (const T *a, T *c);
 void  mad_tpsa_sqrt    (const T *a, T *c);

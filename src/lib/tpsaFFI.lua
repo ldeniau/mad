@@ -58,34 +58,27 @@ ffi.cdef[[
   int   mad_tpsa_midx_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
 
   // --- --- accessors
+  num_t mad_tpsa_geti    (const T *t, int i);
+  num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
+  num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
   void  mad_tpsa_set0    (      T *t,                         num_t a, num_t b);
   void  mad_tpsa_seti    (      T *t, int i,                  num_t a, num_t b);
   void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t a, num_t b);
   void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t a, num_t b);
-
-  num_t mad_tpsa_geti    (const T *t, int i);
-  num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
-  num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
 
   // --- --- operations
   num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
   num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
   void  mad_tpsa_der     (const T *a,       T *c, int var);
   void  mad_tpsa_mder    (const T *a,       T *c, int n, const ord_t m[]);
-  // void  mad_tpsa_pos     (const T *a,             T *c);
 
-  void  mad_tpsa_scl        (const T *a, num_t ca, T *c);                               // aliasing OK
-  void  mad_tpsa_axpb       (num_t a, const T *x, num_t b,                      T *r);  // aliasing OK
-  void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
-  void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // (x,y) != r
-  void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
-                                                           const T *z, num_t c, T *r);  // (x,y) != r
-  void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // x != r
-  void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // x != r
+  void  mad_tpsa_add     (const T *a, const T *b, T *c);
+  void  mad_tpsa_sub     (const T *a, const T *b, T *c);
+  void  mad_tpsa_mul     (const T *a, const T *b, T *c);
+  void  mad_tpsa_div     (const T *a, const T *b, T *c);
 
-
-
-  void  mad_tpsa_inv     (const T *a, T *c);
+  void  mad_tpsa_scl     (const T *a, num_t v, T *c);  // c = v*a
+  void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a
   void  mad_tpsa_sqrt    (const T *a, T *c);
   void  mad_tpsa_invsqrt (const T *a, T *c);
   void  mad_tpsa_exp     (const T *a, T *c);
@@ -115,27 +108,16 @@ ffi.cdef[[
 
   void  mad_tpsa_erf     (const T *a, T *c);
 
-  void  mad_tpsa_add     (const T *a, const T *b, T *c);
-  void  mad_tpsa_sub     (const T *a, const T *b, T *c);
-  void  mad_tpsa_mul     (const T *a, const T *b, T *c);
-  void  mad_tpsa_div     (const T *a, const T *b, T *c);
-  void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
-  void  mad_tpsa_pow     (const T *a,             T *c, int p);
-  void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
+  void  mad_tpsa_axpb       (num_t a, const T *x, num_t b,                      T *r);  // aliasing OK
+  void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // aliasing OK
+  void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
+                                                           const T *z, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // aliasing OK
+  void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
 
-  void  mad_tpsa_axpby   (num_t ca, const T *a, num_t cb, const T *b, T *c);
-  void  mad_tpsa_axpb    (num_t ca, const T *a,           const T *b, T *c);
-  void  mad_tpsa_scale   (num_t ca, const T *a,                       T *c);
-
-  void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc, T *mc[]);
-  void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
-  void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
-
-  void  mad_tpsa_scan_coef (      T *t, FILE *stream_);
   void  mad_tpsa_print     (const T *t, FILE *stream_);
   void  mad_tpsa_debug     (const T *t);
-  D*    mad_tpsa_desc_scan (FILE *stream_);
-
   // ---------------------------------------------------------------------------
 ]]
 
@@ -311,12 +293,8 @@ function M.derm(src, m, dst)
   return dst
 end
 
-function M.scale(val, src, dst)
-  clib.mad_tpsa_scale(val, src, dst)
-end
-
-function M.divc(src, val, dst)
-  clib.mad_tpsa_divc(val,src,dst)
+function M.scale(src, val, dst)
+  clib.mad_tpsa_scl(src,val,dst)
 end
 
 -- --- BINARY ------------------------------------------------------------------
@@ -385,7 +363,7 @@ function MT.__sub(a, b)
   local c
   if type(a) == "number" then
     c = b:same()
-    clib.mad_tpsa_scale(-1, b, c)
+    clib.mad_tpsa_scl(b,-1,c)
     clib.mad_tpsa_seti(c,0,c.coef[0]+a)
     b:release()
   elseif type(b) == "number" then
@@ -413,7 +391,7 @@ function MT.__mul(a,b)
   local c
   if type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_scale(b,a,c)
+    clib.mad_tpsa_scl(a,b,c)
     a:release()
   else
     c = a:same()
@@ -428,11 +406,11 @@ function MT.__div(a,b)
   local c
   if type(a) == "number" then
     c = b:same()
-    clib.mad_tpsa_divc(a,b,c)
+    clib.mad_tpsa_inv(b,a,c)
     b:release()
   elseif type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_scale(1/b,a,c)
+    clib.mad_tpsa_scl(a,1/b,c)
     a:release()
   else
     c = a:same()
@@ -485,9 +463,9 @@ end
 
 -- FUNCTIONS -------------------------------------------------------------------
 
-function M.inv(a)
+function M.inv(a,b)  -- b/a
   local c = a:same()
-  clib.mad_tpsa_inv(a,c)
+  clib.mad_tpsa_inv(a,b,c)
   a:release()
   return c:set_tmp()
 end

@@ -28,7 +28,7 @@ struct tpsa_desc {
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
   ord_t  **ocs;       // ocs[t,i] = o; o will be computed on thread t; o = 3..mo; terminated with 0
   // T      **temps;     // array of TPSA to be used as temporaries, all allocated to mo
-  struct tpsa *t1, *t2, *t3;
+  struct tpsa *t1, *t2, *t3, *t4;
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -949,6 +949,7 @@ desc_build(D *d)
   d->t1 = mad_tpsa_new(d,d->mo);
   d->t2 = mad_tpsa_new(d,d->mo);
   d->t3 = mad_tpsa_new(d,d->mo);
+  d->t4 = mad_tpsa_new(d,d->mo);
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
@@ -1072,9 +1073,8 @@ mad_tpsa_ddel(D *d)
     free(d->ocs[t]);
   free(d->ocs);
 
-  mad_tpsa_del(d->t1);
-  mad_tpsa_del(d->t2);
-  mad_tpsa_del(d->t3);
+  mad_tpsa_del(d->t1); mad_tpsa_del(d->t2);
+  mad_tpsa_del(d->t3); mad_tpsa_del(d->t4);
 
   // remove descriptor from global array
   int idx;
