@@ -52,7 +52,7 @@ mad_tpsa_new(D *d, ord_t mo_)
 {
   assert(d);
 
-  if (mo_ == 0 || mo_ > d->mo)
+  if (mo_ > d->mo)
     mo_ = d->mo;
 
   int needed_coef = d->hpoly_To_idx[mo_+1];
@@ -287,8 +287,6 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t a, num_t b)
 #include "tpsa_fun.tc"
 
 #include "tpsa_compose.tc"
-
-// #include "tpsa_track.tc"
 
 // #include "tpsa_minv.tc"
 

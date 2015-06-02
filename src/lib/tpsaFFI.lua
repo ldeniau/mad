@@ -69,8 +69,9 @@ ffi.cdef[[
   // --- --- operations
   num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
   num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
-  void  mad_tpsa_der     (const T *a,       T *c, int var);
-  void  mad_tpsa_mder    (const T *a,       T *c, int n, const ord_t m[]);
+  void  mad_tpsa_der     (const T *a, T *c, int var);
+  void  mad_tpsa_mder    (const T *a, T *c, int n, const ord_t m[]);
+  void  mad_tpsa_pos     (const T *a, T *c);
 
   void  mad_tpsa_add     (const T *a, const T *b, T *c);
   void  mad_tpsa_sub     (const T *a, const T *b, T *c);
@@ -168,7 +169,7 @@ function M.get_desc(args)
 end
 
 function M.gtrunc(desc, o)
-  -- use without `o` to get current truncation order
+  -- negative o resets it
   return clib.mad_tpsa_gtrunc(desc, o)
 end
 
@@ -289,7 +290,7 @@ end
 
 function M.derm(src, m, dst)
   dst = dst or src:same()
-  clib.mad_tpsa_der_m(src,#m,mono_t(#m,m),dst)
+  clib.mad_tpsa_mder(src,#m,mono_t(#m,m),dst)
   return dst
 end
 

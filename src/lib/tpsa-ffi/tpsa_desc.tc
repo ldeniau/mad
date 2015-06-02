@@ -838,28 +838,6 @@ build_dispatch(D *d)
 #endif
 }
 
-// --- TEMPS MANAGEMENT --------------------------------------------------------
-// static int ALLOCATED_TEMPS = 3;
-
-// static inline void
-// build_temps(D *d)
-// {
-// #ifdef TRACE
-//   printf("build_temps\n");
-// #endif
-//   assert(d);
-
-//   d->temps = malloc(ALLOCATED_TEMPS * sizeof *(d->temps));
-//   assert(d->temps);
-//   d->size += ALLOCATED_TEMPS * sizeof *(d->temps);
-
-//   for (int i = 0; i < ALLOCATED_TEMPS; ++i) {
-//     d->temps[i] = mad_tpsa_new(d,d->mo);
-//     assert(d->temps[i]);
-//     d->size += 1;
-//   }
-// }
-
 // --- DESC management ---------------------------------------------------------
 
 enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
@@ -945,7 +923,6 @@ desc_build(D *d)
   tbl_set_H(d);
   tbl_set_L(d);
   build_dispatch(d);
-  // build_temps(d);
   d->t1 = mad_tpsa_new(d,d->mo);
   d->t2 = mad_tpsa_new(d,d->mo);
   d->t3 = mad_tpsa_new(d,d->mo);
@@ -1092,7 +1069,7 @@ mad_tpsa_size(const D *d, ord_t *t_mo)
 {
   assert(d);
   ensure(t_mo);
-  if (*t_mo == 0 || *t_mo > d->mo)
+  if (*t_mo > d->mo)
     *t_mo = d->mo;
   return d->hpoly_To_idx[*t_mo+1];
 }

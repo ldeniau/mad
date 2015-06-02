@@ -22,16 +22,15 @@ D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[nv], const ord_t map_ords_[
 void  mad_tpsa_ddel    (D *d);
 
 // desc introspection
-int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not 0 <  *t_mo <= d_mo then *t_mo = d_mo
-ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <=  g_to <= d_mo then  g_to = d_mo
+int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not *t_mo <= d_mo then *t_mo = d_mo
+ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not  g_to <= d_mo then  g_to = d_mo
 
 // ctors, dtor
-// ! support mo == 0
-T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
+T*    mad_tpsa_new     (D *d, ord_t mo_); // if not mo <= d_mo then mo = d_mo
 T*    mad_tpsa_same    (const T *t);
 void  mad_tpsa_copy    (const T *t, T *dst);
 void  mad_tpsa_clear   (      T *t);
-void  mad_tpsa_const   (      T *t,        num_t v);
+void  mad_tpsa_const   (      T *t, num_t v);
 void  mad_tpsa_del     (      T *t);
 
 // indexing / monomials
@@ -58,7 +57,7 @@ num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
 num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
 void  mad_tpsa_der     (const T *a, T *c, int var);  // TODO: check functions that rely on it
 void  mad_tpsa_mder    (const T *a, T *c, int n, const ord_t m[n]);
-// void  mad_tpsa_pos     (const T *a,             T *c);
+void  mad_tpsa_pos     (const T *a, T *c);
 
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
