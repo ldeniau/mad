@@ -79,8 +79,8 @@ ffi.cdef[[
 
   void  mad_tpsa_scl     (const T *a, num_t v, T *c);  // c = v*a
   void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a
+  void  mad_tpsa_invsqrt (const T *a, num_t v, T *c);  // c = v/sqrt(a)
   void  mad_tpsa_sqrt    (const T *a, T *c);
-  void  mad_tpsa_invsqrt (const T *a, T *c);
   void  mad_tpsa_exp     (const T *a, T *c);
   void  mad_tpsa_log     (const T *a, T *c);
   void  mad_tpsa_sin     (const T *a, T *c);
@@ -477,7 +477,7 @@ function M.sqrt(a)
   return c:set_tmp()
 end
 
-function M.invsqsrt(a)
+function M.invsqrt(a)
   local c = a:same()
   clib.mad_tpsa_invsqrt(a,c)
   a:release()

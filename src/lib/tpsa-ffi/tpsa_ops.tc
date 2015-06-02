@@ -672,7 +672,6 @@ mad_tpsa_div(const T *a, const T *b, T *c)
 
   if (b->hi == 0) { mad_tpsa_scl(a,1/b->coef[0],c); return; }
 
-  D *d = a->desc;
   T *tmp = c->desc->t4;  // t1-3 used in inv
   mad_tpsa_inv(b,1,tmp);
   mad_tpsa_mul(a,tmp,c);
