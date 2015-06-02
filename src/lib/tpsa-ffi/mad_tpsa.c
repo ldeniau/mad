@@ -178,7 +178,7 @@ mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
 }
 
 void
-mad_tpsa_set0(T *t, num_t v)
+mad_tpsa_const(T *t, num_t v)
 {
   assert(t);
   if (v) {
@@ -191,6 +191,23 @@ mad_tpsa_set0(T *t, num_t v)
 }
 
 void
+mad_tpsa_set0(T *t, num_t a, num_t b)
+{
+  assert(t);
+  t->coef[0] = a*t->coef[0] + b;
+  if (t->coef[0]) {
+    t->nz = bset(t->nz,0);
+    for (int c = t->desc->hpoly_To_idx[1]; c < t->desc->hpoly_To_idx[t->lo]; ++c)
+      t->coef[c] = 0;
+    t->lo = 0;
+  }
+  else {
+    t->nz = bclr(t->nz,0);
+    t->lo = min_ord2(b_lowest(t->nz),t->mo);
+  }
+}
+
+void
 mad_tpsa_seti(T *t, int i, num_t a, num_t b)
 {
 #ifdef TRACE
@@ -200,7 +217,9 @@ mad_tpsa_seti(T *t, int i, num_t a, num_t b)
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc && d->ords[i] <= t->mo && d->ords[i] <= d->trunc);
 
-  num_t v = a * mad_tpsa_geti(t,i) + b;
+  if (i == 0) { mad_tpsa_set0(t,a,b); return; }
+
+  num_t v = a*mad_tpsa_geti(t,i) + b;
   if (v == 0) {
     t->coef[i] = v;
     if (i == 0 && t->lo == 0) {

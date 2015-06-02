@@ -54,7 +54,7 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
 
   // cleanup & ord 0
   for (int i = 0; i < sa; ++i)
-    mad_tpsa_set0(mc[i], ma[i]->coef[0]);
+    mad_tpsa_const(mc[i], ma[i]->coef[0]);
 
   ord_t mono[ctx->d->nv];
   T *tmps[2] = { mad_tpsa_new(ctx->d,-1), mad_tpsa_new(ctx->d,-1) }, *t = NULL;

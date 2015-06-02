@@ -98,11 +98,17 @@ int mad_tpsa_midx_sp(const T *t, int n, const int   m[n]);
     -- sparse mono = an array of positive integer pairs (idx, ord)
     -- indexes in m should be sorted in increasing order
 
+Clear / Reset
+-------------
+void  mad_tpsa_clear(T *t)
+    -- re-initialize t; after this operation it can be considered empty
+void  mad_tpsa_const(T *t, num_t v)
+    -- make t the constant value v
+    -- equivalent to mad_tpsa_clear(t) + mad_tpsa_set0(t,v)
+
+
 Peek & Poke
 -----------
-void mad_tpsa_set0(T *t, num_t c)
-    -- set t as constant c
-
 A) lower level: based on index
 ----------------------------------
 
@@ -110,7 +116,11 @@ num_t mad_tpsa_geti(const T *t, int i)
     -- gets the value of the coefficient at index i
     -- returns 0 if ord(mono(i)) > t->mo
 
-num_t mad_tpsa_seti(const T *t, int i, num_t a, num_t b)
+void mad_tpsa_set0(const T *t,        num_t a, num_t b)
+    -- sets the coefficient C0 to value C0 = a*C0 + b
+    -- semantically equivalent to mad_tpsa_seti(t,0, a,b), but may be faster
+
+void mad_tpsa_seti(const T *t, int i, num_t a, num_t b)
     -- sets the coefficient Ci to value Ci = a*Ci + b
     -- ERROR  -- if i is outside of the range of t [ ord(mono(i)) > t->mo ]
               -- if i is outside the current truncation order [ desc->trunc ] (should be warning ?)
@@ -119,15 +129,15 @@ num_t mad_tpsa_seti(const T *t, int i, num_t a, num_t b)
 B) higher level: based on monomial
 ----------------------------------
 
-num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n])
-num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
+void mad_tpsa_getm    (const T *t, int n, const ord_t m[n])
+void mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
     -- gets the value of the coefficient given by the monomial m
     -- n = lenght of monomial m
     -- if n < desc->nv then the rest of m is considered to be filled with 0s
     -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->mo ]
 
-void mad_tpsa_setm     (T *t, int n, const ord_t m[n], num_t a, num_t b)
-void  mad_tpsa_setm_sp (T *t, int n, const int   m[n], num_t a, num_t b);
+void mad_tpsa_setm    (T *t, int n, const ord_t m[n], num_t a, num_t b)
+void mad_tpsa_setm_sp (T *t, int n, const int   m[n], num_t a, num_t b);
     -- sets the coefficient C given by the monomial m to the value C = a*C + b
     -- same considerations as getm
 

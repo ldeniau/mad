@@ -142,8 +142,8 @@ mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
       mad_tpsa_copy(ma[i],mUnused[i]);
       mad_tpsa_seti(mUsed[i], i+1,  0.0,1.0);
     }
-    mad_tpsa_seti(mUsed  [i],0, 0.0,0.0);
-    mad_tpsa_seti(mUnused[i],0, 0.0,0.0);
+    mad_tpsa_set0(mUsed  [i], 0.0,0.0);
+    mad_tpsa_set0(mUnused[i], 0.0,0.0);
   }
 
   mad_tpsa_minv(sa,(const T**)mUsed,sa,mInv);
