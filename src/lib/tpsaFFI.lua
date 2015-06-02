@@ -477,9 +477,9 @@ function M.sqrt(a)
   return c:set_tmp()
 end
 
-function M.invsqrt(a)
+function M.invsqrt(a,b)
   local c = a:same()
-  clib.mad_tpsa_invsqrt(a,c)
+  clib.mad_tpsa_invsqrt(a,b,c)
   a:release()
   return c:set_tmp()
 end
