@@ -389,7 +389,7 @@ mad_tpsa_mder(const T *a, T *c, int n, const ord_t mono[n])
   assert(a->desc == c->desc);
   ensure(desc_mono_isvalid(a->desc,n,mono));
 
-  ord_t der_ord = mono_sum(n,mono);
+  ord_t der_ord = mono_order(n,mono);
   ensure(der_ord > 0);
   idx_t idx = desc_get_idx(a->desc,n,mono);
   if (idx < a->desc->hpoly_To_idx[2]) {  // fallback on simple version

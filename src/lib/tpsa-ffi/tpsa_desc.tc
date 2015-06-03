@@ -73,8 +73,8 @@ desc_mono_isvalid(const D *d, int n, const ord_t m[n])
   assert(d && m);
   int rk = d->rk;
   return    ( n <= d->nv )
-         && (         mono_sum(n   ,m)    <= d->mo)
-         && (n > rk ? mono_sum(n-rk,m+rk) <= d->ko
+         && (         mono_order(n   ,m)    <= d->mo)
+         && (n > rk ? mono_order(n-rk,m+rk) <= d->ko
                     : 1)
          && mono_leq(n,m,d->a);
 }
@@ -116,7 +116,7 @@ static inline void
 nxt_mono_by_unk(int n, const ord_t a[n], int i, int j, ord_t m[n])
 {
   assert(a && m);
-  mono_set(n,m,0);
+  mono_fill(n,m,0);
   for (int k=i; k < n; ++k) {
     m[k] = a[k];
     j -= a[k];
@@ -133,7 +133,7 @@ print_mono_mat(int w, int h, const ord_t t[w*h])
   for (int i = 0; i < imin(h,50); ++i) {
     printf("(%2d) ", i);
     mono_print(w, t + i*w);
-    printf(" o=%d\n", mono_sum(w, t + i*w));
+    printf(" o=%d\n", mono_order(w, t + i*w));
   }
   if (h > 50) printf("... [ %d more rows ] ...\n", h - 50);
 }
@@ -146,7 +146,7 @@ tbl_print(int w, int h, ord_t **t)
   for (int i = 0; i < imin(h,50); ++i) {
     printf("(%2d) ", i);
     mono_print(w, t[i]);
-    printf(" o=%d\n", mono_sum(w, t[i]));
+    printf(" o=%d\n", mono_order(w, t[i]));
   }
   if (h > 50) printf("... [ %d more rows ] ...\n", h - 50);
 }
@@ -189,7 +189,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
             tbl_realloc_monos(d,0);
             curr_mono = d->monos + nv*curr_mono_idx;
           }
-          mono_cpy(nv, m, curr_mono);
+          mono_copy(nv, m, curr_mono);
           d->ords[curr_mono_idx] = o;
           curr_mono_idx++;
           curr_mono += nv;
@@ -237,14 +237,14 @@ make_monos(D *d)
   assert(d->hpoly_To_idx);
 
   // ord 0
-  mono_set(nv, d->monos, 0);
+  mono_fill(nv, d->monos, 0);
   d->hpoly_To_idx[0] = d->ords[0] = 0;
   int curr_mono_idx = 1;
 
   // ord 1
   if (d->mo >= 1) {
     d->hpoly_To_idx[1] = 1;
-    mono_set(nv*nv, d->monos+nv, 0);  // init with 0
+    mono_fill(nv*nv, d->monos+nv, 0);  // init with 0; TODO: check d->monos has nv*nv slots
     for (int i = 0; i < nv; ++i)
       if (d->a[i]) {
         d->monos[curr_mono_idx*nv + i] = 1;
@@ -292,7 +292,7 @@ find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, en
   while (count > 0) {
     step = count / 2;
     i = start + step;
-    if ((tbl_ord == BY_ORD && mono_sum(n,T[i]) < mono_sum(n,m)) || mono_rcmp(n,T[i],m) < 0) {
+    if ((tbl_ord == BY_ORD && mono_order(n,T[i]) < mono_order(n,m)) || mono_rcmp(n,T[i],m) < 0) {
       start = ++i;
       count -= step + 1;
     }
@@ -347,9 +347,9 @@ tbl_by_var(D *d)
 
   int mi = 0, nv = d->nv;
   ord_t m[nv];
-  mono_set(nv, m, 0);
+  mono_fill(nv, m, 0);
   do {
-    int o = mono_sum(nv, m);
+    int o = mono_order(nv, m);
     int idx = find_index_bin(nv, (const ord_t**)d->To, m,
                              d->hpoly_To_idx[o], d->hpoly_To_idx[o+1], BY_ORD);
     d->tv2to[mi]  = idx;
@@ -876,7 +876,7 @@ desc_init(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], co
     map_ords_ = ords;
   d->map_a = malloc(rk * sizeof *(d->map_a));
   assert(d->map_a);
-  mono_cpy(rk,map_ords_,d->map_a);
+  mono_copy(rk,map_ords_,d->map_a);
   d->size += rk * sizeof *(d->map_a);
 
   d->mo = 0;
@@ -887,7 +887,7 @@ desc_init(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], co
 
   d->a = malloc(nv * sizeof *(d->a));
   assert(d->a);
-  mono_cpy(nv,ords,d->a);
+  mono_copy(nv,ords,d->a);
   d->size += nv * sizeof *(d->a);
 
   if (var_nam_) {
@@ -984,7 +984,7 @@ D*
 mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
 {
   ensure(var_ords);
-  ord_t mo = mono_sum(nv,var_ords);
+  ord_t mo = mono_order(nv,var_ords);
   ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i)
@@ -998,7 +998,7 @@ mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_
 {
   // input validation
   ensure(var_ords && knb_ords);
-  ord_t mo = mono_sum(nv,var_ords);
+  ord_t mo = mono_order(nv,var_ords);
   ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
