@@ -2,7 +2,7 @@ local tpsa = require"lib.tpsaFFI"
 
 -- test TPSA constructor
 -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1}] [, dk=2]}
---local d = tpsa.get_desc{vo={2,2}}
+local d1 = tpsa.get_desc{vo={2,2}}
 
 --local d1 = tpsa.get_desc{vo={2,2}, ko={1,1}}
 --local d2 = tpsa.get_desc{vo={2,2}, nk=2,ko=1}
@@ -29,3 +29,7 @@ local tpsa = require"lib.tpsaFFI"
 --local d2 = tpsa.get_desc{vo={2,2,0,0}, mo={3,3,0,0}, v={'x','px', 'y','py'}, ko={1,1}}
 --local d3 = tpsa.get_desc{vo={2,2,0,0}, mo={3,3,0,0}, v={'x','px', 'y','py'}, ko={1,1}, dk=1}
 --assert(d1 == d2 and d2 == d3)
+
+local t1 = tpsa.allocate(d1)    -- max size
+local t2 = tpsa.allocate(d1, 1) -- only orders up to 1
+

@@ -114,7 +114,7 @@ end
 
 tpsa.same = tpsa.new
 
-function tpsa.setConst(t, val)
+function tpsa.set0(t, val)
   yangLib.ad_const_(t.idx, dblPtr(val))
 end
 

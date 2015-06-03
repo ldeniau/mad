@@ -42,7 +42,7 @@ split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
       nonlin[i]->coef[c] = 0;
     nonlin[i]->nz = bclr(nonlin[i]->nz,0);
     nonlin[i]->nz = bclr(nonlin[i]->nz,1);
-    mad_tpsa_scale(-1,nonlin[i],nonlin[i]);
+    mad_tpsa_scl(nonlin[i],-1,nonlin[i]);
   }
 
   // invert linear
@@ -61,9 +61,9 @@ split_and_inv(const D *d, const T *ma[], T *lin_inv[], T *nonlin[])
   // copy result into TPSA
   for (int i = 0; i < cv; ++i) {
     for (int v = 0; v < cv; ++v)
-      mad_tpsa_seti(lin_inv[i], v    +1, gsl_matrix_get(mat_vari, i,v));
+      mad_tpsa_seti(lin_inv[i], v    +1, 0.0,gsl_matrix_get(mat_vari, i,v));
     for (int k = 0; k < nk; ++k)
-      mad_tpsa_seti(lin_inv[i], k+cv +1, gsl_matrix_get(mat_knbi, i,k));
+      mad_tpsa_seti(lin_inv[i], k+cv +1, 0.0,gsl_matrix_get(mat_knbi, i,k));
   }
   gsl_matrix_free(mat_var);
   gsl_matrix_free(mat_knb);
@@ -83,11 +83,10 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
 
   D *d = ma[0]->desc;
   T *lin_inv[sa], *nonlin[sa], *tmp[sa];
-  ord_t one = 1;
   for (int i = 0; i < sa; ++i) {
-    lin_inv[i] = mad_tpsa_newd(d,&one);
-    nonlin[i]  = mad_tpsa_new (ma[i]);
-    tmp[i]     = mad_tpsa_new (ma[i]);
+    lin_inv[i] = mad_tpsa_new (d,1);
+    nonlin[i]  = mad_tpsa_same(ma[i]);
+    tmp[i]     = mad_tpsa_same(ma[i]);
   }
 
   split_and_inv(d, ma, lin_inv, nonlin);
@@ -103,7 +102,7 @@ mad_tpsa_minv(int sa, const T *ma[sa], int sc, T *mc[sc])
     mad_tpsa_compose(sa, (const T**)nonlin,  sa, (const T**)mc,  sa, tmp);
 
     for (int v = 0; v < sa; ++v)
-      mad_tpsa_seti(tmp[v], v+1, tmp[v]->coef[v+1] + 1);    // add I
+      mad_tpsa_seti(tmp[v], v+1, 1.0,1.0);    // add I
 
     mad_tpsa_compose(sa, (const T**)lin_inv, sa, (const T**)tmp, sa, mc);
   }
@@ -128,24 +127,23 @@ mad_tpsa_pminv(int sa, const T *ma[sa], int sc, T *mc[sc], int row_select[sa])
   D *d = ma[0]->desc;
   // split input map into rows that are inverted and rows that are not
   T *mUsed[sa], *mUnused[sa], *mInv[sa];
-  ord_t one = 1;
   for (int i = 0; i < sa; ++i) {
     if (row_select[i]) {
       mUsed  [i] = mad_tpsa_new (ma[i]);
       mInv   [i] = mad_tpsa_new (ma[i]);
-      mUnused[i] = mad_tpsa_newd(d,&one);
+      mUnused[i] = mad_tpsa_new(d,1);
       mad_tpsa_copy(ma[i],mUsed[i]);
-      mad_tpsa_seti(mUnused[i], i+1, 1.0);
+      mad_tpsa_seti(mUnused[i], i+1,  0.0,1.0);
     }
     else {
-      mUsed  [i] = mad_tpsa_newd(d,&one);
-      mInv   [i] = mad_tpsa_newd(d,&one);
+      mUsed  [i] = mad_tpsa_new(d,1);
+      mInv   [i] = mad_tpsa_new(d,1);
       mUnused[i] = mad_tpsa_new (ma[i]);
       mad_tpsa_copy(ma[i],mUnused[i]);
-      mad_tpsa_seti(mUsed[i], i+1, 1.0);
+      mad_tpsa_seti(mUsed[i], i+1,  0.0,1.0);
     }
-    mad_tpsa_seti(mUsed  [i],0,0.0);
-    mad_tpsa_seti(mUnused[i],0,0.0);
+    mad_tpsa_set0(mUsed  [i], 0.0,0.0);
+    mad_tpsa_set0(mUnused[i], 0.0,0.0);
   }
 
   mad_tpsa_minv(sa,(const T**)mUsed,sa,mInv);

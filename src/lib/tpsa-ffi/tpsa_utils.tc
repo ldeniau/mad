@@ -1,17 +1,18 @@
 #ifndef TPSA_UTILS_TEMPLATE
 #define TPSA_UTILS_TEMPLATE
 
-//#define ensure(bool_expression) assert(bool_expression)
-#define stringize(s) #s
-#define XSTR(s) stringize(s)
-#define ensure(bool_expression)                                      \
+//#define ensure(test) assert(test)
+#define ensure(test)                                                 \
 do {                                                                 \
-  if (0 == (bool_expression)) {                                      \
+  if (0 == (test)) {                                                 \
     fprintf(stderr, "Ensure failed: %s, %s, %d at \'%s\'\n",         \
-            __FILE__, __func__, __LINE__, XSTR(bool_expression));    \
+            __FILE__, __func__, __LINE__, mkstr(test));              \
     abort();                                                         \
   }                                                                  \
-} while(0);                                                          \
+} while(0)                                                           \
+
+#define mkstr(s) mkstr_(s)
+#define mkstr_(s) #s
 
 
 typedef unsigned int  bit_t;

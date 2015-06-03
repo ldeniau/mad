@@ -1,14 +1,13 @@
 #ifndef TPSA_DESC_TEMPLATE
 #define TPSA_DESC_TEMPLATE
 
-#include "mad_tpsa_desc.h"
-
 // #define TRACE
 // #define DEBUG
 
 typedef int           idx_t;
 
-#define D struct tpsa_desc
+#define D     struct tpsa_desc
+#define str_t const char*
 
 struct tpsa_desc {
   int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
@@ -28,6 +27,8 @@ struct tpsa_desc {
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
   ord_t  **ocs;       // ocs[t,i] = o; o will be computed on thread t; o = 3..mo; terminated with 0
+  // T      **temps;     // array of TPSA to be used as temporaries, all allocated to mo
+  struct tpsa *t1, *t2, *t3, *t4;
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -86,11 +87,11 @@ desc_mono_isvalid_sp(const D *d, int n, const idx_t m[n])
     return 0;
   ord_t mo = 0, ko = 0;
   for (int i = 0; i < n; i += 2) {
-    int mono_idx = m[i] - 1, // translate from var idx to mono idx
-               o = m[i+1];
-    if (mono_idx >= d->nv)             return 0;
-    if (o > d->a[mono_idx])            return 0;
+    int mono_idx = m[i] - 1; // translate from var idx to mono idx
+    if (mono_idx >= d->nv)  return 0;
 
+    ord_t o = m[i+1];
+    if (o > d->a[mono_idx]) return 0;
     mo += o;
     if (mono_idx > d->rk)
       ko += o;
@@ -922,6 +923,10 @@ desc_build(D *d)
   tbl_set_H(d);
   tbl_set_L(d);
   build_dispatch(d);
+  d->t1 = mad_tpsa_new(d,d->mo);
+  d->t2 = mad_tpsa_new(d,d->mo);
+  d->t3 = mad_tpsa_new(d,d->mo);
+  d->t4 = mad_tpsa_new(d,d->mo);
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
@@ -976,9 +981,11 @@ get_desc(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], con
 // --- Public Functions -------------------------------------------------------
 
 D*
-mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
+mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
 {
   ensure(var_ords);
+  ord_t mo = mono_sum(nv,var_ords);
+  ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i)
       ensure(var_ords[i] <= map_ords_[i]);
@@ -986,12 +993,13 @@ mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], s
 }
 
 D*
-mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
+mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
                    int nk, const ord_t knb_ords[nk], ord_t dk)
 {
   // input validation
   ensure(var_ords && knb_ords);
-  ensure(mono_sum(nv,var_ords) > 0);
+  ord_t mo = mono_sum(nv,var_ords);
+  ensure(0 < mo && mo < 8 * sizeof(bit_t));
   if (map_ords_)
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
 
@@ -1009,7 +1017,7 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
 }
 
 void
-mad_tpsa_desc_del(D *d)
+mad_tpsa_ddel(D *d)
 {
   assert(d);
   free(d->a);
@@ -1042,6 +1050,9 @@ mad_tpsa_desc_del(D *d)
     free(d->ocs[t]);
   free(d->ocs);
 
+  mad_tpsa_del(d->t1); mad_tpsa_del(d->t2);
+  mad_tpsa_del(d->t3); mad_tpsa_del(d->t4);
+
   // remove descriptor from global array
   int idx;
   for(idx = 0; idx <= last_desc_idx && d != Ds[idx]; idx++)
@@ -1054,16 +1065,17 @@ mad_tpsa_desc_del(D *d)
 }
 
 int
-mad_tpsa_desc_nc(const D *d, ord_t ord)
+mad_tpsa_size(const D *d, ord_t *t_mo)
 {
   assert(d);
-  if (ord == 0 || ord > d->mo)
-    ord = d->mo;
-  return d->hpoly_To_idx[ord+1];
+  ensure(t_mo);
+  if (*t_mo > d->mo)
+    *t_mo = d->mo;
+  return d->hpoly_To_idx[*t_mo+1];
 }
 
 ord_t
-mad_tpsa_desc_gtrunc(D *d, ord_t to)
+mad_tpsa_gtrunc(D *d, ord_t to)
 {
   assert(d);
   ord_t orig = d->trunc;
@@ -1072,13 +1084,6 @@ mad_tpsa_desc_gtrunc(D *d, ord_t to)
   d->trunc = to;
   return orig;
 }
-
-ord_t
-mad_tpsa_desc_mo(const D *d)
-{
-  return d->mo;
-}
-
 
 #undef D
 #undef TRACE

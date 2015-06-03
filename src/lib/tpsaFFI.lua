@@ -33,47 +33,55 @@ ffi.cdef[[
 
   // --- --- DESC --------------------------------------------------------------
 
-  D*    mad_tpsa_desc_new    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
-  D*    mad_tpsa_desc_newk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
-                              int nk, const ord_t knb_ords[], ord_t dk); // knobs
-  D*    mad_tpsa_desc_scan  (FILE *stream_);
+  D*    mad_tpsa_dnew    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
+  D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
+                          int nk, const ord_t knb_ords[], ord_t dk); // knobs
+  void  mad_tpsa_ddel    (D *d);
 
-  void  mad_tpsa_desc_del   (      D *d);
-
-  int   mad_tpsa_desc_nc    (const D *d, ord_t ord);
-  ord_t mad_tpsa_desc_gtrunc(      D *d, ord_t to );
-  ord_t mad_tpsa_desc_mo    (const D *d);
+  // --- --- DESC introspection ------------------------------------------------
+  int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not 0 < *t_mo <= d_mo then *t_mo = d_mo
+  ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <= g_to <= d_mo then  g_to = d_mo
 
   // --- --- TPSA --------------------------------------------------------------
-
-  void  mad_tpsa_copy    (const T *src, T *dst);
-  void  mad_tpsa_clean   (      T *t);
+  // --- --- ctors, dtor
+  T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
+  T*    mad_tpsa_same    (const T *t);
+  void  mad_tpsa_copy    (const T *t, T *dst);
+  void  mad_tpsa_clear   (      T *t);
+  void  mad_tpsa_const   (      T *t, num_t v);
   void  mad_tpsa_del     (      T *t);
 
-  void  mad_tpsa_setConst(      T *t,        num_t v);
-  void  mad_tpsa_seti    (      T *t, int i, num_t v);
-  void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t v);
-  void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t v);
+  // --- --- indexing / monomials
+  const ord_t*
+        mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
+  int   mad_tpsa_midx    (const T *t, int n, const ord_t m[]);
+  int   mad_tpsa_midx_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
 
+  // --- --- accessors
   num_t mad_tpsa_geti    (const T *t, int i);
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
   num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
+  void  mad_tpsa_set0    (      T *t,                         num_t a, num_t b);
+  void  mad_tpsa_seti    (      T *t, int i,                  num_t a, num_t b);
+  void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t a, num_t b);
+  void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t a, num_t b);
 
-  int   mad_tpsa_get_idx (const T *t, int n, const ord_t m[]);
+  // --- --- operations
+  num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
+  num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
+  void  mad_tpsa_der     (const T *a, T *c, int var);
+  void  mad_tpsa_mder    (const T *a, T *c, int n, const ord_t m[]);
+  void  mad_tpsa_pos     (const T *a, T *c);
 
-  num_t mad_tpsa_abs     (const T *t);
-  num_t mad_tpsa_abs2    (const T *t);
-  void  mad_tpsa_rand    (      T *t, num_t low, num_t high, int seed);
+  void  mad_tpsa_add     (const T *a, const T *b, T *c);
+  void  mad_tpsa_sub     (const T *a, const T *b, T *c);
+  void  mad_tpsa_mul     (const T *a, const T *b, T *c);
+  void  mad_tpsa_div     (const T *a, const T *b, T *c);
 
-  void  mad_tpsa_der     (const T *a, int var,                T *c);
-  void  mad_tpsa_der_m   (const T *a, int n, const ord_t m[], T *c);
-
-  void  mad_tpsa_pos     (const T *a,             T *c);
-  num_t mad_tpsa_comp    (const T *a, const T *b);
-
-  void  mad_tpsa_inv     (const T *a, T *c);
+  void  mad_tpsa_scl     (const T *a, num_t v, T *c);  // c = v*a
+  void  mad_tpsa_inv     (const T *a, num_t v, T *c);  // c = v/a
+  void  mad_tpsa_invsqrt (const T *a, num_t v, T *c);  // c = v/sqrt(a)
   void  mad_tpsa_sqrt    (const T *a, T *c);
-  void  mad_tpsa_invsqrt (const T *a, T *c);
   void  mad_tpsa_exp     (const T *a, T *c);
   void  mad_tpsa_log     (const T *a, T *c);
   void  mad_tpsa_sin     (const T *a, T *c);
@@ -101,38 +109,29 @@ ffi.cdef[[
 
   void  mad_tpsa_erf     (const T *a, T *c);
 
-  void  mad_tpsa_add     (const T *a, const T *b, T *c);
-  void  mad_tpsa_sub     (const T *a, const T *b, T *c);
-  void  mad_tpsa_mul     (const T *a, const T *b, T *c);
-  void  mad_tpsa_div     (const T *a, const T *b, T *c);
-  void  mad_tpsa_divc    (num_t    v, const T *a, T *c);
-  void  mad_tpsa_pow     (const T *a,             T *c, int p);
-  void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);
+  void  mad_tpsa_axpb       (num_t a, const T *x, num_t b,                      T *r);  // aliasing OK
+  void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // aliasing OK
+  void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
+                                                           const T *z, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // aliasing OK
+  void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
 
-  void  mad_tpsa_scale   (num_t a, const T *x, T *r);
-  void  mad_tpsa_axpb    (num_t a, const T *x, num_t b, T *r);
-  void  mad_tpsa_axpbypc (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);
+  void  mad_tpsa_print     (const T *t, FILE *stream_);
+  void  mad_tpsa_debug     (const T *t);
 
-  void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc, T *mc[]);
-  void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
-  void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[]);
-
-  void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
-  void  mad_tpsa_print    (const T *t, FILE *stream_);
-  void  mad_tpsa_print_compact   (const T *t);
-
-  void  mad_tpsa_drift    (T *m[], num_t L, num_t B_, num_t E);
   // ---------------------------------------------------------------------------
 ]]
 
--- define types just once as use their constructor
-local tpsa_t   = typeof("T       ")
+-- define types just once and use their constructor
+local tpsa_t   = typeof("T")
+local tpsa_arr = typeof("T*         [?]")
+local tpsa_carr= typeof("const T*   [?]")
 local mono_t   = typeof("const ord_t[?]")
 local smono_t  = typeof("const int  [?]")
-local ord_ptr  = typeof("const ord_t[1]")
+local ord_ptr  = typeof("      ord_t[1]")
+local int_ptr  = typeof("      int  [1]")
 local str_arr  = typeof("      str_t[?]")
-local tpsa_arr = typeof("      T*   [?]")
-local tpsa_carr = typeof("const T*   [?]")
 
 local M = { name = "tpsa", mono_t = mono_t}
 local MT   = { __index = M }
@@ -143,29 +142,6 @@ M.arr = tpsa_arr
 M.clib_ = clib
 M.count = 0
 
--- helpers ---------------------------------------------------------------------
-local function arr_val(l,v)
-  local t = {}
-  for i=1,l do t[i] = v end
-  return t
-end
-
-local function arr_max(a)
-  local m = a[1]
-  for i=2,#a do
-    if a[i] > m then m = a[i] end
-  end
-  return m or 0
-end
-
-local function arr_sum(a)
-  local s = a[1]
-  for i=2,#a do
-    s = s + a[i]
-  end
-  return s
-end
-
 -- CONSTRUCTORS ----------------------------------------------------------------
 local tmp_stack
 
@@ -174,23 +150,29 @@ local tmp_stack
 function M.get_desc(args)
   assert(args and args.vo, "not enough args for TPSA descriptor")
 
-  local nv, nk, dk = #args.vo, args.nk or args.ko and #args.ko or 0, args.dk or 0
+  local nv, dk = #args.vo, args.dk or 0
   local cvar_ords  = mono_t(nv, args.vo)
   local cvar_names = args.v  and assert(#args.v  == nv, 'not enough var names')
                              and str_arr(nv, args.v)
   local cmap_ords  = args.mo and assert(#args.mo == nv, 'not enough map ords')
                              and mono_t(nv, args.mo)
+
   local d
+  local nk = args.nk or type(args.ko) == "table" and #args.ko or 0
   if nk ~= 0 then
-    local cknb_ords = assert(args.ko, "knob orders not specified")
-                             and mono_t(nk, args.ko)
-    d = clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
-                                nk, cknb_ords, dk)
+    local cknb_ords = assert(args.ko, "knob orders not specified") and mono_t(nk, args.ko)
+    d = clib.mad_tpsa_dnewk(nv, cvar_ords, cmap_ords, cvar_names,
+                            nk, cknb_ords, dk)
   else
-    d = clib.mad_tpsa_desc_new(nv, cvar_ords, cmap_ords, cvar_names)
+    d = clib.mad_tpsa_dnew (nv, cvar_ords, cmap_ords, cvar_names)
   end
-  tmp_stack = { top=0, mo=clib.mad_tpsa_desc_mo(d) }
+  tmp_stack = { top=0 }
   return d
+end
+
+function M.gtrunc(desc, o)
+  -- negative o resets it
+  return clib.mad_tpsa_gtrunc(desc, o)
 end
 
 function M.set_tmp(t)
@@ -210,20 +192,15 @@ function M.release(t)
   end
 end
 
-function M.allocate(desc, trunc_ord)
-  trunc_ord = trunc_ord or clib.mad_tpsa_desc_mo(desc)
-  local nc  = clib.mad_tpsa_desc_nc(desc, trunc_ord)
-  local t   = tpsa_t(nc)  -- automatically initialized with 0s
-  t.desc    = desc
-  t.mo      = trunc_ord
-  t.lo      = t.mo
-  M.count = M.count + 1
+function M.allocate(desc, mo_)
+  mo_      = ord_ptr(mo_ or -1)
+  local nc = clib.mad_tpsa_size(desc, mo_)
+  local t  = tpsa_t(nc)  -- automatically initialized with 0s
+  t.desc   = desc
+  t.mo     = mo_[0]
+  t.lo     = t.mo
+  M.count  = M.count + 1
   return t, nc
-end
-
-function M:new(trunc_ord)
-  if not trunc_ord then error("use t.same() or specify truncation order") end
-  return M.allocate(self.desc, trunc_ord)
 end
 
 function M.same(a,b)
@@ -232,7 +209,7 @@ function M.same(a,b)
     t = tmp_stack[tmp_stack.top]
     tmp_stack.top = tmp_stack.top - 1
   else
-    t = M.allocate(a.desc,tmp_stack.mo)
+    t = M.allocate(a.desc)
   end
   return t:set_var()
 end
@@ -243,80 +220,68 @@ function M.cpy(src, dst)
   return dst
 end
 
--- PEEK & POKE -----------------------------------------------------------------
-function M.get(t, m)
-  return tonumber(clib.mad_tpsa_getm(t, #m, mono_t(#m,m)))
+-- INDEXING / MONO -------------------------------------------------------------
+function M.get_idx(t,m)
+  return clib.mad_tpsa_midx(t,#m,mono_t(#m,m))
 end
 
-function M.set(t, m, v)
-  clib.mad_tpsa_setm(t, #m, mono_t(#m, m), v)
+function M.get_idx_sp(t,m)
+  return clib.mad_tpsa_midx_sp(t,#m,smono_t(#m,m))
+end
+
+function M.get_mono(t,i)
+  local nv, ord = int_ptr(), ord_ptr()
+  local cmono = clib.mad_tpsa_mono(t,i,nv,ord)
+  local m = {}
+  for i=1,nv[0] do
+    m[i] = cmono[i-1]
+  end
+  return m, ord[0]
+end
+
+-- PEEK & POKE -----------------------------------------------------------------
+
+M.get_at = clib.mad_tpsa_geti
+
+function M.get(t, m)
+  return clib.mad_tpsa_getm(t, #m, mono_t(#m,m))
 end
 
 function M.get_sp(t,m)
   -- m = {idx1, ord1, idx2, ord2, ... }
-  return tonumber(clib.mad_tpsa_getm_sp(t, #m, smono_t(#m,m)))
+  return clib.mad_tpsa_getm_sp(t, #m, smono_t(#m,m))
 end
 
-function M.set_sp(t, m, v)
-  clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), v)
+M.const  = clib.mad_tpsa_const
+function M.set0(t, a,b)
+  if not b then a, b = 0, a end
+  clib.mad_tpsa_set0(t,a,b)
 end
 
-function M.get_idx(t,m)
-  return clib.mad_tpsa_get_idx(t,#m,mono_t(#m,m))
+
+function M.set_at(t, i, a,b)
+  if not b then a, b = 0, a end
+  clib.mad_tpsa_seti(t,i,a,b)
 end
 
-function M.get_at(t,i)
-  return clib.mad_tpsa_geti(t,i)
+function M.set(t, m, a,b)
+  if not b then a, b = 0, a end
+  clib.mad_tpsa_setm(t, #m, mono_t(#m, m), a, b)
 end
 
-function M.set_at(t,i,v)
-  clib.mad_tpsa_seti(t,i,v)
-end
-
-function M.setConst(t, v)
-  clib.mad_tpsa_setConst(t, v)
-end
-
--- FUNCS -----------------------------------------------------------------------
-function M.gtrunc(desc, o)
-  -- use without `o` to get current truncation order
-  return clib.mad_tpsa_desc_gtrunc(desc, o)
-end
-
-function M.abs(a)
-  return clib.mad_tpsa_abs(a)
-end
-
-function M.abs2(a)
-  return clib.mad_tpsa_abs2(a)
-end
-
-function M.comp(a, b)
-  return clib.mad_tpsa_comp(a, b)
-end
-
--- I/O -------------------------------------------------------------------------
-function M.print(a, file)
-  clib.mad_tpsa_print(a,file)
-end
-
-function M.read(file)
-  local d = clib.mad_tpsa_desc_scan(file)
-  local t = M.allocate(d)
-  clib.mad_tpsa_scan_coef(t,file)
-  return t
-end
-
-function M.read_into(t, file)
-  -- header is ignored, so make sure input is compatible with t (same nv,nk)
-  clib.mad_tpsa_desc_scan(file)
-  clib.mad_tpsa_scan_coef(t,file)
+function M.set_sp(t, m, a,b)
+  if not b then a, b = 0, a end
+  clib.mad_tpsa_setm_sp(t, #m, smono_t(#m,m), a, b)
 end
 
 -- OPERATIONS ------------------------------------------------------------------
 -- --- UNARY -------------------------------------------------------------------
-function M.rand(a, low, high, seed)
-  clib.mad_tpsa_rand(a, low, high, seed)
+function M.nrm1(t1, t2_)
+  return clib.mad_tpsa_nrm1(t1, t2_)
+end
+
+function M.nrm2(t1, t2_)
+  return clib.mad_tpsa_nrm2(t1, t2_)
 end
 
 function M.der(src, var, dst)
@@ -327,16 +292,12 @@ end
 
 function M.derm(src, m, dst)
   dst = dst or src:same()
-  clib.mad_tpsa_der_m(src,#m,mono_t(#m,m),dst)
+  clib.mad_tpsa_mder(src,#m,mono_t(#m,m),dst)
   return dst
 end
 
-function M.scale(val, src, dst)
-  clib.mad_tpsa_scale(val, src, dst)
-end
-
-function M.divc(src, val, dst)
-  clib.mad_tpsa_divc(val,src,dst)
+function M.scale(src, val, dst)
+  clib.mad_tpsa_scl(src,val,dst)
 end
 
 -- --- BINARY ------------------------------------------------------------------
@@ -405,7 +366,7 @@ function MT.__sub(a, b)
   local c
   if type(a) == "number" then
     c = b:same()
-    clib.mad_tpsa_scale(-1, b, c)
+    clib.mad_tpsa_scl(b,-1,c)
     clib.mad_tpsa_seti(c,0,c.coef[0]+a)
     b:release()
   elseif type(b) == "number" then
@@ -433,7 +394,7 @@ function MT.__mul(a,b)
   local c
   if type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_scale(b,a,c)
+    clib.mad_tpsa_scl(a,b,c)
     a:release()
   else
     c = a:same()
@@ -448,11 +409,11 @@ function MT.__div(a,b)
   local c
   if type(a) == "number" then
     c = b:same()
-    clib.mad_tpsa_divc(a,b,c)
+    clib.mad_tpsa_inv(b,a,c)
     b:release()
   elseif type(b) == "number" then
     c = a:same()
-    clib.mad_tpsa_scale(1/b,a,c)
+    clib.mad_tpsa_scl(a,1/b,c)
     a:release()
   else
     c = a:same()
@@ -505,9 +466,9 @@ end
 
 -- FUNCTIONS -------------------------------------------------------------------
 
-function M.inv(a)
+function M.inv(a,b)  -- b/a
   local c = a:same()
-  clib.mad_tpsa_inv(a,c)
+  clib.mad_tpsa_inv(a,b,c)
   a:release()
   return c:set_tmp()
 end
@@ -519,9 +480,9 @@ function M.sqrt(a)
   return c:set_tmp()
 end
 
-function M.invsqsrt(a)
+function M.invsqrt(a,b)
   local c = a:same()
-  clib.mad_tpsa_invsqrt(a,c)
+  clib.mad_tpsa_invsqrt(a,b,c)
   a:release()
   return c:set_tmp()
 end
@@ -634,9 +595,29 @@ function M.erf(a, c)
   clib.mad_tpsa_erf(a,c)
 end
 
+-- I/O -------------------------------------------------------------------------
+function M.print(a, file)
+  clib.mad_tpsa_print(a,file)
+end
+
+function M.read(file)
+  local d = clib.mad_tpsa_desc_scan(file)
+  local t = M.allocate(d)
+  clib.mad_tpsa_scan_coef(t,file)
+  return t
+end
+
+function M.read_into(t, file)
+  -- header is ignored, so make sure input is compatible with t (same nv,nk)
+  clib.mad_tpsa_desc_scan(file)
+  clib.mad_tpsa_scan_coef(t,file)
+end
+
+
+
 -- debugging -------------------------------------------------------------------
 
-M.debug = clib.mad_tpsa_print_compact
+M.debug = clib.mad_tpsa_debug
 
 -- interface for benchmarking --------------------------------------------------
 

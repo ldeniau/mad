@@ -41,7 +41,7 @@ get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], CTX *ctx)
   // update cache if needed
   if (c < ctx->cached_size) {
     assert(!cached[c]);             // no double alloc
-    cached[c] = mad_tpsa_newd(d,NULL);
+    cached[c] = mad_tpsa_new(d,-1);
     mad_tpsa_copy(tmps[tmp_idx], cached[c]);
   }
   return tmps[tmp_idx];
@@ -54,10 +54,10 @@ sequential_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
 
   // cleanup & ord 0
   for (int i = 0; i < sa; ++i)
-    mad_tpsa_setConst(mc[i], ma[i]->coef[0]);
+    mad_tpsa_const(mc[i], ma[i]->coef[0]);
 
   ord_t mono[ctx->d->nv];
-  T *tmps[2] = { mad_tpsa_newd(ctx->d,NULL), mad_tpsa_newd(ctx->d,NULL) }, *t = NULL;
+  T *tmps[2] = { mad_tpsa_new(ctx->d,-1), mad_tpsa_new(ctx->d,-1) }, *t = NULL;
   for (int c = 1; c < ctx->cached_size; ++c) {
     // TODO: only cache what is needed
     t = get_mono(c, 0, tmps, mono, ctx);
@@ -90,10 +90,10 @@ parallel_compose(int sa, const T *ma[], T *mc[], CTX *ctx)
 
     // alloc private vars
     ord_t mono[ctx->d->nv];
-    T *tmps[2] = { mad_tpsa_newd(ctx->d,NULL), mad_tpsa_newd(ctx->d,NULL) };
+    T *tmps[2] = { mad_tpsa_new(ctx->d,-1), mad_tpsa_new(ctx->d,-1) };
     T **m_curr_thread = mt[id], *t = NULL;
     for (int i = 0; i < sa; ++i)
-      m_curr_thread[i] = mad_tpsa_newd(ctx->d,NULL);
+      m_curr_thread[i] = mad_tpsa_new(ctx->d,-1);
 
     #pragma omp for
     for (int c = ctx->cached_size; c < max_coeff; ++c) {

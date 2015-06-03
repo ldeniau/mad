@@ -1,0 +1,56 @@
+#ifndef TPSA_TRACK_TEMPLATE
+#define TPSA_TRACK_TEMPLATE
+
+#include <stdio.h>
+#include <assert.h>
+#include "mad_tpsa.h"
+
+#define T struct tpsa
+#define num_t double
+
+// #define TRACE
+
+void
+mad_tpsa_drift(T * restrict m[], num_t L, num_t B_, num_t E)
+{
+#ifdef TRACE
+  printf("track_drift\n");
+#endif
+
+  T *x = m[0], *px = m[1];
+  T *y = m[2], *py = m[3];
+  T *s = m[4], *ps = m[5];
+
+  static T *t1, *t2;
+
+  if (!t1) {
+    t1 = mad_tpsa_new(*(void**)x, 0);
+    t2 = mad_tpsa_new(*(void**)x, 0);
+  }
+
+//  l_pz = e.L/sqrt(1 + (2*B_)*m.ps + m.ps^2 - m.px^2 - m.py^2)
+//  m.x = m.x + m.px*l_pz
+//  m.y = m.y + m.py*l_pz
+//  m.s = m.s + (B_ + m.ps)*l_pz - E*B_
+
+  assert(x); assert(px);
+  assert(y); assert(py);
+  assert(s); assert(ps);
+  assert(t1); assert(t2);
+
+  mad_tpsa_ax2pby2pcz2(1,ps,-1,px,-1,py,t1);   // ps^2 - px^2 - py^2
+  mad_tpsa_axpbypc(2*B_,ps, 1,t1, 1, t1);      // 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
+  mad_tpsa_invsqrt(t1,L,t2);                   // L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
+
+  T *pz_ = t2;
+
+  mad_tpsa_axypbzpc(1,px,pz_, 1,x, 0, x);      // x + px*pz_ -> x
+  mad_tpsa_axypbzpc(1,py,pz_, 1,y, 0, y);      // y + py*pz_ -> y
+
+  mad_tpsa_copy(ps,t1);                        // ps
+  mad_tpsa_set0(t1,1.0,B_);                    // 1/e.b + ps
+  mad_tpsa_axypbzpc(1,t1,pz_, 1,s, E, s);      // s + (B_ + ps)*pz_ -> s
+}
+
+#undef T
+#endif

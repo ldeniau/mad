@@ -660,7 +660,7 @@ function M.set(t, m, v)
   t[i] = v
 end
 
-function M.setConst(t, v)
+function M.set0(t, v)
   local m = mono_val(#t._T.V, 0)
   t:set(m, v)
 end

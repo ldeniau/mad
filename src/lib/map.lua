@@ -1,4 +1,5 @@
 local tpsa = require"lib.tpsaFFI"
+local type = type
 
 local function mono_sum(m)
   local s = 0
@@ -27,7 +28,7 @@ local MT = {  -- metatable
         val:release()
       end
     elseif type(val) == "number" then
-      tpsa.setConst(var, val)
+      tpsa.set0(var, val)
     else
       tpsa.cpy(val, var)
       val:release()
@@ -67,6 +68,31 @@ function M:to(...)
   tpsa.gtrunc(self[D],to)
 end
 
+function M.set(m, var, mono, val)
+  if type(m[var]) == "number" then
+    assert(mono_sum(mono) == 0, "Invalid set for constant var")
+    m[var] = val
+  else
+    m[var]:set(mono, val)
+  end
+end
+
+function M.get(m, var, mono)
+  return type(m[var]) == "number" and assert(mono_sum(mono) == 0, "Invalid get") and m[var]
+         or m[var]:get(mono)
+end
+
+function M.print(m)
+  for name,var in pairs(m[V]) do
+    io.write(name, ': ')
+    if type(var) == 'number' then
+      print(var)
+    else
+      var:print()
+    end
+  end
+end
+
 local clib = tpsa.clib_
 local t1, t2, t3
 
@@ -92,7 +118,7 @@ function M.track_drift(m, e)
   clib.mad_tpsa_mul(py,py,t2)                           -- py^2
   clib.mad_tpsa_sub(t3,t2,t1)                           -- ps^2 - px^2 - py^2
 
-  clib.mad_tpsa_scale(2/e.b,ps,t2)                      -- 2/e.b*m.ps 
+  clib.mad_tpsa_scale(2/e.b,ps,t2)                      -- 2/e.b*m.ps
   clib.mad_tpsa_seti(t2,0,1+t2.coef[0])                 -- 1 + 2/e.b*m.ps
   clib.mad_tpsa_add(t1,t2,t3)                           -- 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
 --  clib.mad_tpsa_axpbypc(2/e.b,ps, 1,t1, 1, t3)

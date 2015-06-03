@@ -276,24 +276,64 @@ scale_and_accum(num_t v, const T *a, T *c)
 
 // --- --- UNARY ---------------------------------------------------------------
 
-/* tpsa_i and tpsa_interface don't have dacom */
 num_t
-mad_tpsa_comp(const T *a, const T *b)
+mad_tpsa_nrm1(const T *a, const T *b_)
 {
-  assert(a && b);
-  ensure(a->desc == b->desc);
-  if (a->lo > b->lo)
-    swap(&a,&b);
+  assert(a);
+  num_t norm = 0.0;
+  int *pi = a->desc->hpoly_To_idx;
+  if (b_) {
+    ensure(a->desc == b_->desc);
+    if (a->lo > b_->lo)
+      swap(&a,&b_);
 
-  idx_t *pi = a->desc->hpoly_To_idx;
-  num_t norm = 0;
-  int i = pi[a->lo];
-  for (; i <      pi[b->lo]               ; ++i) norm += fabs(a->coef[i]);
-  for (; i < imin(pi[a->hi+1],pi[b->hi+1]); ++i) norm += fabs(a->coef[i] - b->coef[i]);
-  for (; i <      pi[a->hi+1]             ; ++i) norm += fabs(a->coef[i]);
-  for (; i <      pi[b->hi+1]             ; ++i) norm += fabs(b->coef[i]);
-
+    idx_t start_a = pi[a->lo], end_a = pi[min_ord2(a->hi,a->desc->trunc)+1],
+          start_b = pi[b->lo], end_b = pi[min_ord2(b->hi,b->desc->trunc)+1];
+    idx_t i;
+    for (i = start_a; i < imin(end_a,start_b); ++i) norm += fabs(a->coef[i]);
+    for (i = start_b; i < imin(end_a,end_b)  ; ++i) norm += fabs(a->coef[i] - b_->coef[i]);
+    for (           ; i <      end_a         ; ++i) norm += fabs(a->coef[i]);
+    for (           ; i <      end_b         ; ++i) norm += fabs(b_->coef[i]);
+  }
+  else {
+    ord_t hi = min_ord2(a->hi, a->desc->trunc);
+    for (int o = a->lo; o <= hi; ++o)
+      if (bget(a->nz,o)) {
+        for (int i = pi[o]; i < pi[o+1]; ++i)
+          norm += fabs(a->coef[i]);
+      }
+  }
   return norm;
+}
+
+num_t
+mad_tpsa_nrm2(const T *a, const T *b_)
+{
+  assert(a);
+  num_t norm = 0.0;
+  int *pi = a->desc->hpoly_To_idx;
+  if (b_) {
+    ensure(a->desc == b_->desc);
+    if (a->lo > b_->lo)
+      swap(&a,&b_);
+
+    idx_t start_a = pi[a->lo], end_a = pi[min_ord2(a->hi,a->desc->trunc)+1],
+          start_b = pi[b->lo], end_b = pi[min_ord2(b->hi,b->desc->trunc)+1];
+    idx_t i;
+    for (i = start_a; i < imin(end_a,start_b); ++i) norm +=  a->coef[i]              *  a->coef[i];
+    for (i = start_b; i < imin(end_a,end_b)  ; ++i) norm += (a->coef[i]-b_->coef[i]) * (a->coef[i]-b_->coef[i]);
+    for (           ; i <      end_a         ; ++i) norm +=  a->coef[i]              *  a->coef[i];
+    for (           ; i <      end_b         ; ++i) norm +=  b_->coef[i]             *  b_->coef[i];
+  }
+  else {
+    ord_t hi = min_ord2(a->hi, a->desc->trunc);
+    for (int o = a->lo; o <= hi; ++o)
+      if (bget(a->nz,o)) {
+        for (int i = pi[o]; i < pi[o+1]; ++i)
+          norm += a->coef[i] * a->coef[i];
+      }
+  }
+  return sqrt(norm);
 }
 
 void
@@ -301,7 +341,7 @@ mad_tpsa_pos(const T *a, T *c)
 {
   assert(a);
   ensure(a->desc == c->desc);
-  c->hi = min_ord2(a->hi, a->desc->trunc);
+  c->hi = min_ord(a->hi, c->mo, c->desc->trunc);
   c->lo = a->lo;
   c->nz = btrunc(a->nz,c->hi);
   idx_t *pi = c->desc->hpoly_To_idx;
@@ -310,7 +350,7 @@ mad_tpsa_pos(const T *a, T *c)
 }
 
 void
-mad_tpsa_der(const T *a, int var, T *c)
+mad_tpsa_der(const T *a, T *c, int var)
 {
 #ifdef TRACE
   printf("mad_tpsa_der\n");
@@ -319,12 +359,8 @@ mad_tpsa_der(const T *a, int var, T *c)
   ensure(var >= a->desc->hpoly_To_idx[1] && var < a->desc->hpoly_To_idx[2]);
   // TODO: ensure map_order[var] > 0
 
-  if (a->hi < 1) {      // includes a->lo > a->hi
-    mad_tpsa_reset(c);
-    return;
-  }
-
-  mad_tpsa_setConst(c,mad_tpsa_geti(a,var));
+  if (a->hi < 1) { mad_tpsa_clear(c); return; }
+  mad_tpsa_const(c,mad_tpsa_geti(a,var));  // TODO: what if alpha[var] == 0 ?
 
   D *d = c->desc;
   c->hi = min_ord(c->mo, d->trunc, a->hi-1);
@@ -344,7 +380,7 @@ mad_tpsa_der(const T *a, int var, T *c)
 }
 
 void
-mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
+mad_tpsa_mder(const T *a, T *c, int n, const ord_t mono[n])
 {
 #ifdef TRACE
   printf("mad_tpsa_der_m\n");
@@ -357,12 +393,12 @@ mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
   ensure(der_ord > 0);
   idx_t idx = desc_get_idx(a->desc,n,mono);
   if (idx < a->desc->hpoly_To_idx[2]) {  // fallback on simple version
-    mad_tpsa_der(a,idx,c);
+    mad_tpsa_der(a,c,idx);
     return;
   }
 
   // ord 0 & setup
-  mad_tpsa_setConst(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
+  mad_tpsa_const(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
   if (a->hi <= der_ord)
     return;
 
@@ -370,23 +406,32 @@ mad_tpsa_der_m(const T *a, int n, const ord_t mono[n], T *c)
   hpoly_der(a,idx,der_ord,c);
 }
 
+// --- --- BINARY --------------------------------------------------------------
+
+//      TPSA_LINOP(+, +, 0) => cc[i] = +ca[i] + cb[i], with i from (lo+0) to hi
+#define TPSA_LINOP(OPA, OPB, ORD) \
+{ \
+    idx_t *pi = c->desc->hpoly_To_idx; \
+    idx_t start_a = pi[imax(a->lo,ORD)], end_a = pi[imin(a->hi,c_hi)+1]; \
+    idx_t start_b = pi[imax(b->lo,ORD)], end_b = pi[imin(b->hi,c_hi)+1]; \
+    int i = start_a; \
+    for (; i < imin(end_a,start_b); ++i) c->coef[i] = OPA a->coef[i]; \
+    for (; i <            start_b ; ++i) c->coef[i] = 0; \
+    for (; i < imin(end_a,end_b)  ; ++i) c->coef[i] = OPA a->coef[i] OPB b->coef[i]; \
+    for (; i <      end_a         ; ++i) c->coef[i] = OPA a->coef[i]; \
+    for (; i <      end_b         ; ++i) c->coef[i] =                OPB b->coef[i]; \
+} \
+
 void
-mad_tpsa_scale(num_t v, const T *a, T *c)
+mad_tpsa_scl(const T *a, num_t v, T *c)
 {
 #ifdef TRACE
   printf("tpsa_scale %lf\n", v);
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  if (v == 0 || a->lo > a->hi) {
-    mad_tpsa_reset(c);
-    return;
-  }
 
-  if (a->hi == 0) {
-    mad_tpsa_setConst(c,v * a->coef[0]);
-    return;
-  }
+  if (a->hi == 0) { mad_tpsa_const(c, v*a->coef[0]); return; }
 
   D *d = a->desc;
   c->lo = a->lo;
@@ -396,50 +441,86 @@ mad_tpsa_scale(num_t v, const T *a, T *c)
     c->coef[i] = v * a->coef[i];
 }
 
-// --- --- BINARY --------------------------------------------------------------
-
-//      TPSA_LINOP(+, +, 0) => cc[i] = +ca[i] + cb[i], with i from (lo+0) to hi
-#define TPSA_LINOP(OPA, OPB, ORD) \
-{ \
-    idx_t *pi = c->desc->hpoly_To_idx; \
-    idx_t start_a = pi[imax(a->lo,ORD)], end_a = pi[imin(a->hi,c->hi)+1]; \
-    idx_t start_b = pi[imax(b->lo,ORD)], end_b = pi[imin(b->hi,c->hi)+1]; \
-    idx_t   end_c = pi[c->hi+1]; \
-    int i = start_a; \
-    for (; i <      start_b     ; ++i) c->coef[i] = OPA a->coef[i]; \
-    for (; i < imin(end_a,end_b); ++i) c->coef[i] = OPA a->coef[i] OPB b->coef[i]; \
-    for (; i <      end_a       ; ++i) c->coef[i] = OPA a->coef[i]; \
-    for (; i <      end_b       ; ++i) c->coef[i] =                OPB b->coef[i]; \
-    for (; i <      end_c       ; ++i) c->coef[i] = 0; \
-} \
-
 void
-mad_tpsa_axpby(num_t c1, const T *a, num_t c2, const T *b, T *c)
+mad_tpsa_axpb(num_t a, const T *x, num_t b, T *r)
 {
 #ifdef TRACE
-  printf("tpsa_axpby\n");
+  printf("tpsa_axpb %g*x + %g\n", a, b);
+#endif
+  assert(x && r);
+  ensure(x->desc == r->desc);
+  mad_tpsa_scl(x,a,r);
+  if (b) mad_tpsa_set0(r, 1.0,b);
+}
+
+void
+mad_tpsa_axpbypc(num_t c1, const T *a, num_t c2, const T *b, num_t c3, T *c)
+{
+#ifdef TRACE
+  printf("tpsa_axpbypc %g*x + %g*y + %g\n", c1, c2, c3);
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && b->desc == c->desc);
-  ensure(a != c && b != c);
-
-  if ((!c1 && !c2) || (a->lo > a->hi && b->lo > b->hi)) {
-    mad_tpsa_reset(c);
-    return;
-  }
 
   if (a->lo > b->lo)  {
     swap(&a,&b);
-    num_t tmp = c1;
-    c1 = c2;
-    c2 = tmp;
+    num_t tmp = c1; c1 = c2; c2 = tmp;
   }
+  ord_t c_hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);  // TODO: optimise c_hi == 0 ?
+  TPSA_LINOP(c1 *, + c2 *, 0);  // c->coef[i] = c1 * a->coef[i] + c2 * b->coef[i];
 
   c->lo = a->lo;    // a->lo <= b->lo  (because of swap)
-  c->hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
+  c->hi = c_hi;
   c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 
-  TPSA_LINOP(c1 *, + c2 *, 0);  // c->coef[i] = c1 * a->coef[i] + c2 * b->coef[i];
+  if (c3) mad_tpsa_set0(c, 1.0,c3);
+}
+
+void
+mad_tpsa_axypb(num_t a, const T *x, const T *y, num_t b, T *r)
+{
+  assert(x && y && r);
+  ensure(x->desc == y->desc && y->desc == r->desc);
+
+  T *t = r->desc->t1;
+  mad_tpsa_mul(x,y,t);
+  mad_tpsa_axpb(a,t,b,r);
+}
+
+void
+mad_tpsa_axypbzpc(num_t a, const T *x, const T *y, num_t b, const T *z, num_t c, T *r)
+{
+  assert(x && y && z && r);
+  ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
+
+  T *t = r->desc->t1;
+  mad_tpsa_mul(x,y,t);
+  mad_tpsa_axpbypc(a,t,b,z,c,r);
+}
+
+void
+mad_tpsa_ax2pby2(num_t a, const T *x, num_t b, const T *y, T *r)
+{
+  assert(x && y && r);
+  ensure(x->desc == y->desc && y->desc == r->desc);
+
+  T *t1 = r->desc->t1, *t2 = r->desc->t2;
+  mad_tpsa_mul(x,x,t1);
+  mad_tpsa_mul(y,y,t2);
+  mad_tpsa_axpbypc(a,t1,b,t2,0,r);
+}
+
+void
+mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r)
+{
+  assert(x && y && z && r);
+  ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
+  T *t1 = r->desc->t1, *t2 = r->desc->t2;
+  mad_tpsa_mul(x,x,t1);              // a*x^2
+  mad_tpsa_mul(y,y,t2);              // b*y^2
+  mad_tpsa_axpbypc(a,t1, b,t2, 0,r);
+  mad_tpsa_mul(z,z,t1);              // c*z^2
+  mad_tpsa_axpbypc(c,t1, 1,r , 0,r);
 }
 
 void
@@ -452,23 +533,17 @@ mad_tpsa_add(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(a != c && b != c);
 
-  if (a->lo > a->hi) {
-    mad_tpsa_copy(b,c);
-    return;
-  }
-  if (b->lo > b->hi) {
-    mad_tpsa_copy(a,c);
-    return;
-  }
+  if (a->lo > a->hi) { mad_tpsa_copy(b,c); return; }
+  if (b->lo > b->hi) { mad_tpsa_copy(a,c); return; }
 
   if (a->lo > b->lo)
     swap(&a,&b);
 
-  c->lo = a->lo;    // a->lo <= b->lo  (because of swap)
-  c->hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
-
+  ord_t c_hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   TPSA_LINOP( ,+,0);  // c->coef[i] = a->coef[i] + b->coef[i];
+  c->lo = a->lo;      // a->lo <= b->lo  (because of swap)
+  c->hi = c_hi;
+  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 }
 
 void
@@ -481,19 +556,10 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(a != c && b != c);
 
-  if (a->lo > a->hi) {
-    mad_tpsa_scale(-1, b, c);
-    return;
-  }
-  if (b->lo > b->hi) {
-    mad_tpsa_copy(a, c);
-    return;
-  }
+  if (a->lo > a->hi) { mad_tpsa_scl(b,-1,c); return; }
+  if (b->lo > b->hi) { mad_tpsa_copy(a,c);   return; }
 
-  c->lo = min_ord2(a->lo,b->lo);
-  c->hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
-  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
-
+  ord_t c_hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   if (a->lo > b->lo) {
     swap(&a,&b);
     TPSA_LINOP(-,+,0);  // c->coef[i] = - a->coef[i] + b->coef[i];
@@ -501,6 +567,9 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
   else {
     TPSA_LINOP( ,-,0);  // c->coef[i] =   a->coef[i] - b->coef[i];
   }
+  c->lo = min_ord2(a->lo,b->lo);
+  c->hi = c_hi;
+  c->nz = btrunc(badd(a->nz,b->nz), c->hi);
 }
 
 void
@@ -518,10 +587,7 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
   c->hi = min_ord(a->hi + b->hi, c->mo, d->trunc);
 
   // empty
-  if (c->lo > c->hi) {
-    mad_tpsa_reset(c);
-    return;
-  }
+  if (c->lo > c->hi) { mad_tpsa_clear(c); return; }
 
   // order 0
   num_t a0 = a->coef[0], b0 = b->coef[0];
@@ -555,7 +621,11 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
       b0 = b->coef[0];
     }
 
+    ord_t c_hi = c->hi;          // needed by TPSA_LINOP
     TPSA_LINOP(b0 *, + a0 *, 2); // c->coef[i] = b0 * a->coef[i] + a0 * b->coef[i] ;
+    for (int i = d->hpoly_To_idx[imax(a->hi,b->hi)+1]; i < d->hpoly_To_idx[c_hi+1]; ++i)
+      c->coef[i] = 0;
+
     if (a0) c->nz = btrunc(badd(c->nz,b->nz),c->hi);
     if (b0) c->nz = btrunc(badd(c->nz,a->nz),c->hi);
 
@@ -578,37 +648,11 @@ mad_tpsa_div(const T *a, const T *b, T *c)
   ensure(a->desc == b->desc && a->desc == c->desc);
   ensure(b->coef[0] != 0);
 
-  if (b->hi == 0) {
-    mad_tpsa_scale(1/b->coef[0],a,c);
-    return;
-  }
+  if (b->hi == 0) { mad_tpsa_scl(a,1/b->coef[0],c); return; }
 
-  D *d = a->desc;
-  T *tmp = mad_tpsa_newd(d,&d->trunc);
-  mad_tpsa_inv(b,tmp);
+  T *tmp = c->desc->t4;  // t1-3 used in inv
+  mad_tpsa_inv(b,1,tmp);
   mad_tpsa_mul(a,tmp,c);
-  mad_tpsa_del(tmp);
-}
-
-void
-mad_tpsa_divc(num_t v, const T *a, T *c)
-{
-#ifdef TRACE
-  printf("tpsa_div_constant\n");
-#endif
-  assert(a && c);
-  ensure(a->desc == c->desc);
-  ensure(a->coef[0] != 0);
-
-  if (a->hi == 0) {
-    mad_tpsa_setConst(c,v/a->coef[0]);
-    return;
-  }
-
-  T *tmp = mad_tpsa_new(a);
-  mad_tpsa_scale(1/v,a,tmp);
-  mad_tpsa_inv(tmp,c);
-  mad_tpsa_del(tmp);
 }
 
 void
@@ -620,17 +664,17 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
 
   T *is[4];
   for (int i = 0; i < 4; ++i)
-    is[i] = mad_tpsa_newd(a->desc,&a->desc->trunc);
+    is[i] = mad_tpsa_new(a->desc,a->desc->trunc);
 
   for (int i = 1; i <= n; ++i) {
-    mad_tpsa_der(a, 2*i - 1, is[0]);
-    mad_tpsa_der(b, 2*i    , is[1]);
+    mad_tpsa_der(a, is[0], 2*i - 1);
+    mad_tpsa_der(b, is[1], 2*i    );
     mad_tpsa_mul(is[0],is[1],is[2]);
     mad_tpsa_add(is[3],is[2],is[0]);
     mad_tpsa_copy(is[0],is[3]);      // TODO: use swap ?
 
-    mad_tpsa_der(a, 2*i    , is[0]);
-    mad_tpsa_der(b, 2*i - 1, is[1]);
+    mad_tpsa_der(a, is[0], 2*i    );
+    mad_tpsa_der(b, is[1], 2*i - 1);
     mad_tpsa_mul(is[0],is[1],is[2]);
     mad_tpsa_sub(is[3],is[2],is[0]);
     mad_tpsa_copy(is[0],is[3]);
@@ -654,7 +698,7 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
 
   if (p == 0) {
     mad_tpsa_clean(orig_res);
-    mad_tpsa_seti(orig_res, 0, 1);
+    mad_tpsa_seti(orig_res, 0, 0.0,1.0);
     return;
   }
   if (p == 1) {
@@ -663,10 +707,10 @@ mad_tpsa_pow(const T *a, T *orig_res, int p)
   }
 
   // init: base = a, r = 1, tmp
-  T *base = mad_tpsa_new(a), *r = orig_res, *tmp_res = mad_tpsa_new(a);
+  T *base = mad_tpsa_same(a), *r = orig_res, *tmp_res = mad_tpsa_same(a);
   mad_tpsa_copy(a, base);
   mad_tpsa_clean(r);
-  mad_tpsa_seti(r, 0, 1);
+  mad_tpsa_seti(r, 0, 0.0,1.0);
 
   while(p > 1) {
     if (p & 1) {

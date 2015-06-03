@@ -8,17 +8,20 @@ typedef unsigned char ord_t;
 // --- interface ---------------------------------------------------------------
 
 static void  mono_set     (int n, ord_t a[n], ord_t v);
-static int   mono_sum     (int n, const ord_t a[n]);
+// static void  mono_fill     (int n, ord_t a[n], ord_t v);
+static int   mono_sum   (int n, const ord_t a[n]);
+// static int   mono_order   (int n, const ord_t a[n]);
 static void  mono_cpy     (int n, const ord_t a[n],       ord_t r[n]);
+// static void  mono_copy     (int n, const ord_t a[n],       ord_t r[n]);
 static int   mono_equ     (int n, const ord_t a[n], const ord_t b[n]);
-static int   mono_rcmp    (int n, const ord_t a[n], const ord_t b[n]);
-static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
-static int   mono_bounded (int n, const ord_t a[n],       ord_t val);
 static void  mono_add     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
 static void  mono_sub     (int n, const ord_t a[n], const ord_t b[n], ord_t r[n]);
-static void  mono_print   (int n, const ord_t a[n]);
 
 // -----------------------------------------------------------------------------
+static int   mono_rcmp    (int n, const ord_t a[n], const ord_t b[n]);
+static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
+// static int   mono_bounded (int n, const ord_t a[n],       ord_t val);
+static void  mono_print   (int n, const ord_t a[n]);
 // --- implementation ----------------------------------------------------------
 
 #include <assert.h>
@@ -113,8 +116,8 @@ mono_print(int n, const ord_t m[n])
 // --- SSE2 implementation -----------------------------------------------------
 
 // Comment the following include to disable SSE/AVX optimization
-#include "mad_mono_sse.h"
-#include "mad_mono_avx.h"
+#include "mono_sse.h"
+#include "mono_avx.h"
 
 // -----------------------------------------------------------------------------
 #endif

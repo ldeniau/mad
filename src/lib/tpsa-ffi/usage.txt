@@ -74,11 +74,11 @@ D*    mad_tpsa_desc_newk (int nv, const ord_t var_ords[nv], ord_t vo,
 
 TPSA
 ----
-a) T* mad_tpsa_newd(D *d, const ord_t *trunc_ord_)
-    -- allocates a TPSA for the descriptor d, with capacity for orders up to trunc_ord_
-    -- if trunc_ord_ is NULL, then d->mo is used
+a) T* mad_tpsa_new(D *d, const ord_t mo_)
+    -- allocates a TPSA for the descriptor d, with capacity for orders up to mo_
+    -- if not 0 < mo_ <= d_mo then mo_ = d_mo
 
-b) T* mad_tpsa_new(const T *t)
+b) T* mad_tpsa_same(const T *t)
     -- allocates a TPSA of the same kind as t (same descriptor, same truncation order)
 
 
@@ -86,37 +86,59 @@ b) T* mad_tpsa_new(const T *t)
 Operations
 ===========
 
-Peek & Poke
------------
-void mad_tpsa_setConst(T *t, num_t c)
-    -- set t as constant c
-
-A) higher level: based on monomial
-----------------------------------
-
-num_t mad_tpsa_getm(const T *t, int n, const ord_t m[n])
-    -- gets the value of the coefficient given by the monomial m
-    -- n = lenght of monomial m
-    -- if n < desc->nv then the rest of m is considered to be filled with 0s
-    -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->mo ]
-
-void mad_tpsa_setm(T *t, int n, const ord_t m[n], num_t v)
-    -- sets the coefficient given by the monomial m to the value of v
-    -- same considerations as getm
-
-
-B) lower level: based on index
-----------------------------------
-int mad_tpsa_get_idx(const T *t, int n, const ord_t m[n])
+Monomials & their indexes
+-------------------------
+int mad_tpsa_midx(const T *t, int n, const ord_t m[n]);
     -- get an index associated with the monomial m
     -- if n=len(m) < desc->nv then the rest of m is considered to be filled with 0s
     -- the index may not be valid for the tpsa t (i.e. may be out of range)
+
+int mad_tpsa_midx_sp(const T *t, int n, const int   m[n]);
+    -- same as midx, with m representing a sparse monomial
+    -- sparse mono = an array of positive integer pairs (idx, ord)
+    -- indexes in m should be sorted in increasing order
+
+Clear / Reset
+-------------
+void  mad_tpsa_clear(T *t)
+    -- re-initialize t; after this operation it can be considered empty
+void  mad_tpsa_const(T *t, num_t v)
+    -- make t the constant value v
+    -- equivalent to mad_tpsa_clear(t) + mad_tpsa_set0(t,v)
+
+
+Peek & Poke
+-----------
+A) lower level: based on index
+----------------------------------
 
 num_t mad_tpsa_geti(const T *t, int i)
     -- gets the value of the coefficient at index i
     -- returns 0 if ord(mono(i)) > t->mo
 
-num_t mad_tpsa_seti(const T *t, int i, num_t v)
-    -- sets the coefficient at index i to value v
+void mad_tpsa_set0(const T *t,        num_t a, num_t b)
+    -- sets the coefficient C0 to value C0 = a*C0 + b
+    -- semantically equivalent to mad_tpsa_seti(t,0, a,b), but may be faster
+
+void mad_tpsa_seti(const T *t, int i, num_t a, num_t b)
+    -- sets the coefficient Ci to value Ci = a*Ci + b
     -- ERROR  -- if i is outside of the range of t [ ord(mono(i)) > t->mo ]
               -- if i is outside the current truncation order [ desc->trunc ] (should be warning ?)
+
+
+B) higher level: based on monomial
+----------------------------------
+
+void mad_tpsa_getm    (const T *t, int n, const ord_t m[n])
+void mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
+    -- gets the value of the coefficient given by the monomial m
+    -- n = lenght of monomial m
+    -- if n < desc->nv then the rest of m is considered to be filled with 0s
+    -- ERROR if the monomial m is outside of the range of t [ ord(m) > t->mo ]
+
+void mad_tpsa_setm    (T *t, int n, const ord_t m[n], num_t a, num_t b)
+void mad_tpsa_setm_sp (T *t, int n, const int   m[n], num_t a, num_t b);
+    -- sets the coefficient C given by the monomial m to the value C = a*C + b
+    -- same considerations as getm
+
+

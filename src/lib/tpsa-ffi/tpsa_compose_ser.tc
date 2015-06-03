@@ -23,7 +23,7 @@ get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
   mono_cpy(d->nv, pure_mono, mono);
   num_t val;
   idx_t idx, idx_knb_only;
-  mad_tpsa_reset(knb_coef);
+  mad_tpsa_clear(knb_coef);
 
   do {
     idx = desc_get_idx(d, d->nv, mono);
@@ -32,7 +32,7 @@ get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
       mono_cpy(d->nv, mono, knb_mono);
       mono_set(d->rk, knb_mono, 0);  // remove map vars, keep only the knobs
       idx_knb_only = desc_get_idx(d, d->nv, knb_mono);
-      mad_tpsa_seti(knb_coef, idx_knb_only, val);
+      mad_tpsa_seti(knb_coef, idx_knb_only, 0.0,val);
     }
   } while(nxt_mono_by_var(d, d->nv, mono, d->rk));
 
@@ -44,11 +44,11 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
 {
   D *d = ma[0]->desc;
   if (d->rk < d->nv) { // there are knobs
-    T *knb_coef = mad_tpsa_newd(d,&d->ko);
-    T *tmp      = mad_tpsa_newd(d,&d->trunc);
+    T *knb_coef = mad_tpsa_new(d,d->ko);
+    T *tmp      = mad_tpsa_new(d,d->trunc);
 
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_setConst(mc[i],ma[i]->coef[0]);
+      mad_tpsa_const(mc[i],ma[i]->coef[0]);
 
       // ord 1 -- vars
       for (int v = 1; v <= d->rk; ++v)
@@ -66,7 +66,7 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
   }
   else {                        // no knobs
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_setConst(mc[i], ma[i]->coef[0]);
+      mad_tpsa_const(mc[i], ma[i]->coef[0]);
       for (int v = 1; v <= d->nv; ++v) {
         num_t coef = mad_tpsa_geti(ma[i],v);
         if (coef)
@@ -173,15 +173,15 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
 
   // initialization
   for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
-  for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_newd(da,&da->trunc);
-  mad_tpsa_setConst(ords[0],1.0);
+  for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_new(da,da->trunc);
+  mad_tpsa_const(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
-    mad_tpsa_reset(mc[ic]);
+    mad_tpsa_clear(mc[ic]);
 
   CTX ctx = { .sa=sa, .ma=ma,   .mc=mc,  .required=required,
               .da=da, .mb=mb, .ords=ords  };
-  ctx.knb_coef = da->ko ? mad_tpsa_newd(da,&da->ko) : NULL;
-  ctx.tmp      = mad_tpsa_newd(da,&da->trunc);
+  ctx.knb_coef = da->ko ? mad_tpsa_new(da,da->ko) : NULL;
+  ctx.tmp      = mad_tpsa_new(da,da->trunc);
 
   // do composition from root of tree, ord 0
   compose(0, 0, mono, &ctx);
