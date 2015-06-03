@@ -290,5 +290,3 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t a, num_t b)
 
 // #include "tpsa_minv.tc"
 
-#include "tpsa_track.tc"
-

@@ -1,6 +1,7 @@
 #ifndef MAD_TPSA_H
 #define MAD_TPSA_H
 
+#include <stdio.h>
 
 // --- types -------------------------------------------------------------------
 
@@ -76,9 +77,9 @@ void  mad_tpsa_sinh    (const T *a, T *c);
 void  mad_tpsa_cosh    (const T *a, T *c);
 void  mad_tpsa_sincos  (const T *a, T *s, T *c);
 void  mad_tpsa_sincosh (const T *a, T *s, T *c);
+void  mad_tpsa_sinc    (const T *a, T *c);
 void  mad_tpsa_sirx    (const T *a, T *c);
 void  mad_tpsa_corx    (const T *a, T *c);
-void  mad_tpsa_sidx    (const T *a, T *c);
 
 void  mad_tpsa_tan     (const T *a, T *c);
 void  mad_tpsa_cot     (const T *a, T *c);
@@ -113,13 +114,9 @@ void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
 void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[sa]);
 
 void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
-T*    mad_tpsa_scan     (FILE *stream_);             // TODO
+T*    mad_tpsa_scan     (            FILE *stream_);             // TODO
 void  mad_tpsa_print    (const T *t, FILE *stream_);
-D*    mad_tpsa_desc_scan  (FILE *stream_);
-
-void  mad_tpsa_drift(T * restrict m[], num_t L, num_t B_, num_t E);
-
-void  mad_tpsa_drift    (T *m[], num_t L, num_t B_, num_t E);
+D*    mad_tpsa_desc_scan(            FILE *stream_);
 
 #undef T
 #undef D

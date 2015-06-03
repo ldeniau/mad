@@ -1,57 +1,52 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include "mad_tpsa.h"
 
-#include "track_drift.tc"
+#define T struct tpsa
+#define num_t double
 
-int
-main(void)
+// #define TRACE
+
+void
+mad_track_drift(T * restrict m[], num_t L, num_t B_, num_t E)
 {
-	typedef unsigned char ord_t;
+#ifdef TRACE
+  printf("track_drift\n");
+#endif
 
-	typedef struct tpsa tpsa_t;
-	typedef struct tpsa_desc desc_t;
-	typedef struct { tpsa_t *x,*px,*y,*py,*s,*ps; } map_t;
+  T *x = m[0], *px = m[1];
+  T *y = m[2], *py = m[3];
+  T *s = m[4], *ps = m[5];
 
-	desc_t *d = mad_tpsa_dnew(6, (ord_t[]){2,2,2,2,2,2}, 0, 0);
-	map_t m = {
-		.x  = mad_tpsa_new(d, 0),
-		.px = mad_tpsa_new(d, 0),
-		.y  = mad_tpsa_new(d, 0),
-		.py = mad_tpsa_new(d, 0),
-		.s  = mad_tpsa_new(d, 0),
-		.ps = mad_tpsa_new(d, 0),
-	};
+  static T *t1, *t2;
 
-	mad_tpsa_set0(m.x,  0,0);
-	mad_tpsa_set0(m.y,  0,0);
-	mad_tpsa_set0(m.s,  0,0);
-	mad_tpsa_set0(m.px, 0,0.001);
-	mad_tpsa_set0(m.py, 0,0.001);
-	mad_tpsa_set0(m.ps, 0,1e-6);
-	mad_tpsa_setm(m.ps, 3,(ord_t[]){1,0,0}, 0.0,1.0);
-	mad_tpsa_setm(m.ps, 3,(ord_t[]){0,0,1}, 0.0,1.0);
-
-	for (int i=0; i < 3000000; i++) {
-    // printf("%d-----------------\n", i);
-	 	mad_tpsa_drift((tpsa_t**)&m, 1, 1, 0);
+  if (!t1) {
+    t1 = mad_tpsa_new(*(void**)x, -1);
+    t2 = mad_tpsa_new(*(void**)x, -1);
   }
 
-  mad_tpsa_print(m.x, stdout);
-  mad_tpsa_print(m.y, stdout);
-  mad_tpsa_print(m.s, stdout);
-  mad_tpsa_print(m.px, stdout);
-  mad_tpsa_print(m.py, stdout);
-  mad_tpsa_print(m.ps, stdout);
+//  l_pz = e.L/sqrt(1 + (2*B_)*m.ps + m.ps^2 - m.px^2 - m.py^2)
+//  m.x = m.x + m.px*l_pz
+//  m.y = m.y + m.py*l_pz
+//  m.s = m.s + (B_ + m.ps)*l_pz - E*B_
 
-  mad_tpsa_del(m.x );
-  mad_tpsa_del(m.y );
-  mad_tpsa_del(m.s );
-  mad_tpsa_del(m.px);
-  mad_tpsa_del(m.py);
-  mad_tpsa_del(m.ps);
-  mad_tpsa_ddel(d);
+  assert(x); assert(px);
+  assert(y); assert(py);
+  assert(s); assert(ps);
+  assert(t1); assert(t2);
 
-	return 0;
+  mad_tpsa_ax2pby2pcz2(1,ps,-1,px,-1,py,t1);   // ps^2 - px^2 - py^2
+  mad_tpsa_axpbypc(2*B_,ps, 1,t1, 1, t1);      // 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
+  mad_tpsa_invsqrt(t1,L,t2);                   // L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
+
+  T *pz_ = t2;
+
+  mad_tpsa_axypbzpc(1,px,pz_, 1,x, 0, x);      // x + px*pz_ -> x
+  mad_tpsa_axypbzpc(1,py,pz_, 1,y, 0, y);      // y + py*pz_ -> y
+
+  mad_tpsa_copy(ps,t1);                        // ps
+  mad_tpsa_set0(t1,1.0,B_);                    // 1/e.b + ps
+  mad_tpsa_axypbzpc(1,t1,pz_, 1,s, E, s);      // s + (B_ + ps)*pz_ -> s
 }
+
+#undef T

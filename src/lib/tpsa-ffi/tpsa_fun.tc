@@ -402,11 +402,11 @@ mad_tpsa_corx(const T *a, T *c)
 }
 
 void
-mad_tpsa_sidx(const T *a, T *c)
+mad_tpsa_sinc(const T *a, T *c)
 {
 // SIN(P)/P = 1 - P**2/3! + P**4/5! - P**6/7! + ...
 #ifdef TRACE
-  printf("tpsa_sidx\n");
+  printf("tpsa_sinc\n");
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);

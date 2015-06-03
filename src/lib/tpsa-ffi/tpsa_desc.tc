@@ -840,7 +840,7 @@ build_dispatch(D *d)
 
 // --- DESC management ---------------------------------------------------------
 
-enum { TPSA_DESC_NUM = 1000 };    // number of descriptors to store
+enum { TPSA_DESC_NUM = 100 };    // number of descriptors to store
 
 static D  *Ds[TPSA_DESC_NUM];
 static int last_desc_idx = -1;

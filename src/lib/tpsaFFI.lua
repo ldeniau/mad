@@ -351,7 +351,7 @@ function MT.__add(a, b)
   local c
   if type(b) == "number" then
     c = a:cpy()
-    clib.mad_tpsa_seti(c,0,a.coef[0]+b)
+    clib.mad_tpsa_set0(c,1,b)
     a:release()
   else
     c = a:same(b)
@@ -367,11 +367,11 @@ function MT.__sub(a, b)
   if type(a) == "number" then
     c = b:same()
     clib.mad_tpsa_scl(b,-1,c)
-    clib.mad_tpsa_seti(c,0,c.coef[0]+a)
+    clib.mad_tpsa_set0(c,1,a)
     b:release()
   elseif type(b) == "number" then
     c = a:cpy()
-    clib.mad_tpsa_seti(c,0,c.coef[0]-b)
+    clib.mad_tpsa_set0(c,1,-b)
     a:release()
   else
     c = a:same()

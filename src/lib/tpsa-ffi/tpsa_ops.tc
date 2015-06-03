@@ -287,8 +287,8 @@ mad_tpsa_nrm1(const T *a, const T *b_)
     if (a->lo > b_->lo)
       swap(&a,&b_);
 
-    idx_t start_a = pi[a->lo], end_a = pi[min_ord2(a->hi,a->desc->trunc)+1],
-          start_b = pi[b->lo], end_b = pi[min_ord2(b->hi,b->desc->trunc)+1];
+    idx_t start_a = pi[a ->lo], end_a = pi[min_ord2(a ->hi,a ->desc->trunc)+1],
+          start_b = pi[b_->lo], end_b = pi[min_ord2(b_->hi,b_->desc->trunc)+1];
     idx_t i;
     for (i = start_a; i < imin(end_a,start_b); ++i) norm += fabs(a->coef[i]);
     for (i = start_b; i < imin(end_a,end_b)  ; ++i) norm += fabs(a->coef[i] - b_->coef[i]);
@@ -317,8 +317,8 @@ mad_tpsa_nrm2(const T *a, const T *b_)
     if (a->lo > b_->lo)
       swap(&a,&b_);
 
-    idx_t start_a = pi[a->lo], end_a = pi[min_ord2(a->hi,a->desc->trunc)+1],
-          start_b = pi[b->lo], end_b = pi[min_ord2(b->hi,b->desc->trunc)+1];
+    idx_t start_a = pi[a ->lo], end_a = pi[min_ord2(a ->hi,a ->desc->trunc)+1],
+          start_b = pi[b_->lo], end_b = pi[min_ord2(b_->hi,b_->desc->trunc)+1];
     idx_t i;
     for (i = start_a; i < imin(end_a,start_b); ++i) norm +=  a->coef[i]              *  a->coef[i];
     for (i = start_b; i < imin(end_a,end_b)  ; ++i) norm += (a->coef[i]-b_->coef[i]) * (a->coef[i]-b_->coef[i]);
@@ -531,10 +531,6 @@ mad_tpsa_add(const T *a, const T *b, T *c)
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && a->desc == c->desc);
-  ensure(a != c && b != c);
-
-  if (a->lo > a->hi) { mad_tpsa_copy(b,c); return; }
-  if (b->lo > b->hi) { mad_tpsa_copy(a,c); return; }
 
   if (a->lo > b->lo)
     swap(&a,&b);
@@ -554,10 +550,6 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
 #endif
   assert(a && b && c);
   ensure(a->desc == b->desc && a->desc == c->desc);
-  ensure(a != c && b != c);
-
-  if (a->lo > a->hi) { mad_tpsa_scl(b,-1,c); return; }
-  if (b->lo > b->hi) { mad_tpsa_copy(a,c);   return; }
 
   ord_t c_hi = min_ord(imax(a->hi,b->hi), c->mo, c->desc->trunc);
   if (a->lo > b->lo) {
