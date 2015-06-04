@@ -12,14 +12,17 @@ ffi.cdef[[
   // --- types -----------------------------------------------------------------
 
   struct _IO_FILE;
-  typedef struct _IO_FILE FILE;
-
+  typedef struct _IO_FILE  FILE;
   typedef double           num_t;
   typedef unsigned char    ord_t;
   typedef unsigned int     bit_t;
   typedef const char*      str_t;
   typedef struct tpsa      T;
   typedef struct tpsa_desc D;
+
+  struct tpsa_desc {
+    int id;     // WARNING: rest of fields are not exposed
+  };
 
   struct tpsa { // warning: must be kept identical to C definition
     D      *desc;
@@ -169,6 +172,8 @@ function M.get_desc(args)
   tmp_stack = { top=0 }
   return d
 end
+
+M.del_desc = clib.mad_tpsa_ddel
 
 function M.gtrunc(desc, o)
   -- negative o resets it

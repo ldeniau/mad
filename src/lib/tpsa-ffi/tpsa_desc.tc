@@ -10,9 +10,10 @@ typedef int           idx_t;
 #define str_t const char*
 
 struct tpsa_desc {
+  int      id;        // WARNING: needs to be 1st field, for Lua compatibility
   int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
            size;      // bytes used by current desc
-  char   **names;     // names of map variables; TODO: move it 1 level above and set indirection
+  char   **var_names_;// names of map variables; TODO: move it 1 level above and set indirection
   ord_t    mo, ko,    // maximum orders: for map, for knobs
            trunc,     // truncation order for operations; always <= mo
           *a,         // tpsa alphas (max order for each monomial variable)
@@ -843,26 +844,23 @@ build_dispatch(D *d)
 enum { TPSA_DESC_NUM = 100 };    // number of descriptors to store
 
 static D  *Ds[TPSA_DESC_NUM];
-static int last_desc_idx = -1;
 
 static inline D*
-desc_init(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], const ord_t map_ords_[rk])
+desc_init(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const ord_t ords[nv], ord_t ko)
 {
 #ifdef TRACE
   printf("desc_ini rk=%d nv=%d ko=%d map_ords=",rk,nv,ko);
-  if (map_ords_) mono_print(rk,map_ords_);
-  else           printf("{}");
+  mono_print(rk,map_ords);
 
   if (var_nam_) {
     printf(" var_names=[ ");
     for (int i = 0; i < rk; ++i) printf("%s ", var_nam_[i]);
     printf("]");
   }
-  printf("\nvar_ords="); mono_print(nv,ords);
-  printf("\n");
+  printf("\nvar_ords="); mono_print(nv,ords); printf("\n");
 #endif
 
-  assert(ords);
+  assert(map_ords && ords);
 
   D *d = malloc(sizeof *d);
   assert(d);
@@ -871,19 +869,12 @@ desc_init(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], co
   d->rk = rk;
   d->nv = nv;
   d->ko = ko;
+  d->mo = d->trunc = mono_max(rk,map_ords);
 
-  if (!map_ords_)
-    map_ords_ = ords;
   d->map_a = malloc(rk * sizeof *(d->map_a));
   assert(d->map_a);
-  mono_copy(rk,map_ords_,d->map_a);
+  mono_copy(rk,map_ords,d->map_a);
   d->size += rk * sizeof *(d->map_a);
-
-  d->mo = 0;
-  for (int v = 0; v < rk; ++v)
-    if (map_ords_[v] > d->mo)
-      d->mo = map_ords_[v];
-  d->trunc = d->mo;
 
   d->a = malloc(nv * sizeof *(d->a));
   assert(d->a);
@@ -891,32 +882,27 @@ desc_init(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], co
   d->size += nv * sizeof *(d->a);
 
   if (var_nam_) {
-    d->names = malloc(rk * sizeof *(d->names));
-    assert(d->names);
-    d->size += rk * sizeof *(d->names);
+    d->var_names_ = malloc(rk * sizeof *(d->var_names_));
+    assert(d->var_names_);
+    d->size += rk * sizeof *(d->var_names_);
 
     for (int i = 0; i < rk; ++i) {
       int n = strlen(var_nam_[i]);
-      d->names[i] = malloc(n * sizeof *(d->names[i]));
-      assert(d->names[i]);
-      d->size += n * sizeof *(d->names[i]);
+      d->var_names_[i] = malloc(n * sizeof *(d->var_names_[i]));
+      assert(d->var_names_[i]);
+      d->size += n * sizeof *(d->var_names_[i]);
+      strcpy(d->var_names_[i],var_nam_[i]);
     }
   }
-
-  #ifdef DEBUG
-    printf("desc mo=%d\n", d->mo);
-  #endif
 
   return d;
 }
 
 static inline D*
-desc_build(D *d)
+desc_build(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const ord_t ords[nv], ord_t ko)
 {
-#ifdef TRACE
-  printf("desc_build %p\n", (void*)d);
-#endif
-  assert(d);
+  assert(map_ords && ords);
+  D *d = desc_init(rk,map_ords,var_nam_, nv,ords, ko);
   make_monos(d);
   tbl_by_ord(d);
   tbl_by_var(d);  // requires To
@@ -927,6 +913,7 @@ desc_build(D *d)
   d->t2 = mad_tpsa_new(d,d->mo);
   d->t3 = mad_tpsa_new(d,d->mo);
   d->t4 = mad_tpsa_new(d,d->mo);
+  // TODO: add the size of the temps to d->size
 
 #ifdef TRACE
   printf("nc = %d ---- Total desc size: %d bytes\n", d->nc, d->size);
@@ -946,36 +933,52 @@ desc_build(D *d)
 }
 
 static inline int
-desc_equ(const D *d1, const D *d2)
+desc_equiv(const D *d, int rk, const ord_t map_ords[rk], str_t var_nam_[rk],
+                       int nv, const ord_t ords[nv], ord_t ko)
 {
-  assert(d1 && d2);
-  return    d1->nv == d2->nv && d1->rk == d2->rk
-         && d1->mo == d2->mo && d1->ko == d2->ko
-         && mono_equ(d1->nv, d1->a    , d2->a)
-         && mono_equ(d1->rk, d1->map_a, d2->map_a);
+  assert(d && map_ords && ords);
+  if (var_nam_) {
+    if (! d->var_names_) return 0;
+    for (int i = 0; i < rk; ++i)
+      if (strcmp(d->var_names_[i],var_nam_[i]) != 0) {
+        printf("%s %s\n", d->var_names_[i], var_nam_[i]);
+        return 0;
+      }
+  }
+  else if (d->var_names_)
+    return 0;
+
+  return    d->rk == rk && mono_equ(rk, d->map_a, map_ords)
+         && d->nv == nv && mono_equ(nv, d->a    , ords)
+         && d->ko == ko;
 }
 
 static inline D*
-desc_search(const D *d)
+desc_search(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const ord_t ords[nv], ord_t ko)
 {
-  for (int i = last_desc_idx; i >= 0; --i) {
-    if (desc_equ(Ds[i], d))
+  for (int i = 0; i < TPSA_DESC_NUM; ++i) {
+    if (Ds[i] && desc_equiv(Ds[i], rk,map_ords,var_nam_, nv,ords, ko))
       return Ds[i];
   }
   return NULL;
 }
 
 static inline D*
-get_desc(int rk, int nv, const ord_t ords[nv], ord_t ko, str_t var_nam_[rk], const ord_t map_ords_[rk])
+get_desc(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const ord_t ords[nv], ord_t ko)
 {
-  D *d = desc_init(rk,nv,ords,ko,var_nam_,map_ords_);
-  D *existing_desc = desc_search(d);  // TODO: use search with params instead of allocated desc
+  D *existing_desc = desc_search(rk,map_ords,var_nam_, nv,ords, ko);
   if (existing_desc) {
-    free(d);
+    // printf("found %d %p\n", existing_desc->id, (void*)existing_desc);
     return existing_desc;
   }
-  Ds[++last_desc_idx] = d;  // store descriptor
-  return desc_build(d);
+
+  for (int i = 0; i < TPSA_DESC_NUM; ++i)
+    if (!Ds[i]) {
+      Ds[i] = desc_build(rk,map_ords,var_nam_, nv,ords, ko);
+      Ds[i]->id = i;
+      return Ds[i];
+    }
+  ensure(NULL && "Too many descriptors.");
 }
 
 // --- Public Functions -------------------------------------------------------
@@ -986,34 +989,47 @@ mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t
   ensure(var_ords);
   ord_t mo = mono_order(nv,var_ords);
   ensure(0 < mo && mo < 8 * sizeof(bit_t));
-  if (map_ords_)
-    for (int i = 0; i < nv; ++i)
-      ensure(var_ords[i] <= map_ords_[i]);
-  return get_desc(nv, nv,var_ords,0, var_nam_,map_ords_);
+  ord_t map_ords[nv];  // to parse optional param
+  if (map_ords_) {
+    for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
+    mono_copy(nv,map_ords_,map_ords);
+  }
+  else {
+    mo = mono_max(nv,var_ords);
+    mono_fill(nv,map_ords,mo);
+  }
+
+  return get_desc(nv,map_ords,var_nam_, nv,var_ords, 0);
 }
 
 D*
 mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
-                   int nk, const ord_t knb_ords[nk], ord_t dk)
+               int nk, const ord_t knb_ords[nk], ord_t dk)
 {
   // input validation
-  ensure(var_ords && knb_ords);
-  ord_t mo = mono_order(nv,var_ords);
-  ensure(0 < mo && mo < 8 * sizeof(bit_t));
-  if (map_ords_)
-    for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
+  ensure(nv && var_ords);
+  ensure(nk && knb_ords);
+  ensure( 0 <  mono_order(nv,var_ords));  // TODO: allow mo == 0
+  ensure(dk <= mono_order(nk,knb_ords));
+  ensure((size_t)(mono_order(nv,var_ords) + mono_order(nk,knb_ords)) < 8 * sizeof(bit_t));
 
-  if (dk) {
-    for (int i = 0; i < nk; ++i) ensure(knb_ords[i] <= dk);
+  ord_t map_ords[nv];  // to parse optional param
+  if (map_ords_){
+    for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
+    mono_copy(nv,map_ords_,map_ords);
   }
-  else
-    for (int i = 0; i < nk; ++i) dk = knb_ords[i] > dk ? knb_ords[i] : dk;
+  else {
+    ord_t mo = mono_max(nv,var_ords);
+    mono_fill(nv,map_ords,mo);
+  }
+  if (dk == 0)
+    dk = mono_max(nk,knb_ords);
 
   ord_t ords[nv+nk];
   int oidx = 0;
   for (int i = 0; i < nv; ++i) ords[oidx++] = var_ords[i];
   for (int i = 0; i < nk; ++i) ords[oidx++] = knb_ords[i];
-  return get_desc(nv, nv+nk,ords,dk, var_nam_,map_ords_);
+  return get_desc(nv,map_ords,var_nam_, nv+nk,ords, dk);
 }
 
 void
@@ -1031,36 +1047,36 @@ mad_tpsa_ddel(D *d)
   free(d->to2tv);
   free(d->H);
 
-  if (d->names) {
+  if (d->var_names_) {
     for (int i = 0; i < d->rk; ++i)
-      free(d->names[i]);
-    free(d->names);
+      free(d->var_names_[i]);
+    free(d->var_names_);
   }
 
-  for (int i = 0; i < 1 + d->mo * d->mo/2; ++i) {
-    free(d->L   [i]);
-    if (d->L_idx[i])
-      free(d->L_idx[i][0]);  // allocated as single block
-    free(d->L_idx[i]);
+  if (d->L) {  // if L exists, then L_idx exists too
+    for (int i = 0; i < 1 + d->mo * d->mo/2; ++i) {
+      free(d->L   [i]);
+      // printf("here %d\n", i);
+      if (d->L_idx[i]) {
+        free(d->L_idx[i][0]);  // allocated as single block
+        free(d->L_idx[i]);
+      }
+    }
+    free(d->L);
+    free(d->L_idx);
   }
-  free(d->L);
-  free(d->L_idx);
 
-  for (int t = 0; t < get_num_threads(); ++t)
-    free(d->ocs[t]);
-  free(d->ocs);
+  if (d->ocs) {
+    for (int t = 0; t < get_num_threads(); ++t)
+      free(d->ocs[t]);
+    free(d->ocs);
+  }
 
   mad_tpsa_del(d->t1); mad_tpsa_del(d->t2);
   mad_tpsa_del(d->t3); mad_tpsa_del(d->t4);
 
   // remove descriptor from global array
-  int idx;
-  for(idx = 0; idx <= last_desc_idx && d != Ds[idx]; idx++)
-    ; // search
-  for ( ; idx < last_desc_idx; ++idx)
-    Ds[idx] = Ds[idx+1];
-  last_desc_idx--;
-
+  Ds[d->id] = NULL;
   free(d);
 }
 
