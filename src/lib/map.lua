@@ -39,13 +39,24 @@ local MT = {  -- metatable
       end
     elseif type(val) == "number" then
       tpsa.const(var, val)              -- number -> TPSA
-
     else
       tpsa.cpy(val, var)                -- TPSA -> TPSA
       val:release()
     end
   end
 }
+
+function M.clear(tbl)
+  for k,v in pairs(tbl[T]) do
+    v:set_tmp():release()
+  end
+end
+
+function M.print_tmp(tbl)
+  for k,v in pairs(tbl[T]) do
+    print(k, v)
+  end
+end
 
 -- {v={'x','px'}, mo={3,3} [, vo={2,2}] [, ko={1,1,1} ] [, dk=2]}
 -- {v={'x','px'}, mo={3,3} [, vo={2,1}] [, nk=3,ko=1  ] [, dk=2]}
