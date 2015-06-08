@@ -127,10 +127,10 @@ mad_tpsa_print(const T *t, FILE *stream_)
   // print header
   char name[11] = "-UNNAMED--";
   fprintf(stream_, "\n %10s, NO =%5hhu, NV =%5d, KO =%5hhu, NK =%5d\n MAP ORDS: ",
-          name,d->mo,d->rk,d->ko, d->nv - d->rk);
-  print_ords(d->rk,d->map_a,stream_);
+          name,d->mo,d->nmv,d->ko, d->nv - d->nmv);
+  print_ords(d->nmv,d->map_ords,stream_);
   fprintf(stream_, " ||| VAR ORDS: ");
-  print_ords(d->nv,d->a,stream_);
+  print_ords(d->nv,d->var_ords,stream_);
   fprintf(stream_, "\n *******************************************************");
 
   if (!t->nz) {

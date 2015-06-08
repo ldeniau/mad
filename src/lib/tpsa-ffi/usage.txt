@@ -6,7 +6,7 @@ Descriptor
 ----------
 
 struct tpsa_desc {
-  int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
+  int      nmv,nv, nc,// number of map vars, number of all vars, number of coeff
            size;      // bytes used by current desc
   ord_t    mo, ko,    // maximum orders: for vars, for knobs
            trunc,     // truncation order for operations
