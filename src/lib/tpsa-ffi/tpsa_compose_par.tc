@@ -41,7 +41,7 @@ get_mono(int c, int tmp_idx, T *tmps[2], ord_t complement[], CTX *ctx)
   // update cache if needed
   if (c < ctx->cached_size) {
     assert(!cached[c]);             // no double alloc
-    cached[c] = mad_tpsa_new(d,-1);
+    cached[c] = mad_tpsa_newd(d,mad_tpsa_default);
     mad_tpsa_copy(tmps[tmp_idx], cached[c]);
   }
   return tmps[tmp_idx];

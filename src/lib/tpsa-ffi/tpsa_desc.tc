@@ -1,13 +1,18 @@
 #ifndef TPSA_DESC_TEMPLATE
 #define TPSA_DESC_TEMPLATE
 
+#include <limits.h>
+
 // #define TRACE
 // #define DEBUG
 
-typedef int           idx_t;
+typedef int   idx_t;
 
 #define D     struct tpsa_desc
 #define str_t const char*
+
+enum { DESC_STACK_SIZE = 20 };
+const ord_t DESC_MAX = CHAR_BIT * sizeof(bit_t);
 
 struct tpsa_desc {
   int      id;        // WARNING: needs to be 1st field, for Lua compatibility
@@ -28,8 +33,9 @@ struct tpsa_desc {
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
   ord_t  **ocs;       // ocs[t,i] = o; o will be computed on thread t; o = 3..mo; terminated with 0
-  // T      **temps;     // array of TPSA to be used as temporaries, all allocated to mo
+  int      stack_top; // current top of stack size
   struct tpsa *t1, *t2, *t3, *t4;
+  struct tpsa *stack[DESC_STACK_SIZE];
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -909,10 +915,10 @@ desc_build(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const o
   tbl_set_H(d);
   tbl_set_L(d);
   build_dispatch(d);
-  d->t1 = mad_tpsa_new(d,d->mo);
-  d->t2 = mad_tpsa_new(d,d->mo);
-  d->t3 = mad_tpsa_new(d,d->mo);
-  d->t4 = mad_tpsa_new(d,d->mo);
+  d->t1 = mad_tpsa_newd(d,d->mo);
+  d->t2 = mad_tpsa_newd(d,d->mo);
+  d->t3 = mad_tpsa_newd(d,d->mo);
+  d->t4 = mad_tpsa_newd(d,d->mo);
   // TODO: add the size of the temps to d->size
 
 #ifdef TRACE
@@ -984,11 +990,11 @@ get_desc(int rk, const ord_t map_ords[rk], str_t var_nam_[rk], int nv, const ord
 // --- Public Functions -------------------------------------------------------
 
 D*
-mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
+mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv])
 {
   ensure(var_ords);
   ord_t mo = mono_order(nv,var_ords);
-  ensure(0 < mo && mo < 8 * sizeof(bit_t));
+  ensure(0 < mo && mo < DESC_MAX);
   ord_t map_ords[nv];  // to parse optional param
   if (map_ords_) {
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
@@ -1003,15 +1009,15 @@ mad_tpsa_dnew(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t
 }
 
 D*
-mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
-               int nk, const ord_t knb_ords[nk], ord_t dk)
+mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
+                   int nk, const ord_t knb_ords[nk], ord_t dk)
 {
   // input validation
   ensure(nv && var_ords);
   ensure(nk && knb_ords);
   ensure( 0 <  mono_order(nv,var_ords));  // TODO: allow mo == 0
   ensure(dk <= mono_order(nk,knb_ords));
-  ensure((size_t)(mono_order(nv,var_ords) + mono_order(nk,knb_ords)) < 8 * sizeof(bit_t));
+  ensure((mono_order(nv,var_ords) + mono_order(nk,knb_ords)) < DESC_MAX);
 
   ord_t map_ords[nv];  // to parse optional param
   if (map_ords_){
@@ -1033,7 +1039,7 @@ mad_tpsa_dnewk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_
 }
 
 void
-mad_tpsa_ddel(D *d)
+mad_tpsa_desc_del(D *d)
 {
   assert(d);
   free(d->a);
@@ -1080,26 +1086,6 @@ mad_tpsa_ddel(D *d)
   free(d);
 }
 
-int
-mad_tpsa_size(const D *d, ord_t *t_mo)
-{
-  assert(d);
-  ensure(t_mo);
-  if (*t_mo > d->mo)
-    *t_mo = d->mo;
-  return d->hpoly_To_idx[*t_mo+1];
-}
-
-ord_t
-mad_tpsa_gtrunc(D *d, ord_t to)
-{
-  assert(d);
-  ord_t orig = d->trunc;
-  if (to > d->mo)
-    to = d->mo;
-  d->trunc = to;
-  return orig;
-}
 
 #undef D
 #undef TRACE

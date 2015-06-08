@@ -14,14 +14,14 @@ main(void)
 	typedef struct tpsa_desc desc_t;
 	typedef struct { tpsa_t *x,*px,*y,*py,*s,*ps; } map_t;
 
-	desc_t *d = mad_tpsa_dnew(6, (ord_t[]){2,2,2,2,2,2}, 0, 0);
+	desc_t *d = mad_tpsa_desc_new(6, (ord_t[]){1,1,1,1,1,1}, 0, 0);
 	map_t m = {
-		.x  = mad_tpsa_new(d, -1),
-		.px = mad_tpsa_new(d, -1),
-		.y  = mad_tpsa_new(d, -1),
-		.py = mad_tpsa_new(d, -1),
-		.s  = mad_tpsa_new(d, -1),
-		.ps = mad_tpsa_new(d, -1),
+		.x  = mad_tpsa_newd(d, mad_tpsa_default),
+		.px = mad_tpsa_newd(d, mad_tpsa_default),
+		.y  = mad_tpsa_newd(d, mad_tpsa_default),
+		.py = mad_tpsa_newd(d, mad_tpsa_default),
+		.s  = mad_tpsa_newd(d, mad_tpsa_default),
+		.ps = mad_tpsa_newd(d, mad_tpsa_default),
 	};
 
 	mad_tpsa_set0(m.x,  0,0);
@@ -33,10 +33,8 @@ main(void)
 	mad_tpsa_setm(m.ps, 3,(ord_t[]){1,0,0}, 0.0,1.0);
 	mad_tpsa_setm(m.ps, 3,(ord_t[]){0,0,1}, 0.0,1.0);
 
-	for (int i=0; i < 3000000; i++) {
-    // printf("%d-----------------\n", i);
+	for (int i=0; i < 10000000; i++)
 	 	mad_track_drift((tpsa_t**)&m, 1, 1, 0);
-  }
 
   mad_tpsa_print(m.x, stdout);
   mad_tpsa_print(m.y, stdout);
@@ -51,7 +49,7 @@ main(void)
   mad_tpsa_del(m.px);
   mad_tpsa_del(m.py);
   mad_tpsa_del(m.ps);
-  mad_tpsa_ddel(d);
+  mad_tpsa_desc_del(d);
 
 	return 0;
 }

@@ -10,27 +10,38 @@ end
 
 local M = {}  -- this module
 local V = {}  -- private keys
+local T = {}  -- temporary keys
 local D = {}  -- private desc
 local MT = {  -- metatable
   __index = function (tbl, key)
 --    io.write("getting ", key, '\n')
-    return tbl[V][key] or M[key]
+    return tbl[V][key] or tbl[T][key] or M[key]
   end,
 
   __newindex = function (tbl, key, val)
 --    io.write("setting ", key, '\n')
-    local var = assert(tbl[V][key], "invalid map variable")
-    if type(var) == "number" then
+    local K = tbl[V][key] and V or T
+    local var = tbl[K][key]
+
+    if var == nil then
       if type(val) == "number" then
-        tbl[V][key] = val
+        tbl[K][key] = val               -- create number
       else
-        tbl[V][key] =  val.coef[0]
+        tbl[K][key] = val:set_var()     -- create TPSA
+      end
+
+    elseif type(var) == "number" then
+      if type(val) == "number" then
+        tbl[K][key] = val               -- number -> number
+      else
+        tbl[K][key] = val.coef[0]       -- TPSA -> number
         val:release()
       end
     elseif type(val) == "number" then
-      tpsa.set0(var, val)
+      tpsa.const(var, val)              -- number -> TPSA
+
     else
-      tpsa.cpy(val, var)
+      tpsa.cpy(val, var)                -- TPSA -> TPSA
       val:release()
     end
   end
@@ -40,7 +51,7 @@ local MT = {  -- metatable
 -- {v={'x','px'}, mo={3,3} [, vo={2,1}] [, nk=3,ko=1  ] [, dk=2]}
 function M.make_map(args)
   assert(args and args.v and args.mo and #args.v == #args.mo)
-  local m = { [V]={} }
+  local m = { [V]={}, [T]={} }
   args.vo = args.vo or args.mo
 
   if mono_sum(args.vo) ~= 0 and mono_sum(args.mo) ~= 0 then

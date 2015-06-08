@@ -11,7 +11,8 @@
 #include "mono.h"
 #include "tpsa_utils.tc"
 #include "tpsa_desc.tc"
-//#include "mem_alloc.h"
+// #include "mem_alloc.h"
+
 
 // #define TRACE
 
@@ -19,6 +20,8 @@
 #define D     struct tpsa_desc
 #define num_t double
 
+const ord_t mad_tpsa_default   = -1;
+const ord_t mad_tpsa_same      = -2;
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
@@ -45,45 +48,109 @@ mad_tpsa_debug(const T *t)
 
 // --- PUBLIC FUNCTIONS -------------------------------------------------------
 
+// --- --- INTROSPECTION ------------------------------------------------------
+D*
+mad_tpsa_desc(const T *t)
+{
+  assert(t);
+  return t->desc;
+}
+
+ord_t
+mad_tpsa_gtrunc(D *d, ord_t to)
+{
+  assert(d);
+  ord_t orig = d->trunc;
+  if (to == mad_tpsa_same)
+    return orig;
+
+  if (to == mad_tpsa_default)
+    to = d->mo;
+  else
+    ensure(to <= d->mo);
+  d->trunc = to;
+  return orig;
+}
+
+ord_t
+mad_tpsa_ord(const T *t)
+{
+  assert(t);
+  return t->mo;
+}
+
+ord_t
+(mad_tpsa_ordv)(const T *t1, const T *t2, ...)
+{
+  assert(t1 && t2);
+  ord_t mo = t1->mo > t2->mo ? t1->mo : t2->mo;
+  va_list args;
+  va_start(args,t2);
+  while ((t2 = va_arg(args,T*)))
+    if (t2->mo > mo)
+      mo = t2->mo;
+  va_end(args);
+  return mo;
+}
+
+int
+mad_tpsa_maxsize(const D *d)
+{
+  assert(d);
+  return d->nc;
+}
+
+ord_t
+mad_tpsa_maxord(const D *d)
+{
+  assert(d);
+  return d->mo;
+}
+
 // --- --- CTORS --------------------------------------------------------------
 
 T*
-mad_tpsa_new(D *d, ord_t mo_)
+mad_tpsa_newd(D *d, ord_t mo)
 {
   assert(d);
 
-  if (mo_ > d->mo)
-    mo_ = d->mo;
+  if (mo == mad_tpsa_default)
+    mo = d->mo;
+  else
+    ensure(mo <= d->mo);
 
-  int needed_coef = d->hpoly_To_idx[mo_+1];
-  T *t = malloc(sizeof(T) + needed_coef * sizeof(num_t));
-  assert(t);
-#ifdef TRACE
-  printf("tpsa new %p from %p with mo=%d\n", (void*)t, (void*)d, *mo_);
-#endif
-  t->desc = d;
-  t->lo = t->mo = mo_;
+  T *t;
+  if (d->stack_top > 0)
+    t = d->stack[d->stack_top--];
+  else {
+    t = malloc(sizeof(T) + d->nc * sizeof(num_t));
+    assert(t);
+    t->desc = d;
+  }
+  t->lo = t->mo = mo;
   t->hi = t->nz = t->coef[0] = 0;  // coef[0] used without checking NZ[0]
   t->tmp = 0;
   return t;
 }
 
 T*
-mad_tpsa_same(const T *t)
+mad_tpsa_new(const T *t, ord_t mo)
 {
-  assert(t && t->desc);
-  return mad_tpsa_new(t->desc,t->mo);
+  assert(t);
+  if (mo == mad_tpsa_same)
+    mo = t->mo;
+  return mad_tpsa_newd(t->desc,mo);
 }
 
-void
+T*
 mad_tpsa_copy(const T *src, T *dst)
 {
   assert(src && dst);
-  assert(src->desc == dst->desc);
+  ensure(src->desc == dst->desc);
   D *d = src->desc;
   if (d->trunc < src->lo) {
     mad_tpsa_clear(dst);
-    return;
+    return dst;
   }
   dst->hi = min_ord(src->hi, dst->mo, d->trunc);
   dst->lo = src->lo;
@@ -95,6 +162,7 @@ mad_tpsa_copy(const T *src, T *dst)
 #ifdef TRACE
   printf("Copied from %p to %p\n", (void*)src, (void*)dst);
 #endif
+  return dst;
 }
 
 void
@@ -107,12 +175,29 @@ mad_tpsa_clear(T *t)
 }
 
 void
-mad_tpsa_del(T* t)
+mad_tpsa_del(T *t)
 {
 #ifdef TRACE
   printf("tpsa del %p\n", (void*)t);
 #endif
-  free(t);
+  D *d = t->desc;
+  if (d->stack_top < DESC_STACK_SIZE)
+    d->stack[++d->stack_top] = t;
+  else
+    free(t);
+}
+
+void
+(mad_tpsa_delv)(T *t1, T *t2, ...)
+{
+  assert(t1 && t2);
+  mad_tpsa_del(t1);
+  mad_tpsa_del(t2);
+  va_list args;
+  va_start(args,t2);
+  while((t2 = va_arg(args,T*)))
+    mad_tpsa_del(t2);
+  va_end(args);
 }
 
 // --- --- INDEXING / MONOMIALS -----------------------------------------------
@@ -146,6 +231,13 @@ mad_tpsa_midx_sp(const T *t, int n, const int m[n])
 
 
 // --- --- ACCESSORS ----------------------------------------------------------
+
+num_t
+mad_tpsa_get0(const T *t)
+{
+  assert(t);
+  return t->coef[0];
+}
 
 num_t
 mad_tpsa_geti(const T *t, int i)
@@ -286,7 +378,7 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t a, num_t b)
 
 #include "tpsa_fun.tc"
 
-#include "tpsa_compose.tc"
+// #include "tpsa_compose.tc"
 
 // #include "tpsa_minv.tc"
 
