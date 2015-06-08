@@ -38,12 +38,7 @@ local MT = {  -- metatable
         val:release()
       end
     elseif type(val) == "number" then
-<<<<<<< HEAD
-      tpsa.set0(var, val)               -- number -> TPSA
-=======
       tpsa.const(var, val)              -- number -> TPSA
->>>>>>> 4d71faa8d78a1d12794003ffcb45e0dd0b99d468
-
     else
       tpsa.cpy(val, var)                -- TPSA -> TPSA
       val:release()
