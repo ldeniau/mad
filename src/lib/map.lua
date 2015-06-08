@@ -1,5 +1,5 @@
 local tpsa = require"lib.tpsaFFI"
-local type = type
+local type, insert = type, table.insert
 
 local function mono_sum(m)
   local s = 0
@@ -24,6 +24,7 @@ local MT = {  -- metatable
     local var = tbl[K][key]
 
     if var == nil then
+      insert(tbl[K],key)                     -- save the name
       if type(val) == "number" then
         tbl[K][key] = val               -- create number
       else
@@ -46,15 +47,16 @@ local MT = {  -- metatable
   end
 }
 
-function M.clear(tbl)
-  for k,v in pairs(tbl[T]) do
-    v:set_tmp():release()
+function M.clear(m)
+  for i=1,#m[T] do
+    local name = m[T][i]
+    m[T][name]:set_tmp():release()
   end
 end
 
-function M.print_tmp(tbl)
-  for k,v in pairs(tbl[T]) do
-    print(k, v)
+function M.print_tmp(m)
+  for i=1,#m[T] do
+    print(m[T][m[T][i]])
   end
 end
 
@@ -70,6 +72,7 @@ function M.make_map(args)
   end
 
   for i=1,#args.mo do
+    m[V][i] = args.v[i]      -- save the var names
     if args.mo[i] == 0 then
       m[V][args.v[i]] = 0
     else
@@ -105,8 +108,12 @@ function M.get(m, var, mono)
 end
 
 function M.print(m)
-  for name,var in pairs(m[V]) do
-    io.write(name, ': ')
+  local write = io.write
+  for i=1,#m[V] do
+    local name = m[V][i]
+    local var  = m[V][name]
+
+    write(name, ': ')
     if type(var) == 'number' then
       print(var)
     else

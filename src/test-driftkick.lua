@@ -59,11 +59,11 @@ local function track_kick(m, e)
     local dir = 1 -- (m.dir or 1) * (m.charge or 1)
     local bbytwt
 
-    m.bbxtw = scalar(same(m.px), e.bn[e.nmul] or 0)
-    m.bbytw = scalar(same(m.py), e.an[e.nmul] or 0)
+--    m.bbxtw = scalar(same(m.px), e.bn[e.nmul] or 0)
+--    m.bbytw = scalar(same(m.py), e.an[e.nmul] or 0)
 
---    m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)
---    m.bbytw = scalar(m.bbytw or same(m.py), e.an[e.nmul] or 0)
+    m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)
+    m.bbytw = scalar(m.bbytw or same(m.py), e.an[e.nmul] or 0)
 
     for j=e.nmul-1,1,-1 do
         bbytwt = m.x * m.bbytw - m.y * m.bbxtw + e.bn[j]
@@ -108,7 +108,7 @@ m:print()
 -- local e =  { L=1, b=1, T=1, LD=1 } -- drift
 local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
 
-for i=1,2e6 do
+for i=1,1 do
   track_kick(m,e)
 --  track_drift(m,e)
 
@@ -121,7 +121,7 @@ m:print()
 
 print(tpsa.count)
 
--- m:print_tmp()
+m:print_tmp()
 
 -- tracking drifts (lua)
 -- numbers:  2.5 sec (1e9 loops)
