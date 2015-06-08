@@ -206,9 +206,12 @@ function M.release(t)
 end
 
 function M.allocate(desc, mo_)
+  local maxord = clib.mad_tpsa_maxord(desc)
+
+  io.write("maxord = ", maxord, "\n")
   if not mo_ or mo_ == M.default then
-    mo_ = clib.mad_tpsa_maxord(desc)
-  elseif mo_ > clib.mad_tpsa_maxord(desc) then
+    mo_ = maxord
+  elseif mo_ > maxord then
     error("Cannot allocate with order bigger than descriptor max order")
   end
 
