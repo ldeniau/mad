@@ -38,7 +38,7 @@ local MT = {  -- metatable
         val:release()
       end
     elseif type(val) == "number" then
-      tpsa.scalar(var, val)              -- number -> TPSA
+      tpsa.scalar(var, val)             -- number -> TPSA
     else
       tpsa.cpy(val, var)                -- TPSA -> TPSA
       val:release()

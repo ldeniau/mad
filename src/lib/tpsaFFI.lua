@@ -208,7 +208,6 @@ end
 function M.allocate(desc, mo_)
   local maxord = clib.mad_tpsa_maxord(desc)
 
-  io.write("maxord = ", maxord, "\n")
   if not mo_ or mo_ == M.default then
     mo_ = maxord
   elseif mo_ > maxord then
@@ -230,7 +229,9 @@ function M.same(a,b)
 
   if s.top > 0 then
     t = s[s.top]
+    s[s.top] = nil
     s.top = s.top - 1
+    t.mo = mo
     clib.mad_tpsa_clear(t)
   else
     t = M.allocate(a.desc,mo)

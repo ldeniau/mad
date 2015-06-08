@@ -23,15 +23,6 @@ local same = function(a, b)
   return a
 end
 
-local set0 = function(a, b)
-  if not is_number(a) then
-    a:set0(b)
-  else
-    a = b
-  end
-  return a
-end
-
 local scalar = function(a, b)
   if not is_number(a) then
     a:scalar(b)
@@ -117,7 +108,7 @@ m:print()
 -- local e =  { L=1, b=1, T=1, LD=1 } -- drift
 local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
 
-for i=1,1e6 do
+for i=1,2e6 do
   track_kick(m,e)
 --  track_drift(m,e)
 
