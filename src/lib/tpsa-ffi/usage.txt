@@ -102,8 +102,8 @@ Clear / Reset
 -------------
 void  mad_tpsa_clear(T *t)
     -- re-initialize t; after this operation it can be considered empty
-void  mad_tpsa_const(T *t, num_t v)
-    -- make t the constant value v
+void  mad_tpsa_scalar(T *t, num_t v)
+    -- make t the scalar value v
     -- equivalent to mad_tpsa_clear(t) + mad_tpsa_set0(t,v)
 
 

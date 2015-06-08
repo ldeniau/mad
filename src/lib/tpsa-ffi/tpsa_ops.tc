@@ -359,8 +359,8 @@ mad_tpsa_der(const T *a, T *c, int var)
   ensure(var >= a->desc->hpoly_To_idx[1] && var < a->desc->hpoly_To_idx[2]);
   // TODO: ensure map_order[var] > 0
 
-  if (a->hi < 1) { mad_tpsa_clear(c); return; }
-  mad_tpsa_const(c,mad_tpsa_geti(a,var));  // TODO: what if alpha[var] == 0 ?
+  if (a->hi == 0) { mad_tpsa_clear(c); return; }
+  mad_tpsa_scalar(c,mad_tpsa_geti(a,var));  // TODO: what if alpha[var] == 0 ?
 
   D *d = c->desc;
   c->hi = min_ord(c->mo, d->trunc, a->hi-1);
@@ -398,7 +398,7 @@ mad_tpsa_mder(const T *a, T *c, int n, const ord_t mono[n])
   }
 
   // ord 0 & setup
-  mad_tpsa_const(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
+  mad_tpsa_scalar(c,mad_tpsa_geti(a,idx) * der_coef(idx,idx,der_ord,a->desc));
   if (a->hi <= der_ord)
     return;
 
@@ -431,7 +431,7 @@ mad_tpsa_scl(const T *a, num_t v, T *c)
   assert(a && c);
   ensure(a->desc == c->desc);
 
-  if (a->hi == 0) { mad_tpsa_const(c, v*a->coef[0]); return; }
+  if (a->hi == 0) { mad_tpsa_scalar(c, v*a->coef[0]); return; }
 
   D *d = a->desc;
   c->lo = a->lo;

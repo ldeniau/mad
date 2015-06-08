@@ -254,7 +254,6 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   assert(t && m);
   D *d = t->desc;
   idx_t i = desc_get_idx(d,n,m);
-  ensure(d->ords[i] <= t->mo);
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
@@ -265,12 +264,11 @@ mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
   assert(t && m);
   D *d = t->desc;
   idx_t i = desc_get_idx_sp(d,n,m);
-  ensure(d->ords[i] <= t->mo);
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
 void
-mad_tpsa_const(T *t, num_t v)
+mad_tpsa_scalar(T *t, num_t v)
 {
   assert(t);
   if (v) {

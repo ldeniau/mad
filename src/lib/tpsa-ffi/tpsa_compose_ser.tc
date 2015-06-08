@@ -48,7 +48,7 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
     T *tmp      = mad_tpsa_new(d,d->trunc);
 
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_const(mc[i],ma[i]->coef[0]);
+      mad_tpsa_scalar(mc[i],ma[i]->coef[0]);
 
       // ord 1 -- vars
       for (int v = 1; v <= d->nmv; ++v)
@@ -66,7 +66,7 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
   }
   else {                        // no knobs
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_const(mc[i], ma[i]->coef[0]);
+      mad_tpsa_scalar(mc[i], ma[i]->coef[0]);
       for (int v = 1; v <= d->nv; ++v) {
         num_t coef = mad_tpsa_geti(ma[i],v);
         if (coef)
@@ -174,7 +174,7 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
   // initialization
   for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
   for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_new(da,da->trunc);
-  mad_tpsa_const(ords[0],1.0);
+  mad_tpsa_scalar(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
     mad_tpsa_clear(mc[ic]);
 

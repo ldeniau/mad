@@ -422,7 +422,7 @@ static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  assert(desc_mono_isvalid(d, n, m));  // should be ensure ?
+  assert(desc_mono_isvalid(d, n, m));  // TODO should be ensure ?
   return d->tv2to[tbl_index_H(d,n,m)];
 }
 
