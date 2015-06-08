@@ -2,6 +2,7 @@
 #define MAD_TPSA_H
 
 #include <stdio.h>
+#include <stdarg.h>
 
 // --- types -------------------------------------------------------------------
 
@@ -16,23 +17,31 @@ struct tpsa_desc;
 #define ord_t unsigned char
 #define str_t const char*
 
-// descriptors (tpsa factories, bounded to maps)
-D*    mad_tpsa_dnew    (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv]);
-D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
-                        int nk, const ord_t knb_ords[nk], ord_t dk); // knobs
-void  mad_tpsa_ddel    (D *d);
+extern const ord_t mad_tpsa_default;
+extern const ord_t mad_tpsa_same;
 
-// desc introspection
-int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not *t_mo <= d_mo then *t_mo = d_mo
-ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not  g_to <= d_mo then  g_to = d_mo
+// descriptors (tpsa factories, bounded to maps)
+D*    mad_tpsa_desc_new (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv]);
+D*    mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv],
+                         int nk, const ord_t knb_ords[nk], ord_t dk); // knobs
+void  mad_tpsa_desc_del (D *d);
+
+// Introspection
+ord_t mad_tpsa_gtrunc  (      D *d, ord_t to);
+int   mad_tpsa_maxsize (const D *d);
+ord_t mad_tpsa_maxord  (const D *d);
+D*    mad_tpsa_desc    (const T *t);
+ord_t mad_tpsa_ord     (const T *t);
+ord_t mad_tpsa_ordv    (const T *t1, const T *t2, ...);  // max order of all
 
 // ctors, dtor
-T*    mad_tpsa_new     (D *d, ord_t mo_); // if not mo <= d_mo then mo = d_mo
-T*    mad_tpsa_same    (const T *t);
-void  mad_tpsa_copy    (const T *t, T *dst);
+T*    mad_tpsa_newd    (      D *d, ord_t mo); // if mo > d_mo, mo = d_mo
+T*    mad_tpsa_new     (const T *t, ord_t mo);
+T*    mad_tpsa_copy    (const T *t, T *dst);
 void  mad_tpsa_clear   (      T *t);
-void  mad_tpsa_const   (      T *t, num_t v);
+void  mad_tpsa_const   (      T *t, num_t v); // TODO rename to tpsa_scalar
 void  mad_tpsa_del     (      T *t);
+void  mad_tpsa_delv    (      T *t1, T *t2, ...);
 
 // indexing / monomials
 const ord_t*
@@ -41,10 +50,11 @@ int   mad_tpsa_midx    (const T *t, int n, const ord_t m[n]);
 int   mad_tpsa_midx_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
 
 // accessors
+num_t mad_tpsa_get0    (const T *t);
 num_t mad_tpsa_geti    (const T *t, int i);
 num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[n]);
 num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[n]); // sparse mono [(i,o)]
-void  mad_tpsa_set0    (      T *t,                          num_t a, num_t b);
+void  mad_tpsa_set0    (      T *t, /* i = 0 */              num_t a, num_t b);
 void  mad_tpsa_seti    (      T *t, int i,                   num_t a, num_t b);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t a, num_t b);
 void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t a, num_t b);
@@ -103,7 +113,9 @@ void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T 
 void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // aliasing OK
 void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
                                                          const T *z, num_t c, T *r);  // aliasing OK
-void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // aliasing OK
+void  mad_tpsa_axypbvwpc  (num_t a, const T *x,          const T *y,
+                           num_t b, const T *v,          const T *w, num_t c, T *r);  // aliasing OK
+void  mad_tpsa_ax2pby2pc  (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
 void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
 
 
@@ -123,6 +135,9 @@ D*    mad_tpsa_desc_scan(            FILE *stream_);
 #undef num_t
 #undef ord_t
 #undef str_t
+
+#define mad_tpsa_ordv(...) mad_tpsa_ordv(__VA_ARGS__,NULL)
+#define mad_tpsa_delv(...) mad_tpsa_delv(__VA_ARGS__,NULL)
 
 // -----------------------------------------------------------------------------
 #endif

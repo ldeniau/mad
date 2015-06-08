@@ -3,12 +3,12 @@
 #include "mad_sse_avx.h"
 
 #undef mono_add
-#undef mono_sum
+#undef mono_order
 #undef mono_leq
 
-#define mono_add  mono_add_sse
-#define mono_sum  mono_sum_sse
-#define mono_leq  mono_leq_sse
+#define mono_add   mono_add_sse
+#define mono_order mono_order_sse
+#define mono_leq   mono_leq_sse
 
 static inline void
 mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
@@ -39,7 +39,7 @@ mono_add_sse(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 }
 
 static inline int
-mono_sum_sse(int n, const ord_t a[n])
+mono_order_sse(int n, const ord_t a[n])
 {
   assert(a);
   __m128i ra, rs, rm, zero = _mm_setzero_si128();

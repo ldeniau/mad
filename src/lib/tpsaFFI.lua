@@ -12,14 +12,17 @@ ffi.cdef[[
   // --- types -----------------------------------------------------------------
 
   struct _IO_FILE;
-  typedef struct _IO_FILE FILE;
-
+  typedef struct _IO_FILE  FILE;
   typedef double           num_t;
   typedef unsigned char    ord_t;
   typedef unsigned int     bit_t;
   typedef const char*      str_t;
   typedef struct tpsa      T;
   typedef struct tpsa_desc D;
+
+  struct tpsa_desc {
+    int id;     // WARNING: rest of fields are not exposed
+  };
 
   struct tpsa { // warning: must be kept identical to C definition
     D      *desc;
@@ -30,38 +33,44 @@ ffi.cdef[[
   };
 
   // --- interface -------------------------------------------------------------
+  const ord_t mad_tpsa_default;
+  const ord_t mad_tpsa_same;
 
-  // --- --- DESC --------------------------------------------------------------
+  // descriptors (tpsa factories, bounded to maps)
+  D*    mad_tpsa_desc_new (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
+  D*    mad_tpsa_desc_newk(int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
+                           int nk, const ord_t knb_ords[], ord_t dk); // knobs
+  void  mad_tpsa_desc_del (D *d);
 
-  D*    mad_tpsa_dnew    (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);
-  D*    mad_tpsa_dnewk   (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[],
-                          int nk, const ord_t knb_ords[], ord_t dk); // knobs
-  void  mad_tpsa_ddel    (D *d);
+  // Introspection
+  ord_t mad_tpsa_gtrunc  (      D *d, ord_t to);
+  int   mad_tpsa_maxsize (const D *d);
+  int   mad_tpsa_maxord  (const D *d);
+  D*    mad_tpsa_desc    (const T *t);
+  ord_t mad_tpsa_ord     (const T *t);
+  ord_t mad_tpsa_ordv    (const T *t1, const T *t2, ...);  // max order of all
 
-  // --- --- DESC introspection ------------------------------------------------
-  int   mad_tpsa_size    (const D *d, ord_t *t_mo ); // if not 0 < *t_mo <= d_mo then *t_mo = d_mo
-  ord_t mad_tpsa_gtrunc  (      D *d, ord_t  g_to_); // if not 0 <= g_to <= d_mo then  g_to = d_mo
-
-  // --- --- TPSA --------------------------------------------------------------
-  // --- --- ctors, dtor
-  T*    mad_tpsa_new     (D *d, ord_t mo_); // if not 0 < mo <= d_mo then mo = d_mo
-  T*    mad_tpsa_same    (const T *t);
-  void  mad_tpsa_copy    (const T *t, T *dst);
+  // ctors, dtor
+  T*    mad_tpsa_newd    (      D *d, ord_t mo); // if mo > d_mo, mo = d_mo
+  T*    mad_tpsa_new     (const T *t, ord_t mo);
+  T*    mad_tpsa_copy    (const T *t, T *dst);
   void  mad_tpsa_clear   (      T *t);
-  void  mad_tpsa_const   (      T *t, num_t v);
+  void  mad_tpsa_const   (      T *t, num_t v); // TODO rename to tpsa_scalar
   void  mad_tpsa_del     (      T *t);
+  void  mad_tpsa_delv    (      T *t1, T *t2, ...);
 
-  // --- --- indexing / monomials
+  // indexing / monomials
   const ord_t*
         mad_tpsa_mono    (const T *t, int i, int *n, ord_t *total_ord_);
   int   mad_tpsa_midx    (const T *t, int n, const ord_t m[]);
   int   mad_tpsa_midx_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
 
-  // --- --- accessors
+  // accessors
+  num_t mad_tpsa_get0    (const T *t);
   num_t mad_tpsa_geti    (const T *t, int i);
   num_t mad_tpsa_getm    (const T *t, int n, const ord_t m[]);
-  num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]);
-  void  mad_tpsa_set0    (      T *t,                         num_t a, num_t b);
+  num_t mad_tpsa_getm_sp (const T *t, int n, const int   m[]); // sparse mono [(i,o)]
+  void  mad_tpsa_set0    (      T *t, /* i = 0 */             num_t a, num_t b);
   void  mad_tpsa_seti    (      T *t, int i,                  num_t a, num_t b);
   void  mad_tpsa_setm    (      T *t, int n, const ord_t m[], num_t a, num_t b);
   void  mad_tpsa_setm_sp (      T *t, int n, const int   m[], num_t a, num_t b);
@@ -114,7 +123,9 @@ ffi.cdef[[
   void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // aliasing OK
   void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
                                                            const T *z, num_t c, T *r);  // aliasing OK
-  void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // aliasing OK
+  void  mad_tpsa_axypbvwpc  (num_t a, const T *x,          const T *y,
+                             num_t b, const T *v,          const T *w, num_t c, T *r);  // aliasing OK
+  void  mad_tpsa_ax2pby2pc  (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
   void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
 
   void  mad_tpsa_print     (const T *t, FILE *stream_);
@@ -143,7 +154,7 @@ M.clib_ = clib
 M.count = 0
 
 -- CONSTRUCTORS ----------------------------------------------------------------
-local tmp_stack
+local tmp_stack = {}
 
 -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, ko={1,1,1} ] [, dk=2]}
 -- {vo={2,2} [, mo={3,3}] [, v={'x', 'px'}] [, nk=3,ko=1  ] [, dk=2]}
@@ -161,19 +172,20 @@ function M.get_desc(args)
   local nk = args.nk or type(args.ko) == "table" and #args.ko or 0
   if nk ~= 0 then
     local cknb_ords = assert(args.ko, "knob orders not specified") and mono_t(nk, args.ko)
-    d = clib.mad_tpsa_dnewk(nv, cvar_ords, cmap_ords, cvar_names,
-                            nk, cknb_ords, dk)
+    d = clib.mad_tpsa_desc_newk(nv, cvar_ords, cmap_ords, cvar_names,
+                                nk, cknb_ords, dk)
   else
-    d = clib.mad_tpsa_dnew (nv, cvar_ords, cmap_ords, cvar_names)
+    d = clib.mad_tpsa_desc_new (nv, cvar_ords, cmap_ords, cvar_names)
   end
-  tmp_stack = { top=0 }
+  tmp_stack[d.id] = { top=0 }
   return d
 end
 
-function M.gtrunc(desc, o)
-  -- negative o resets it
-  return clib.mad_tpsa_gtrunc(desc, o)
-end
+M.desc_del = clib.mad_tpsa_desc_del
+M.same     = clib.mad_tpsa_same
+M.default  = clib.mad_tpsa_default
+M.gtrunc   = clib.mad_tpsa_gtrunc
+M.ord      = clib.mad_tpsa_ord
 
 function M.set_tmp(t)
   t.tmp = 1
@@ -187,29 +199,38 @@ end
 
 function M.release(t)
   if t.tmp ~= 0 then
-    tmp_stack.top = tmp_stack.top + 1
-    tmp_stack[tmp_stack.top] = t
+    local s = tmp_stack[t.desc.id]
+    s.top = s.top + 1
+    s[s.top] = t
   end
 end
 
 function M.allocate(desc, mo_)
-  mo_      = ord_ptr(mo_ or -1)
-  local nc = clib.mad_tpsa_size(desc, mo_)
+  if not mo_ or mo_ == M.default then
+    mo_ = clib.mad_tpsa_maxord(desc)
+  elseif mo_ > clib.mad_tpsa_maxord(desc) then
+    error("Cannot allocate with order bigger than descriptor max order")
+  end
+
+  local nc = clib.mad_tpsa_maxsize(desc)
   local t  = tpsa_t(nc)  -- automatically initialized with 0s
   t.desc   = desc
-  t.mo     = mo_[0]
-  t.lo     = t.mo
+  t.mo, t.lo = mo_, mo_
   M.count  = M.count + 1
   return t, nc
 end
 
 function M.same(a,b)
-  local t
-  if tmp_stack.top > 0 then
-    t = tmp_stack[tmp_stack.top]
-    tmp_stack.top = tmp_stack.top - 1
+  local mo = a.mo
+  if b and b.mo > a.mo then mo = b.mo end
+  local s, t = tmp_stack[a.desc.id]
+
+  if s.top > 0 then
+    t = s[s.top]
+    s.top = s.top - 1
+    clib.mad_tpsa_clear(t)
   else
-    t = M.allocate(a.desc)
+    t = M.allocate(a.desc,mo)
   end
   return t:set_var()
 end
@@ -241,7 +262,10 @@ end
 
 -- PEEK & POKE -----------------------------------------------------------------
 
+M.clear  = clib.mad_tpsa_clear
+M.get0   = clib.mad_tpsa_get0
 M.get_at = clib.mad_tpsa_geti
+M.const  = clib.mad_tpsa_const
 
 function M.get(t, m)
   return clib.mad_tpsa_getm(t, #m, mono_t(#m,m))
@@ -252,7 +276,6 @@ function M.get_sp(t,m)
   return clib.mad_tpsa_getm_sp(t, #m, smono_t(#m,m))
 end
 
-M.const  = clib.mad_tpsa_const
 function M.set0(t, a,b)
   if not b then a, b = 0, a end
   clib.mad_tpsa_set0(t,a,b)
@@ -301,44 +324,16 @@ function M.scale(src, val, dst)
 end
 
 -- --- BINARY ------------------------------------------------------------------
-function M.add(a, b, c)
-  -- c should be different from a and b
-  clib.mad_tpsa_add(a, b, c)
-end
-
-function M.sub(a, b, c)
-  -- c should be different from a and b
-  clib.mad_tpsa_sub(a, b, c)
-end
-
-function M.mul(a, b, c)
-  -- c should be different from a and b
-  clib.mad_tpsa_mul(a,b,c)
-end
-
-function M.div(a, b, c)
-  clib.mad_tpsa_div(a,b,c)
-end
-
--- unused yet
---function M.pow(a, p)
---  local r = a:same()
---  clib.mad_tpsa_pow(a, r, p)
---  return r
---end
+M.add = clib.mad_tpsa_add
+M.sub = clib.mad_tpsa_sub
+M.mul = clib.mad_tpsa_mul
+M.div = clib.mad_tpsa_div
 
 function M.poisson(a, b, c, n)
   c = c or a:same()
   clib.mad_tpsa_poisson(a, b, c, n)
 end
 
-function M.axpby(v1, a, v2, b, c)
-  clib.mad_tpsa_axpby(v1, a, v2, b, c)
-end
-
-function M.axpb(v, a, b, c)
-  clib.mad_tpsa_axpb(v, a, b, c)
-end
 
 -- --- OVERLOADING -------------------------------------------------------------
 function MT.__add(a, b)
