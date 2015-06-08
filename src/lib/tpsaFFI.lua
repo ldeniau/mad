@@ -55,7 +55,7 @@ ffi.cdef[[
   T*    mad_tpsa_new     (const T *t, ord_t mo);
   T*    mad_tpsa_copy    (const T *t, T *dst);
   void  mad_tpsa_clear   (      T *t);
-  void  mad_tpsa_const   (      T *t, num_t v); // TODO rename to tpsa_scalar
+  void  mad_tpsa_scalar  (      T *t, num_t v);
   void  mad_tpsa_del     (      T *t);
   void  mad_tpsa_delv    (      T *t1, T *t2, ...);
 
@@ -268,7 +268,7 @@ end
 M.clear  = clib.mad_tpsa_clear
 M.get0   = clib.mad_tpsa_get0
 M.get_at = clib.mad_tpsa_geti
-M.const  = clib.mad_tpsa_const
+M.scalar = clib.mad_tpsa_scalar
 
 function M.get(t, m)
   return clib.mad_tpsa_getm(t, #m, mono_t(#m,m))

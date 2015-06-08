@@ -32,9 +32,9 @@ local set0 = function(a, b)
   return a
 end
 
-local const = function(a, b)
+local scalar = function(a, b)
   if not is_number(a) then
-    a:const(b)
+    a:scalar(b)
   else
     a = b
   end
@@ -68,11 +68,11 @@ local function track_kick(m, e)
     local dir = 1 -- (m.dir or 1) * (m.charge or 1)
     local bbytwt
 
---    m.bbxtw = const(same(m.px), e.bn[e.nmul] or 0)
---    m.bbytw = const(same(m.py), e.an[e.nmul] or 0)
+    m.bbxtw = scalar(same(m.px), e.bn[e.nmul] or 0)
+    m.bbytw = scalar(same(m.py), e.an[e.nmul] or 0)
 
-    m.bbxtw = const(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)
-    m.bbytw = const(m.bbytw or same(m.py), e.an[e.nmul] or 0)
+--    m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)
+--    m.bbytw = scalar(m.bbytw or same(m.py), e.an[e.nmul] or 0)
 
     for j=e.nmul-1,1,-1 do
         bbytwt = m.x * m.bbytw - m.y * m.bbxtw + e.bn[j]
