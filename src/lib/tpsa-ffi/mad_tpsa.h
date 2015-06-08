@@ -113,7 +113,9 @@ void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T 
 void  mad_tpsa_axypb      (num_t a, const T *x,          const T *y, num_t b, T *r);  // aliasing OK
 void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
                                                          const T *z, num_t c, T *r);  // aliasing OK
-void  mad_tpsa_ax2pby2    (num_t a, const T *x, num_t b, const T *y, T *r);           // aliasing OK
+void  mad_tpsa_axypbvwpc  (num_t a, const T *x,          const T *y,
+                           num_t b, const T *v,          const T *w, num_t c, T *r);  // aliasing OK
+void  mad_tpsa_ax2pby2pc  (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
 void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
 
 

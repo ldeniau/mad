@@ -498,8 +498,20 @@ mad_tpsa_axypbzpc(num_t a, const T *x, const T *y, num_t b, const T *z, num_t c,
   mad_tpsa_axpbypc(a,t,b,z,c,r);
 }
 
+void  mad_tpsa_axypbvwpc(num_t a, const T *x, const T *y,
+                         num_t b, const T *v, const T *w, num_t c, T *r)
+{
+  assert(x && y && v && w && r);
+  ensure(x->desc == y->desc && y->desc == v->desc && v->desc == w->desc && w->desc == r->desc);
+  T *t1 = r->desc->t1, *t2 = r->desc->t2;
+  mad_tpsa_mul(x,y,t1);
+  mad_tpsa_mul(v,w,t2);
+  mad_tpsa_axpbypc(a,t1, b,t2, c, r);
+}
+
+
 void
-mad_tpsa_ax2pby2(num_t a, const T *x, num_t b, const T *y, T *r)
+mad_tpsa_ax2pby2pc(num_t a, const T *x, num_t b, const T *y, num_t c, T *r)
 {
   assert(x && y && r);
   ensure(x->desc == y->desc && y->desc == r->desc);
@@ -507,7 +519,7 @@ mad_tpsa_ax2pby2(num_t a, const T *x, num_t b, const T *y, T *r)
   T *t1 = r->desc->t1, *t2 = r->desc->t2;
   mad_tpsa_mul(x,x,t1);
   mad_tpsa_mul(y,y,t2);
-  mad_tpsa_axpbypc(a,t1,b,t2,0,r);
+  mad_tpsa_axpbypc(a,t1,b,t2,c,r);
 }
 
 void
