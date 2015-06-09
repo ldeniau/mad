@@ -3,8 +3,8 @@
 
 #include <limits.h>
 
-// #define TRACE
-// #define DEBUG
+#define TRACE
+#define DEBUG
 
 typedef int   idx_t;
 
@@ -27,7 +27,8 @@ struct tpsa_desc {
           *ords,      // order of each mono of To
          **To,        // Table by orders -- pointers to monos, sorted by order
          **Tv;        // Table by vars   -- pointers to monos, sorted by vars
-  idx_t   *hpoly_To_idx,  // poly start in To
+  idx_t   *sort_var,  // array
+          *hpoly_To_idx,  // poly start in To
           *tv2to, *to2tv, // lookup tv->to, to->tv
           *H,         // indexing matrix, in Tv
          **L;         // multiplication indexes -- L[oa][ob] = lc; lc[ia][ib] = ic
@@ -119,29 +120,20 @@ nxt_mono_by_var(D *d, int n, ord_t m[n], int start)
 }
 
 static inline void
-nxt_mono_by_unk(int n, const ord_t a[n], int i, int j, ord_t m[n])
+nxt_mono_by_unk(int n, const ord_t a[n], const idx_t sort[n], int i, int j, ord_t m[n])
 {
-  assert(a && m);
+  assert(a && sort && m);
   mono_fill(n,m,0);
+  idx_t real_idx;
   for (int k=i; k < n; ++k) {
-    m[k] = a[k];
-    j -= a[k];
+    real_idx = sort[k];
+    m[real_idx] = a[real_idx];
+    j -= a[real_idx];
     if (j <= 0) {
-      if (j < 0) m[k] += j;
+      if (j < 0) m[real_idx] += j;
       break;
     }
   }
-}
-
-static inline void
-print_mono_mat(int w, int h, const ord_t t[w*h])
-{
-  for (int i = 0; i < imin(h,50); ++i) {
-    printf("(%2d) ", i);
-    mono_print(w, t + i*w);
-    printf(" o=%d\n", mono_order(w, t + i*w));
-  }
-  if (h > 50) printf("... [ %d more rows ] ...\n", h - 50);
 }
 
 // --- TABLES -----------------------------------------------------------------
@@ -175,7 +167,7 @@ tbl_realloc_monos(D *d, int new_nc_)
 }
 
 static inline idx_t  // idx to end of d->monos
-make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
+make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc, idx_t var_at_idx[])
 {
 #ifdef TRACE
   printf("make_higher_ord_monos, cmi=%d\n", curr_mono_idx);
@@ -185,6 +177,7 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
   int nv = d->nv;
   ord_t m[nv], *curr_mono = d->monos + curr_mono_idx*nv;
   idx_t *pi = d->hpoly_To_idx;
+
   for (ord_t o = 2; o <= d->mo; o++) {        // to build ord o:
     for   (int i = pi[ 1 ]; i < pi[2]; ++i) { // i goes through ord  1
       for (int j = pi[o-1]; j < pi[o]; ++j) { // j goes through ord (o-1)
@@ -200,7 +193,8 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
           curr_mono_idx++;
           curr_mono += nv;
         }
-        if (m[i-1] > d->var_ords[i-1] || m[i-1] >= o)
+        // TODO: find better way to stop
+        if (m[var_at_idx[i]] > d->var_ords[var_at_idx[i]] || m[var_at_idx[i]] >= o)
           break;
       }
       pi[o+1] = curr_mono_idx;
@@ -208,10 +202,9 @@ make_higher_ord_monos(D *d, int curr_mono_idx, int need_realloc)
   }
 
 #ifdef DEBUG
-  print_mono_mat(d->nv, curr_mono_idx, d->monos);
   printf("ps={ ");
   for (int o = 0; o <= d->mo + 1; ++o)
-    printf("[%d]=%d ", o, d->hpoly_To_idx[o]);
+    printf("[%d]=%d ", o, pi[o]);
   printf("}\n");
 #endif
 
@@ -248,6 +241,7 @@ make_monos(D *d)
   int curr_mono_idx = 1;
 
   // ord 1
+  idx_t var_at_idx[nv+1];
   if (d->mo >= 1) {
     d->hpoly_To_idx[1] = 1;
     mono_fill(nv*nv, d->monos+nv, 0);  // init with 0; TODO: check d->monos has nv*nv slots
@@ -255,6 +249,7 @@ make_monos(D *d)
       if (d->var_ords[i]) {
         d->monos[curr_mono_idx*nv + i] = 1;
         d->ords [curr_mono_idx]        = 1;
+        var_at_idx[curr_mono_idx]      = i;
         curr_mono_idx++;
       }
     d->hpoly_To_idx[2] = curr_mono_idx;
@@ -262,7 +257,7 @@ make_monos(D *d)
 
   int real_nc = curr_mono_idx;
   if (d->mo >= 2)
-    real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc);
+    real_nc = make_higher_ord_monos(d, curr_mono_idx, need_realloc,var_at_idx);
 
   tbl_realloc_monos(d, real_nc);
   d->size += real_nc * d->nv * sizeof *(d->monos);
@@ -287,15 +282,12 @@ find_index(int n, const ord_t **T, const ord_t m[n], int start, int stop)
 enum tbl_ordering {BY_ORD, BY_VAR};
 
 static inline int
-find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, enum tbl_ordering tbl_ord)
+find_index_bin(int n, const ord_t **T, const ord_t m[n], const int from_idx, const int to_idx, enum tbl_ordering tbl_ord)
 {
-#ifdef DEBUG
-  mono_print(n,m);
-  printf(" from %d to %d\n", start, stop);
-#endif
-
-  int count = stop - start, i = 0, step = 0;
+  int start = from_idx, count = to_idx - from_idx, i = 0, step = 0;
+  int iter = 0;
   while (count > 0) {
+    ++iter;
     step = count / 2;
     i = start + step;
     if ((tbl_ord == BY_ORD && mono_order(n,T[i]) < mono_order(n,m)) || mono_rcmp(n,T[i],m) < 0) {
@@ -305,13 +297,13 @@ find_index_bin(int n, const ord_t **T, const ord_t m[n], int start, int stop, en
     else
       count = step;
   }
-  if ( start < stop && mono_equ(n,T[start], m))
+  if ( start < to_idx && mono_equ(n,T[start], m))
     return start;
 
   // error
-  tbl_print(n, stop, (ord_t **)T);
-  printf("monomial not found in table: "); mono_print(n,m);
-  printf(" Searched by %s from %d to %d\n", tbl_ord == BY_ORD ? "order" : "variable", start, stop);
+  tbl_print(n, to_idx, (ord_t **)T);
+  printf("monomial not found in table_by_%s: ", tbl_ord == BY_ORD ? "ord" : "var"); mono_print(n,m);
+  printf(" Searched from %d to %d\n", from_idx, to_idx);
   assert(NULL);
   return -1;
 }
@@ -332,6 +324,9 @@ tbl_by_ord(D *d)
   ord_t *monos = d->monos;
   for (int i = 0; i < d->nc; ++i, monos += d->nv)
     d->To[i] = monos;
+#ifdef DEBUG
+  tbl_print(d->nv, d->nc, d->To);
+#endif
 }
 
 static inline void
@@ -363,11 +358,16 @@ tbl_by_var(D *d)
     d->Tv[mi]     = d->To[idx];
     ++mi;
   } while (nxt_mono_by_var(d,nv,m,0));
+  assert(mi == d->nc);
+
 #ifdef DEBUG
-  tbl_print(nv, mi, d->Tv);
+  tbl_print(nv, d->nc, d->Tv);
   printf("tv2to=[ ");
-  for (int i = 0; i < imin(mi,50); ++i) printf("%d ", d->tv2to[i]);
-  printf("%s]\n", mi > 50 ? " ... " : "");
+  for (int i = 0; i < imin(d->nc,50); ++i) printf("%d ", d->tv2to[i]);
+  printf("%s]\n", d->nc > 50 ? " ... " : "");
+  printf("to2tv=[ ");
+  for (int i = 0; i < imin(d->nc,50); ++i) printf("%d ", d->to2tv[i]);
+  printf("%s]\n", d->nc > 50 ? " ... " : "");
 #endif
 }
 
@@ -379,6 +379,7 @@ tbl_print_H(const D *d)
   assert(d && d->H);
   int cols = d->mo + 2;
   for (int i = 0; i < d->nv; ++i) {
+    printf("%2d | ", d->sort_var[i]);
     for (int j = 0; j < cols; ++j)
       printf("%2d ", d->H[i*cols + j]);
     printf("\n");
@@ -391,10 +392,12 @@ tbl_index_H(const D *d, int n, const ord_t m[n])
   assert(d);
   assert(n <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2;
-  const int *H = d->H;
+  const idx_t *H = d->H, *sort = d->sort_var;
+        idx_t ri;
   for (int i = n - 1; i >= 0; --i) {
-    I += H[i*cols + s+m[i]] - H[i*cols + s];
-    s += m[i];
+    ri = sort[i];  // real idx
+    I += H[ri*cols + s+m[ri]] - H[ri*cols + s];
+    s += m[ri];
   }
   assert(I > -1);
   return I;
@@ -441,10 +444,12 @@ tbl_clear_H(D *d)
   printf("tbl_clear_H for %p\n", (void*)d);
 #endif
   int cols = d->mo + 2, accum = 0;
-  for (int i = d->nv - 1; i >= 0; --i) {
-    accum += d->var_ords[i];
-    for (int j = 1 + imin(accum,d->mo); j < cols; ++j)
-      d->H[i*cols + j] = -1;
+  idx_t *sort = d->sort_var, ri;
+  for (int i = d->nv - 1; i >= 0; --i) {  // sorted vars
+    ri = sort[i];
+    accum += d->var_ords[ri];
+    for (int j = 1 + imin(accum,d->mo); j < cols; ++j)  // ords
+      d->H[ri*cols + j] = -1;
   }
 }
 
@@ -454,31 +459,37 @@ tbl_solve_H(D *d)
 #ifdef TRACE
   printf("tbl_solve_H for %p\n", (void*)d);
 #endif
-  int nv = d->nv, cols = d->mo + 2, accum = d->var_ords[nv-1];
+  idx_t *sort = d->sort_var, ri;
+  int nv = d->nv, cols = d->mo + 2, accum = d->var_ords[sort[nv-1]];
   ord_t b[nv], *vo = d->var_ords;
 
   // solve system of equations
-  for (int i = nv-2; i >= 1; --i) { // variables
-    accum += vo[i];
-    for (int j = vo[i]+2; j <= imin(accum,d->mo); j++) { // orders
-      nxt_mono_by_unk(nv,vo,i,j,b);
+  for (int i = nv-2; i >= 1; --i) { // sorted variables
+    ri = sort[i];  // real idx
+    accum += vo[ri];
+    for (int j = vo[ri]+2; j <= imin(accum,d->mo); j++) { // orders
+      nxt_mono_by_unk(nv,vo,sort,i,j,b);  // ATTENTION: it's i, not ri
       if (desc_mono_isvalid(d,nv,b)) {
         idx_t idx0 = tbl_index_H(d,nv,b);
         idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc,BY_VAR);
-        d->H[i*cols + j] = idx1 - idx0;
+        d->H[ri*cols + j] = idx1 - idx0;
       }
       else
-        d->H[i*cols + j] = 0;
+        d->H[ri*cols + j] = 0;
     }
   }
 }
 
 static inline void
-tbl_build_H(idx_t *H, int rows, int cols, ord_t var_ords[rows], const ord_t **Tv, int nc)
+tbl_build_H(D *d)
 {
 #ifdef TRACE
   printf("tbl_build_H\n");
 #endif
+  idx_t *H = d->H;
+  int rows = d->nv, cols = d->mo + 2, nc = d->nc;
+  ord_t *var_ords = d->var_ords, **Tv = d->Tv;
+
   // minimal constants for 1st row
   for (int j=0; j < cols; ++j)
     H[0*cols + j] = j;
@@ -486,19 +497,19 @@ tbl_build_H(idx_t *H, int rows, int cols, ord_t var_ords[rows], const ord_t **Tv
   // remaining rows
   for (int i = 1; i < rows; ++i) {  // variables
     H[i*cols + 0] = 0;
-    int crtPos = 1;
+    int curr_col = 1;
 
     // initial congruence from Tv
     for (int j = 1; j < nc; j++) { // monomials
       if (Tv[j][i] != Tv[j-1][i]) {
-        H[i*cols + crtPos] = j;
-        crtPos++;
+        H[i*cols + curr_col] = j;
+        curr_col++;
         if (Tv[j][i] == 0) break;
       }
     }
 
     // complete row with zeros
-    while(crtPos < cols) H[i*cols + crtPos] = 0, crtPos++;
+    while(curr_col < cols) H[i*cols + curr_col] = 0, curr_col++;
   }
 
   // close congruence of the last var
@@ -518,7 +529,7 @@ tbl_set_H(D *d)
   assert(d->H);
   d->size += d->nv * (d->mo+2) * sizeof *(d->H);
 
-  tbl_build_H(d->H, d->nv, d->mo + 2, d->var_ords, (const ord_t**)d->Tv, d->nc);
+  tbl_build_H(d);
   tbl_solve_H(d);
   tbl_clear_H(d);
 
@@ -736,8 +747,8 @@ static inline int  // error code
 tbl_check(D *d)
 {
   ord_t **Tv = d->Tv, **To = d->To, *monos = d->monos, *vo = d->var_ords;
-  int *tv2to = d->tv2to, *to2tv = d->to2tv, nv = d->nv, cols = d->mo + 2;
-  idx_t *H = d->H;
+  const idx_t *tv2to = d->tv2to, *to2tv = d->to2tv, nv = d->nv, cols = d->mo + 2,
+              *H = d->H, *sort = d->sort_var;
 
   // check H
   for (int i = 0; i < nv; ++i)
@@ -747,9 +758,9 @@ tbl_check(D *d)
       for (int j = 1; j <= d->mo + 1; ++j)
         if (H[i*cols + j] != -1)              return 2e6 + i;
     }
-    else if (H[i*cols + 1] != (H[(i-1)*cols + vo[i-1] + 1] != -1 ?
-                          H[(i-1)*cols + vo[i-1] + 1] : H[(i-1)*cols + vo[i-1]] + 1))
-                                              return 3e6 + i;
+    // else if (H[sort[i]*cols + 1] != (H[sort[i-1]*cols + vo[i-1] + 1] != -1 ?
+    //                       H[(i-1)*cols + vo[i-1] + 1] : H[(i-1)*cols + vo[i-1]] + 1))
+    //                                           return 3e6 + i;
 
   for (int i = 1; i < d->nc; ++i) {
     if (to2tv[tv2to[i]] != i)                 return 4e6 + i;
@@ -850,28 +861,71 @@ enum { TPSA_DESC_NUM = 100 };    // number of descriptors to store
 
 static D  *Ds[TPSA_DESC_NUM];
 
+static inline void
+set_var_ords(D *d, const ord_t ords[])
+{
+#ifdef TRACE
+  printf("set_var_ords: "); mono_print(d->nv,ords); printf("\n");
+#endif
+  assert(d && ords);
+
+  d->sort_var = malloc(d->nv * sizeof *(d->sort_var));
+  assert(d->sort_var);
+  d->size += d->nv * sizeof *(d->sort_var);
+  mono_sort(d->nv,ords,d->sort_var);
+
+  d->var_ords = malloc(d->nv * sizeof *(d->var_ords));
+  assert(d->var_ords);
+  d->size += d->nv * sizeof *(d->var_ords);
+  mono_copy(d->nv,ords,d->var_ords);
+
+#ifdef DEBUG
+  printf("var_ords sorting: [");
+  for(int i = 0; i < d->nv; ++i)
+    printf("%d ", d->sort_var[i]);
+  printf("]\n");
+#endif
+}
+
+static inline void
+set_var_names(D *d, str_t var_nam_[])
+{
+  if (!var_nam_)
+    return;
+
+#ifdef TRACE
+  printf("set_var_names=[ ");
+  for (int i = 0; i < d->nmv; ++i) printf("%s ", var_nam_[i]);
+  printf("]\n");
+#endif
+  assert(d);
+  d->var_names_ = malloc(d->nmv * sizeof *(d->var_names_));
+  assert(d->var_names_);
+  d->size += d->nmv * sizeof *(d->var_names_);
+
+  for (int i = 0; i < d->nmv; ++i) {
+    int n = strlen(var_nam_[i]);
+    d->var_names_[i] = malloc(n * sizeof *(d->var_names_[i]));
+    assert(d->var_names_[i]);
+    d->size += n * sizeof *(d->var_names_[i]);
+    strcpy(d->var_names_[i],var_nam_[i]);
+  }
+}
+
 static inline D*
-desc_init(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, const ord_t ords[nv], ord_t ko)
+desc_init(int nmv, const ord_t map_ords[nmv], int nv, ord_t ko)
 {
 #ifdef TRACE
   printf("desc_ini nmv=%d nv=%d ko=%d map_ords=",nmv,nv,ko);
-  mono_print(nmv,map_ords);
-
-  if (var_nam_) {
-    printf(" var_names=[ ");
-    for (int i = 0; i < nmv; ++i) printf("%s ", var_nam_[i]);
-    printf("]");
-  }
-  printf("\nvar_ords="); mono_print(nv,ords); printf("\n");
+  mono_print(nmv,map_ords); printf("\n");
 #endif
-
-  assert(map_ords && ords);
+  assert(map_ords);
 
   D *d = malloc(sizeof *d);
   assert(d);
   memset(d, 0, sizeof(*d));
-  d->size  = sizeof(d);
-  d->nmv = nmv;
+  d->size = sizeof(d);
+  d->nmv  = nmv;
   d->nv = nv;
   d->ko = ko;
   d->mo = d->trunc = mono_max(nmv,map_ords);
@@ -881,25 +935,6 @@ desc_init(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, const
   mono_copy(nmv,map_ords,d->map_ords);
   d->size += nmv * sizeof *(d->map_ords);
 
-  d->var_ords = malloc(nv * sizeof *(d->var_ords));
-  assert(d->var_ords);
-  mono_copy(nv,ords,d->var_ords);
-  d->size += nv * sizeof *(d->var_ords);
-
-  if (var_nam_) {
-    d->var_names_ = malloc(nmv * sizeof *(d->var_names_));
-    assert(d->var_names_);
-    d->size += nmv * sizeof *(d->var_names_);
-
-    for (int i = 0; i < nmv; ++i) {
-      int n = strlen(var_nam_[i]);
-      d->var_names_[i] = malloc(n * sizeof *(d->var_names_[i]));
-      assert(d->var_names_[i]);
-      d->size += n * sizeof *(d->var_names_[i]);
-      strcpy(d->var_names_[i],var_nam_[i]);
-    }
-  }
-
   return d;
 }
 
@@ -907,7 +942,9 @@ static inline D*
 desc_build(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, const ord_t ords[nv], ord_t ko)
 {
   assert(map_ords && ords);
-  D *d = desc_init(nmv,map_ords,var_nam_, nv,ords, ko);
+  D *d = desc_init(nmv,map_ords, nv, ko);
+  set_var_ords(d, ords);
+  set_var_names(d, var_nam_);
   make_monos(d);
   tbl_by_ord(d);
   tbl_by_var(d);  // requires To
@@ -972,10 +1009,8 @@ static inline D*
 get_desc(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, const ord_t ords[nv], ord_t ko)
 {
   D *existing_desc = desc_search(nmv,map_ords,var_nam_, nv,ords, ko);
-  if (existing_desc) {
-    // printf("found %d %p\n", existing_desc->id, (void*)existing_desc);
+  if (existing_desc)
     return existing_desc;
-  }
 
   for (int i = 0; i < TPSA_DESC_NUM; ++i)
     if (!Ds[i]) {
