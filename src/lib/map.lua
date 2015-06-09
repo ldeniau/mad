@@ -20,7 +20,7 @@ local MT = {  -- metatable
 
   __newindex = function (tbl, key, val)
 --    io.write("setting ", key, '\n')
-    local K = tbl[V][key] and V or T
+    local K   = tbl[V][key] and V or T
     local var = tbl[K][key]
 
     if var == nil then
@@ -28,6 +28,7 @@ local MT = {  -- metatable
         tbl[K][key] = val               -- create number
       else
         tbl[K][key] = val:set_var()     -- create TPSA
+        tbl[K][#tbl[K]+1] = key
       end
 
     elseif type(var) == "number" then
@@ -47,14 +48,30 @@ local MT = {  -- metatable
 }
 
 function M.clear(tbl)
-  for k,v in pairs(tbl[T]) do
-    v:set_tmp():release()
+  tbl = tbl[T]
+  for i,k in ipairs(tbl) do
+    tbl[k]:set_tmp():release()
+    tbk[i] = nil
   end
 end
 
 function M.print_tmp(tbl)
-  for k,v in pairs(tbl[T]) do
-    print(k, v)
+  tbl = tbl[T]
+  for i,k in ipairs(tbl) do
+    print(i, k, tbl[k])
+  end
+end
+
+function M.print(tbl)
+  print(#tbl[V], #tbl[T])
+  for _,name in ipairs(tbl[V]) do
+    local var = tbl[V][name]
+    io.write(name, ': ')
+    if type(var) == 'number' then
+      print(var)
+    else
+      var:print()
+    end
   end
 end
 
@@ -70,6 +87,7 @@ function M.make_map(args)
   end
 
   for i=1,#args.mo do
+    m[V][i] = args.v[i]
     if args.mo[i] == 0 then
       m[V][args.v[i]] = 0
     else
@@ -102,17 +120,6 @@ end
 function M.get(m, var, mono)
   return type(m[var]) == "number" and assert(mono_sum(mono) == 0, "Invalid get") and m[var]
          or m[var]:get(mono)
-end
-
-function M.print(m)
-  for name,var in pairs(m[V]) do
-    io.write(name, ': ')
-    if type(var) == 'number' then
-      print(var)
-    else
-      var:print()
-    end
-  end
 end
 
 local clib = tpsa.clib_
