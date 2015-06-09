@@ -24,12 +24,11 @@ local MT = {  -- metatable
     local var = tbl[K][key]
 
     if var == nil then
-      insert(tbl[K],key)                     -- save the name
+      tbl[K][#tbl[K]+1] = key           -- save the name
       if type(val) == "number" then
         tbl[K][key] = val               -- create number
       else
         tbl[K][key] = val:set_var()     -- create TPSA
-        tbl[K][#tbl[K]+1] = key
       end
 
     elseif type(var) == "number" then
@@ -122,7 +121,7 @@ function M.get(m, var, mono)
          or m[var]:get(mono)
 end
 
-local clib = tpsa.clib_
+local clib = tpsa.clib
 local t1, t2, t3
 
 function M.track_drift(m, e)

@@ -1,6 +1,5 @@
 local ffi = require('ffi')
-local tonumber, typeof = tonumber, ffi.typeof
-local type = type
+local tonumber, type, typeof = tonumber, type, ffi.typeof
 -- to load from relative path, you need the path of the file which requires
 -- current module;
 -- first get the directory structure: for "foo/bar/baz.lua" it is "foo.bar"
@@ -144,13 +143,13 @@ local ord_ptr  = typeof("      ord_t[1]")
 local int_ptr  = typeof("      int  [1]")
 local str_arr  = typeof("      str_t[?]")
 
-local M = { name = "tpsa", mono_t = mono_t}
+local M = { name = "tpsa", mono_t = mono_t }
 local MT   = { __index = M }
 
 ffi.metatype("struct tpsa", MT)
 
 M.arr = tpsa_arr
-M.clib_ = clib
+M.clib = clib
 M.count = 0
 
 -- CONSTRUCTORS ----------------------------------------------------------------
