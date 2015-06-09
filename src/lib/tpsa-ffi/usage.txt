@@ -6,7 +6,7 @@ Descriptor
 ----------
 
 struct tpsa_desc {
-  int      rk, nv, nc,// number of map vars, number of all vars, number of coeff
+  int      nmv,nv, nc,// number of map vars, number of all vars, number of coeff
            size;      // bytes used by current desc
   ord_t    mo, ko,    // maximum orders: for vars, for knobs
            trunc,     // truncation order for operations
@@ -102,8 +102,8 @@ Clear / Reset
 -------------
 void  mad_tpsa_clear(T *t)
     -- re-initialize t; after this operation it can be considered empty
-void  mad_tpsa_const(T *t, num_t v)
-    -- make t the constant value v
+void  mad_tpsa_scalar(T *t, num_t v)
+    -- make t the scalar value v
     -- equivalent to mad_tpsa_clear(t) + mad_tpsa_set0(t,v)
 
 

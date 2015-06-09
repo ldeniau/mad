@@ -82,7 +82,7 @@ mad_tpsa_inv(const T *a, num_t v, T *c) // v/a
   ensure(v != 0 && a->coef[0] != 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, v/a->coef[0]); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, v/a->coef[0]); return; }
 
   mad_tpsa_scl(a,1/v,c);
   num_t expansion_coef[to+1], a0 = c->coef[0];
@@ -106,7 +106,7 @@ mad_tpsa_sqrt(const T *a, T *c)
   if (a->coef[0] == 0) { mad_tpsa_clear(c); return; }
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, sqrt(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, sqrt(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = sqrt(a0);
@@ -127,7 +127,7 @@ mad_tpsa_invsqrt(const T *a, num_t v, T *c)  // c = v/a
   ensure(v != 0 && a->coef[0] > 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, v/sqrt(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, v/sqrt(a->coef[0])); return; }
 
 #ifndef INSTABLE_INVSQRT
   num_t expansion_coef[to+1], a0 = a->coef[0];
@@ -158,7 +158,7 @@ mad_tpsa_exp(const T *a, T *c)
   ensure(a->desc == c->desc);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, exp(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, exp(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = exp(a0);
@@ -180,7 +180,7 @@ mad_tpsa_log(const T *a, T *c)
   ensure(a->coef[0] > 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, log(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, log(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = log(a0);
@@ -202,7 +202,7 @@ mad_tpsa_sin(const T *a, T *c)
   ensure(a->desc == c->desc);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, sin(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, sin(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = sin(a0);
@@ -224,7 +224,7 @@ mad_tpsa_cos(const T *a, T *c)
   ensure(a->desc == c->desc);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, cos(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, cos(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] =  cos(a0);
@@ -249,14 +249,14 @@ mad_tpsa_sincos(const T *a, T *s, T *c)
 
   num_t s_a0 = sin(a->coef[0]), c_a0 = cos(a->coef[0]);  // TODO: use sincos ?
   if (a->hi == 0) {
-    mad_tpsa_const(s, s_a0);
-    mad_tpsa_const(c, c_a0);
+    mad_tpsa_scalar(s, s_a0);
+    mad_tpsa_scalar(c, c_a0);
     return;
   }
   if (!sto || !cto) {
-    if (!sto) mad_tpsa_const(s, s_a0);
+    if (!sto) mad_tpsa_scalar(s, s_a0);
     else      mad_tpsa_sin(a,s);
-    if (!cto) mad_tpsa_const(c, c_a0);
+    if (!cto) mad_tpsa_scalar(c, c_a0);
     else      mad_tpsa_cos(a,c);
     return;
   }
@@ -285,7 +285,7 @@ mad_tpsa_sinh(const T *a, T *c)
   ensure(a->desc == c->desc);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, sinh(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, sinh(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = sinh(a0);
@@ -306,7 +306,7 @@ mad_tpsa_cosh(const T *a, T *c)
   ensure(a->desc == c->desc);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to || a->hi == 0) { mad_tpsa_const(c, cosh(a->coef[0])); return; }
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, cosh(a->coef[0])); return; }
 
   num_t expansion_coef[to+1], a0 = a->coef[0];
   expansion_coef[0] = cosh(a0);
@@ -331,14 +331,14 @@ mad_tpsa_sincosh(const T *a, T *sh, T *ch)
 
   num_t s_a0 = sinh(a->coef[0]), c_a0 = cosh(a->coef[0]);  // TODO: use sincos ?
   if (a->hi == 0) {
-    mad_tpsa_const(sh, s_a0);
-    mad_tpsa_const(ch, c_a0);
+    mad_tpsa_scalar(sh, s_a0);
+    mad_tpsa_scalar(ch, c_a0);
     return;
   }
   if (!sto || !cto) {
-    if (!sto) mad_tpsa_const(sh, s_a0);
+    if (!sto) mad_tpsa_scalar(sh, s_a0);
     else      mad_tpsa_sinh(a,sh);
-    if (!cto) mad_tpsa_const(ch, c_a0);
+    if (!cto) mad_tpsa_scalar(ch, c_a0);
     else      mad_tpsa_cos(a,ch);
     return;
   }
@@ -369,7 +369,7 @@ mad_tpsa_sirx(const T *a, T *c)
   ensure(a->coef[0] == 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to) { mad_tpsa_const(c, 1.0); return; }
+  if (!to) { mad_tpsa_scalar(c, 1.0); return; }
 
   num_t expansion_coef[to+1];
   expansion_coef[0] = 1.0;
@@ -391,7 +391,7 @@ mad_tpsa_corx(const T *a, T *c)
   ensure(a->coef[0] == 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to) { mad_tpsa_const(c, 1.0); return; }
+  if (!to) { mad_tpsa_scalar(c, 1.0); return; }
 
   num_t expansion_coef[to+1];
   expansion_coef[0] = 1.0;
@@ -413,7 +413,7 @@ mad_tpsa_sinc(const T *a, T *c)
   ensure(a->coef[0] == 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  if (!to) { mad_tpsa_const(c, 1.0); return; }
+  if (!to) { mad_tpsa_scalar(c, 1.0); return; }
 
   num_t expansion_coef[to+1];
   expansion_coef[0] = 1.0;

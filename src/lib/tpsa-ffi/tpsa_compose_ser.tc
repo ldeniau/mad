@@ -29,12 +29,12 @@ get_knobs_coef(const T *a, const ord_t pure_mono[], T *knb_coef)
     idx = desc_get_idx(d, d->nv, mono);
     val = mad_tpsa_geti(a,idx);
     if (val) {
-      mono_copy(d->nv, mono, knb_mono);
-      mono_fill(d->rk, knb_mono, 0);  // remove map vars, keep only the knobs
+      mono_copy(d->nv , mono, knb_mono);
+      mono_fill(d->nmv, knb_mono, 0);  // remove map vars, keep only the knobs
       idx_knb_only = desc_get_idx(d, d->nv, knb_mono);
       mad_tpsa_seti(knb_coef, idx_knb_only, 0.0,val);
     }
-  } while(nxt_mono_by_var(d, d->nv, mono, d->rk));
+  } while(nxt_mono_by_var(d, d->nv, mono, d->nmv));
 
   return knb_coef;
 }
@@ -43,15 +43,15 @@ static inline void
 compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
 {
   D *d = ma[0]->desc;
-  if (d->rk < d->nv) { // there are knobs
+  if (d->nmv < d->nv) { // there are knobs
     T *knb_coef = mad_tpsa_new(d,d->ko);
     T *tmp      = mad_tpsa_new(d,d->trunc);
 
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_const(mc[i],ma[i]->coef[0]);
+      mad_tpsa_scalar(mc[i],ma[i]->coef[0]);
 
       // ord 1 -- vars
-      for (int v = 1; v <= d->rk; ++v)
+      for (int v = 1; v <= d->nmv; ++v)
         if (ma[i]->coef[v]) {
           T *coef = get_knobs_coef(ma[i], d->To[v], knb_coef);
           if (coef->nz) {
@@ -60,13 +60,13 @@ compose_ord1(int sa, const T *ma[], const T *mb[], T *mc[])
           }
         }
       // ord 1 -- knobs
-      for (int k = d->rk+1; k <= d->nv; ++k)
+      for (int k = d->nmv+1; k <= d->nv; ++k)
         mc[i]->coef[k] = ma[i]->coef[k];
     }
   }
   else {                        // no knobs
     for (int i = 0; i < sa; ++i) {
-      mad_tpsa_const(mc[i], ma[i]->coef[0]);
+      mad_tpsa_scalar(mc[i], ma[i]->coef[0]);
       for (int v = 1; v <= d->nv; ++v) {
         num_t coef = mad_tpsa_geti(ma[i],v);
         if (coef)
@@ -87,7 +87,7 @@ compose(int pos, ord_t o, ord_t curr_mono[], CTX *ctx)
   if (o > 0)
     mad_tpsa_mul(ctx->ords[o-1], ctx->mb[pos], ctx->ords[o]);
 
-  if (da->rk < da->nv) { // there are knobs
+  if (da->nmv < da->nv) { // there are knobs
     for (int i = 0; i < ctx->sa; ++i) {
       T *coef = get_knobs_coef(ctx->ma[i], curr_mono, ctx->knb_coef);
       if (coef->nz) {
@@ -104,7 +104,7 @@ compose(int pos, ord_t o, ord_t curr_mono[], CTX *ctx)
     }
   }
 
-  for(  ; pos < da->rk; ++pos) {  // don't put knobs in curr_mono
+  for(  ; pos < da->nmv; ++pos) {  // don't put knobs in curr_mono
     curr_mono[pos]++;
     if (desc_mono_isvalid(da, da->nv, curr_mono))
       compose(pos, o+1, curr_mono, ctx);
@@ -174,7 +174,7 @@ mad_tpsa_compose_ser(int sa, const T *ma[], const T *mb[], T *mc[])
   // initialization
   for (int v = 0; v <  da->nv; ++v) mono[v] = 0;
   for (int o = 0; o <= highest_ord; ++o) ords[o] = mad_tpsa_new(da,da->trunc);
-  mad_tpsa_const(ords[0],1.0);
+  mad_tpsa_scalar(ords[0],1.0);
   for (int ic = 0; ic < sa; ++ic)
     mad_tpsa_clear(mc[ic]);
 

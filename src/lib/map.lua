@@ -1,5 +1,5 @@
 local tpsa = require"lib.tpsaFFI"
-local type = type
+local type, insert = type, table.insert
 
 local function mono_sum(m)
   local s = 0
@@ -24,6 +24,7 @@ local MT = {  -- metatable
     local var = tbl[K][key]
 
     if var == nil then
+      insert(tbl[K],key)                     -- save the name
       if type(val) == "number" then
         tbl[K][key] = val               -- create number
       else
@@ -39,7 +40,7 @@ local MT = {  -- metatable
         val:release()
       end
     elseif type(val) == "number" then
-      tpsa.const(var, val)              -- number -> TPSA
+      tpsa.scalar(var, val)             -- number -> TPSA
     else
       tpsa.cpy(val, var)                -- TPSA -> TPSA
       val:release()
@@ -63,7 +64,6 @@ function M.print_tmp(tbl)
 end
 
 function M.print(tbl)
-  print(#tbl[V], #tbl[T])
   for _,name in ipairs(tbl[V]) do
     local var = tbl[V][name]
     io.write(name, ': ')
@@ -87,7 +87,7 @@ function M.make_map(args)
   end
 
   for i=1,#args.mo do
-    m[V][i] = args.v[i]
+    m[V][i] = args.v[i]      -- save the var names
     if args.mo[i] == 0 then
       m[V][args.v[i]] = 0
     else

@@ -39,7 +39,7 @@ T*    mad_tpsa_newd    (      D *d, ord_t mo); // if mo > d_mo, mo = d_mo
 T*    mad_tpsa_new     (const T *t, ord_t mo);
 T*    mad_tpsa_copy    (const T *t, T *dst);
 void  mad_tpsa_clear   (      T *t);
-void  mad_tpsa_const   (      T *t, num_t v); // TODO rename to tpsa_scalar
+void  mad_tpsa_scalar  (      T *t, num_t v);
 void  mad_tpsa_del     (      T *t);
 void  mad_tpsa_delv    (      T *t1, T *t2, ...);
 
