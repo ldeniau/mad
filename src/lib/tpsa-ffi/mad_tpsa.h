@@ -59,9 +59,9 @@ void  mad_tpsa_seti    (      T *t, int i,                   num_t a, num_t b);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t a, num_t b);
 void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t a, num_t b);
 
-// tranformations TODO
-void  mad_tpsa_map     (const T *a, T *c, num_t (*f)(num_t v, int i_));
-void  mad_tpsa_map2    (const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_));
+// tranformations
+T*    mad_tpsa_map     (const T *a,             T *c, num_t (*f)(num_t v, int i_));
+T*    mad_tpsa_map2    (const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_));
 
 // operations
 num_t mad_tpsa_nrm1    (const T *t, const T *t2_);

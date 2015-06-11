@@ -482,9 +482,9 @@ mad_tpsa_axypb(num_t a, const T *x, const T *y, num_t b, T *r)
   assert(x && y && r);
   ensure(x->desc == y->desc && y->desc == r->desc);
 
-  T *t = r->desc->t1;
-  mad_tpsa_mul(x,y,t);
-  mad_tpsa_axpb(a,t,b,r);
+  T *t1 = (x == r || y == r) ? r->desc->t1 : r;
+  mad_tpsa_mul(x,y, t1);
+  mad_tpsa_axpb(a,t1, b, r);
 }
 
 void
@@ -493,33 +493,29 @@ mad_tpsa_axypbzpc(num_t a, const T *x, const T *y, num_t b, const T *z, num_t c,
   assert(x && y && z && r);
   ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
 
-  T *t = r->desc->t1;
-  mad_tpsa_mul(x,y,t);
-  mad_tpsa_axpbypc(a,t,b,z,c,r);
+  T *t1 = (x == r || y == r) ? r->desc->t1 : r;
+  mad_tpsa_mul(x,y, t1);
+  mad_tpsa_axpbypc(a,t1, b,z, c, r);
 }
 
-void  mad_tpsa_axypbvwpc(num_t a, const T *x, const T *y,
-                         num_t b, const T *v, const T *w, num_t c, T *r)
+void
+mad_tpsa_axypbvwpc(num_t a, const T *x, const T *y,
+                   num_t b, const T *v, const T *w, num_t c, T *r)
 {
   assert(x && y && v && w && r);
   ensure(x->desc == y->desc && y->desc == v->desc && v->desc == w->desc && w->desc == r->desc);
-  T *t1 = r->desc->t1, *t2 = r->desc->t2;
-  mad_tpsa_mul(x,y,t1);
-  mad_tpsa_mul(v,w,t2);
+
+  T *t1 = (x == r || y == r) ? r->desc->t1 : r;
+  T *t2 = (v == r || w == r || t1 == r) ? r->desc->t2 : r;
+  mad_tpsa_mul(x,y, t1);
+  mad_tpsa_mul(v,w, t2);
   mad_tpsa_axpbypc(a,t1, b,t2, c, r);
 }
-
 
 void
 mad_tpsa_ax2pby2pc(num_t a, const T *x, num_t b, const T *y, num_t c, T *r)
 {
-  assert(x && y && r);
-  ensure(x->desc == y->desc && y->desc == r->desc);
-
-  T *t1 = r->desc->t1, *t2 = r->desc->t2;
-  mad_tpsa_mul(x,x,t1);
-  mad_tpsa_mul(y,y,t2);
-  mad_tpsa_axpbypc(a,t1,b,t2,c,r);
+  mad_tpsa_axypbvwpc(a,x,x, b,y,y, c, r);
 }
 
 void
@@ -527,12 +523,9 @@ mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T 
 {
   assert(x && y && z && r);
   ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
-  T *t1 = r->desc->t1, *t2 = r->desc->t2;
-  mad_tpsa_mul(x,x,t1);              // a*x^2
-  mad_tpsa_mul(y,y,t2);              // b*y^2
-  mad_tpsa_axpbypc(a,t1, b,t2, 0,r);
-  mad_tpsa_mul(z,z,t1);              // c*z^2
-  mad_tpsa_axpbypc(c,t1, 1,r , 0,r);
+
+  mad_tpsa_ax2pby2pc(a,x, b,y, 0, r);
+  mad_tpsa_axypbzpc(c,z,z, 1,r, 0, r);
 }
 
 void
@@ -577,30 +570,30 @@ mad_tpsa_sub(const T *a, const T *b, T *c)
 }
 
 void
-mad_tpsa_mul(const T *a, const T *b, T *c)
+mad_tpsa_mul(const T *a, const T *b, T *r)
 {
 #ifdef TRACE
   printf("tpsa_mul\n");
 #endif
-  assert(a && b && c);
-  ensure(a->desc == b->desc && a->desc == c->desc);
-  ensure(a != c && b != c);
+  assert(a && b && r);
+  ensure(a->desc == b->desc && a->desc == r->desc);
+
+  T *c = (a == r || b == r) ? r->desc->t0 : r;
 
   D *d = a->desc;
   c->lo = a->lo + b->lo;
   c->hi = min_ord(a->hi + b->hi, c->mo, d->trunc);
 
   // empty
-  if (c->lo > c->hi) { mad_tpsa_clear(c); return; }
+  if (c->lo > c->hi) { mad_tpsa_clear(c); goto ret; }
 
   // order 0
   num_t a0 = a->coef[0], b0 = b->coef[0];
   c->coef[0] = a0 * b0;
   c->nz = c->coef[0] != 0;
   if (c->hi == 0) {
-    if (!c->coef[0])       // reset
-      c->lo = c->mo;
-    return;
+    if (!c->coef[0]) c->lo = c->mo; // reset
+    goto ret;
   }
 
   idx_t max_ord1 = d->hpoly_To_idx[2];
@@ -640,6 +633,9 @@ mad_tpsa_mul(const T *a, const T *b, T *c)
     #endif
       hpoly_mul_ser(a,b,c);
   }
+
+ret:
+  if (c != r) mad_tpsa_copy(c,r);
 }
 
 void
