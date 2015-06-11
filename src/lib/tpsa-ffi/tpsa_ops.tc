@@ -276,6 +276,21 @@ scale_and_accum(num_t v, const T *a, T *c)
 
 // --- --- UNARY ---------------------------------------------------------------
 
+void
+mad_tpsa_abs(const T *a, T *c)
+{
+  assert(a && c);
+  ensure(a->desc == c->desc);
+
+  c->hi = min_ord(a->hi, c->mo, c->desc->trunc);
+  c->lo = a->lo;
+  c->nz = btrunc(a->nz,c->hi);
+
+  idx_t *pi = c->desc->hpoly_To_idx;
+  for (int i = pi[c->lo]; i < pi[c->hi+1]; ++i)
+    c->coef[i] = fabs(a->coef[i]);
+}
+
 num_t
 mad_tpsa_nrm1(const T *a, const T *b_)
 {
@@ -334,19 +349,6 @@ mad_tpsa_nrm2(const T *a, const T *b_)
       }
   }
   return sqrt(norm);
-}
-
-void
-mad_tpsa_pos(const T *a, T *c)
-{
-  assert(a);
-  ensure(a->desc == c->desc);
-  c->hi = min_ord(a->hi, c->mo, c->desc->trunc);
-  c->lo = a->lo;
-  c->nz = btrunc(a->nz,c->hi);
-  idx_t *pi = c->desc->hpoly_To_idx;
-  for (int i = pi[c->lo]; i < pi[c->hi+1]; ++i)
-    c->coef[i] = fabs(a->coef[i]);
 }
 
 void
@@ -513,18 +515,12 @@ mad_tpsa_axypbvwpc(num_t a, const T *x, const T *y,
 }
 
 void
-mad_tpsa_ax2pby2pc(num_t a, const T *x, num_t b, const T *y, num_t c, T *r)
-{
-  mad_tpsa_axypbvwpc(a,x,x, b,y,y, c, r);
-}
-
-void
 mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r)
 {
   assert(x && y && z && r);
   ensure(x->desc == y->desc && y->desc == z->desc && z->desc == r->desc);
 
-  mad_tpsa_ax2pby2pc(a,x, b,y, 0, r);
+  mad_tpsa_axypbvwpc(a,x,x, b,y,y, 0, r);
   mad_tpsa_axypbzpc(c,z,z, 1,r, 0, r);
 }
 
@@ -685,51 +681,62 @@ mad_tpsa_poisson(const T *a, const T *b, T *c, int n)
     mad_tpsa_del(is[i]);
 }
 
-#ifdef UNUSED
+/*
+F64
+float_ipow(F64 v, I32 n)
+{
+  F64 a = 1.0;
+  
+  if (n < 0) n = -n, v = 1.0/v;
+
+  for (;;) {
+    if (n  &  1) a *= v;
+
+    if (n >>= 1) v *= v;
+    else         break;
+  }
+
+  return a;
+}
+*/
+
 void
-mad_tpsa_pow(const T *a, T *orig_res, int p)
+mad_tpsa_ipow(const T *a, T *c, int n)
 {
 #ifdef TRACE
-  printf("tpsa_pow %p to %d\n", (void*)a, p);
+  printf("tpsa_pow %p to %d\n", (void*)a, n);
 #endif
-  assert(a && orig_res);
-  ensure(a->desc == orig_res->desc);
-  ensure(p >= 0);
+  assert(a && c);
+  ensure(a->desc == c->desc);
 
-  if (p == 0) {
-    mad_tpsa_clean(orig_res);
-    mad_tpsa_seti(orig_res, 0, 0.0,1.0);
-    return;
-  }
-  if (p == 1) {
-    mad_tpsa_copy(a, orig_res);
-    return;
-  }
+  int inv = 0;
 
-  // init: base = a, r = 1, tmp
-  T *base = mad_tpsa_same(a), *r = orig_res, *tmp_res = mad_tpsa_same(a);
-  mad_tpsa_copy(a, base);
-  mad_tpsa_clean(r);
-  mad_tpsa_seti(r, 0, 0.0,1.0);
+  if (n < 0) { n = -n; inv = 1; }
 
-  while(p > 1) {
-    if (p & 1) {
-      mad_tpsa_mul(base, r, tmp_res);
-      swap(&r, &tmp_res);
+  T *t1 = c->desc->t1;
+
+  switch (n) {
+    case 0: mad_tpsa_scalar(c, 1); break; // ok: no copy
+    case 1: mad_tpsa_copy(a, c);   break; // ok: 1 copy
+    case 2: mad_tpsa_mul(a,a, c);  break; // ok: 1 copy if a==c
+    case 3: mad_tpsa_mul(a,a, t1); mad_tpsa_mul(t1,a,  c); break; // ok: 1 copy if a==c
+    case 4: mad_tpsa_mul(a,a, t1); mad_tpsa_mul(t1,t1, c); break; // ok: no copy
+    default: {
+      T *t2 = c->desc->t2;
+
+      mad_tpsa_copy  (a, t1);
+      mad_tpsa_scalar(c, 1 );
+
+      for (;;) {
+        if (n  & 1)   mad_tpsa_mul(c ,t1, c ); // ok: 1 copy
+        if (n /= 2) { mad_tpsa_mul(t1,t1, t2); T *t=t2; t2=t1; t1=t; } // ok: no copy
+        else break;
+      }
     }
-    mad_tpsa_mul(base, base, tmp_res);
-    swap(&base, &tmp_res);
-    p /= 2;
   }
-  mad_tpsa_mul(base, r, tmp_res);
 
-  // save result and dealloc
-  mad_tpsa_copy(tmp_res, orig_res);
-  if (base    != orig_res) mad_tpsa_del(base);
-  if (r       != orig_res) mad_tpsa_del(r);
-  if (tmp_res != orig_res) mad_tpsa_del(tmp_res);
+  if (inv) mad_tpsa_inv(c,1, c);
 }
-#endif // UNUSED
 
 #undef TRACE
 #undef T
