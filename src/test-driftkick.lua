@@ -23,6 +23,7 @@ local scalar = function(a, b) -- in place
 end
 
 local function track_drift(m, e)
+  -- TODO: consider the direction
   m.pz = e.L/sqrt(1 + (2/e.b)*m.ps + m.ps^2 - m.px^2 - m.py^2)
   m.x  = m.x + m.px*m.pz
   m.y  = m.y + m.py*m.pz
@@ -30,7 +31,7 @@ local function track_drift(m, e)
 end
 
 local function track_kick(m, e)
-    local dir = 1 -- (m.dir or 1) * (m.charge or 1)
+    local dir = (m.dir or 1) * (m.charge or 1)
     local bbytwt
 
     m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)  
@@ -74,18 +75,19 @@ else
   m.ps:set({0,0,1}, 1)  -- trig d_ps/d_y derivatives
 end
 
+m.charge, m.dir = 1, 1
+
 m:print()
 
--- local e =  { L=1, b=1, T=1, LD=1 } -- drift
-local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
+ local e =  { L=1, b=1, T=1, LD=1 } -- drift
+--local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
 
 for i=1,1e6 do
-  track_kick(m,e)
---  track_drift(m,e)
+--  track_kick(m,e)
+-- m:track_kick(e)
 
---m:track_drift(e)
--- clib.mad_track_drift(cm, e.L, 1/e.b, -(1-e.T)*e.LD/e.b)
-  -- m:clear() -- release tmp variables
+--  track_drift(m,e)
+  m:track_drift(e)
 end
 
 m:print()
