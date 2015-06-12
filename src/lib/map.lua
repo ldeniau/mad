@@ -146,30 +146,33 @@ end
 function M.track_kick(m, e)
   local dir = (m.dir or 1) * (m.charge or 1)
 
-  m.bbxtw = m.bbxtw or m.px:same()
-  m.bbytw = m.bbytw or m.py:same()
+  local bbxtw = clib.mad_tpsa_new(m.px, clib.mad_tpsa_same)
+  local bbytw = clib.mad_tpsa_new(m.py, clib.mad_tpsa_same)
   
-  clib.mad_tpsa_scalar(m.bbxtw, e.bn[e.nmul] or 0)
-  clib.mad_tpsa_scalar(m.bbytw, e.an[e.nmul] or 0)
+  clib.mad_tpsa_scalar(bbxtw, e.bn[e.nmul] or 0)
+  clib.mad_tpsa_scalar(bbytw, e.an[e.nmul] or 0)
 
   if e.nmul > 1 then
     local bbytwt = clib.mad_tpsa_new(m.py, clib.mad_tpsa_same)
     
     for j=e.nmul-1,1,-1 do
-      clib.mad_tpsa_axypbvwpc(1,m.x,m.bbytw, -1,m.y,m.bbxtw, e.bn[j],   bbytwt)
-      clib.mad_tpsa_axypbvwpc(1,m.y,m.bbytw,  1,m.x,m.bbxtw, e.an[j], m.bbxtw)
-      m.bbytw = bbytwt
+      clib.mad_tpsa_axypbvwpc(1,m.x,bbytw, -1,m.y,bbxtw, e.bn[j], bbytwt)
+      clib.mad_tpsa_axypbvwpc(1,m.y,bbytw,  1,m.x,bbxtw, e.an[j], bbxtw )
+      bbytw, bbytwt = bbytwt, bbytw
     end
 
     clib.mad_tpsa_del(bbytwt)
   end
 
-  clib.mad_tpsa_axpbypc(1,m.px, -e.L*dir,m.bbytw, 0, m.px)
-  clib.mad_tpsa_axpbypc(1,m.py,  e.L*dir,m.bbxtw, 0, m.py)
+  clib.mad_tpsa_axpbypc(1,m.px, -e.L*dir,bbytw, 0, m.px)
+  clib.mad_tpsa_axpbypc(1,m.py,  e.L*dir,bbxtw, 0, m.py)
 
   clib.mad_tpsa_axypbzpc(1,m.ps,m.ps, 2/e.b,m.ps, 1, m.ps)
   clib.mad_tpsa_sqrt(m.ps,m.ps)
   clib.mad_tpsa_set0(m.ps,1,-1)
+
+  clib.mad_tpsa_del(bbytw)
+  clib.mad_tpsa_del(bbxtw)
 end
 
 return M
