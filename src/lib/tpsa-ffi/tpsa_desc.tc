@@ -124,13 +124,12 @@ nxt_mono_by_unk(int n, const ord_t a[n], const idx_t sort[n], int i, int j, ord_
 {
   assert(a && sort && m);
   mono_fill(n,m,0);
-  idx_t real_idx;
   for (int k=i; k < n; ++k) {
-    real_idx = sort[k];
-    m[real_idx] = a[real_idx];
-    j -= a[real_idx];
+    idx_t sk = sort[k];
+    m[sk] = a[sk];
+    j -= a[sk];
     if (j <= 0) {
-      if (j < 0) m[real_idx] += j;
+      if (j < 0) m[sk] += j;
       break;
     }
   }
@@ -238,12 +237,12 @@ make_monos(D *d)
   // ord 0
   mono_fill(nv, d->monos, 0);
   d->hpoly_To_idx[0] = d->ords[0] = 0;
+  d->hpoly_To_idx[1] = 1;
   int curr_mono_idx = 1;
 
   // ord 1
   idx_t var_at_idx[nv+1];
   if (d->mo >= 1) {
-    d->hpoly_To_idx[1] = 1;
     mono_fill(nv*nv, d->monos+nv, 0);  // init with 0; TODO: check d->monos has nv*nv slots
     for (int i = 0; i < nv; ++i)
       if (d->var_ords[i]) {
@@ -444,12 +443,12 @@ tbl_clear_H(D *d)
   printf("tbl_clear_H for %p\n", (void*)d);
 #endif
   int cols = d->mo + 2, accum = 0;
-  idx_t *sort = d->sort_var, ri;
+  idx_t *sort = d->sort_var, si;
   for (int i = d->nv - 1; i >= 0; --i) {  // sorted vars
-    ri = sort[i];
-    accum += d->var_ords[ri];
+    si = sort[i];
+    accum += d->var_ords[si];
     for (int j = 1 + imin(accum,d->mo); j < cols; ++j)  // ords
-      d->H[ri*cols + j] = -1;
+      d->H[si*cols + j] = -1;
   }
 }
 
@@ -459,23 +458,23 @@ tbl_solve_H(D *d)
 #ifdef TRACE
   printf("tbl_solve_H for %p\n", (void*)d);
 #endif
-  idx_t *sort = d->sort_var, ri;
+  idx_t *sort = d->sort_var, si;
   int nv = d->nv, cols = d->mo + 2, accum = d->var_ords[sort[nv-1]];
   ord_t b[nv], *vo = d->var_ords;
 
   // solve system of equations
-  for (int i = nv-2; i >= 1; --i) { // sorted variables
-    ri = sort[i];  // real idx
-    accum += vo[ri];
-    for (int j = vo[ri]+2; j <= imin(accum,d->mo); j++) { // orders
-      nxt_mono_by_unk(nv,vo,sort,i,j,b);  // ATTENTION: it's i, not ri
+  for (int i = nv-2; i >= 1; --i) { // i goes through vars from lowest to highest ord
+    si = sort[i];  // real var idx, before sort
+    accum += vo[si];
+    for (int j = vo[si]+2; j <= imin(accum,d->mo); j++) { // orders
+      nxt_mono_by_unk(nv,vo,sort,i,j,b);  // ATTENTION: it's i, not si
       if (desc_mono_isvalid(d,nv,b)) {
         idx_t idx0 = tbl_index_H(d,nv,b);
         idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc,BY_VAR);
-        d->H[ri*cols + j] = idx1 - idx0;
+        d->H[si*cols + j] = idx1 - idx0;
       }
       else
-        d->H[ri*cols + j] = 0;
+        d->H[si*cols + j] = 0;
     }
   }
 }
@@ -520,7 +519,7 @@ static inline void
 tbl_set_H(D *d)
 {
   assert(d && d->var_ords && d->Tv && d->To);
-  assert(d->nv != 0 && d->mo != 0 && d->nc != 0);
+  assert(d->nv != 0);
 #ifdef TRACE
   printf("tbl_set_H for %p\n", (void*)d);
 #endif
@@ -748,7 +747,7 @@ tbl_check(D *d)
 {
   ord_t **Tv = d->Tv, **To = d->To, *monos = d->monos, *vo = d->var_ords;
   const idx_t *tv2to = d->tv2to, *to2tv = d->to2tv, nv = d->nv, cols = d->mo + 2,
-              *H = d->H, *sort = d->sort_var;
+              *H = d->H;
 
   // check H
   for (int i = 0; i < nv; ++i)
@@ -758,7 +757,7 @@ tbl_check(D *d)
       for (int j = 1; j <= d->mo + 1; ++j)
         if (H[i*cols + j] != -1)              return 2e6 + i;
     }
-    // else if (H[sort[i]*cols + 1] != (H[sort[i-1]*cols + vo[i-1] + 1] != -1 ?
+    // else if (H[i*cols + 1] != (H[(i-1)*cols + vo[i-1] + 1] != -1 ?  // TODO: restore test
     //                       H[(i-1)*cols + vo[i-1] + 1] : H[(i-1)*cols + vo[i-1]] + 1))
     //                                           return 3e6 + i;
 
@@ -964,10 +963,10 @@ desc_build(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, cons
 
   int err = tbl_check(d);
   if (err != 0) {
-    // printf("\nA= ");   mono_print(d->nv, d->var_ords);
-    // printf("\nH=\n");  tbl_print_H(d);
-    // printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
-    // printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
+    printf("\nA= ");   mono_print(d->nv, d->var_ords);
+    printf("\nH=\n");  tbl_print_H(d);
+    printf("\nTv=\n"); tbl_print(d->nv, d->nc, d->Tv);
+    printf("\nTo=\n"); tbl_print(d->nv, d->nc, d->To);
     printf("\nCheking table consistency ... %d\n", err);
     assert(NULL);
   }
@@ -1029,7 +1028,7 @@ mad_tpsa_desc_new(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], s
 {
   ensure(var_ords);
   ord_t mo = mono_order(nv,var_ords);
-  ensure(0 < mo && mo < DESC_MAX);
+  ensure(mo < DESC_MAX);
   ord_t map_ords[nv];  // to parse optional param
   if (map_ords_) {
     for (int i = 0; i < nv; ++i) ensure(var_ords[i] <= map_ords_[i]);
@@ -1050,12 +1049,11 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
   // input validation
   ensure(nv && var_ords);
   ensure(nk && knb_ords);
-  ensure( 0 <  mono_order(nv,var_ords));  // TODO: allow mo == 0
   ensure(dk <= mono_order(nk,knb_ords));
-  ensure((mono_order(nv,var_ords) + mono_order(nk,knb_ords)) < DESC_MAX);
+  ensure(mono_order(nv,var_ords) + mono_order(nk,knb_ords) < DESC_MAX);
 
   ord_t map_ords[nv];  // to parse optional param
-  if (map_ords_){
+  if (map_ords_) {
     for (int i = 0; i < nv; ++i)
       ensure(var_ords[i] <= map_ords_[i]);
     mono_copy(nv,map_ords_,map_ords);
@@ -1066,12 +1064,13 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
   }
   if (dk == 0)
     dk = mono_max(nk,knb_ords);
+  ensure(dk <= mono_max(nv,map_ords));
 
   ord_t ords[nv+nk];
   int oidx = 0;
   for (int i = 0; i < nv; ++i)
     ords[oidx++] = var_ords[i];
-  for (int i = 0; i < nk; ++i)  {
+  for (int i = 0; i < nk; ++i) {
     ensure(knb_ords[i] != 0);
     ords[oidx++] = knb_ords[i];
   }
