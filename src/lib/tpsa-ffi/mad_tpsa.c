@@ -365,6 +365,46 @@ mad_tpsa_setm_sp(T *t, int n, const idx_t m[n], num_t a, num_t b)
   mad_tpsa_seti(t,i,a,b);
 }
 
+// --- --- TRANSFORMATION -----------------------------------------------------
+
+T*
+mad_tpsa_map(const T *a, T *c, num_t (*f)(num_t v, int i_))
+{
+  assert(a && c);
+  ensure(a->desc == c->desc);
+
+  D *d = a->desc;
+  if (d->trunc < a->lo) { mad_tpsa_clear(c); return c; }
+
+  // Warning: aliasing!!!
+  c->hi = min_ord(a->hi, c->mo, d->trunc);
+  c->lo = a->lo;
+  c->nz = btrunc(a->nz, c->hi);
+
+  for (int i = d->hpoly_To_idx[c->lo]; i < d->hpoly_To_idx[c->hi+1]; ++i)
+    c->coef[i] = f(a->coef[i], i);
+
+  return c;
+}
+
+T*
+mad_tpsa_map2(const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_))
+{
+  ensure(!"NOT YET IMPLEMENTED"); // wait for mad_tpsa_map supporting aliasing (see above)
+
+  assert(a && b && c);
+  ensure(a->desc == b->desc && a->desc == c->desc);
+
+  D *d = a->desc;
+
+  // TODO!!!
+
+  for (int i = d->hpoly_To_idx[c->lo]; i < d->hpoly_To_idx[c->hi+1]; ++i)
+    c->coef[i] = f(a->coef[i], b->coef[i], i);
+
+  return c;
+}
+
 #undef T
 #undef D
 #undef TRACE

@@ -59,16 +59,16 @@ void  mad_tpsa_seti    (      T *t, int i,                   num_t a, num_t b);
 void  mad_tpsa_setm    (      T *t, int n, const ord_t m[n], num_t a, num_t b);
 void  mad_tpsa_setm_sp (      T *t, int n, const int   m[n], num_t a, num_t b);
 
-// tranformations TODO
-void  mad_tpsa_map     (const T *a, T *c, num_t (*f)(num_t v, int i_));
-void  mad_tpsa_map2    (const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_));
+// tranformations
+T*    mad_tpsa_map     (const T *a,             T *c, num_t (*f)(num_t v, int i_));
+T*    mad_tpsa_map2    (const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_));
 
 // operations
+void  mad_tpsa_abs     (const T *a, T *c);
 num_t mad_tpsa_nrm1    (const T *t, const T *t2_);
 num_t mad_tpsa_nrm2    (const T *t, const T *t2_);
 void  mad_tpsa_der     (const T *a, T *c, int var);  // TODO: check functions that rely on it
 void  mad_tpsa_mder    (const T *a, T *c, int n, const ord_t m[n]);
-void  mad_tpsa_pos     (const T *a, T *c);
 
 void  mad_tpsa_add     (const T *a, const T *b, T *c);
 void  mad_tpsa_sub     (const T *a, const T *b, T *c);
@@ -106,7 +106,7 @@ void  mad_tpsa_acoth   (const T *a, T *c);
 
 void  mad_tpsa_erf     (const T *a, T *c);
 
-// void  mad_tpsa_pow     (const T *a,             T *c, int p);
+void  mad_tpsa_ipow    (const T *a, T *c, int n);
 
 void  mad_tpsa_axpb       (num_t a, const T *x, num_t b,                      T *r);  // aliasing OK
 void  mad_tpsa_axpbypc    (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
@@ -115,9 +115,7 @@ void  mad_tpsa_axypbzpc   (num_t a, const T *x,          const T *y, num_t b,
                                                          const T *z, num_t c, T *r);  // aliasing OK
 void  mad_tpsa_axypbvwpc  (num_t a, const T *x,          const T *y,
                            num_t b, const T *v,          const T *w, num_t c, T *r);  // aliasing OK
-void  mad_tpsa_ax2pby2pc  (num_t a, const T *x, num_t b, const T *y, num_t c, T *r);  // aliasing OK
 void  mad_tpsa_ax2pby2pcz2(num_t a, const T *x, num_t b, const T *y, num_t c, const T *z, T *r); // aliasing OK
-
 
 // to check for non-homogeneous maps & knobs
 void  mad_tpsa_poisson (const T *a, const T *b, T *c, int n);  // TO CHECK n
@@ -125,10 +123,12 @@ void  mad_tpsa_compose (int   sa, const T *ma[], int sb,   const T *mb[], int sc
 void  mad_tpsa_minv    (int   sa, const T *ma[], int sc,         T *mc[]);
 void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int row_select[sa]);
 
+// I/O
 void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
 T*    mad_tpsa_scan     (            FILE *stream_);             // TODO
 void  mad_tpsa_print    (const T *t, FILE *stream_);
 D*    mad_tpsa_desc_scan(            FILE *stream_);
+void  mad_tpsa_debug    (const T *t);
 
 #undef T
 #undef D

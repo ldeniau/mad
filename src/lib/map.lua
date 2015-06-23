@@ -7,7 +7,6 @@ local function mono_sum(m)
   return s
 end
 
-
 local M = {}  -- this module
 local V = {}  -- private keys
 local T = {}  -- temporary keys
@@ -20,11 +19,11 @@ local MT = {  -- metatable
 
   __newindex = function (tbl, key, val)
 --    io.write("setting ", key, '\n')
-    local K = tbl[V][key] and V or T
+    local K   = tbl[V][key] and V or T
     local var = tbl[K][key]
 
     if var == nil then
-      insert(tbl[K],key)                     -- save the name
+      tbl[K][#tbl[K]+1] = key           -- save the name
       if type(val) == "number" then
         tbl[K][key] = val               -- create number
       else
@@ -47,16 +46,30 @@ local MT = {  -- metatable
   end
 }
 
-function M.clear(m)
-  for i=1,#m[T] do
-    local name = m[T][i]
-    m[T][name]:set_tmp():release()
+function M.clear(tbl)
+  tbl = tbl[T]
+  for i,k in ipairs(tbl) do
+    tbl[k]:set_tmp():release()
+    tbk[i] = nil
   end
 end
 
-function M.print_tmp(m)
-  for i=1,#m[T] do
-    print(m[T][m[T][i]])
+function M.print_tmp(tbl)
+  tbl = tbl[T]
+  for i,k in ipairs(tbl) do
+    print(i, k, tbl[k])
+  end
+end
+
+function M.print(tbl)
+  for _,name in ipairs(tbl[V]) do
+    local var = tbl[V][name]
+    io.write(name, ': ')
+    if type(var) == 'number' then
+      print(var)
+    else
+      var:print()
+    end
   end
 end
 
@@ -107,69 +120,59 @@ function M.get(m, var, mono)
          or m[var]:get(mono)
 end
 
-function M.print(m)
-  local write = io.write
-  for i=1,#m[V] do
-    local name = m[V][i]
-    local var  = m[V][name]
-
-    write(name, ': ')
-    if type(var) == 'number' then
-      print(var)
-    else
-      var:print()
-    end
-  end
-end
-
-local clib = tpsa.clib_
-local t1, t2, t3
+local clib = tpsa.clib
 
 function M.track_drift(m, e)
-  -- should use ^2 instead of * without speed loss
-  local x,   y,  s = m.x,  m.y,  m.s
-  local px, py, ps = m.px, m.py, m.ps
+  local t1 = clib.mad_tpsa_new(m.x, clib.mad_tpsa_default)
+  local t2 = clib.mad_tpsa_new(m.s, clib.mad_tpsa_same   )
 
-  if t1 == nil then
-    t1, t2, t3 = x:same(), x:same(), x:same()
+  clib.mad_tpsa_ax2pby2pcz2(1,m.ps, -1,m.px, -1,m.py, t1)  -- ps^2 - px^2 - py^2
+  clib.mad_tpsa_axpbypc(2/e.b,m.ps, 1,t1, 1, t1)           -- 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
+  clib.mad_tpsa_invsqrt(t1,e.L, t1)                        -- e.L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2)
+
+  local l_pz = t1
+
+  clib.mad_tpsa_axypbzpc(1,m.px,l_pz, 1,m.x, 0, m.x)     -- x + px*l_pz -> x
+  clib.mad_tpsa_axypbzpc(1,m.py,l_pz, 1,m.y, 0, m.y)     -- y + py*l_pz -> y
+
+  clib.mad_tpsa_copy(m.ps, t2)                           -- ps
+  clib.mad_tpsa_set0(t2,1,1/e.b)                         -- ps + 1/B
+  clib.mad_tpsa_axypbzpc(1,t2,l_pz, 1,m.s, (e.T-1)*e.LD/e.b, m.s) -- s + (ps + 1/e.b)*l_pz -> s
+
+  clib.mad_tpsa_del(t1)
+  clib.mad_tpsa_del(t2)
+end
+
+function M.track_kick(m, e)
+  local dir = (m.dir or 1) * (m.charge or 1)
+
+  local bbxtw = clib.mad_tpsa_new(m.px, clib.mad_tpsa_same)
+  local bbytw = clib.mad_tpsa_new(m.py, clib.mad_tpsa_same)
+  
+  clib.mad_tpsa_scalar(bbxtw, e.bn[e.nmul] or 0)
+  clib.mad_tpsa_scalar(bbytw, e.an[e.nmul] or 0)
+
+  if e.nmul > 1 then
+    local bbytwt = clib.mad_tpsa_new(m.py, clib.mad_tpsa_same)
+    
+    for j=e.nmul-1,1,-1 do
+      clib.mad_tpsa_axypbvwpc(1,m.x,bbytw, -1,m.y,bbxtw, e.bn[j], bbytwt)
+      clib.mad_tpsa_axypbvwpc(1,m.y,bbytw,  1,m.x,bbxtw, e.an[j], bbxtw )
+      bbytw, bbytwt = bbytwt, bbytw
+    end
+
+    clib.mad_tpsa_del(bbytwt)
   end
 
---  l_pz = e.L/sqrt(1 + (2/e.b)*m.ps + m.ps^2 - m.px^2 - m.py^2)
---  m.x = m.x + m.px*l_pz
---  m.y = m.y + m.py*l_pz
---  m.s = m.s + (1/e.b + m.ps)*l_pz - (1-e.T)*e.LD/e.b
+  clib.mad_tpsa_axpbypc(1,m.px, -e.L*dir,bbytw, 0, m.px)
+  clib.mad_tpsa_axpbypc(1,m.py,  e.L*dir,bbxtw, 0, m.py)
 
-  -- TODO: set max order for pz and other expression
+  clib.mad_tpsa_axypbzpc(1,m.ps,m.ps, 2/e.b,m.ps, 1, m.ps)
+  clib.mad_tpsa_sqrt(m.ps,m.ps)
+  clib.mad_tpsa_set0(m.ps,1,-1)
 
-  clib.mad_tpsa_mul(ps,ps,t1)                           -- ps^2
-  clib.mad_tpsa_mul(px,px,t2)                           -- px^2
-  clib.mad_tpsa_sub(t1,t2,t3)                           -- ps^2 - px^2
-  clib.mad_tpsa_mul(py,py,t2)                           -- py^2
-  clib.mad_tpsa_sub(t3,t2,t1)                           -- ps^2 - px^2 - py^2
-
-  clib.mad_tpsa_scale(2/e.b,ps,t2)                      -- 2/e.b*m.ps
-  clib.mad_tpsa_seti(t2,0,1+t2.coef[0])                 -- 1 + 2/e.b*m.ps
-  clib.mad_tpsa_add(t1,t2,t3)                           -- 1 + 2/e.b*m.ps + ps^2 - px^2 - py^2
---  clib.mad_tpsa_axpbypc(2/e.b,ps, 1,t1, 1, t3)
---  clib.mad_tpsa_invsqrt(e.L,t3,t2)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
-  clib.mad_tpsa_invsqrt(t3,t2)                          -- 1/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
-  clib.mad_tpsa_scale(e.L,t2,t1)                        -- L/sqrt(1 + 2/e.b*m.ps + ps^2 - px^2 - py^2) = pz_
-
-  clib.mad_tpsa_mul(px,t1,t2)                           -- px*pz_
-  clib.mad_tpsa_add(x,t2,t3)                            -- x + px*pz_
-  clib.mad_tpsa_copy(t3, x)
-
-  clib.mad_tpsa_mul(py,t1,t2)                           -- py*pz_
-  clib.mad_tpsa_add(y,t2,t3)                            -- x + py*pz_
-  clib.mad_tpsa_copy(t3, y)
-
-  clib.mad_tpsa_copy(ps,t3)                             -- ps
-  clib.mad_tpsa_seti(t3,0,1/e.b+t3.coef[0])             -- 1/e.b + ps
---  clib.mad_tpsa_axypbypc(1,t1,t3, 1,t3, -(1-e.T)*e.LD/e.b, s)
-  clib.mad_tpsa_mul(t1,t3,t2)                           -- (1/e.b + ps)*pz_
-  clib.mad_tpsa_add(ps,t2,t3)                           -- ps + (1/e.b + ps)*pz_
-  clib.mad_tpsa_seti(t3,0,t3.coef[0]-(1-e.T)*e.LD/e.b)  -- ps + (1/e.b + ps)*pz_ - (1-e.T)*e.LD/e.b
-  clib.mad_tpsa_copy(t3, s)
+  clib.mad_tpsa_del(bbytw)
+  clib.mad_tpsa_del(bbxtw)
 end
 
 return M

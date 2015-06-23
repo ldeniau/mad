@@ -35,8 +35,8 @@ struct tpsa_desc {
   int   ***L_idx;     // L_idx[oa,ob] = [start] [split] [end] idxs in L
   ord_t  **ocs;       // ocs[t,i] = o; in mul, compute o on thread t; 3 <= o <= mo; terminated with 0
   int      stack_top; // current top of stack size
-  struct tpsa *t1, *t2, *t3, *t4;      // temps used by high level operations to allow aliasing
-  struct tpsa *stack[DESC_STACK_SIZE]; // stack of TPSA to avoid multiple allocations
+  struct tpsa *t0, *t1, *t2, *t3, *t4; // temps used by mul, fixed points and high level funs for aliasing
+  struct tpsa *stack[DESC_STACK_SIZE]; // stack of TPSA to minimize slow allocations in users expressions
 };
 
 // --- HELPERS ----------------------------------------------------------------
@@ -951,6 +951,7 @@ desc_build(int nmv, const ord_t map_ords[nmv], str_t var_nam_[nmv], int nv, cons
   tbl_set_H(d);
   tbl_set_L(d);
   build_dispatch(d);
+  d->t0 = mad_tpsa_newd(d,d->mo);
   d->t1 = mad_tpsa_newd(d,d->mo);
   d->t2 = mad_tpsa_newd(d,d->mo);
   d->t3 = mad_tpsa_newd(d,d->mo);
@@ -1117,6 +1118,7 @@ mad_tpsa_desc_del(D *d)
     free(d->ocs);
   }
 
+  mad_tpsa_del(d->t0);
   mad_tpsa_del(d->t1); mad_tpsa_del(d->t2);
   mad_tpsa_del(d->t3); mad_tpsa_del(d->t4);
 

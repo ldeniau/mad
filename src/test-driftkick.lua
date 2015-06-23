@@ -9,21 +9,11 @@ local sqrt = function(a)
   return is_number(a) and math.sqrt(a) or a:sqrt()
 end
 
-local copy = function(a, b)
-  if not is_number(a) then
-    a:copy(b)
-  end
-  return a
-end
-
 local same = function(a, b)
-  if not is_number(a) then
-    a:same(b)
-  end
-  return a
+  return not is_number(a) and a:same(b) or a
 end
 
-local scalar = function(a, b)
+local scalar = function(a, b) -- in place
   if not is_number(a) then
     a:scalar(b)
   else
@@ -32,23 +22,8 @@ local scalar = function(a, b)
   return a
 end
 
-local var = function(a)
-  if not is_number(a) then
-    a:set_var()
-  end
-  return a
-end
-
-local release = function(...)
-  local a = {...}
-  for i=1,#a do
-    if not is_number(a[i]) then
-      a[i]:set_tmp():release() -- why :set_tmp, :release should not care?
-    end
-  end
-end
-
 local function track_drift(m, e)
+  -- TODO: consider the direction
   m.pz = e.L/sqrt(1 + (2/e.b)*m.ps + m.ps^2 - m.px^2 - m.py^2)
   m.x  = m.x + m.px*m.pz
   m.y  = m.y + m.py*m.pz
@@ -56,15 +31,12 @@ local function track_drift(m, e)
 end
 
 local function track_kick(m, e)
-    local dir = 1 -- (m.dir or 1) * (m.charge or 1)
+    local dir = (m.dir or 1) * (m.charge or 1)
     local bbytwt
 
---    m.bbxtw = scalar(same(m.px), e.bn[e.nmul] or 0)
---    m.bbytw = scalar(same(m.py), e.an[e.nmul] or 0)
-
-    m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)
+    m.bbxtw = scalar(m.bbxtw or same(m.px), e.bn[e.nmul] or 0)  
     m.bbytw = scalar(m.bbytw or same(m.py), e.an[e.nmul] or 0)
-
+    
     for j=e.nmul-1,1,-1 do
         bbytwt = m.x * m.bbytw - m.y * m.bbxtw + e.bn[j]
       m.bbxtw  = m.y * m.bbytw + m.x * m.bbxtw + e.an[j]
@@ -76,25 +48,25 @@ local function track_kick(m, e)
     m.ps = sqrt(1 + (2/e.b)*m.ps  + m.ps^2) - 1 -- exact or not exact?
 end
 
-local m
-
 if #arg ~= 1 then
   io.write("expecting an input value\n")
   os.exit()
 end
 
+local m
+
 if false then
   m = map.make_map{v={'x','px', 'y','py', 's','ps'}, mo={0,0,0,0,0,0}} -- only scalars
-  m.x  = 0 -- orbit at origin
-  m.y  = 0
+  m.x  = 1e-4 -- orbit at origin
+  m.y  = 1e-4
   m.s  = 0
   m.px = tonumber(arg[1]) -- transverse momenta
   m.py = tonumber(arg[1])
   m.ps = 1e-6 -- synchronized
 else
   m = map.make_map{v={'x','px', 'y','py', 's','ps'}, mo={1,1,1,1,1,1}} -- , mo={2,2,2,2,2,2}} -- mo={1,1,1,1,1,1}}
-  m.x:set({0}, 0) -- orbit at origin
-  m.y:set({0}, 0)
+  m.x:set({0}, 1e-4) -- orbit at origin
+  m.y:set({0}, 1e-4)
   m.s:set({0}, 0)
   m.px:set({0}, tonumber(arg[1])) -- transverse momenta
   m.py:set({0}, tonumber(arg[1]))
@@ -103,25 +75,26 @@ else
   m.ps:set({0,0,1}, 1)  -- trig d_ps/d_y derivatives
 end
 
+m.charge, m.dir = 1, 1
+
 m:print()
 
--- local e =  { L=1, b=1, T=1, LD=1 } -- drift
-local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
+ local e =  { L=1, b=1, T=1, LD=1 } -- drift
+--local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
 
-for i=1,1 do
-  track_kick(m,e)
+for i=1,1e6 do
+--  track_kick(m,e)
+-- m:track_kick(e)
+
 --  track_drift(m,e)
-
---m:track_drift(e)
--- clib.mad_track_drift(cm, e.L, 1/e.b, -(1-e.T)*e.LD/e.b)
-  -- m:clear() -- release tmp variables
+  m:track_drift(e)
 end
 
 m:print()
 
 print(tpsa.count)
 
-m:print_tmp()
+-- m:print_tmp()
 
 -- tracking drifts (lua)
 -- numbers:  2.5 sec (1e9 loops)
