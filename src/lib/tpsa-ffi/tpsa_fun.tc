@@ -79,17 +79,17 @@ mad_tpsa_inv(const T *a, num_t v, T *c) // v/a
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(v != 0 && a->coef[0] != 0);
+  ensure(a->coef[0] != 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
   if (!to || a->hi == 0) { mad_tpsa_scalar(c, v/a->coef[0]); return; }
 
-  mad_tpsa_scl(a,1/v,c);
-  num_t expansion_coef[to+1], a0 = c->coef[0];
-  expansion_coef[0] = 1.0 / a0;
+  num_t expansion_coef[to+1], a0 = a->coef[0];
+  expansion_coef[0] = 1 / a0;
   for (int o = 1; o <= to; ++o)
     expansion_coef[o] = -expansion_coef[o-1] / a0;
-  fixed_point_iteration(c,c,to,expansion_coef);
+  fixed_point_iteration(a,c,to,expansion_coef);
+  mad_tpsa_scl(c,v,c);
 }
 
 void
@@ -124,27 +124,18 @@ mad_tpsa_invsqrt(const T *a, num_t v, T *c)  // c = v/a
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(v != 0 && a->coef[0] > 0);
+  ensure(a->coef[0] > 0);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
   if (!to || a->hi == 0) { mad_tpsa_scalar(c, v/sqrt(a->coef[0])); return; }
 
-#ifndef INSTABLE_INVSQRT
   num_t expansion_coef[to+1], a0 = a->coef[0];
-#else
-  mad_tpsa_scl(a,1/v/v,c);
-  num_t expansion_coef[to+1], a0 = c->coef[0];
-#endif
   expansion_coef[0] = 1.0/sqrt(a0);
   for (int o = 1; o <= to; ++o)
     expansion_coef[o] = -expansion_coef[o-1] / a0 / (2.0*o) * (2.0*o-1);
 
-#ifndef INSTABLE_INVSQRT
   fixed_point_iteration(a,c,to,expansion_coef);
   mad_tpsa_scl(c,v,c);
-#else
-  fixed_point_iteration(c,c,to,expansion_coef);
-#endif
 }
 
 void
