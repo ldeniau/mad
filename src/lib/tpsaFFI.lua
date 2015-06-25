@@ -35,6 +35,7 @@ struct tpsa { // warning: must be kept identical to C definition
 
 extern const ord_t mad_tpsa_default;
 extern const ord_t mad_tpsa_same;
+extern       int   mad_tpsa_strict;
 
 // descriptors (tpsa factories, bounded to maps)
 D*    mad_tpsa_desc_new (int nv, const ord_t var_ords[], const ord_t map_ords_[], str_t var_nam_[]);

@@ -19,6 +19,7 @@ struct tpsa_desc;
 
 extern const ord_t mad_tpsa_default;
 extern const ord_t mad_tpsa_same;
+extern       int   mad_tpsa_strict;
 
 // descriptors (tpsa factories, bounded to maps)
 D*    mad_tpsa_desc_new (int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], str_t var_nam_[nv]);

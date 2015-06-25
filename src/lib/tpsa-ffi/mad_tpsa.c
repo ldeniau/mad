@@ -22,6 +22,7 @@
 
 const ord_t mad_tpsa_default   = -1;
 const ord_t mad_tpsa_same      = -2;
+      int   mad_tpsa_strict    =  0;
 
 struct tpsa { // warning: must be kept identical to LuaJit definition
   D      *desc;
@@ -245,6 +246,8 @@ mad_tpsa_geti(const T *t, int i)
   assert(t);
   D *d = t->desc;
   ensure(i >= 0 && i < d->nc);
+  if (mad_tpsa_strict)
+    ensure(d->ords[i] <= t->mo);
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
@@ -254,6 +257,8 @@ mad_tpsa_getm(const T *t, int n, const ord_t m[n])
   assert(t && m);
   D *d = t->desc;
   idx_t i = desc_get_idx(d,n,m);
+  if (mad_tpsa_strict)
+    ensure(d->ords[i] <= t->mo);
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
@@ -264,6 +269,8 @@ mad_tpsa_getm_sp(const T *t, int n, const idx_t m[n])
   assert(t && m);
   D *d = t->desc;
   idx_t i = desc_get_idx_sp(d,n,m);
+  if (mad_tpsa_strict)
+    ensure(d->ords[i] <= t->mo);
   return t->lo <= d->ords[i] && d->ords[i] <= t->hi ? t->coef[i] : 0;
 }
 
@@ -305,7 +312,7 @@ mad_tpsa_seti(T *t, int i, num_t a, num_t b)
 #endif
   assert(t);
   D *d = t->desc;
-  ensure(i >= 0 && i < d->nc && d->ords[i] <= t->mo && d->ords[i] <= d->trunc);
+  ensure(i >= 0 && i < d->nc && d->ords[i] <= t->mo);
 
   if (i == 0) { mad_tpsa_set0(t,a,b); return; }
 

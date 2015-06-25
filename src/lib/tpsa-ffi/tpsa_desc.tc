@@ -392,11 +392,11 @@ tbl_index_H(const D *d, int n, const ord_t m[n])
   assert(n <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2;
   const idx_t *H = d->H, *sort = d->sort_var;
-        idx_t ri;
+        idx_t si;
   for (int i = n - 1; i >= 0; --i) {
-    ri = sort[i];  // real idx
-    I += H[ri*cols + s+m[ri]] - H[ri*cols + s];
-    s += m[ri];
+    si = sort[i];
+    I += H[si*cols + s+m[si]] - H[si*cols + s];
+    s += m[si];
   }
   assert(I > -1);
   return I;
@@ -424,7 +424,7 @@ static inline idx_t
 desc_get_idx(const D *d, int n, const ord_t m[n])
 {
   assert(d && m);
-  assert(desc_mono_isvalid(d, n, m));  // TODO should be ensure ?
+  ensure(desc_mono_isvalid(d, n, m));
   return d->tv2to[tbl_index_H(d,n,m)];
 }
 
@@ -432,7 +432,7 @@ static inline idx_t
 desc_get_idx_sp(const D *d, int n, const idx_t m[n])
 {
   assert(d && m);
-  assert(desc_mono_isvalid_sp(d, n, m));
+  ensure(desc_mono_isvalid_sp(d, n, m));
   return d->tv2to[tbl_index_H_sp(d,n,m)];
 }
 
