@@ -391,10 +391,12 @@ tbl_index_H(const D *d, int n, const ord_t m[n])
   assert(d);
   assert(n <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2;
-  const idx_t *H = d->H;
+  const idx_t *H = d->H, *sort = d->sort_var;
+        idx_t ri;
   for (int i = n - 1; i >= 0; --i) {
-    I += H[i*cols + s+m[i]] - H[i*cols + s];
-    s += m[i];
+    ri = sort[i];  // real idx
+    I += H[ri*cols + s+m[ri]] - H[ri*cols + s];
+    s += m[ri];
   }
   assert(I > -1);
   return I;
@@ -407,6 +409,7 @@ tbl_index_H_sp(const D *d, int n, const idx_t m[n])
   assert(n/2 <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2, idx, o;
   const int *H = d->H;
+  // indexes in m should be in ascending order
   for (int i = n - 2; i >= 0; i -= 2) {
     idx = m[i] - 1;
     o = m[i+1];
