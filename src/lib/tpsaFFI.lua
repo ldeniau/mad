@@ -144,7 +144,7 @@ void  mad_tpsa_pminv   (int sa, const T *ma[], int sc,       T *mc[], int row_se
 void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
 T*    mad_tpsa_scan     (            FILE *stream_);
 void  mad_tpsa_print    (const T *t, FILE *stream_);
-D*    mad_tpsa_desc_scan(            FILE *stream_);
+D*    mad_tpsa_scan_desc(            FILE *stream_);
 void  mad_tpsa_debug    (const T *t);
 
 // ---------------------------------------------------------------------------
@@ -626,7 +626,7 @@ function M.print(a, file)
 end
 
 function M.read(file)
-  local d = clib.mad_tpsa_desc_scan(file)
+  local d = clib.mad_tpsa_scan_desc(file)
   local t = M.allocate(d)
   clib.mad_tpsa_scan_coef(t,file)
   return t

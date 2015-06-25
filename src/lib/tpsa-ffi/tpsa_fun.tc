@@ -434,7 +434,7 @@ mad_tpsa_tan(const T *a, T *c)
   if (!to || a->hi == 0) { mad_tpsa_scalar(c, tan(a->coef[0])); return; }
   if (to > 5) {
     mad_tpsa_cos(a,c);
-    mad_tpsa_inv(c,1,c);      // TODO: use t0 as dest to avoid copy in mul ? dangerous...
+    mad_tpsa_inv(c,1,c);
     T *tmp = c->desc->t4;
     mad_tpsa_sin(a,tmp);
     mad_tpsa_mul(tmp,c,c);  // 1 copy

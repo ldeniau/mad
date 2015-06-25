@@ -128,7 +128,7 @@ void  mad_tpsa_pminv   (int   sa, const T *ma[], int sc,         T *mc[], int ro
 void  mad_tpsa_scan_coef(      T *t, FILE *stream_);
 T*    mad_tpsa_scan     (            FILE *stream_);             // TODO
 void  mad_tpsa_print    (const T *t, FILE *stream_);
-D*    mad_tpsa_desc_scan(            FILE *stream_);
+D*    mad_tpsa_scan_desc(            FILE *stream_);
 void  mad_tpsa_debug    (const T *t);
 
 #undef T

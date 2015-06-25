@@ -3,8 +3,8 @@
 
 #include <limits.h>
 
-#define TRACE
-#define DEBUG
+// #define TRACE
+// #define DEBUG
 
 typedef int   idx_t;
 
@@ -1128,6 +1128,7 @@ mad_tpsa_desc_del(D *d)
 
 
 #undef D
+#undef str_t
 #undef TRACE
 #undef DEBUG
 
