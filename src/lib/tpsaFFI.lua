@@ -439,20 +439,17 @@ function MT.__div(a,b)
 end
 
 function MT.__pow(a,p)
-  if type(a) == "number" then error("NYI") end
+  if type(a) == "number" then error("Undefined operation") end
+   -- fast check for p not an integer (http://lua-users.org/lists/lua-l/2008-11/msg00106.html)
+   if (p + (2^52 + 2^51)) - (2^52 + 2^51) ~= p then
+    error("Undefined operation")
+  end
+
   if a.hi == 0 then
     return a.coef[0] ^ p
   end
   local c = a:same()
-  clib.mad_tpsa_mul(a,a,c)
-  if p > 2 then
-    local tmp = a:same()
-    for i=2,p do
-      clib.mad_tpsa_mul(a,c,tmp)
-      c, tmp = tmp, c
-    end
-    tmp:release()
-  end
+  clib.mad_tpsa_ipow(a,c,p)
   a:release()
   return c:set_tmp()
 end
