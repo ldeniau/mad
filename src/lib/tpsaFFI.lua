@@ -502,37 +502,37 @@ end
 function M.exp(a)
   local c = a:same()
   clib.mad_tpsa_exp(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.log(a)
   local c = a:same()
   clib.mad_tpsa_log(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.sin(a)
   local c = a:same()
   clib.mad_tpsa_sin(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.cos(a)
   local c = a:same()
   clib.mad_tpsa_cos(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.sinh(a)
   local c = a:same()
   clib.mad_tpsa_sinh(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.cosh(a)
   local c = a:same()
   clib.mad_tpsa_cosh(a,c)
-  return c
+  return c:set_tmp()
 end
 
 function M.sincos(a, s, c)
@@ -555,12 +555,16 @@ function M.sidx(a, c)
   clib.mad_tpsa_sidx(a,c)
 end
 
-function M.tan(a, c)
+function M.tan(a)
+  local c = a:same()
   clib.mad_tpsa_tan(a,c)
+  return c:set_tmp()
 end
 
-function M.cot(a, c)
+function M.cot(a)
+  local c = a:same()
   clib.mad_tpsa_cot(a,c)
+  return c:set_tmp()
 end
 
 function M.asin(a, c)

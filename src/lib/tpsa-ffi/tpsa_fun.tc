@@ -427,10 +427,19 @@ mad_tpsa_tan(const T *a, T *c)
 #endif
   assert(a && c);
   ensure(a->desc == c->desc);
-  ensure(fabs(cos(a->coef[0])) > 1e-10);
+  ensure(fabs(cos(a->coef[0])) > 1e-10);  // TODO specify better precision
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  ensure(to <= 5);
+
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, tan(a->coef[0])); return; }
+  if (to > 5) {
+    mad_tpsa_cos(a,c);
+    mad_tpsa_inv(c,1,c);      // TODO: use t0 as dest to avoid copy in mul ? dangerous...
+    T *tmp = c->desc->t4;
+    mad_tpsa_sin(a,tmp);
+    mad_tpsa_mul(tmp,c,c);  // 1 copy
+    return;
+  }
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sin(a0), ca = cos(a0);
@@ -441,7 +450,6 @@ mad_tpsa_tan(const T *a, T *c)
   expansion_coef[4] =  (2*sa    +   sa*sa*sa) / ca/ca/ca/ca/ca    /3;
   expansion_coef[5] =  (2*ca*ca + 3*ca*ca*sa*sa + 10*sa*sa + 5*sa*sa*sa*sa)
                                               / ca/ca/ca/ca/ca/ca /15;
-
   fixed_point_iteration(a,c,to,expansion_coef);
 }
 
@@ -456,7 +464,16 @@ mad_tpsa_cot(const T *a, T *c)
   ensure(fabs(sin(a->coef[0])) > 1e-10);
 
   ord_t to = min_ord2(c->mo,c->desc->trunc);
-  ensure(to <= 5);
+
+  if (!to || a->hi == 0) { mad_tpsa_scalar(c, tan(M_PI_2 - a->coef[0])); return; }
+  if (to > 5) {
+    mad_tpsa_sin(a,c);
+    mad_tpsa_inv(c,1,c);
+    T *tmp = c->desc->t4;
+    mad_tpsa_cos(a,tmp);
+    mad_tpsa_mul(tmp,c,c);  // 1 copy
+    return;
+  }
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0];
   num_t sa = sin(a0), ca = cos(a0);
@@ -467,7 +484,6 @@ mad_tpsa_cot(const T *a, T *c)
   expansion_coef[4] =  (2*ca  + ca*ca*ca) / sa/sa/sa/sa/sa    /3;
   expansion_coef[5] = -(2*sa*sa + 3*sa*sa*ca*ca + 10*ca*ca + 5*ca*ca*ca*ca)
                                           / sa/sa/sa/sa/sa/sa /15;
-
   fixed_point_iteration(a,c,to,expansion_coef);
 }
 
