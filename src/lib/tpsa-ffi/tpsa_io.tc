@@ -109,14 +109,13 @@ mad_tpsa_scan_desc(FILE *stream_)
   return d;
 }
 
-#if 0
 void
 mad_tpsa_scan_coef(T *t, FILE *stream_)
 {
 #ifdef TRACE
   printf("tpsa_scan_coef from %p\n", (void*)stream_);
 #endif
-  ensure(t);
+  assert(t);
 
   if (!stream_)
     stream_ = stdin;
@@ -127,7 +126,7 @@ mad_tpsa_scan_coef(T *t, FILE *stream_)
   mad_tpsa_clear(t);
   while ((read_cnt = fscanf(stream_, "%*d %lG %hhu", &c, &o)) == 2) {
     #ifdef DEBUG
-      printf("cnt=%d c=%.2f o=%d\n", read_cnt, c, o);
+      printf("c=%.2f o=%d\n", c, o);
     #endif
     read_ords(nv,ords,stream_);
     // ensure(mono_order(nv,ords) == o);  // consistency check
@@ -136,7 +135,7 @@ mad_tpsa_scan_coef(T *t, FILE *stream_)
     mad_tpsa_setm(t,nv,ords, 0.0,c);
   }
 }
-#endif
+
 T*
 mad_tpsa_scan(FILE *stream_)
 {
