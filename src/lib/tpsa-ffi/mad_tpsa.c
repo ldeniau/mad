@@ -379,11 +379,11 @@ mad_tpsa_map(const T *a, T *c, num_t (*f)(num_t v, int i_))
 {
   assert(a && c);
   ensure(a->desc == c->desc);
+  // TODO: use on the whole range, not just [lo,hi]
 
   D *d = a->desc;
   if (d->trunc < a->lo) { mad_tpsa_clear(c); return c; }
 
-  // Warning: aliasing!!!
   c->hi = min_ord(a->hi, c->mo, d->trunc);
   c->lo = a->lo;
   c->nz = btrunc(a->nz, c->hi);
@@ -397,17 +397,26 @@ mad_tpsa_map(const T *a, T *c, num_t (*f)(num_t v, int i_))
 T*
 mad_tpsa_map2(const T *a, const T *b, T *c, num_t (*f)(num_t va, num_t vb, int i_))
 {
-  ensure(!"NOT YET IMPLEMENTED"); // wait for mad_tpsa_map supporting aliasing (see above)
-
   assert(a && b && c);
   ensure(a->desc == b->desc && a->desc == c->desc);
 
-  D *d = a->desc;
+  idx_t *pi = a->desc->hpoly_To_idx;
+  if (a->lo > b->lo)
+    swap(&a,&b);
+  ord_t c_hi = min_ord(imax(a->hi,b->hi),c->mo,c->desc->trunc), c_lo = a->lo;
 
-  // TODO!!!
-
-  for (int i = d->hpoly_To_idx[c->lo]; i < d->hpoly_To_idx[c->hi+1]; ++i)
-    c->coef[i] = f(a->coef[i], b->coef[i], i);
+  num_t va, vb;
+  for (int i = pi[c_lo]; i < pi[c_hi+1]; ++i) {
+    int curr_strict_mode = mad_tpsa_strict;
+    mad_tpsa_strict = 0;
+    va = mad_tpsa_geti(a,i);
+    vb = mad_tpsa_geti(b,i);
+    mad_tpsa_strict = curr_strict_mode;
+    c->coef[i] = f(va,vb,i);
+  }
+  c->lo = c_lo;
+  c->hi = c_hi;
+  c->nz = btrunc(badd(a->nz,b->nz),c->hi);
 
   return c;
 }

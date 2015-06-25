@@ -343,6 +343,15 @@ function M.scale(src, val, dst)
   clib.mad_tpsa_scl(src,val,dst)
 end
 
+function M.map(t, r, f)
+  -- TODO: implement to use pull-style API (no C->Lua callback)
+  clib.mad_tpsa_map(t,r,f)
+end
+
+function M.map2(t1, t2, r, f)
+  clib.mad_tpsa_map2(t1,t2,r,f)
+end
+
 -- --- BINARY ------------------------------------------------------------------
 M.add = clib.mad_tpsa_add
 M.sub = clib.mad_tpsa_sub
