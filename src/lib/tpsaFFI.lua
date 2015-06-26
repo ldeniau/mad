@@ -634,7 +634,7 @@ end
 
 function M.read_into(t, file)
   -- header is ignored, so make sure input is compatible with t (same nv,nk)
-  clib.mad_tpsa_desc_scan(file)
+  clib.mad_tpsa_scan_desc(file)
   clib.mad_tpsa_scan_coef(t,file)
 end
 

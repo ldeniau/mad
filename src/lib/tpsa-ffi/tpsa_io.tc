@@ -73,31 +73,34 @@ mad_tpsa_scan_desc(FILE *stream_)
                     &mo, &nmv, &ko, &nk);
 
   // rest of lines
-  ord_t ords[nmv+nk];
-  if (read_cnt == 4) {             // GTPSA -- process 3rd and 4th lines
-    ord_t map_ords[nmv];
+  ord_t var_ords[nmv];
+  if (read_cnt == 4) {                      // GTPSA -- process rest of lines
+    ord_t map_ords[nmv], knb_ords[nk ? nk : 1];
     read_cnt = fscanf(stream_, " MAP ORDS: ");
     ensure(!feof(stream_) && !ferror(stream_));
     read_ords(nmv,map_ords,stream_);
 
     read_cnt = fscanf(stream_, " ||| VAR ORDS: ");
     ensure(!feof(stream_) && !ferror(stream_));
-    read_ords(nmv+nk,ords,stream_);
+    read_ords(nmv,var_ords,stream_);
+    read_ords(nk, knb_ords,stream_);
 
     char **var_names = scan_var_names(stream_,nmv,buf);
-    d = get_desc(nmv,map_ords,(str_t*)var_names,nmv+nk,ords,ko);
+    d = mad_tpsa_desc_newk(nmv,var_ords,map_ords,(str_t*)var_names,
+                           nk ,knb_ords,ko);
     if (var_names) {
       for (int i = 0; i < nmv; ++i)
         free(var_names[i]);
       free(var_names);
     }
-    ensure(fgets(buf, BUF_SIZE, stream_));  // finish 4th line
+    ensure(fgets(buf, BUF_SIZE, stream_));  // finish  3rd line
   }
-  else if (read_cnt == 2) {        // TPSA  -- ignore  3rd and 4th lines; default values
-    mono_fill(nmv,ords,mo);
-    ensure(fgets(buf, BUF_SIZE, stream_));  // 3rd line
-    ensure(fgets(buf, BUF_SIZE, stream_));  // 4th line
-    d = get_desc(nmv,NULL,NULL,nmv,ords,0);
+  else if (read_cnt == 2) {                 // TPSA  -- ignore  rest of lines; default values
+    mono_fill(nmv,var_ords,mo);
+    ensure(fgets(buf, BUF_SIZE, stream_));  // finish  1st line
+    ensure(fgets(buf, BUF_SIZE, stream_));  // discard 2nd line
+    ensure(fgets(buf, BUF_SIZE, stream_));  // discard 3rd line
+    d = mad_tpsa_desc_new(nmv,var_ords,NULL,NULL);
   }
   else if (read_cnt < 2)
     printf("ERROR WHILE READING TPSA HEADER: Could not read (NO,NV)\n");

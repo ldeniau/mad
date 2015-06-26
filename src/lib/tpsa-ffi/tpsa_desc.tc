@@ -1048,7 +1048,7 @@ mad_tpsa_desc_newk(int nv, const ord_t var_ords[nv], const ord_t map_ords_[nv], 
 {
   // input validation
   ensure(nv && var_ords);
-  ensure(nk && knb_ords);
+  // ensure(nk && knb_ords);
   ensure(dk <= mono_order(nk,knb_ords));
   ensure(mono_order(nv,var_ords) + mono_order(nk,knb_ords) < DESC_MAX);
 

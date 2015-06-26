@@ -25,8 +25,13 @@ if     arg[4] == "out" then
   local t = factory.full()
   t:print()
 elseif arg[4] == "in"  then
-  local t = factory.new_instance()
-  tpsa.read_into(t)
+  local t
+  if package == "ffi" then
+    t = tpsa.read()
+  else
+    t = factory.new_instance()
+    tpsa.read_into(t)
+  end
   t:print()
 end
 

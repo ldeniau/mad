@@ -93,19 +93,29 @@ local function create(nv, no)
   return setmetatable(r, MT)
 end
 
--- should be called before any other tpsa function
-function tpsa.init(nv, no)
-  local errStr = "Invalid Berz tpsa initializer. Use tpsa.init(nv, no) or tpsa({vars}, no)"
+-- returns a template which can be used to allocate TPSAs of its type
+function tpsa.get_desc(args)
+  if not args.vo then error("Invalid initialiser for Berz TPSA") end
+  if args.v or args.mo or args.ko or args.dk then
+    io.stderr:write("WARNING: extra initialiser fields ignored for Berz TPSA\n")
+  end
 
-  if     type(nv) == "table"  then nv = #nv
-  elseif type(nv) ~= "number" then error(errStr) end
-  if     type(no) ~= "number" then error(errStr) end
+  local nv, no, warn = #args.vo, args.vo[1], false
+  for i=2,nv do
+    if args.vo[i] ~= no then
+      if args.vo[i] > no then no = args.vo[i] end
+      warn = true
+    end
+  end
+  if warn then
+    io.stderr:write("WARNING: Berz TPSA doesn't take inhomogeneous orders. Took NO=", no, '\n')
+  end
 
   berzLib.daini_(intPtr(no), intPtr(nv), zero_i)
   return create(nv, no)
 end
 
-function tpsa.new(t)
+function tpsa.allocate(t)
   return create(t.nv, t.no)
 end
 

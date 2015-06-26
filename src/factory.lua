@@ -248,7 +248,7 @@ local function args_minv_tpsa(refs)
   return M.nv, cma, M.nv, cmc, refs
 end
 
-local function args_minv_berz(refs, t)
+local function args_minv_berz(refs)
   local intArr = ffi.typeof("int [?]")
   local cma, cmc = intArr(M.nv), intArr(M.nv)
 
@@ -289,10 +289,10 @@ end
 -- INTERFACE -------------------------------------------------------------------
 
 function M.new_instance()
-  return M.t:same()
+  return M.mod.allocate(M.desc)
 end
 
-function M.get_args(fct_name, t)
+function M.get_args(fct_name)
   local args = {
     get      = function() return M.To end,
     getm     = args_getm,
@@ -313,7 +313,7 @@ function M.get_args(fct_name, t)
     inv      = args_fun,
     sqrt     = args_fun,
   }
-  return args[fct_name](t)
+  return args[fct_name]()
 end
 
 -- M.setup(mod, nv, no)
@@ -331,8 +331,10 @@ function M.setup(mod, nv, no)
   if mod ~= M.mod then
     M.mod = mod
     math.randomseed(M.seed)
- end
-  M.t = M.mod.init(M.nv,M.no)
+  end
+  local vo = {}
+  for i=1,M.nv do vo[i] = M.no end
+  M.desc = M.mod.get_desc{ vo=vo }
 end
 
 -- EXPORTED UTILS --------------------------------------------------------------
