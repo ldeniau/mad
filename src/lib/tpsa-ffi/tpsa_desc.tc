@@ -510,10 +510,10 @@ tbl_build_H(D *d)
   for (int r = 1; r < rows; ++r) {
     H[r*cols + 0] = 0;
     int curr_col = 1;
+    idx_t var_idx = sort[r];
 
     // initial congruence from Tv
     for (int m = 1; m < nc; m++) { // monomials
-      idx_t var_idx = sort[r];
       if (Tv[m][var_idx] != Tv[m-1][var_idx]) {
         H[r*cols + curr_col] = m;
         curr_col++;
@@ -527,7 +527,8 @@ tbl_build_H(D *d)
 
   // close congruence of the last var
   idx_t var_idx = sort[rows-1];
-  H[var_idx*cols + var_ords[var_idx] + 1] = nc;
+  H[(rows-1)*cols + var_ords[var_idx] + 1] = nc;
+  tbl_print_H(d);
 }
 
 static inline void
@@ -761,22 +762,23 @@ static inline int  // error code
 tbl_check(D *d)
 {
   ord_t **Tv = d->Tv, **To = d->To, *monos = d->monos, *vo = d->var_ords;
-  const idx_t *tv2to = d->tv2to, *to2tv = d->to2tv, nv = d->nv, cols = d->mo + 2,
-              *H = d->H;
+  const idx_t *tv2to = d->tv2to, *to2tv = d->to2tv, *H = d->H, *sort = d->sort_var,
+                  nv = d->nv, cols = d->mo + 2;
 
   // check H
   for (int i = 0; i < nv; ++i)
     if (H[i*cols + 0] != 0)                   return 1e6 + i;
-  for (int i = 1; i < nv; ++i)
-    if (vo[i] == 0) {
-      for (int j = 1; j <= d->mo + 1; ++j)
-        if (H[i*cols + j] != -1)              return 2e6 + i;
+  for (int r = 1; r < nv; ++r) {
+    if (vo[sort[r]] == 0) {
+      for (int o = 1; o <= d->mo + 1; ++o)
+        if (H[r*cols + o] != -1)              return 2e6 + r;
     }
-    // else if (H[i*cols + 1] != (H[(i-1)*cols + vo[i-1] + 1] != -1 ?  // TODO: restore test
-    //                       H[(i-1)*cols + vo[i-1] + 1] : H[(i-1)*cols + vo[i-1]] + 1))
-    //                                           return 3e6 + i;
+    else if (H[r*cols + 1] != (H[(r-1)*cols + vo[sort[r-1]] + 1] != -1 ?  // TODO: restore test
+                          H[(r-1)*cols + vo[sort[r-1]] + 1] : H[(r-1)*cols + vo[sort[r-1]]] + 1))
+                                              return 3e6 + r;
+  }
 
-  for (int i = 1; i < d->nc; ++i) {
+  for (int i = 0; i < d->nc; ++i) {
     if (to2tv[tv2to[i]] != i)                 return 4e6 + i;
     if (tv2to[tbl_index_H(d,nv,To[i])] != i)  return 5e6 + i;
     if (! mono_equ(nv,To[tv2to[i]],Tv[i]))    return 6e6 + i;
