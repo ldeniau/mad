@@ -3,8 +3,8 @@
 
 #include <limits.h>
 
-// #define TRACE
-// #define DEBUG
+#define TRACE
+#define DEBUG
 
 typedef int   idx_t;
 
@@ -107,29 +107,30 @@ desc_mono_isvalid_sp(const D *d, int n, const idx_t m[n])
 }
 
 static inline int
-nxt_mono_by_var(D *d, int n, ord_t m[n], int start)
+nxt_mono_by_var(D *d, int n, ord_t m[n])
 {
   assert(d && m);
-  for (int i=start; i < n; ++i) {
-    ++m[i];
+  idx_t *sort = d->sort_var;
+  for (int i=0; i < n; ++i) {
+    ++m[sort[i]];
     if (desc_mono_isvalid(d, n, m))
       return 1;
-    m[i] = 0;
+    m[sort[i]] = 0;
   }
   return 0;
 }
 
 static inline void
-nxt_mono_by_unk(int n, const ord_t a[n], const idx_t sort[n], int i, int j, ord_t m[n])
+nxt_mono_by_unk(int n, const ord_t a[n], const idx_t sort[n], int r, int o, ord_t m[n])
 {
   assert(a && sort && m);
   mono_fill(n,m,0);
-  for (int k=i; k < n; ++k) {
-    idx_t sk = sort[k];
-    m[sk] = a[sk];
-    j -= a[sk];
-    if (j <= 0) {
-      if (j < 0) m[sk] += j;
+  for (int k = r; k < n; ++k) {
+    idx_t v = sort[k];
+    m[v] = a[v];
+    o -= a[v];
+    if (o <= 0) {
+      if (o < 0) m[v] += o;
       break;
     }
   }
@@ -328,13 +329,20 @@ tbl_by_ord(D *d)
 #endif
 }
 
+/**
+ Tv depends on To, as it needs to search its monomials there.
+ But H matrix wants Tv to be built according to sorted d->var_ords.
+ So we pretend we build it with sorted d->var_ords, whereas actually we just
+ generate nxt_mono_by_var differently, such that the variable with the highest
+ order varies the fastest. And H will access it based on the sorted order
+ */
 static inline void
 tbl_by_var(D *d)
 {
 #ifdef TRACE
   printf("tbl_by_var for %p\n", (void*)d);
 #endif
-  assert(d && d->var_ords && d->monos && d->hpoly_To_idx);
+  assert(d && d->var_ords && d->sort_var && d->monos && d->hpoly_To_idx);
 
   d->Tv    = malloc(d->nc * sizeof *(d->Tv));
   d->tv2to = malloc(d->nc * sizeof *(d->tv2to));
@@ -356,10 +364,14 @@ tbl_by_var(D *d)
     d->to2tv[idx] = mi;
     d->Tv[mi]     = d->To[idx];
     ++mi;
-  } while (nxt_mono_by_var(d,nv,m,0));
+  } while (nxt_mono_by_var(d,nv,m));
   assert(mi == d->nc);
 
 #ifdef DEBUG
+  printf("sort:  ");
+  for (int i = 0; i < d->nv; ++i)
+    printf("%d ", d->sort_var[i]);
+  printf("\n");
   tbl_print(nv, d->nc, d->Tv);
   printf("tv2to=[ ");
   for (int i = 0; i < imin(d->nc,50); ++i) printf("%d ", d->tv2to[i]);
@@ -392,11 +404,11 @@ tbl_index_H(const D *d, int n, const ord_t m[n])
   assert(n <= d->nv);
   int s = 0, I = 0, cols = d->mo + 2;
   const idx_t *H = d->H, *sort = d->sort_var;
-        idx_t si;
-  for (int i = n - 1; i >= 0; --i) {
-    si = sort[i];
-    I += H[si*cols + s+m[si]] - H[si*cols + s];
-    s += m[si];
+        idx_t v;
+  for (int r = n - 1; r >= 0; --r) {
+    v = sort[r];
+    I += H[r*cols + s+m[v]] - H[r*cols + s];
+    s += m[v];
   }
   assert(I > -1);
   return I;
@@ -444,11 +456,11 @@ tbl_clear_H(D *d)
 #endif
   int cols = d->mo + 2, accum = 0;
   idx_t *sort = d->sort_var, si;
-  for (int i = d->nv - 1; i >= 0; --i) {  // sorted vars
-    si = sort[i];
+  for (int r = d->nv - 1; r >= 0; --r) {  // rows (sorted vars)
+    si = sort[r];
     accum += d->var_ords[si];
-    for (int j = 1 + imin(accum,d->mo); j < cols; ++j)  // ords
-      d->H[si*cols + j] = -1;
+    for (int o = 1 + imin(accum,d->mo); o < cols; ++o)  // ords
+      d->H[r*cols + o] = -1;
   }
 }
 
@@ -458,23 +470,23 @@ tbl_solve_H(D *d)
 #ifdef TRACE
   printf("tbl_solve_H for %p\n", (void*)d);
 #endif
-  idx_t *sort = d->sort_var, si;
+  idx_t *sort = d->sort_var, v;
   int nv = d->nv, cols = d->mo + 2, accum = d->var_ords[sort[nv-1]];
-  ord_t b[nv], *vo = d->var_ords;
+  ord_t mono[nv], *vo = d->var_ords;
 
   // solve system of equations
-  for (int i = nv-2; i >= 1; --i) { // i goes through vars from lowest to highest ord
-    si = sort[i];  // real var idx, before sort
-    accum += vo[si];
-    for (int j = vo[si]+2; j <= imin(accum,d->mo); j++) { // orders
-      nxt_mono_by_unk(nv,vo,sort,i,j,b);  // ATTENTION: it's i, not si
-      if (desc_mono_isvalid(d,nv,b)) {
-        idx_t idx0 = tbl_index_H(d,nv,b);
-        idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,b,idx0,d->nc,BY_VAR);
-        d->H[si*cols + j] = idx1 - idx0;
+  for (int r = nv-2; r >= 1; --r) { // r goes through H rows (vars) from lowest to highest ord
+    v = sort[r];  // the var at this row
+    accum += vo[v];
+    for (int o = vo[v]+2; o <= imin(accum,d->mo); o++) { // orders
+      nxt_mono_by_unk(nv,vo,sort,r,o,mono);  // ATTENTION: it's r, not v
+      if (desc_mono_isvalid(d,nv,mono)) {
+        idx_t idx0 = tbl_index_H(d,nv,mono);
+        idx_t idx1 = find_index_bin(nv,(const ord_t**)d->Tv,mono,idx0,d->nc,BY_VAR);
+        d->H[r*cols + o] = idx1 - idx0;
       }
       else
-        d->H[si*cols + j] = 0;
+        d->H[r*cols + o] = 0;
     }
   }
 }
@@ -488,31 +500,34 @@ tbl_build_H(D *d)
   idx_t *H = d->H;
   int rows = d->nv, cols = d->mo + 2, nc = d->nc;
   ord_t *var_ords = d->var_ords, **Tv = d->Tv;
+  idx_t *sort = d->sort_var;
 
   // minimal constants for 1st row
-  for (int j=0; j < cols; ++j)
-    H[0*cols + j] = j;
+  for (int c = 0; c < cols; ++c)
+    H[0*cols + c] = c;
 
-  // remaining rows
-  for (int i = 1; i < rows; ++i) {  // variables
-    H[i*cols + 0] = 0;
+  // remaining rows == vars in descending order
+  for (int r = 1; r < rows; ++r) {
+    H[r*cols + 0] = 0;
     int curr_col = 1;
 
     // initial congruence from Tv
-    for (int j = 1; j < nc; j++) { // monomials
-      if (Tv[j][i] != Tv[j-1][i]) {
-        H[i*cols + curr_col] = j;
+    for (int m = 1; m < nc; m++) { // monomials
+      idx_t var_idx = sort[r];
+      if (Tv[m][var_idx] != Tv[m-1][var_idx]) {
+        H[r*cols + curr_col] = m;
         curr_col++;
-        if (Tv[j][i] == 0) break;
+        if (Tv[m][var_idx] == 0) break;
       }
     }
 
     // complete row with zeros
-    while(curr_col < cols) H[i*cols + curr_col] = 0, curr_col++;
+    while(curr_col < cols) H[r*cols + curr_col] = 0, curr_col++;
   }
 
   // close congruence of the last var
-  H[(rows-1)*cols + var_ords[rows-1] + 1] = nc;
+  idx_t var_idx = sort[rows-1];
+  H[var_idx*cols + var_ords[var_idx] + 1] = nc;
 }
 
 static inline void
