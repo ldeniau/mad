@@ -319,6 +319,10 @@ end
 
 -- OPERATIONS ------------------------------------------------------------------
 -- --- UNARY -------------------------------------------------------------------
+function M.abs(t, r)
+  clib.mad_tpsa_abs(t,r)
+end
+
 function M.nrm1(t1, t2_)
   return clib.mad_tpsa_nrm1(t1, t2_)
 end
@@ -329,7 +333,7 @@ end
 
 function M.der(src, var, dst)
   dst = dst or src:same()
-  clib.mad_tpsa_der(src, var, dst)
+  clib.mad_tpsa_der(src, dst, var)
   return dst
 end
 
@@ -355,8 +359,10 @@ end
 -- --- BINARY ------------------------------------------------------------------
 M.add = clib.mad_tpsa_add
 M.sub = clib.mad_tpsa_sub
-M.mul = clib.mad_tpsa_mul
 M.div = clib.mad_tpsa_div
+function M.mul(a,b,c)  -- wrapper for benchmarking
+  clib.mad_tpsa_mul(a,b,c)
+end
 
 function M.poisson(a, b, c, n)
   c = c or a:same()
@@ -487,59 +493,59 @@ end
 
 -- FUNCTIONS -------------------------------------------------------------------
 
-function M.inv(a,b)  -- b/a
-  local c = a:same()
+function M.inv(a,b,c)  -- b/a
+  c = c or a:same()
   clib.mad_tpsa_inv(a,b,c)
   a:release()
   return c:set_tmp()
 end
 
-function M.sqrt(a)
-  local c = a:same()
+function M.sqrt(a,c)
+  c = c or a:same()
   clib.mad_tpsa_sqrt(a,c)
   a:release()
   return c:set_tmp()
 end
 
-function M.invsqrt(a,b)
-  local c = a:same()
+function M.invsqrt(a,b,c)
+  c = c or a:same()
   clib.mad_tpsa_invsqrt(a,b,c)
   a:release()
   return c:set_tmp()
 end
 
-function M.exp(a)
-  local c = a:same()
+function M.exp(a,c)
+  c = c or a:same()
   clib.mad_tpsa_exp(a,c)
   return c:set_tmp()
 end
 
-function M.log(a)
-  local c = a:same()
+function M.log(a,c)
+  c = c or a:same()
   clib.mad_tpsa_log(a,c)
   return c:set_tmp()
 end
 
-function M.sin(a)
-  local c = a:same()
+function M.sin(a,c)
+  c = c or a:same()
   clib.mad_tpsa_sin(a,c)
   return c:set_tmp()
 end
 
-function M.cos(a)
-  local c = a:same()
+function M.cos(a,c)
+  c = c or a:same()
   clib.mad_tpsa_cos(a,c)
   return c:set_tmp()
 end
 
-function M.sinh(a)
-  local c = a:same()
+function M.sinh(a,c)
+  c = c or a:same()
   clib.mad_tpsa_sinh(a,c)
   return c:set_tmp()
 end
 
-function M.cosh(a)
-  local c = a:same()
+function M.cosh(a,c)
+  c = c or a:same()
   clib.mad_tpsa_cosh(a,c)
   return c:set_tmp()
 end
@@ -560,18 +566,18 @@ function M.corx(a, c)
   clib.mad_tpsa_corx(a,c)
 end
 
-function M.sidx(a, c)
-  clib.mad_tpsa_sidx(a,c)
+function M.sinc(a, c)
+  clib.mad_tpsa_sinc(a,c)
 end
 
-function M.tan(a)
-  local c = a:same()
+function M.tan(a,c)
+  c = c or a:same()
   clib.mad_tpsa_tan(a,c)
   return c:set_tmp()
 end
 
-function M.cot(a)
-  local c = a:same()
+function M.cot(a,c)
+  c = c or a:same()
   clib.mad_tpsa_cot(a,c)
   return c:set_tmp()
 end

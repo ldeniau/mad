@@ -4,5 +4,5 @@ ffi.cdef[[
   double omp_get_wtime();
 ]]
 
-return ffi.load("/usr/lib/gcc/x86_64-linux-gnu/4.9/libgomp.so")
+return ffi.load("libgomp")  -- make sure libgomp is in LD_LIBRARY_PATH or package.cpath
 

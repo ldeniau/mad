@@ -119,23 +119,31 @@ function tpsa.allocate(t)
   return create(t.nv, t.no)
 end
 
-tpsa.same = tpsa.new
+tpsa.same = tpsa.allocate
 
 function tpsa.destroy(t)
   berzLib.dadal_(t.idx, one_i)
 end
 
-function tpsa.set0(t, val)
+function tpsa.scalar(t, val)
   berzLib.dacon_(t.idx, dblPtr(val))
 end
 
-function tpsa.set(t, mon, val)
+function tpsa.set0(t, a,b)
+  tpsa.set(t,{0},a,b)
+end
+
+function tpsa.set(t, mon, a,b)
   -- mon = array identifying the monomial whose coefficient is set
   -- x1^2 * x3 * x4^3 corresponds to {2, 0, 1, 3}
 
-  local cmon = intArr(t.nv, mon)
+  if not b then a, b = 0, a end
+  local cmon, val = intArr(t.nv, mon), dblPtr()
   for i=#mon,t.nv-1 do cmon[i] = 0 end
-  berzLib.dapok_(t.idx, cmon, dblPtr(val))
+
+  berzLib.dapek_(t.idx,cmon,val)
+  val[0] = a * val[0] + b
+  berzLib.dapok_(t.idx,cmon,val)
 end
 
 function tpsa.get(t, mon)
@@ -200,25 +208,34 @@ function tpsa.divc(t, c, r)
   berzLib.dadic_(t.idx, dblPtr(c), r.idx)
 end
 
-function tpsa.cma(t1, t2, c, r)
-  berzLib.dacma_(t1.idx, t2.idx, dblPtr(c), r.idx)
-end
 
 -- unary operations -----------------------------------------------------------
 
-function tpsa.abs(t)
+function tpsa.nrm1(t1, t2_)
   local norm = dblPtr()
-  berzLib.daabs_(t.idx, norm)
+  if t2_ then
+    berzLib.dacom_(t1.idx, t2_.idx, norm)
+  else
+    berzLib.daabs_(t1.idx, norm)
+  end
   return norm[0]
 end
 
-function tpsa.abs2(t)
+function tpsa.nrm2(t1, t2_)
   local norm = dblPtr()
-  berzLib.daabs2_(t.idx, norm)
+  if t2_ then
+    error("Bug in TPSAlib.f")
+    local r = t1:allocate()
+    berzLib.dasub_(t1,t2_,r)
+    berzLib.daabs2_(r.idx, norm)
+    r:destroy()
+  else
+    berzLib.daabs2_(t1.idx, norm)
+  end
   return norm[0]
 end
 
-function tpsa.pos(src, dst)
+function tpsa.abs(src, dst)
   berzLib.dapos_(src.idx, dst.idx)
 end
 
@@ -229,104 +246,106 @@ function tpsa.comp(a, b)
   return val[0]
 end
 
-function tpsa.inv(a, b)
-  berzLib.dafun_(chrArr(5, 'inv '), a.idx, b.idx)
+function tpsa.inv(a, b, c) -- b/a
+  c = c or a:same()
+  berzLib.dafun_(chrArr(5, 'inv '), a.idx, c.idx)
+  berzLib.dacmu_(c.idx,dblPtr(b),c.idx)
 end
 
-function tpsa.sqrt(a, b)
-  berzLib.dafun_(chrArr(5, 'sqrt'), a.idx, b.idx)
+function tpsa.sqrt(a, c)
+  berzLib.dafun_(chrArr(5, 'sqrt'), a.idx, c.idx)
 end
 
-function tpsa.isrt(a, b)
-  berzLib.dafun_(chrArr(5, 'isrt'), a.idx, b.idx)
+function tpsa.isrt(a, c)
+  berzLib.dafun_(chrArr(5, 'isrt'), a.idx, c.idx)
 end
 
-function tpsa.exp(a, b)
-  berzLib.dafun_(chrArr(5, 'exp '), a.idx, b.idx)
+function tpsa.exp(a, c)
+  berzLib.dafun_(chrArr(5, 'exp '), a.idx, c.idx)
 end
 
-function tpsa.log(a, b)
-  berzLib.dafun_(chrArr(5, 'log '), a.idx, b.idx)
+function tpsa.log(a, c)
+  berzLib.dafun_(chrArr(5, 'log '), a.idx, c.idx)
 end
 
-function tpsa.sin(a, b)
-  berzLib.dafun_(chrArr(5, 'sin '), a.idx, b.idx)
+function tpsa.sin(a, c)
+  berzLib.dafun_(chrArr(5, 'sin '), a.idx, c.idx)
 end
 
-function tpsa.cos(a, b)
-  berzLib.dafun_(chrArr(5, 'cos '), a.idx, b.idx)
+function tpsa.cos(a, c)
+  berzLib.dafun_(chrArr(5, 'cos '), a.idx, c.idx)
 end
 
-function tpsa.sirx(a, b)
-  berzLib.dafun_(chrArr(5, 'sirx'), a.idx, b.idx)
+function tpsa.sirx(a, c)
+  berzLib.dafun_(chrArr(5, 'sirx'), a.idx, c.idx)
 end
 
-function tpsa.corx(a, b)
-  berzLib.dafun_(chrArr(5, 'corx'), a.idx, b.idx)
+function tpsa.corx(a, c)
+  berzLib.dafun_(chrArr(5, 'corx'), a.idx, c.idx)
 end
 
-function tpsa.sidx(a, b)
-  berzLib.dafun_(chrArr(5, 'sidx'), a.idx, b.idx)
+function tpsa.sinc(a, c)
+  berzLib.dafun_(chrArr(5, 'sidx'), a.idx, c.idx)
 end
 
-function tpsa.tan(a, b)
-  berzLib.dafun_(chrArr(5, 'tan '), a.idx, b.idx)
+function tpsa.tan(a, c)
+  berzLib.dafun_(chrArr(5, 'tan '), a.idx, c.idx)
 end
 
-function tpsa.cot(a, b)
-  berzLib.dafun_(chrArr(5, 'cot '), a.idx, b.idx)
+function tpsa.cot(a, c)
+  berzLib.dafun_(chrArr(5, 'cot '), a.idx, c.idx)
 end
 
-function tpsa.asin(a, b)
-  berzLib.dafun_(chrArr(5, 'asin'), a.idx, b.idx)
+function tpsa.asin(a, c)
+  berzLib.dafun_(chrArr(5, 'asin'), a.idx, c.idx)
 end
 
-function tpsa.acos(a, b)
-  berzLib.dafun_(chrArr(5, 'acos'), a.idx, b.idx)
+function tpsa.acos(a, c)
+  berzLib.dafun_(chrArr(5, 'acos'), a.idx, c.idx)
 end
 
-function tpsa.sinh(a, b)
-  berzLib.dafun_(chrArr(5, 'sinh'), a.idx, b.idx)
+function tpsa.sinh(a, c)
+  berzLib.dafun_(chrArr(5, 'sinh'), a.idx, c.idx)
 end
 
-function tpsa.cosh(a, b)
-  berzLib.dafun_(chrArr(5, 'cosh'), a.idx, b.idx)
+function tpsa.cosh(a, c)
+  berzLib.dafun_(chrArr(5, 'cosh'), a.idx, c.idx)
 end
 
-function tpsa.atan(a, b)
-  berzLib.dafun_(chrArr(5, 'atan'), a.idx, b.idx)
+function tpsa.atan(a, c)
+  berzLib.dafun_(chrArr(5, 'atan'), a.idx, c.idx)
 end
 
-function tpsa.acot(a, b)
-  berzLib.dafun_(chrArr(5, 'acot'), a.idx, b.idx)
+function tpsa.acot(a, c)
+  berzLib.dafun_(chrArr(5, 'acot'), a.idx, c.idx)
 end
 
-function tpsa.tanh(a, b)
-  berzLib.dafun_(chrArr(5, 'tanh'), a.idx, b.idx)
+function tpsa.tanh(a, c)
+  berzLib.dafun_(chrArr(5, 'tanh'), a.idx, c.idx)
 end
 
-function tpsa.coth(a, b)
-  berzLib.dafun_(chrArr(5, 'coth'), a.idx, b.idx)
+function tpsa.coth(a, c)
+  berzLib.dafun_(chrArr(5, 'coth'), a.idx, c.idx)
 end
 
-function tpsa.asinh(a, b)
-  berzLib.dafun_(chrArr(5, 'asnh'), a.idx, b.idx)
+function tpsa.asinh(a, c)
+  berzLib.dafun_(chrArr(5, 'asnh'), a.idx, c.idx)
 end
 
-function tpsa.acosh(a, b)
-  berzLib.dafun_(chrArr(5, 'acsh'), a.idx, b.idx)
+function tpsa.acosh(a, c)
+  berzLib.dafun_(chrArr(5, 'acsh'), a.idx, c.idx)
 end
 
-function tpsa.atanh(a, b)
-  berzLib.dafun_(chrArr(5, 'atnh'), a.idx, b.idx)
+function tpsa.atanh(a, c)
+  berzLib.dafun_(chrArr(5, 'atnh'), a.idx, c.idx)
 end
 
-function tpsa.acoth(a, b)
-  berzLib.dafun_(chrArr(5, 'acth'), a.idx, b.idx)
+function tpsa.acoth(a, c)
+  berzLib.dafun_(chrArr(5, 'acth'), a.idx, c.idx)
 end
 
-function tpsa.erf(a, b)
-  berzLib.dafun_(chrArr(5, 'erf '), a.idx, b.idx)
+function tpsa.erf(a, c)
+  berzLib.dafun_(chrArr(5, 'erf '), a.idx, c.idx)
 end
 
 function tpsa.der(src, var, dst)
@@ -464,10 +483,6 @@ end
 
 function tpsa.der_raw(t_in, v, t_out)
   berzLib.dader_(v,t_in,t_out)
-end
-
-function tpsa.scale(val,src,dst)
-  tpsa.cmul(src,val,dst)
 end
 
 function tpsa.compose_raw(sa, ma, sb, mb, sc, mc)

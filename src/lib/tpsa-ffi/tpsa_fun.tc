@@ -678,7 +678,7 @@ mad_tpsa_acosh(const T *a, T *c)
 
   num_t expansion_coef[MANUAL_EXPANSION_ORD+1], a0 = a->coef[0], xcf1;
   expansion_coef[0] = acosh(a0);
-               xcf1 = -1/sqrt(1 - a0*a0);
+               xcf1 =  1/sqrt(a0*a0 - 1);
   expansion_coef[1] =                        xcf1;
   expansion_coef[2] = -        a0          * xcf1*xcf1*xcf1                     / 2;
   expansion_coef[3] = (1     + 2*a0*a0   ) * xcf1*xcf1*xcf1*xcf1*xcf1           / 6;
