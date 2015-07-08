@@ -1,5 +1,9 @@
 CC=gcc
+<<<<<<< HEAD
 override CFLAGS += -std=c11 -W -Wall -Wextra -pedantic -Os -ffast-math -ftree-vectorize
+=======
+override CFLAGS += -std=c11 -W -Wall -Wextra -pedantic -Os -ffast-math -D_XOPEN_SOURCE=500
+>>>>>>> 34f3b16ef47ebb0748c4a03f9cb7b482a01c4c83
 override CLIBS  += -lm -lgsl -lgslcblas
 
 .PHONY: tpsaFFI

@@ -19,6 +19,7 @@ static ord_t mono_max     (int n, const ord_t a[n]);
 static int   mono_rcmp    (int n, const ord_t a[n], const ord_t b[n]);
 static int   mono_leq     (int n, const ord_t a[n], const ord_t b[n]);
 static void  mono_print   (int n, const ord_t a[n]);
+static void  mono_sort    (int n, const ord_t a[n], int idxs[n]);
 // --- implementation ----------------------------------------------------------
 
 #include <assert.h>
@@ -98,6 +99,25 @@ mono_add(int n, const ord_t a[n], const ord_t b[n], ord_t r[n])
 {
   assert(a && b && r);
   for (int i = 0; i < n; ++i) r[i] = a[i] + b[i];
+}
+
+static const ord_t *ords_to_sort;
+
+static inline int
+cmp_ords(const void *a, const void *b)
+{
+  int i1 = *(int*)a, i2 = *(int*)b;
+  return ords_to_sort[i1] > ords_to_sort[i2] ? -1 : ords_to_sort[i1] < ords_to_sort[i2];
+}
+
+static inline void
+mono_sort(int n, const ord_t a[n], int idxs[n])
+{
+  assert(a && idxs);
+  ords_to_sort = a;
+  for (int i = 0; i < n; ++i)
+    idxs[i] = i;
+  qsort(idxs,n,sizeof(*idxs),cmp_ords);
 }
 
 #include <stdio.h>

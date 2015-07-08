@@ -209,16 +209,16 @@ local function check_abs_with_berz(mod)
   factory.setup(mod)
   t       = factory.full(10.1, -0.1)
 
-  b_norm  = berz.abs(b)
-  t_norm  = mod.abs(t)
+  b_norm  = berz.nrm1(b)
+  t_norm  =  mod.nrm1(t)
 
   assert(identical_value(t_norm, b_norm, 1e-13, t.name, b.name, "norm"),
          "Different norm")
 
 
   if mod.abs2 then
-    b_norm2 = berz.abs2(b)
-    t_norm2 = mod.abs2(t)
+    b_norm2 = berz.nrm2(b)
+    t_norm2 =  mod.nrm2(t)
     assert(identical_value(t_norm2, b_norm2, 1e-13, t.name, b.name, "norm2"),
            "Different norm2")
   end
@@ -299,23 +299,22 @@ local function check_fun_with_berz(mod)
   local b_in, b_out = factory.get_args("fun")
   local b_in_zero   = factory.full(0.0)  -- a0 = 0
 
-  local funcs = {'inv', 'sqrt', 'isrt', 'exp', 'log', 'sin', 'cos'}
+  local funcs = {'sqrt', 'exp', 'log', 'sin', 'cos'}
   check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
 
-  funcs = {'sirx', 'corx', 'sidx'}
+  funcs = {'sirx', 'corx', 'sinc'}
   check_set_of_fun(funcs,mod,t_in_zero,t_out,b_in_zero,b_out)
 
---  these are not updated to make use of t.lo
---  if factory.no <= 5 then
---    funcs = {'tan' , 'cot', 'asin', 'acos', 'atan', 'acot', 'sinh', 'cosh',
---             'tanh', 'coth', 'asinh', 'atanh', 'erf'}
---    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
+  if factory.no <= 5 then
+    funcs = {'tan' , 'cot', 'asin', 'acos', 'atan', 'acot', 'sinh', 'cosh',
+             'tanh', 'coth', 'asinh', 'atanh', 'erf'}
+    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
 
---    funcs = {'acosh', 'acoth'}
---    t_in:set(factory.To[0], 1.1)
---    b_in:set(factory.To[0], 1.1)
---    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
---  end
+    funcs = {'acosh', 'acoth'}
+    t_in:set(factory.To[0], 1.1)
+    b_in:set(factory.To[0], 1.1)
+    check_set_of_fun(funcs,mod,t_in,t_out,b_in,b_out)
+  end
 
   factory.setup(mod)  -- restore original
 end
@@ -345,14 +344,14 @@ function M.do_all_checks(mod, nv, no)
   if mod.name == "berz" then return end
   check_bin_with_berz(mod)
 
-  check_compose_with_berz(mod)
+--  check_compose_with_berz(mod)
   check_der_with_berz(mod)
   check_abs_with_berz(mod)
 
   if mod.name == "yang" then return end
 
   check_fun_with_berz(mod)
-  check_poisson_with_berz(mod)
+--  check_poisson_with_berz(mod)
 --  check_minv_with_berz(mod)
 end
 
