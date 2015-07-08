@@ -1,5 +1,5 @@
 CC=gcc
-override CFLAGS += -std=c11 -W -Wall -Wextra -pedantic -Os -ffast-math
+override CFLAGS += -std=c11 -W -Wall -Wextra -pedantic -Os -ffast-math -ftree-vectorize
 override CLIBS  += -lm -lgsl -lgslcblas
 
 .PHONY: tpsaFFI
