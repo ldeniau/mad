@@ -122,7 +122,7 @@ end
 
 -- load survey maps into elements
 
-local drift_survey = function (X, L)
+local survey_drift = function (X, L)
   local R = vec(0,0,L)
   X.V = vadd( mmulv(X.W, R), X.V )
 end
@@ -130,17 +130,34 @@ end
 E.element.survey = function (self, X)
   local L = getval(self.length)
   if L > 0 then
-      drift_survey(X, L)
+      survey_drift(X, L)
   end
   return self.s_pos + L
 end
 
 E.multipole.survey = function (self, X)
-  local L = self.length
-  if L > 0 then
-      -- TODO: k0l & k0sl
+  local angle = self.knl and self.knl[1] or 0
+  if angle == 0 then
+    return self.s_pos
   end
-  return self.s_pos + L
+
+  local ca, sa = cos(angle), sin(angle)
+  local R = vec(0, 0, 0)
+  local S = mat( vec(ca,  0, -sa),
+                 vec( 0,  1,   0),
+                 vec(sa,  0,  ca) )
+
+  local tilt = self.tilt or 0
+  if tilt ~= 0 then
+    local ct, st = cos(tilt), sin(tilt)
+    local T = mat( vec(ct,-st,0), vec(st,ct,0), vec(0,0,1) )
+    R, S = mmulv(T,R), mmul(mmul(T,S),mtrn(T))
+  end
+
+  X.V = vadd( mmulv(X.W, R), X.V )
+  X.W = mmul( X.W, S )
+
+  return self.s_pos
 end
 
 E.sbend.survey = function (self, X)
@@ -168,6 +185,7 @@ E.sbend.survey = function (self, X)
     X.V = vadd( mmulv(X.W, R), X.V )
     X.W = mmul( X.W, S )
   end
+
   return self.s_pos + L
 end
 
@@ -181,11 +199,10 @@ M.table = function (name)
 end
 
 -- survey command
-
 -- survey { seq=seqname, tbl=tblname, X={x0,y0,z0}, A={theta0,phi0,psi0} }
 
 M.survey = function (info)
-  local seq = info.seq or info[1] or error("invalid sequence")
+  local seq = info.seq or error("invalid sequence")
   local tbl = M.table(info.tbl)
 
   local X = { V = info.X0 or vec(0,0,0), W = info.A0 and mrots(unvec(info.A0)) or umat() }
@@ -203,8 +220,8 @@ M.survey = function (info)
     local ds = e.s_pos - end_pos
 
     -- implicit drift with L = ds
-    if ds > 1e-12 then
-      drift_survey(X, ds)
+    if ds > 1e-6 then
+      survey_drift(X, ds)
       end_pos = end_pos + ds
     end
 
@@ -216,8 +233,8 @@ M.survey = function (info)
     theta, phi, psi = mangles(X.W, theta, phi, psi)
 
     -- fill the table
-    tbl:add_row { name=e.name, s=e.s_pos,
-                  length=e.length, angle=e.angle or 0, tilt=e.tilt or 0,
+    tbl = tbl + { name=e.name, s=e.s_pos,
+                  length=e.length, angle=e.angle or (e.knl and e.knl[1]) or 0, tilt=e.tilt or 0,
                   X=x, Y=y, Z=z, theta=theta, phi=phi, psi=psi, globaltilt=(e.tilt or 0)+psi }
   end
   return tbl

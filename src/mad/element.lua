@@ -90,8 +90,8 @@ function MT:show(disp)
 end
 
 function MT:show_madx(disp)
-  io.write('  ', string.format('%-25s',self.name..': '..self:class().name..', '), 'at:= ', self.s_pos, ', ')
-  show_properties(self, disp, {':= ', ', '})
+  io.write('  ', string.format('%-25s',self.name..': '..self:class().name..', '), 'at= ', self.s_pos, ', ')
+  show_properties(self, disp, {'= ', ', '})
   io.write(';\n')
 end
 
@@ -130,49 +130,47 @@ end
 
 -- members ---------------------------------------------------------------------
 
--- element famillies
-M.drift       = M.element     'drift'       { kind='drift'  }
-M.cavity      = M.element     'cavity'      { kind='cavity' }
-M.magnet      = M.element     'magnet'      { kind='magnet' }
-M.kicker      = M.element     'kicker'      { kind='kicker' }
 M.marker      = M.element     'marker'      { kind='marker' }
-M.patch       = M.element     'patch'       { kind='patch'  }
+M.slink       = M.element     'slink'       { kind='slink'  }
+M.drift       = M.element     'drift'       { kind='drift'  }
 
--- drifts
+-- kinds
+M.cavity      = M.drift       'cavity'      { kind='cavity' }
+M.magnet      = M.drift       'magnet'      { kind='magnet' }
+M.kicker      = M.drift       'kicker'      { kind='kicker' }
+M.patch       = M.drift       'patch'       { kind='patch'  }
 M.monitor     = M.drift       'monitor'     { kind='monitor' }
 M.collimator  = M.drift       'collimator'  { kind='collimator' }
 M.placeholder = M.drift       'placeholder' { kind='placeholder' }
 
--- cavities
-M.rfcavity    = M.cavity      'rfcavity'    { kind='rfcavity' }
-
 -- magnets
-M.sbend       = M.magnet      'sbend'       { kind='sbend' }
-M.rbend       = M.magnet      'rbend'       { kind='rbend' }
-M.quadrupole  = M.magnet      'quadrupole'  { kind='quadrupole' }
-M.sextupole   = M.magnet      'sextupole'   { kind='sextupole' }
-M.octupole    = M.magnet      'octupole'    { kind='octupole' }
-M.decapole    = M.magnet      'decapole'    { kind='decapole' }
-M.dodecapole  = M.magnet      'dodecapole'  { kind='dodecapole' }
-M.multipole   = M.magnet      'multipole'   { kind='multipole' }
-M.elseparator = M.magnet      'elseparator' { kind='elseparator' }
-M.solenoid    = M.magnet      'solenoid'    { kind='solenoid' }
-M.wiggler     = M.magnet      'wiggler'     { kind='wiggler' }
+M.sbend       = M.magnet      'sbend'       { }
+M.rbend       = M.magnet      'rbend'       { }
+M.quadrupole  = M.magnet      'quadrupole'  { }
+M.sextupole   = M.magnet      'sextupole'   { }
+M.octupole    = M.magnet      'octupole'    { }
+M.decapole    = M.magnet      'decapole'    { }
+M.dodecapole  = M.magnet      'dodecapole'  { }
+M.multipole   = M.magnet      'multipole'   { }
+M.elseparator = M.magnet      'elseparator' { }
+M.solenoid    = M.magnet      'solenoid'    { }
+M.wiggler     = M.magnet      'wiggler'     { }
+
+-- cavities
+M.rfcavity    = M.cavity      'rfcavity'    { }
+M.twcavity    = M.cavity      'twcavity'    { }
+M.rfmultipole = M.cavity      'rfmultipole' { }
 
 -- kickers
-M.hkicker     = M.kicker      'hkicker'     { kind='hkicker' } 
-M.vkicker     = M.kicker      'vkicker'     { kind='vkicker' } 
-M.tkicker     = M.kicker      'tkicker'     { kind='tkicker' } 
-
--- collimators
-M.rcollimator = M.collimator  'rcollimator' { kind='rcollimator' }
+M.hkicker     = M.kicker      'hkicker'     { }
+M.vkicker     = M.kicker      'vkicker'     { }
 
 -- monitors
-M.bpm         = M.monitor     'bpm'         { kind='bpm' }
-M.blm         = M.monitor     'blm'         { kind='blm' }
+M.bpm         = M.monitor     'bpm'         { }
+M.blm         = M.monitor     'blm'         { }
 
 -- others
-M.instrument  = M.placeholder 'instrument'  { kind='instrument' }
+M.instrument  = M.placeholder 'instrument'  { }
 
 -- test suite -----------------------------------------------------------------------
 

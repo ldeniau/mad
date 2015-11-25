@@ -80,7 +80,7 @@ m.charge, m.dir = 1, 1
 m:print()
 
 local e =  { L=1, b=1, T=1, LD=1 } -- drift
--- local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
+--local e = { L=1, b=1, nmul=2, bn = {0.0, 0.2}, an = {0.0, 0.0} } -- kick
 
 for i=1,1e6 do
 --  track_kick(m,e)

@@ -19,7 +19,7 @@ DESCRIPTION
 RETURN VALUE
   The TFS table.
 
-EXAMPLE
+EXAMPLES
   table = require"mad.table"
   tab = table 'survey' { {'name'}, 'x', 'y', 'z', 'phi', 'theta', 'rho' }
   tab:add{ 'drift', 0.1, 0.2, 0.5, 0, 0, 0 }
@@ -117,26 +117,26 @@ end
 -- add a new row
 
 local function add_row(self, row)
-  local n = #self[1]+1
+  local nrow = #self[1]+1
 
   if #row > 0 then -- vector of index-value
-    if #row ~= #self then invalid_len(self, n) end
-    for i,v in ipairs(row) do rawset(self[i], n, v) end
+    if #row ~= #self then invalid_len(self, nrow) end
+    for i,v in ipairs(row) do rawset(self[i], nrow, v) end
 
   else              -- vector of key-value
-    local i = 0
+    local ncol, col = 0
     for k,v in pairs(row) do
-      local col = rawget(self, k)
-      if col == nil then invalid_key(self, n) end
-      rawset(col, n, v)
-      i = i + 1
+      col = rawget(self, k)
+      if col == nil then invalid_key(self, nrow) end
+      rawset(col, nrow, v)
+      ncol = ncol + 1
     end
-    if i ~= #self then
+    if ncol ~= #self then
       error("invalid number of key-value parameters in row add")
     end
   end
 
-  if self._refcol then add_refkey(self, n) end
+  if self._refcol then add_refkey(self, nrow) end
 end
 
 -- set row values
